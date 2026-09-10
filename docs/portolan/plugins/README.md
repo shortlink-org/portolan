@@ -29,7 +29,7 @@ the plugin itself rather than its work:
 → { "portolanVersion": "0.1.0", "kind": "describe" }
 ← { "files": [],
     "describe": { "name": "extract-go", "summary": "...",
-                  "phases": ["extract"],
+                  "category": "code", "phases": ["extract"],
                   "options": { "type": "object", "additionalProperties": false,
                                "properties": { "context": { ... } } } } }
 ```
@@ -41,6 +41,16 @@ written and `gen` checks before it runs anything. `additionalProperties: false`
 is what makes that worth having: `encoding/json` drops a field it does not
 recognise, so before this a misspelled option was no option at all and nothing
 said so.
+
+`category` is what the plugin reads or makes, one of `code`, `contracts`,
+`messaging`, `data`, `repository`, `documents`, `evidence`, `sources` and
+`exports` (the constants in `plugin/describe.go`). A phase says where in a run
+a plugin goes; the category says what kind of fact it is after, which is how
+the site's `/plugins` page groups it. `npm run schema` also writes
+`src/lib/plugin-index.json` - every declared plugin as it describes itself,
+with how the manifest runs it - and that page and the landing page's list of
+inputs are rendered from it, so a plugin added to `portolan.json` appears on
+both without being written down twice.
 
 A descriptor may also carry `needs`: what the host must put in the request
 beyond the tree, because a sandboxed module cannot reach it. The one need so

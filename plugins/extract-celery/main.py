@@ -25,6 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DESCRIPTOR = {
     "name": "extract-celery",
     "summary": "Reads Celery task declarations, the calls that enqueue them and the routes that place them into work queues and source-backed job flows.",
+    "category": "messaging",
     "phases": ["extract"],
 }
 

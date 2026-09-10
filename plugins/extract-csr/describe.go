@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-csr",
-		Summary: "Reads schemas vendored out of a Confluent Schema Registry and answers with the topics they are registered against and the shapes they declare.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-csr",
+		Summary:  "Reads schemas vendored out of a Confluent Schema Registry and answers with the topics they are registered against and the shapes they declare.",
+		Category: plugin.CategoryContracts,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

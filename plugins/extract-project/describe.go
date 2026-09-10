@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-project",
-		Summary: "Reads repository metadata and describes a group and component without assuming DDD or a particular language.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-project",
+		Summary:  "Reads repository metadata and describes a group and component without assuming DDD or a particular language.",
+		Category: plugin.CategoryRepository,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

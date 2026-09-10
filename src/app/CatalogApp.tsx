@@ -18,6 +18,7 @@ import { FlowDetail } from "../pages/FlowDetail";
 import { FlowIndex } from "../pages/FlowIndex";
 import { AdrIndex } from "../pages/AdrIndex";
 import { Language } from "../pages/Language";
+import { PluginIndex } from "../pages/PluginIndex";
 import { AdrDetail } from "../pages/AdrDetail";
 import { Overview } from "../pages/Overview";
 import { ContextMap } from "../pages/ContextMap";
@@ -119,6 +120,7 @@ function AppRoutes({
       />
       <Route path="/adrs" element={<AdrIndex />} />
       <Route path="/language" element={<Language />} />
+      <Route path="/plugins" element={<PluginIndex />} />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
       <Route path="/settings/*" element={<Settings />} />

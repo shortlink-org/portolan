@@ -1,8 +1,9 @@
 // Composes the JSON Schema for portolan.json out of what the plugins say about
 // themselves.
 //
-//   node scripts/schema.mjs            write schema/portolan.schema.json
-//   node scripts/schema.mjs --check    fail if the schema on disk is not what
+//   node scripts/schema.mjs            write schema/portolan.schema.json and
+//                                      src/lib/plugin-index.json
+//   node scripts/schema.mjs --check    fail if either file on disk is not what
 //                                      the plugins describe now
 //
 // The manifest tells each plugin the things its source cannot carry - which
@@ -21,6 +22,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describePlugin } from "./plugin-host.mjs";
 
 const OUT = "schema/portolan.schema.json";
+const INDEX = "src/lib/plugin-index.json";
 
 const check = process.argv.includes("--check");
 // Bootstrap exception: this command produces the schema that loadManifest
@@ -51,25 +53,65 @@ for (const plugin of manifest.plugins ?? []) {
 }
 
 const composed = `${JSON.stringify(compose(), null, 2)}\n`;
+const index = `${JSON.stringify(pluginIndex(), null, 2)}\n`;
 
-let current = null;
-try {
-  current = readFileSync(OUT, "utf8");
-} catch {
-  // Absent, which is the same as out of date.
+let stale = false;
+for (const [path, contents, directory] of [
+  [OUT, composed, "schema"],
+  [INDEX, index, "src/lib"],
+]) {
+  let current = null;
+  try {
+    current = readFileSync(path, "utf8");
+  } catch {
+    // Absent, which is the same as out of date.
+  }
+
+  if (current === contents) {
+    console.log(`${path}: up to date`);
+  } else if (check) {
+    console.error(
+      `${path} is ${current === null ? "missing" : "out of date"}. Run \`npm run schema\`.`,
+    );
+    stale = true;
+  } else {
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(path, contents);
+    console.log(`${path}: written from ${described.size} plugin${described.size === 1 ? "" : "s"}`);
+  }
 }
+if (stale) process.exit(1);
 
-if (current === composed) {
-  console.log(`${OUT}: up to date`);
-} else if (check) {
-  console.error(
-    `${OUT} is ${current === null ? "missing" : "out of date"}. Run \`npm run schema\`.`,
-  );
-  process.exit(1);
-} else {
-  mkdirSync("schema", { recursive: true });
-  writeFileSync(OUT, composed);
-  console.log(`${OUT}: written from ${described.size} plugin${described.size === 1 ? "" : "s"}`);
+/**
+ * The plugin index: every plugin the package ships, as it describes itself,
+ * with how the manifest runs it. The site's /plugins page and the landing's
+ * list of inputs are rendered from this, so a plugin added to portolan.json
+ * appears there without anyone writing it down twice. Kept under src/ rather
+ * than beside the schema because the staged site copies src/ and nothing else.
+ */
+function pluginIndex() {
+  const out = [];
+  for (const plugin of manifest.plugins ?? []) {
+    const descriptor = described.get(plugin.name);
+    if (!descriptor) continue;
+    out.push({
+      name: plugin.name,
+      plugin: descriptor.name,
+      summary: descriptor.summary,
+      category: descriptor.category,
+      phases: descriptor.phases,
+      ...(descriptor.needs?.length ? { needs: descriptor.needs } : {}),
+      runtime: plugin.wasm ? "wasm" : plugin.host ? "host" : "process",
+      // The toolchain a process plugin asks the build for; the sandboxed
+      // module and the host's own code ask for nothing.
+      ...(plugin.process ? { toolchain: plugin.process.command } : {}),
+      source: plugin.host
+        ? `scripts/host-plugins/${plugin.host}.mjs`
+        : `plugins/${descriptor.name}`,
+      options: descriptor.options ?? {},
+    });
+  }
+  return out;
 }
 
 function compose() {

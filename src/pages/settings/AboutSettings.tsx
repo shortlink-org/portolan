@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, CircleDot, GitBranch, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpen, CircleDot, GitBranch, Puzzle, ShieldCheck } from "lucide-react";
 import type { Variants } from "motion/react";
 import { Link } from "react-router";
 
@@ -94,6 +94,13 @@ export function AboutSettings() {
         >
           <div className="label mb-2">resources</div>
           <div className="divide-y divide-line">
+            <Link
+              to={paths.plugins()}
+              className="flex items-center gap-2 py-2.5 text-muted transition-colors hover:text-ink"
+            >
+              <Puzzle size={15} aria-hidden className="shrink-0" />
+              Plugin reference
+            </Link>
             <a
               href={PRODUCT_README}
               target="_blank"

@@ -3,6 +3,7 @@ import { NavLink } from "react-router";
 import {
   Check,
   PanelLeftOpen,
+  Puzzle,
   Settings2,
   TriangleAlert,
 } from "lucide-react";
@@ -75,6 +76,22 @@ export function SidebarBottomGroup() {
             {found.length}
           </span>
         )}
+      </NavLink>
+      <NavLink
+        to={paths.plugins()}
+        data-nav-item
+        title="Plugins — what Portolan can read, and what it makes"
+        style={({ isActive }) => ({
+          paddingLeft: indent(0),
+          background: isActive ? "var(--surface-2)" : undefined,
+          borderLeftWidth: 2,
+          borderLeftStyle: "solid",
+          borderLeftColor: isActive ? "var(--accent)" : "transparent",
+        })}
+        className="tree-row flex items-center gap-1.5 py-[3px] pr-2 text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+      >
+        <Puzzle size={14} aria-hidden className="block shrink-0" />
+        <span className="truncate">Plugins</span>
       </NavLink>
       <NavLink
         to={paths.settings()}

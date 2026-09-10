@@ -56,6 +56,7 @@ public final class Main {
         return Catalog.map(
                 "name", "extract-java",
                 "summary", "Reads a Java service by what it declares - jMolecules aggregates, events and ports, Spring's listeners and handlers - into a catalog fragment.",
+                "category", "code",
                 "phases", List.of("extract"),
                 "options", Json.parse(Files.readString(options())));
     }

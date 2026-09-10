@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "gen-markdown",
-		Summary: "Renders the merged catalog as a directory of markdown: a page per context, service, aggregate, store and flow.",
-		Phases:  []string{plugin.PhaseGenerate},
-		Options: optionsSchema,
+		Name:     "gen-markdown",
+		Summary:  "Renders the merged catalog as a directory of markdown: a page per context, service, aggregate, store and flow.",
+		Category: plugin.CategoryExports,
+		Phases:   []string{plugin.PhaseGenerate},
+		Options:  optionsSchema,
 	}
 }

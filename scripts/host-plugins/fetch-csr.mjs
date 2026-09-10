@@ -34,6 +34,7 @@ export function describe() {
   return {
     name: "fetch-csr",
     summary: "Fetches pinned subject versions from a Confluent Schema Registry into the tree, with a lock beside each, so a schema published to a registry can be read without talking to it.",
+    category: "sources",
     phases: ["extract"],
     options: optionsSchema,
   };

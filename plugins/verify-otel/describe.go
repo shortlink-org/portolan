@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "verify-otel",
-		Summary: "Reads OpenTelemetry traces against the catalog and says which hops have been seen running.",
-		Phases:  []string{plugin.PhaseVerify},
-		Options: optionsSchema,
+		Name:     "verify-otel",
+		Summary:  "Reads OpenTelemetry traces against the catalog and says which hops have been seen running.",
+		Category: plugin.CategoryEvidence,
+		Phases:   []string{plugin.PhaseVerify},
+		Options:  optionsSchema,
 	}
 }

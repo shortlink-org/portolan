@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-flows",
-		Summary: "Reads flows written by hand as *.flow.md - one line per hop, frames closed by end - into a catalog fragment.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-flows",
+		Summary:  "Reads flows written by hand as *.flow.md - one line per hop, frames closed by end - into a catalog fragment.",
+		Category: plugin.CategoryDocuments,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

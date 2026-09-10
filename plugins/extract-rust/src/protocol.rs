@@ -53,6 +53,7 @@ pub struct Warning {
 pub struct Descriptor {
     pub name: String,
     pub summary: String,
+    pub category: String,
     pub phases: Vec<String>,
     pub options: serde_json::Value,
 }

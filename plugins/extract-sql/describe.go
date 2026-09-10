@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-sql",
-		Summary: "Reads a service's migrations and Go repository SQL into the store it builds: tables, columns, keys, persisted aggregates, and the methods that read or write each table.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-sql",
+		Summary:  "Reads a service's migrations and Go repository SQL into the store it builds: tables, columns, keys, persisted aggregates, and the methods that read or write each table.",
+		Category: plugin.CategoryData,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

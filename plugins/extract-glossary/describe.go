@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-glossary",
-		Summary: "Reads a context's GLOSSARY.md - one paragraph per term, what it is and what it is not - into a catalog fragment.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-glossary",
+		Summary:  "Reads a context's GLOSSARY.md - one paragraph per term, what it is and what it is not - into a catalog fragment.",
+		Category: plugin.CategoryDocuments,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

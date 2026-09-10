@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-river",
-		Summary: "Reads River JobArgs, Insert calls and registered workers into work queues and source-backed job flows.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-river",
+		Summary:  "Reads River JobArgs, Insert calls and registered workers into work queues and source-backed job flows.",
+		Category: plugin.CategoryMessaging,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

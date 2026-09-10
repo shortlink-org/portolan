@@ -48,6 +48,7 @@ import {
 import type { Discovery, ProjectDraft, ProjectPlan, RunEvent } from "../lib/local-api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { localKeys, localStatusQuery } from "../lib/queries";
+import { pluginByName } from "../lib/plugins";
 import { bare, sourceHref, treeHref } from "../lib/source-link";
 import { paths } from "../routes";
 import { CapabilityEmpty, Empty, SectionTitle } from "../components/PageHeader";
@@ -518,6 +519,10 @@ function PluginsList() {
             const runSteps = setupInfo.run?.steps.filter((step) => step.plugin === plugin.name) ?? [];
             const health = plugin.stepCount === 0 ? "unchecked" : healthFor(runSteps, declared.length, setupInfo);
             const outputs = [...new Set(runSteps.flatMap((step) => step.files))];
+            // What the plugin says of itself, when it is one the package ships.
+            // A plugin the manifest declares by its own `process` is not on the
+            // index, and the row says nothing rather than something made up.
+            const shipped = pluginByName(plugin.name);
             return (
               <details key={plugin.name} id={`plugin-${plugin.name}`} className="group scroll-mt-4 border-t border-line">
                 <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3 py-1.5 hover:bg-surface/60">
@@ -538,6 +543,7 @@ function PluginsList() {
                   <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(14rem,1fr)]">
                     <div><div className="label mb-2">last run</div><PipelineSteps steps={runSteps} /></div>
                     <div className="space-y-4">
+                      {shipped ? <div><div className="label mb-2">what it reads</div><p className="text-muted">{shipped.summary}</p><Link to={paths.plugin(plugin.name)} className="mono mt-1 inline-block text-accent hover:underline">options and source →</Link></div> : null}
                       <div><div className="label mb-2">runtime</div><p className="mono"><Runtime plugin={plugin} /></p></div>
                       <div><div className="label mb-2">used by</div>{plugin.projectIds.length > 0 ? <div className="flex flex-wrap gap-1.5">{plugin.projectIds.map((id) => <Link key={id} to={`${paths.settingsProjects()}#project-${id}`} className="chip border-line-strong hover:border-accent hover:text-accent">{projectNames.get(id) ?? id}</Link>)}</div> : <p className="mono text-muted">{plugin.stepCount > 0 ? "Estate-wide catalog" : "No pipeline step uses this plugin."}</p>}</div>
                       {outputs.length > 0 ? <div><div className="label mb-2">outputs</div><ul className="mono space-y-1 text-muted">{outputs.map((output) => <li key={output} className="truncate"><FileLink path={output} /></li>)}</ul></div> : null}
@@ -1160,7 +1166,7 @@ function PipelineSettings() {
         ) : (
           <>
             <PluginsList />
-            <p className="mono mt-2 text-muted">WASM runs without network or environment access, and a generator without a filesystem. A host process runs with the permissions of the build; a plugin in the host is Portolan's own code doing what needs a socket, such as fetching another repository.</p>
+            <p className="mono mt-2 text-muted">WASM runs without network or environment access, and a generator without a filesystem. A host process runs with the permissions of the build; a plugin in the host is Portolan's own code doing what needs a socket, such as fetching another repository. Every plugin the package ships, with what it reads and the options it takes, is on the <Link to={paths.plugins()} className="text-accent hover:underline">plugin reference</Link>.</p>
           </>
         )}
       </section>

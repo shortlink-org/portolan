@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-watermill",
-		Summary: "Reads Watermill router and CQRS handlers plus publications into channels and source-backed message flows.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-watermill",
+		Summary:  "Reads Watermill router and CQRS handlers plus publications into channels and source-backed message flows.",
+		Category: plugin.CategoryMessaging,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

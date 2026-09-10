@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-asyncapi",
-		Summary: "Reads an AsyncAPI document and answers with the channels a service publishes on and listens to.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-asyncapi",
+		Summary:  "Reads an AsyncAPI document and answers with the channels a service publishes on and listens to.",
+		Category: plugin.CategoryContracts,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

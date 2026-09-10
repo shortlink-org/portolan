@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-go-nats",
-		Summary: "Reads nats.go and JetStream calls, through the port that wraps them, into the subjects a service listens on and publishes to.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-go-nats",
+		Summary:  "Reads nats.go and JetStream calls, through the port that wraps them, into the subjects a service listens on and publishes to.",
+		Category: plugin.CategoryMessaging,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

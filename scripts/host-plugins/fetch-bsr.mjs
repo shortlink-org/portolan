@@ -46,6 +46,7 @@ export function describe() {
   return {
     name: "fetch-bsr",
     summary: "Fetches pinned modules from a Buf Schema Registry into the tree, with a lock beside each, so the proto extractor can read a published contract.",
+    category: "sources",
     phases: ["extract"],
     options: optionsSchema,
   };

@@ -25,6 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DESCRIPTOR = {
     "name": "extract-django",
     "summary": "Reads a Django service by its applications - models, events, services, DRF views, receivers, clients - into a catalog fragment, and its models into the store they are the schema of.",
+    "category": "code",
     "phases": ["extract"],
 }
 

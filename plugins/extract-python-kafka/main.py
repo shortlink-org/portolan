@@ -18,6 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DESCRIPTOR = {
     "name": "extract-python-kafka",
     "summary": "Reads confluent-kafka, kafka-python and aiokafka producers and consumers into message channels and source-backed flows.",
+    "category": "messaging",
     "phases": ["extract"],
 }
 

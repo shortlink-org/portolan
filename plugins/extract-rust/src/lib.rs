@@ -25,6 +25,7 @@ pub fn descriptor() -> Descriptor {
     Descriptor {
         name: "extract-rust".into(),
         summary: "Reads a Rust service by its layout - aggregates, events, use cases, gRPC endpoints, policies, clients - into a catalog fragment.".into(),
+        category: "code".into(),
         phases: vec!["extract".into()],
         options: serde_json::from_str(OPTIONS_SCHEMA).expect("options.schema.json is JSON"),
     }

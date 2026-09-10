@@ -135,7 +135,9 @@ lock, so a later build can reproduce them without a socket.
 
 Each plugin describes its own options; `npm run schema` asks all of them and
 composes `schema/portolan.schema.json`, which editors complete against and `gen`
-checks before running anything.
+checks before running anything. The same answers are rendered as the site's
+plugin reference - `/plugins` on any generated site, grouped by what each reads
+or makes, with the options it takes - so the list above is the short form.
 
 Non-fatal extractor diagnostics remain attached to their pipeline step. The
 Settings page groups repetitions by plugin, stable rule and severity, and shows

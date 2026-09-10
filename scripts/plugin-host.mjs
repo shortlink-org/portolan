@@ -215,6 +215,24 @@ function safeFileName(name) {
   return parts.every((part) => part !== "" && part !== "." && part !== "..");
 }
 
+/**
+ * What a plugin reads, or what it makes - the groups of the plugin index. A
+ * phase says where in a run a plugin goes; the category says what kind of
+ * fact it is after, which is the question a reader choosing extractors asks.
+ * Mirrors the Category constants in plugin/describe.go.
+ */
+export const PLUGIN_CATEGORIES = [
+  "code",
+  "contracts",
+  "messaging",
+  "data",
+  "repository",
+  "documents",
+  "evidence",
+  "sources",
+  "exports",
+];
+
 function validateDescriptor(pluginName, descriptor) {
   if (!descriptor || typeof descriptor !== "object" || Array.isArray(descriptor)) {
     throw new Error(`plugin ${pluginName}: describe is not an object`);
@@ -224,6 +242,9 @@ function validateDescriptor(pluginName, descriptor) {
   }
   if (typeof descriptor.summary !== "string") {
     throw new Error(`plugin ${pluginName}: describe.summary is missing`);
+  }
+  if (!PLUGIN_CATEGORIES.includes(descriptor.category)) {
+    throw new Error(`plugin ${pluginName}: describe.category must be one of ${PLUGIN_CATEGORIES.join(", ")}`);
   }
   if (!Array.isArray(descriptor.phases) || descriptor.phases.some((phase) => !["extract", "verify", "generate"].includes(phase))) {
     throw new Error(`plugin ${pluginName}: describe.phases is invalid`);

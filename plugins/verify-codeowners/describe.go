@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "verify-codeowners",
-		Summary: "Reads the repository's CODEOWNERS against the catalog: who to ask about each service, which services nobody owns, and which rules own nothing.",
-		Phases:  []string{plugin.PhaseVerify},
-		Options: optionsSchema,
+		Name:     "verify-codeowners",
+		Summary:  "Reads the repository's CODEOWNERS against the catalog: who to ask about each service, which services nobody owns, and which rules own nothing.",
+		Category: plugin.CategoryEvidence,
+		Phases:   []string{plugin.PhaseVerify},
+		Options:  optionsSchema,
 	}
 }

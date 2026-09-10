@@ -10,6 +10,9 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/language")).toEqual([
       { label: "language", to: "/language" },
     ]);
+    expect(crumbsFor("/plugins")).toEqual([
+      { label: "plugins", to: "/plugins" },
+    ]);
     expect(crumbsFor("/problems")).toEqual([
       { label: "problems", to: "/problems" },
     ]);

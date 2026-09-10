@@ -27,6 +27,13 @@ describe("routes", () => {
     expect(isRoutable("/landing/")).toBe(true);
   });
 
+  it("routes the plugin index, and one plugin on it by manifest name", () => {
+    expect(paths.plugins()).toBe("/plugins");
+    expect(isRoutable(paths.plugins())).toBe(true);
+    expect(paths.plugin("go-nats")).toBe("/plugins#plugin-go-nats");
+    expect(isRoutable(paths.plugin("go-nats"))).toBe(true);
+  });
+
   it("routes every URL the catalog can produce", () => {
     const unroutable = allCatalogPaths(catalog).filter((p) => !isRoutable(p));
     expect(unroutable).toEqual([]);

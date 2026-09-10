@@ -60,6 +60,7 @@ export function describe() {
   return {
     name: "fetch-git",
     summary: "Fetches pinned directories of another git repository into the tree, with a lock, so extractors can read a service that lives elsewhere.",
+    category: "sources",
     phases: ["extract"],
     options: optionsSchema,
   };

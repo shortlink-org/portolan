@@ -32,6 +32,36 @@ const (
 	PhaseGenerate = "generate"
 )
 
+// Categories a plugin sorts itself under on the plugin index: what it reads,
+// or what it makes. A phase says where in a run a plugin goes; a category
+// says what kind of fact it is after, which is the question a reader choosing
+// extractors for an estate is asking.
+const (
+	// CategoryCode reads a language: the aggregates, events and use cases a
+	// service declares in its source.
+	CategoryCode = "code"
+	// CategoryContracts reads an interface description - OpenAPI, protobuf,
+	// GraphQL, WSDL, AsyncAPI, a registry's schemas.
+	CategoryContracts = "contracts"
+	// CategoryMessaging reads queues, subjects, topics and the jobs on them.
+	CategoryMessaging = "messaging"
+	// CategoryData reads the stores a service keeps and their shape.
+	CategoryData = "data"
+	// CategoryRepository reads what the repository says about itself: its
+	// metadata, its task runners.
+	CategoryRepository = "repository"
+	// CategoryDocuments reads what people wrote by hand: decisions, glossaries,
+	// flows.
+	CategoryDocuments = "documents"
+	// CategoryEvidence checks the catalog against something outside the code:
+	// traces, ownership rules.
+	CategoryEvidence = "evidence"
+	// CategorySources brings in trees from elsewhere for the extractors to read.
+	CategorySources = "sources"
+	// CategoryExports turns the catalog into something else.
+	CategoryExports = "exports"
+)
+
 // Descriptor is a plugin's answer to KindDescribe.
 type Descriptor struct {
 	// Name is what the plugin calls itself. The manifest is free to declare it
@@ -41,6 +71,10 @@ type Descriptor struct {
 
 	// Summary is one line, and it is the line an editor shows beside the step.
 	Summary string `json:"summary,omitempty"`
+
+	// Category is one of the Category constants: what the plugin reads or
+	// makes, which is how the plugin index groups it.
+	Category string `json:"category"`
 
 	// Phases are the manifest sections this plugin belongs in.
 	Phases []string `json:"phases"`

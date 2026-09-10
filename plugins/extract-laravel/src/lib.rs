@@ -25,6 +25,7 @@ pub fn descriptor() -> Descriptor {
     Descriptor {
         name: "extract-laravel".into(),
         summary: "Reads a Laravel application by its framework - Eloquent models, events and listeners, routes and controllers - into a catalog fragment and an inferred HTTP contract.".into(),
+        category: "code".into(),
         phases: vec!["extract".into()],
         options: serde_json::from_str(OPTIONS_SCHEMA).expect("options.schema.json is JSON"),
     }

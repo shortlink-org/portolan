@@ -11,9 +11,10 @@ var optionsSchema []byte
 
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
-		Name:    "extract-wsdl",
-		Summary: "Reads WSDL services, SOAP bindings, operations, messages, faults, and local XSD shapes.",
-		Phases:  []string{plugin.PhaseExtract},
-		Options: optionsSchema,
+		Name:     "extract-wsdl",
+		Summary:  "Reads WSDL services, SOAP bindings, operations, messages, faults, and local XSD shapes.",
+		Category: plugin.CategoryContracts,
+		Phases:   []string{plugin.PhaseExtract},
+		Options:  optionsSchema,
 	}
 }

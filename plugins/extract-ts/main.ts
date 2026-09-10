@@ -11,6 +11,7 @@ const schema = JSON.parse(readFileSync(new URL("./options.schema.json", import.m
 export const descriptor = {
   name: "extract-ts",
   summary: "Reads a TypeScript service by its layout - aggregates, events, use cases, endpoints, policies, clients - into a catalog fragment.",
+  category: "code",
   phases: ["extract"],
   options: schema,
 };

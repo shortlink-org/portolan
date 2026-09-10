@@ -20,6 +20,7 @@ import { useTheme } from "../app/theme";
 import { useDocumentTitle } from "../app/title";
 import { catalog } from "../data";
 import { m } from "../lib/motion";
+import { landingInputs } from "../lib/plugins";
 import { paths } from "../routes";
 import { catalogTo } from "./catalog";
 import { DraggableReveal } from "./DraggableReveal";
@@ -76,6 +77,9 @@ function Header() {
           <a className="hover:text-ink" href="#get-started">
             Get started
           </a>
+          <Link className="hover:text-ink" to={pluginsTo}>
+            Plugins
+          </Link>
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -146,11 +150,10 @@ function HeroDemo() {
   );
 }
 
-const inputGroups = [
-  { label: "code", items: ["Go", "TypeScript", "Java", "Rust", "Django"] },
-  { label: "contracts", items: ["OpenAPI", "GraphQL", "Protobuf"] },
-  { label: "runtime + data", items: ["SQL", "OTel"] },
-];
+// What the plugins say they read, from the index `npm run schema` writes: a
+// new extractor lands here without anyone remembering to add it.
+const inputGroups = landingInputs();
+const pluginsTo = catalogTo(paths.plugins());
 
 const features = [
   {
@@ -335,14 +338,12 @@ export function LandingPage() {
           <div className="mx-auto flex max-w-[1200px] flex-col gap-5 px-5 py-7 sm:px-8 lg:flex-row lg:items-center">
             <div className="shrink-0">
               <div className="mono text-faint">BUILT-IN INPUTS</div>
-              <a
-                href={`${PRODUCT_REPOSITORY}#plugins`}
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                to={pluginsTo}
                 className="mt-1 inline-flex items-center gap-1 text-sm text-accent hover:underline"
               >
-                See every extractor <ArrowRight size={12} />
-              </a>
+                See every plugin <ArrowRight size={12} />
+              </Link>
             </div>
             <div className="flex flex-wrap gap-x-7 gap-y-3 lg:ml-auto lg:justify-end">
               {inputGroups.map((group) => (
@@ -687,6 +688,9 @@ export function LandingPage() {
             <a className="hover:text-ink" href={PRODUCT_README}>
               Docs
             </a>
+            <Link className="hover:text-ink" to={pluginsTo}>
+              Plugins
+            </Link>
             <a
               className="hover:text-ink"
               href={PRODUCT_LICENSE}

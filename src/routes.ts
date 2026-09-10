@@ -39,6 +39,14 @@ export const paths = {
    * page, and the reader is told what was narrowed and offered it back.
    */
   term: (termId: string) => `/language?term=${encodeURIComponent(termId)}`,
+  /**
+   * Every plugin the package ships, as each describes itself. One page: the
+   * question a reader asks is "what can this read?", and the answer is the
+   * whole list grouped by what is read, not one plugin at a time.
+   */
+  plugins: () => "/plugins",
+  /** One plugin on that page, by the name the manifest declares it under. */
+  plugin: (name: string) => `/plugins#plugin-${name}`,
   problems: () => "/problems",
   changes: () => "/changes",
   settings: () => "/settings",
@@ -375,6 +383,7 @@ const ROUTES: RegExp[] = [
   /^\/flows\/[^/]+$/,
   /^\/adrs$/,
   /^\/language$/,
+  /^\/plugins$/,
   /^\/problems$/,
   /^\/changes$/,
   /^\/settings(?:\/(?:projects|pipeline|delivery|integrations|preferences|about))?$/,
@@ -409,6 +418,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.map(),
     paths.adrs(),
     paths.language(),
+    paths.plugins(),
     paths.problems(),
     paths.changes(),
     paths.settings(),
