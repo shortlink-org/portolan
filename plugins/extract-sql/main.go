@@ -94,7 +94,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 				Provides:   []catalog.RpcService{},
 				Consumes:   []catalog.RpcCall{},
 				Aggregates: []catalog.Aggregate{},
-				Stores:     []string{storeID},
+				Stores:     []string{},
 			}},
 		}},
 		Defs:  map[string]catalog.TypeDef{},
@@ -103,9 +103,9 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 	}
 
 	if len(tables) == 0 {
-		fragment.Contexts[0].Services[0].Stores = []string{}
 		b.Warn(storeID, "no repository or projector migrations found; the service is described as keeping no state")
 	} else {
+		fragment.Contexts[0].Services[0].Stores = []string{storeID}
 		fragment.Stores = []catalog.Store{{
 			ID:     storeID,
 			Slug:   opts.Store,

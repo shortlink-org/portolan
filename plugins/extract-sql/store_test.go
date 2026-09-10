@@ -83,6 +83,10 @@ func TestFragmentWithoutMigrationsClaimsNoStore(t *testing.T) {
 	if len(cat.Stores) != 0 || len(cat.Contexts[0].Services[0].Stores) != 0 {
 		t.Fatalf("empty extraction linked a missing store: catalog=%+v service=%+v", cat.Stores, cat.Contexts[0].Services[0].Stores)
 	}
+	warnings := resp.Warnings()
+	if len(warnings) != 1 || warnings[0].Severity != "warning" || warnings[0].Ref != "empty.empty.pg" || !strings.Contains(warnings[0].Message, "keeping no state") {
+		t.Fatalf("empty extraction warning = %+v", warnings)
+	}
 }
 
 // A table brought by a dependency is real, and its DDL is not here. Silence
