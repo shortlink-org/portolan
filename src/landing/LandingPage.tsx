@@ -1,17 +1,13 @@
 import {
   ArrowRight,
   Bot,
-  Braces,
   Check,
-  CircleDotDashed,
-  Code2,
   Copy,
   FileSearch,
   Files,
   FileText,
   GitBranch,
   Moon,
-  Network,
   ShieldCheck,
   Sun,
   Terminal,
@@ -27,6 +23,7 @@ import { m } from "../lib/motion";
 import { paths } from "../routes";
 import { catalogTo } from "./catalog";
 import { DraggableReveal } from "./DraggableReveal";
+import { EvidencePipeline } from "./EvidencePipeline";
 import { heroColumn, heroLine, Reveal } from "./motion";
 import { ProductFrame } from "./ProductFrame";
 import { ProductTour } from "./ProductTour";
@@ -249,33 +246,6 @@ function CopyCommand({
   );
 }
 
-const pipeline = [
-  {
-    icon: Code2,
-    label: "01 / read",
-    title: "Code and specifications",
-    copy: "Existing source, schemas, contracts, ADRs and traces.",
-  },
-  {
-    icon: Braces,
-    label: "02 / extract",
-    title: "Local fragments",
-    copy: "Each service publishes the architectural facts it owns.",
-  },
-  {
-    icon: CircleDotDashed,
-    label: "03 / validate",
-    title: "One estate model",
-    copy: "Portolan merges the union and checks every relationship.",
-  },
-  {
-    icon: Network,
-    label: "04 / publish",
-    title: "A static catalog",
-    copy: "Browse the site or export Markdown, Mermaid and Backstage entities.",
-  },
-];
-
 export function LandingPage() {
   useDocumentTitle("Architecture from code");
 
@@ -422,34 +392,7 @@ export function LandingPage() {
                 Architecture documentation that begins with evidence.
               </h2>
             </Reveal>
-            <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {pipeline.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <Reveal
-                    key={item.title}
-                    delay={index * 0.07}
-                    className="relative rounded-card border border-line bg-canvas p-5 shadow-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flow-tile text-accent">
-                        <Icon size={14} />
-                      </span>
-                      <span className="mono text-faint">{item.label}</span>
-                    </div>
-                    <h3 className="mt-8 text-md font-semibold">{item.title}</h3>
-                    <p className="mt-2 text-sm text-muted">{item.copy}</p>
-                    {index < pipeline.length - 1 ? (
-                      <ArrowRight
-                        size={16}
-                        className="absolute top-1/2 -right-[11px] z-10 hidden -translate-y-1/2 rounded-full bg-canvas text-faint xl:block"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </Reveal>
-                );
-              })}
-            </div>
+            <EvidencePipeline />
           </div>
         </section>
 

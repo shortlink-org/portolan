@@ -105,7 +105,9 @@ export function DraggableReveal({
         className={`pointer-events-none absolute inset-0 z-0 flex ${catPlacement[revealEdge]}`}
       >
         <m.img
-          layout="position"
+          // Deliberately not a layout animation: the preview's children can
+          // reflow independently, and their tab changes must not send this
+          // hidden illustration across the background.
           src={cat}
           alt=""
           width={800}
@@ -118,7 +120,6 @@ export function DraggableReveal({
             y: dragging ? -3 : 0,
           }}
           transition={{
-            layout: { type: "spring", stiffness: 260, damping: 28 },
             opacity: { duration: 0.22 },
             scale: { duration: 0.28 },
             y: { duration: 0.28 },
