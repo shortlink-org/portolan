@@ -13,6 +13,7 @@ import type {
 } from "./catalog";
 import { validateCatalog, walkSteps } from "./catalog";
 import { enrichCatalog } from "./enrich";
+import { contextMap } from "./lib/context-map";
 import { mergeCatalogs } from "./merge";
 import { problems } from "./lib/derive";
 
@@ -254,6 +255,84 @@ describe("enrichCatalog: HTTP route correlation", () => {
       context: "shop",
     });
     expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("joins HTTP integrations contributed by independently added projects", () => {
+    const caller = service("aviacore", "aviacore", {
+      consumes: [
+        {
+          id: "http-client/POST /book",
+          peer: "http-peer",
+          status: "unresolved",
+          source: "internal/supplier/client.go:42",
+        },
+      ],
+    });
+    const provider = service("aviasupp", "aviasupp", {
+      provides: [
+        {
+          id: "api",
+          source: "docs/openapi.yaml",
+          methods: [
+            {
+              name: "book_post",
+              doc: "",
+              request: "",
+              response: "",
+              http: { method: "POST", path: "/book" },
+            },
+          ],
+        },
+      ],
+    });
+    const fragment = (id: string, owned: Service): Catalog => ({
+      generatedAt: "2026-01-01T00:00:00Z",
+      commit: id,
+      contexts: [context(id, [owned])],
+      defs: {},
+      flows: [],
+      adrs: [],
+    });
+    const merged = mergeCatalogs([
+      {
+        path: "vendor/repos/avia/aviacore/portolan/http-clients.json",
+        catalog: fragment("aviacore", caller),
+      },
+      {
+        path: "vendor/repos/avia/aviasupp/portolan/api.json",
+        catalog: fragment("aviasupp", provider),
+      },
+    ]).catalog;
+
+    const resolved = enrichCatalog(merged).catalog;
+    const call = serviceOf(resolved, "aviacore.aviacore").consumes[0];
+    expect(call).toEqual({
+      id: "api/book_post",
+      peer: "aviasupp.aviasupp",
+      status: "declared",
+      source: "internal/supplier/client.go:42",
+    });
+    expect(
+      contextMap(resolved).find(
+        (relation) => relation.id === "aviacore~aviasupp",
+      ),
+    ).toMatchObject({
+      dependencies: [
+        {
+          upstream: "aviasupp",
+          downstream: "aviacore",
+          links: [
+            {
+              id: "api/book_post",
+              from: "aviasupp.aviasupp",
+              to: "aviacore.aviacore",
+              status: "declared",
+            },
+          ],
+        },
+      ],
+    });
+    expect(() => validateCatalog(resolved)).not.toThrow();
   });
 
   it("maps a unique mounted route by its complete segment suffix", () => {

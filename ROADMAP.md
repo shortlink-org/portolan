@@ -140,7 +140,7 @@ capability честно отключена до trial, а не деградир�
 
 ### PORTOLAN-7. Разрешать интеграции между добавленными проектами
 
-**Status:** investigate
+**Status:** fixed locally; rendered UI verified
 
 После добавления всех трёх проектов карта показывает `0 of 3 pairs joined`, хотя
 в `aviacore` и `aviasupp` обнаружены реальные HTTP/SOAP вызовы. Большинство
@@ -167,8 +167,9 @@ server-side HTTP routes по verb и нормализованному path. Сн
 определённого HTTP verb и сохранение base-URL provenance непосредственно в
 HTTP client extractor вместо suffix inference. Они вынесены в PORTOLAN-18—20.
 
-**Done when:** известный вызов `aviacore -> aviasupp` отображается на context map
-с источником доказательства и не требует ручного редактирования generated JSON.
+Известные вызовы `aviacore -> aviasupp` и `aviacore -> aviaadmin` отображаются
+на context map без ручного редактирования generated JSON. Исходный путь вызова
+сохраняется в `RpcCall.source` и показывается в раскрытой integration card.
 
 ### PORTOLAN-8. Карточки проектов показывают неверную provenance-статистику
 
