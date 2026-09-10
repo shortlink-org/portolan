@@ -277,9 +277,6 @@ payment was captured, and what that means for a parcel is decided here.'
   storefront.bff -[calls]-> shop.oms 'GetOrder' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[consumes]-> shop.oms 'PaymentAuthorized' {
-    style { color declared  line dashed  head onormal }
-  }
   payments.ledger -[consumes]-> shop.billing 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
@@ -318,9 +315,6 @@ payment was captured, and what that means for a parcel is decided here.'
   }
   shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
-  }
-  shop.oms -[calls]-> payments.ledger 'Authorize' 'gRPC' {
-    style { color declared  line dashed  head normal }
   }
   delivery.core -[calls]-> shop.oms 'GetOrder' 'gRPC' {
     style { color declared  line dashed  head normal }
@@ -400,10 +394,10 @@ payment was captured, and what that means for a parcel is decided here.'
   bus -[bus]-> delivery.core 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms -[bus]-> bus '3 events' {
+  shop.oms -[bus]-> bus '2 events' {
     style { color verified  line solid  head onormal }
   }
-  bus -[bus]-> shop.oms '2 events' {
+  bus -[bus]-> shop.oms 'BasketCheckedOut' {
     style { color verified  line solid  head onormal }
   }
   shop.pricing -[bus]-> bus '2 events' {
@@ -416,6 +410,9 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color verified  line solid  head normal }
   }
   client -[uses]-> storefront.bff '9 flows' {
+    style { color declared  line dashed  head normal }
+  }
+  client -[uses]-> payments.ledger '5 flows' {
     style { color declared  line dashed  head normal }
   }
   client -[uses]-> shop.billing '7 flows' {

@@ -20,9 +20,7 @@ views {
     include shop.billing -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
     include shop.cart -> auth.auth with { title 'validateSession'  technology 'HTTP'  color verified  line solid }
     include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
-    include shop.oms -> payments.ledger with { title 'Authorize'  technology 'gRPC'  color declared  line dashed }
     include delivery.core -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
-    exclude payments.ledger -> shop.oms where kind is consumes
     exclude payments.ledger -> shop.billing where kind is consumes
     exclude payments.ledger -> delivery.core where kind is consumes
     exclude shop.cart -> shop.oms where kind is consumes
@@ -60,7 +58,6 @@ views {
     include shop.billing -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
     include shop.cart -> auth.auth with { title 'validateSession'  technology 'HTTP'  color verified  line solid }
     include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
-    include shop.oms -> payments.ledger with { title 'Authorize'  technology 'gRPC'  color declared  line dashed }
     include delivery.core -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
   }
 
@@ -2239,57 +2236,6 @@ views {
     }
     shop.oms -> client 'GetOrderResponse' {
       color verified  line dashed  head normal
-    }
-  }
-
-  dynamic view flow_oms_confirm_order_on_payment_authorized {
-    title 'Confirm order on payment authorized'
-    description 'Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself.'
-    bus -> shop.oms 'PaymentAuthorized' {
-      color declared  line solid  head onormal
-      notes 'Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
-    }
-    shop.oms -> shop.oms 'ConfirmOrder' {
-      color declared  line solid  head none
-      notes 'examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27'
-    }
-    shop.oms -> oms_pg 'by_id' {
-      color declared  line solid  head none
-      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:31'
-    }
-    shop.oms -> payments.ledger 'AuthorizeRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32'
-    }
-    payments.ledger -> shop.oms 'AuthorizeResponse' {
-      color declared  line dashed  head normal
-    }
-    shop.oms -> oms_pg 'save' {
-      color declared  line solid  head none
-      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34'
-    }
-    shop.oms -> bus 'OrderConfirmed' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34'
-    }
-  }
-
-  dynamic view flow_oms_confirm_order_on_payment_authorized_cross {
-    title 'Confirm order on payment authorized — crossings only'
-    bus -> shop.oms 'PaymentAuthorized' {
-      color declared  line solid  head onormal
-      notes 'Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
-    }
-    shop.oms -> payments.ledger 'AuthorizeRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32'
-    }
-    payments.ledger -> shop.oms 'AuthorizeResponse' {
-      color declared  line dashed  head normal
-    }
-    shop.oms -> bus 'OrderConfirmed' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34'
     }
   }
 
