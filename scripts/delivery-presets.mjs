@@ -259,7 +259,7 @@ function gitlabDiff({ pages }) {
 }
 
 function gitlabPages() {
-  return `"portolan:pages":
+  return `pages:
   stage: .post
   image:
     name: ghcr.io/shortlink-org/portolan:${VERSION}
@@ -299,7 +299,7 @@ function mergeGitlab(existing, features) {
       .replace(/^\n+|\n+$/g, "");
     return { content: content ? `${content}\n` : "" };
   }
-  if (/^[ \t]*["']?portolan:(?:check|review|pages)["']?\s*:/m.test(existing)) {
+  if (/^(?:["']?portolan:(?:check|review|pages)["']?|["']?pages["']?)\s*:/m.test(existing)) {
     return { conflict: "This pipeline already declares a Portolan job outside the managed region." };
   }
   const block = gitlabBlock(features);
@@ -421,7 +421,7 @@ function installedFeatures(workspace, provider) {
   );
   if (/^[ \t]*["']?portolan:check["']?\s*:/m.test(managed)) selected.add("check");
   if (/^[ \t]*["']?portolan:review["']?\s*:/m.test(managed)) selected.add("diff");
-  if (/^[ \t]*["']?portolan:pages["']?\s*:/m.test(managed)) selected.add("pages");
+  if (/^(?:["']?portolan:pages["']?|["']?pages["']?)\s*:/m.test(managed)) selected.add("pages");
   return selected;
 }
 

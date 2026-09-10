@@ -146,6 +146,8 @@ describe("local project setup", () => {
     const pipeline = readFileSync(join(root, ".gitlab-ci.yml"), "utf8");
     expect(pipeline).toContain("lint:\n  script: echo lint");
     expect(pipeline).toContain("# >>> Portolan delivery preset >>>");
+    expect(pipeline).toContain("\npages:\n");
+    expect(pipeline).not.toContain('"portolan:pages":');
     expect(pipeline).toContain("pages:\n    publish: dist");
     expect(existsSync(join(root, ".github"))).toBe(false);
   });
