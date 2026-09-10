@@ -7,7 +7,7 @@
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md)
 - **Committed:** Victor Login, 2026-09-06 (`229c1fb`)
-- **Revised:** Victor Login, 2026-09-10 (`edb37fc`)
+- **Revised:** Victor Login, 2026-09-10 (`f2da58d`)
 - **Superseded by:** [portolan.0010](portolan.0010.md)
 
 ### Context and Problem Statement

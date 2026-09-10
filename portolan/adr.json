@@ -44,9 +44,9 @@
         "date": "2026-09-06T18:48:02+07:00"
       },
       "revised": {
-        "commit": "edb37fc83ca252538255a33a78a6679e0f3591ea",
+        "commit": "f2da58d8ef99748d6aa1ba0fcb4eb443509a1dcd",
         "author": "Victor Login",
-        "date": "2026-09-10T21:43:45+07:00"
+        "date": "2026-09-10T21:47:36+07:00"
       }
     },
     {
@@ -222,9 +222,9 @@
       "relates": {},
       "source": "adr/0010-provenance-is-read-from-the-history-never-written-into-a-fragment.md",
       "created": {
-        "commit": "edb37fc83ca252538255a33a78a6679e0f3591ea",
+        "commit": "f2da58d8ef99748d6aa1ba0fcb4eb443509a1dcd",
         "author": "Victor Login",
-        "date": "2026-09-10T21:43:45+07:00"
+        "date": "2026-09-10T21:47:36+07:00"
       }
     }
   ]

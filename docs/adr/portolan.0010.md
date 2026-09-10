@@ -6,7 +6,7 @@
 - **Date:** 2026-09-10
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0010-provenance-is-read-from-the-history-never-written-into-a-fragment.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0010-provenance-is-read-from-the-history-never-written-into-a-fragment.md)
-- **Committed:** Victor Login, 2026-09-10 (`edb37fc`)
+- **Committed:** Victor Login, 2026-09-10 (`f2da58d`)
 - **Supersedes:** [portolan.0002](portolan.0002.md)
 
 ### Context and Problem Statement
