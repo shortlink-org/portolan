@@ -7,7 +7,7 @@
 // a source. Nothing watches `.git`: a commit made while the dev server runs
 // shows after a restart, or after the next change to a source.
 
-import { globSync } from "node:fs";
+import { existsSync, globSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { forgetHistory, stampsFor } from "./history.mjs";
@@ -21,9 +21,16 @@ const RESOLVED = `\0${PROVENANCE_MODULE}`;
  * keyed by its path as the manifest spells it.
  *
  * @param {string} workspace
+ * @param {string} siteRoot  Vite's root, which may contain flattened sources
  * @returns {Record<string, {commit: string, generatedAt: string}>}
  */
-export function provenance(workspace) {
+export function provenance(workspace, siteRoot = workspace) {
+  const sourceMap = join(siteRoot, ".portolan/source-paths.json");
+  if (existsSync(sourceMap)) {
+    const paths = JSON.parse(readFileSync(sourceMap, "utf8"));
+    const stamps = stampsFor(workspace, Object.values(paths));
+    return Object.fromEntries(Object.entries(paths).map(([staged, source]) => [staged, stamps.get(source)]));
+  }
   const manifest = readManifest(join(workspace, "portolan.json"));
   const paths = [];
   for (const pattern of manifest.sources ?? []) {
@@ -34,14 +41,18 @@ export function provenance(workspace) {
 
 /** @param {string} workspace */
 export function provenancePlugin(workspace) {
+  let siteRoot = workspace;
   return {
     name: "portolan-provenance",
+    configResolved(config) {
+      siteRoot = config.root;
+    },
     resolveId(id) {
       return id === PROVENANCE_MODULE ? RESOLVED : undefined;
     },
     load(id) {
       if (id !== RESOLVED) return undefined;
-      return `export default ${JSON.stringify(provenance(workspace))};\n`;
+      return `export default ${JSON.stringify(provenance(workspace, siteRoot))};\n`;
     },
     handleHotUpdate({ file, server }) {
       if (!file.endsWith(".json") || file.includes("/node_modules/")) return;

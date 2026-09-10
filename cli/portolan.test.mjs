@@ -1,9 +1,13 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { prepareSite, VERSION } from "./portolan.mjs";
+import { provenancePlugin, PROVENANCE_MODULE } from "../scripts/provenance.mjs";
+import { mergeCatalogs } from "../src/merge.ts";
+import { validateCatalog } from "../src/catalog.ts";
 
 const roots = [];
 afterEach(() => {
@@ -11,6 +15,49 @@ afterEach(() => {
 });
 
 describe("site staging", () => {
+  it("keeps original Git provenance for flattened sources in every catalog profile", async () => {
+    const root = mkdtempSync(join(tmpdir(), "portolan-staged-provenance-"));
+    roots.push(root);
+    const fragment = (id) => JSON.stringify({ contexts: [{ id, slug: id, name: id, services: [] }], defs: {}, flows: [], adrs: [] });
+    mkdirSync(join(root, "data"));
+    mkdirSync(join(root, "examples/shop/portolan"), { recursive: true });
+    writeFileSync(join(root, "data/self.json"), fragment("portolan"));
+    writeFileSync(join(root, "examples/shop/portolan/domain.json"), fragment("shop"));
+    // The example is profile-only: provenance must cover every staged source.
+    writeFileSync(join(root, "portolan.json"), JSON.stringify({
+      sources: ["data/*.json"],
+      catalogs: [
+        { id: "portolan", title: "Portolan", contexts: ["portolan"], projects: [], sources: ["data/*.json"] },
+        { id: "example", title: "Example", contexts: ["shop"], projects: [], sources: ["examples/*/portolan/*.json"] },
+      ],
+    }));
+    const git = (...args) => execFileSync("git", ["-C", root, ...args], {
+      encoding: "utf8",
+      env: { ...process.env, GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.com", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.com", GIT_AUTHOR_DATE: "2026-03-03T03:00:00Z", GIT_COMMITTER_DATE: "2026-03-03T03:00:00Z" },
+    }).trim();
+    git("init", "-q");
+    git("add", ".");
+    git("-c", "commit.gpgsign=false", "commit", "-qm", "catalogs");
+    const commit = git("rev-parse", "--short=7", "HEAD");
+
+    const stage = await prepareSite(root);
+    const plugin = provenancePlugin(root);
+    plugin.configResolved({ root: stage });
+    const module = plugin.load(plugin.resolveId(PROVENANCE_MODULE));
+    const stamps = JSON.parse(module.slice("export default ".length).trim().replace(/;$/, ""));
+    const manifest = JSON.parse(readFileSync(join(stage, "portolan.json"), "utf8"));
+    for (const [i, profile] of manifest.catalogs.entries()) {
+      const sources = profile.sources.map((path) => ({
+        path, catalog: JSON.parse(readFileSync(join(stage, path), "utf8")), stamp: stamps[path],
+      }));
+      expect(sources).toHaveLength(1);
+      expect(sources[0].catalog.generatedAt).toBeUndefined();
+      expect(sources[0].stamp).toEqual({ commit, generatedAt: "2026-03-03T03:00:00Z" });
+      const catalog = validateCatalog(mergeCatalogs(sources).catalog);
+      expect(catalog.contexts.map((context) => context.id)).toEqual([i === 0 ? "portolan" : "shop"]);
+    }
+  });
+
   it("stages a deterministic source for an intentional empty workspace", async () => {
     const root = mkdtempSync(join(tmpdir(), "portolan-empty-site-"));
     roots.push(root);

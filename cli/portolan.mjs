@@ -264,6 +264,14 @@ export async function prepareSite(workspace) {
   };
   writeFileSync(resolve(stage, "portolan.json"), `${JSON.stringify(stagedManifest, null, 2)}\n`);
 
+  // The browser imports flattened paths, but provenance belongs to the
+  // original files in the workspace's history. Keep that correspondence
+  // outside the fragments so staging never invents a new source stamp.
+  mkdirSync(resolve(stage, ".portolan"), { recursive: true });
+  writeFileSync(resolve(stage, ".portolan/source-paths.json"), `${JSON.stringify(Object.fromEntries(
+    [...flattened].map(([source, staged]) => [staged, source]),
+  ), null, 2)}\n`);
+
   const modules = dependencyRoot();
   symlinkSync(modules, resolve(stage, "node_modules"), process.platform === "win32" ? "junction" : "dir");
   return stage;
