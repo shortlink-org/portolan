@@ -51,6 +51,12 @@
   --status-declared: #8a6d1f;
   --status-unresolved: #c02a29;
 
+  /* Which way a message travels on a channel: out is the accent's blue, in
+     is teal, far enough apart that a row reads at a glance and neither is a
+     status colour. */
+  --dir-send: #2563a8;
+  --dir-receive: #0f7a6c;
+
   /* Domain events are the loudest leaf in the tree. Amber, but a step darker
      than amber-600 so 12px mono still clears contrast on white. */
   --kind-event: #b45309;
@@ -172,6 +178,9 @@
   --status-verified: #3fbf7f;
   --status-declared: #d6a844;
   --status-unresolved: #ff6b63;
+
+  --dir-send: #82b4f4;
+  --dir-receive: #5fcbb3;
 
   --kind-event: #e8a33d;
   --response-error: #d98288;
@@ -426,6 +435,16 @@
   .status-unresolved {
     color: var(--status-unresolved);
     border-color: var(--status-unresolved);
+  }
+
+  /* A message's direction on a channel, worn by the chip that names it. */
+  .dir-send {
+    color: var(--dir-send);
+    border-color: var(--dir-send);
+  }
+  .dir-receive {
+    color: var(--dir-receive);
+    border-color: var(--dir-receive);
   }
 
   /* Section label above a block of content. */
