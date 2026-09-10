@@ -2,12 +2,12 @@
 
 // Process adapter for plugins bundled in the npm package. It keeps the
 // plugin's cwd in the user's workspace while resolving source and toolchain
-// files from the installation. The Go plugins no longer come through here:
-// they are one wasm module (portolan.0006), and the fetchers run inside the
-// host (portolan.0008).
+// files from the installation. Most Go plugins are one wasm module
+// (portolan.0006). A Go plugin that needs the project toolchain is compiled to
+// a workspace-local sidecar here, then run with the user's workspace as cwd.
 
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,6 +29,8 @@ const args = [...(plugin.process.args ?? [])];
 
 if (command === "cargo" && existsSync(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"))) {
   run(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"), []);
+} else if (command === "go") {
+  buildAndRunGo(args);
 } else {
   if (command === "cargo") {
     process.env.CARGO_TARGET_DIR = resolve(workspace, ".portolan", "bin", "cargo");
@@ -38,6 +40,38 @@ if (command === "cargo" && existsSync(resolve(installRoot, "plugins/extract-rust
     return resolve(installRoot, arg);
   });
   run(command, resolved);
+}
+
+// `go run` changes module resolution with the current directory, but the
+// analyzer must keep the scanned workspace as its cwd. Build from Portolan's
+// shipped module first, outside the workspace, and execute the resulting
+// native sidecar from the workspace. The Go build cache makes subsequent
+// describe/extract calls cheap; rebuilding also prevents a stale sidecar after
+// an npm upgrade with the same workspace cache.
+function buildAndRunGo(argv) {
+  if (argv[0] !== "run" || typeof argv[1] !== "string" || !argv[1] || argv[1].startsWith("-")) {
+    console.error(`portolan: built-in ${name} has an unsupported Go command`);
+    process.exitCode = 2;
+    return;
+  }
+  const binDir = resolve(workspace, ".portolan", "bin", "go");
+  const executable = resolve(binDir, process.platform === "win32" ? `${name}.exe` : name);
+  mkdirSync(binDir, { recursive: true });
+  const built = spawnSync("go", ["build", "-mod=readonly", "-o", executable, argv[1]], {
+    cwd: installRoot,
+    env: { ...process.env, GOWORK: "off" },
+    stdio: "inherit",
+  });
+  if (built.error) {
+    console.error(`portolan: built-in ${name} could not build: ${built.error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  if (built.status !== 0) {
+    process.exitCode = built.status ?? 1;
+    return;
+  }
+  run(executable, argv.slice(2));
 }
 
 function resolveArgument(executable, index) {

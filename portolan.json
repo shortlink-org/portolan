@@ -167,8 +167,9 @@
     },
     {
       "name": "http-clients",
-      "wasm": {
-        "url": "file://plugins/portolan-go.wasm"
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/cmd/portolan-http-clients"]
       }
     },
     {

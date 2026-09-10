@@ -520,6 +520,7 @@ func RulesAction() {
   request := &rules.Request{}
   Dispatch(request)
 }
+
 func Dispatch(request Requester) { Invoke(request) }
 func Invoke(request Requester) {
   conn := connector.Build("runtime")
@@ -605,6 +606,64 @@ func (*Client) CheckRules() { _, _ = http.Get("https://alpha.example/v1/check-ru
 	}
 	if unused.Trigger == nil || unused.Trigger.Kind != "unproven" {
 		t.Fatalf("unused trigger = %+v", unused.Trigger)
+	}
+}
+
+func TestTypedAnalysisMapsPositionsFromAManifestRelativeRoot(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/relative\n\ngo 1.27.0\n")
+	writeHTTPFixture(t, root, "app/main.go", `package app
+import (
+  "example.com/relative/actions/rules"
+  "example.com/relative/connector"
+)
+type Router struct{}
+func (*Router) POST(string, func()) {}
+type Requester interface { ConnExec(connector.API) }
+func Start(r *Router) { r.POST("/rules", RulesAction) }
+func RulesAction() { request := &rules.Request{}; Dispatch(request) }
+func Dispatch(request Requester) { Invoke(request) }
+func Invoke(request Requester) { request.ConnExec(connector.Build()) }
+`)
+	writeHTTPFixture(t, root, "actions/rules/request.go", `package rules
+import "example.com/relative/connector"
+type Request struct{}
+func (*Request) ConnExec(conn connector.API) { conn.Rules() }
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import "example.com/relative/provider/alpha"
+type API interface { Rules() }
+func Build() API { return alpha.New() }
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
+import "net/http"
+type Client struct{}
+func New() *Client { return &Client{} }
+func (*Client) Rules() { _, _ = http.Get("https://alpha.example/v1/rules") }
+`)
+
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(old) })
+
+	analysis, err := gohttp.Analyze(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !analysis.TypedCallGraph || analysis.TypedCallGraphError != "" {
+		t.Fatalf("typed analysis = %v / %q", analysis.TypedCallGraph, analysis.TypedCallGraphError)
+	}
+	if len(analysis.EndpointFlows) != 1 || len(analysis.EndpointFlows[0].Branches) != 1 {
+		t.Fatalf("endpoint flows = %+v", analysis.EndpointFlows)
+	}
+	branch := analysis.EndpointFlows[0].Branches[0]
+	if branch.Operation != "Rules" || len(branch.Calls) != 1 || branch.Calls[0].Path != "/v1/rules" {
+		t.Fatalf("typed provider branch = %+v", branch)
 	}
 }
 

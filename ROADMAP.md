@@ -122,18 +122,17 @@ stateless результате только предупреждением.
 
 ### PORTOLAN-6. Typed Go call graph не работает в WASI host
 
-**Status:** investigate
+**Status:** patch ready
 
 На `aviacore` и `aviasupp` HTTP client extractor сообщил:
 `pipe: Not implemented on wasip1` и перешёл на синтаксический fallback. Каталог
 создаётся, но точность интеграций и flows ниже ожидаемой.
 
-Варианты для решения:
-
-- убрать зависимость анализа от pipe/process API;
-- вынести typed-анализ в host capability с ограниченным протоколом;
-- иметь native sidecar для тяжёлого language-aware анализа;
-- явно показывать в UI, какая часть результата получена fallback-режимом.
+`http-clients` вынесен из общего WASI-модуля в узкий native sidecar. Host
+собирает его из поставляемого Go source в `.portolan/bin/go`, а запускает из
+workspace, поэтому `go/packages`, SSA и VTA видят настоящий модуль, build tags
+и зависимости. Остальные Go extractors и generators остаются в WASI. `init` и
+`doctor` заранее показывают Go как requirement только для `http-clients`.
 
 **Done when:** typed-анализ Go работает в поддерживаемой sandbox-модели либо
 capability честно отключена до trial, а не деградирует только во время запуска.

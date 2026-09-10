@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { InitError, defaultAnswers, init, nextStep } from "./init.mjs";
+import { InitError, defaultAnswers, init, nextStep, toolchainFor } from "./init.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const created = [];
@@ -36,6 +36,11 @@ const goService = {
 };
 
 describe("init with defaults", () => {
+  it("declares Go only for the typed HTTP client analyzer", () => {
+    expect(toolchainFor("http-clients")).toMatchObject({ command: "go", label: "Go", missing: false });
+    expect(toolchainFor("go-domain")).toBeNull();
+  });
+
   it("prints runnable next commands with and without package scripts", () => {
     expect(nextStep(false, true)).toBe("Next: npm run architecture:gen && npm run architecture");
     expect(nextStep(true, true)).toBe("Generating; then: npm run architecture");

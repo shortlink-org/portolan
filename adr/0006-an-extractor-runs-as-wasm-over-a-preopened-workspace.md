@@ -6,6 +6,9 @@
 
 ## Context and Problem Statement
 
+This decision is amended by portolan.0009 for the HTTP client extractor: its
+SSA/VTA pass requires the project Go toolchain and runs as a native sidecar.
+
 portolan.0001 made a generator a wasm module with nothing preopened, and left
 the read side alone in its last consequence: an extractor reads a tree, so
 extractors stayed processes. This record amends that consequence. Every built-in Go extractor, `project` included, is therefore

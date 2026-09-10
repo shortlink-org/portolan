@@ -25,7 +25,6 @@ import (
 	extractgo "github.com/shortlink-org/portolan/plugins/extract-go"
 	extractgonats "github.com/shortlink-org/portolan/plugins/extract-go-nats"
 	extractgraphql "github.com/shortlink-org/portolan/plugins/extract-graphql"
-	extracthttpclients "github.com/shortlink-org/portolan/plugins/extract-http-clients"
 	extractopenapi "github.com/shortlink-org/portolan/plugins/extract-openapi"
 	extractproject "github.com/shortlink-org/portolan/plugins/extract-project"
 	extractproto "github.com/shortlink-org/portolan/plugins/extract-proto"
@@ -49,7 +48,6 @@ var Plugins = map[string]func(io.Reader, io.Writer) error{
 	"go-domain":    extractgo.Serve,
 	"openapi":      extractopenapi.Serve,
 	"wsdl":         extractwsdl.Serve,
-	"http-clients": extracthttpclients.Serve,
 	"redis":        extractredis.Serve,
 	"river":        extractriver.Serve,
 	"watermill":    extractwatermill.Serve,

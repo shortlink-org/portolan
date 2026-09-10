@@ -225,7 +225,11 @@ type soapWrapper struct {
 }
 
 func Analyze(root string) (Result, error) {
-	s := &scanner{root: root, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}, fieldTypes: map[string][]endpointType{}, typedEdges: map[string][]localEdge{}}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return Result{}, fmt.Errorf("resolve analysis root %q: %w", root, err)
+	}
+	s := &scanner{root: absRoot, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}, fieldTypes: map[string][]endpointType{}, typedEdges: map[string][]localEdge{}}
 	if err := s.read(); err != nil {
 		return Result{}, err
 	}

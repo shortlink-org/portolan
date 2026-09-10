@@ -12,3 +12,4 @@
 | [portolan.0006](portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0007](portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0008](portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
+| [portolan.0009](portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 | [portolan](../portolan/README.md) |

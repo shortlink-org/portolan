@@ -78,12 +78,14 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
    `go:embed` and returned in the descriptor. `schematest.Check` in a test keeps
    it from drifting from the options struct: a field renamed on one side and not
    the other fails, and so does an option with no description.
-3. Build it. A built-in Go plugin is a library package with
+3. Build it. A sandboxed built-in Go plugin is a library package with
    `Serve(io.Reader, io.Writer) error`; add it to the map in
    `plugins/cmd/portolan-go/main.go`, and `plugins:build` in `package.json`
    puts it in `plugins/portolan-go.wasm` with the rest (a test keeps the map
-   and `portolan.json` in step). A plugin of your own is its own module:
-   `GOOS=wasip1 GOARCH=wasm go build`.
+   and `portolan.json` in step). A built-in that genuinely needs the Go
+   toolchain gets a small command under `plugins/cmd/` and is declared as a
+   `process`; `http-clients` is the example. A plugin of your own is its own
+   module: `GOOS=wasip1 GOARCH=wasm go build`.
 4. Declare it in `portolan.json`, under `plugins` (how to run it) and
    `generate` (what to run it on), then run `npm run schema` so the manifest
    schema learns its options.
@@ -260,16 +262,19 @@ literals, direct assignments, or setters. A standalone flow says whether no
 source caller exists or callers exist but no inbound/asynchronous root was
 proved, so the UI exposes the missing evidence instead of implying a complete
 business path.
-When a provider branch still ends before its transport, the extractor loads
-the module with `go/packages`, builds SSA, and uses `x/tools` VTA to resolve
+When a provider branch still ends before its transport, the extractor runs as
+a workspace-local native sidecar, loads the module with `go/packages`, builds
+SSA, and uses `x/tools` VTA to resolve
 calls through interface parameters, function values, return values, and
 interface-typed struct fields. Typed edges are followed only after a concrete
 factory branch is selected: applying context-insensitive VTA to a shared
 dispatcher would otherwise attach every request implementation to every
 endpoint. Factory conditions and HTTP/SOAP meaning continue to come from the
-source extractor. Module loading is read-only and bounded; unavailable private
-dependencies, type errors, or a timeout produce a warning and retain the
-syntax-only result rather than failing generation.
+source extractor. The sidecar is built from the Portolan package through the
+project's Go toolchain and runs with the project as its working directory.
+Module loading is read-only and bounded; unavailable private dependencies,
+type errors, or a timeout produce a warning and retain the syntax-only result
+rather than failing generation.
 Routes without a provider factory are also joined to their outbound calls,
 including handlers invoked from closures and methods on locally constructed
 values. A Swagger `@Router` annotation is medium-confidence root evidence for
@@ -822,21 +827,23 @@ the forge looks.
 `wasm` is the default and should stay that way. The module gets no network, no
 environment and no way to start a process. A generator gets no filesystem
 either. An extract or verify step gets the workspace preopened as `/`
-(portolan.0006), which is how the built-in Go extractors read a tree without a
-Go toolchain on the machine: every one of them, and the three generators, is
-the single module `plugins/portolan-go.wasm`, which answers to the plugin name
-the host passes as `argv[0]`. WASI preopens read-write, so an extractor is
+(portolan.0006), which is how syntax-only built-in Go extractors read a tree
+without a Go toolchain on the machine: those extractors and the three generators
+are the single module `plugins/portolan-go.wasm`, which answers to the plugin
+name the host passes as `argv[0]`. WASI preopens read-write, so an extractor is
 trusted not to write the tree it reads, the same trust a process plugin has
 today; a `sha256` pins that trust to a build.
 
-`process` is the escape hatch for a plugin that needs a toolchain: the Rust,
-Java, Python and TypeScript extractors run in their own runtimes, and
-`fetch-bsr` still talks to its registry from Go. It gets the same protocol
+`process` is the escape hatch for a plugin that needs a toolchain: the typed Go
+HTTP client analyzer and the Rust, Java, Python and TypeScript extractors run in
+their own runtimes. It gets the same protocol
 and none of the sandbox, which is the trade being made and the reason it is
 not the default. It declares `command` and an `args` array; the host never
-feeds a command string through a shell. A built-in Go plugin that still runs
-as a process is the same code reached as
-`go run ./plugins/cmd/portolan-go <name>`.
+feeds a command string through a shell. For a built-in declared as `go run`,
+the adapter compiles a workspace-local native sidecar from the package and
+then runs it with the scanned workspace as its current directory. This keeps
+module resolution in Portolan's shipped source and project loading in the
+project being analyzed.
 
 `host` is for Portolan's own code that needs what only the host has - a git
 binary, a socket - and so runs inside the host process (portolan.0008):
