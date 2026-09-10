@@ -33,18 +33,6 @@ Portolan. Завершённые задачи из roadmap удаляются.
 **Done when:** новый пустой репозиторий проходит `generate` и затем `check`, а
 dev server не пишет git-ошибок.
 
-### PORTOLAN-8. Карточки проектов показывают неверную provenance-статистику
-
-**Status:** open
-
-В Settings после успешной генерации карточки имеют status `healthy`, но
-показывают `fragments: 0` и `commit: not stamped`, хотя vendored fragments и
-закреплённые commit SHA существуют. Source links при этом уже используют SHA.
-
-**Done when:** карточка показывает фактическое количество фрагментов и commit
-из provenance выбранного проекта; значения совпадают после полной перезагрузки
-preview.
-
 ## P2 — качество извлечения и UX
 
 ### PORTOLAN-15. Проверять автоматическое architecture placement
@@ -69,7 +57,7 @@ generation, лимиты по типам flows, grouping и генерация �
 
 ## Предлагаемый порядок
 
-1. **Correctness:** PORTOLAN-3 и PORTOLAN-8.
+1. **Correctness:** PORTOLAN-3.
 2. **Extractor depth:** PORTOLAN-15 и PORTOLAN-16 по
    фактической ценности для следующих подключаемых проектов.
 
