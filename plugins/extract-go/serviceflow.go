@@ -127,7 +127,8 @@ func (r *flowReader) readHTTPResponses(endpoint serviceEndpoint, s *scope) map[t
 
 	contentType := ""
 	rpcResult := map[string]string{}
-	marshalled := map[string]string{}
+	marshalled := map[string]marshalledHTTPBody{}
+	marshallers := declaredHTTPMarshallers(endpoint.fn, s.imports)
 	for _, site := range callSites(endpoint.fn) {
 		sel, ok := site.call.Fun.(*ast.SelectorExpr)
 		if !ok {
@@ -157,7 +158,10 @@ func (r *flowReader) readHTTPResponses(endpoint serviceEndpoint, s *scope) map[t
 			if sel.Sel.Name == "Marshal" && len(site.call.Args) > 0 {
 				if payload, ok := site.lhs[0].(*ast.Ident); ok {
 					if value, ok := site.call.Args[0].(*ast.Ident); ok {
-						marshalled[payload.Name] = rpcResult[value.Name]
+						encoding := httpMarshalEncoding(sel.X, s.imports, marshallers)
+						if rpcResult[value.Name] != "" && encoding != "" {
+							marshalled[payload.Name] = marshalledHTTPBody{ref: rpcResult[value.Name], encoding: encoding}
+						}
 					}
 				}
 			}
@@ -203,6 +207,74 @@ func (r *flowReader) readHTTPResponses(endpoint serviceEndpoint, s *scope) map[t
 	return responses
 }
 
+type marshalledHTTPBody struct {
+	ref      string
+	encoding string
+}
+
+func declaredHTTPMarshallers(fn *ast.FuncDecl, imports map[string]string) map[string]string {
+	out := map[string]string{}
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		assignment, ok := node.(*ast.AssignStmt)
+		if !ok {
+			return true
+		}
+		for i, rhs := range assignment.Rhs {
+			literal, vested := rhs.(*ast.CompositeLit)
+			if !vested {
+				continue
+			}
+			selector, selected := literal.Type.(*ast.SelectorExpr)
+			if !selected || i >= len(assignment.Lhs) {
+				continue
+			}
+			pkg, named := selectorOwner(selector)
+			if !named {
+				continue
+			}
+			name, named := assignment.Lhs[i].(*ast.Ident)
+			if encoding := httpMarshalPackageEncoding(imports[pkg]); named && encoding != "" {
+				out[name.Name] = encoding
+			}
+		}
+		return true
+	})
+	return out
+}
+
+func selectorOwner(selector *ast.SelectorExpr) (string, bool) {
+	owner, ok := selector.X.(*ast.Ident)
+	if !ok {
+		return "", false
+	}
+	return owner.Name, true
+}
+
+func httpMarshalEncoding(owner ast.Expr, imports, marshallers map[string]string) string {
+	ident, ok := owner.(*ast.Ident)
+	if !ok {
+		return ""
+	}
+	if encoding := marshallers[ident.Name]; encoding != "" {
+		return encoding
+	}
+	return httpMarshalPackageEncoding(imports[ident.Name])
+}
+
+func httpMarshalPackageEncoding(importPath string) string {
+	lower := strings.ToLower(importPath)
+	switch {
+	case importPath == "encoding/json":
+		return "json"
+	case strings.HasSuffix(lower, "/protojson"):
+		return "protojson"
+	case strings.Contains(lower, "msgpack") || strings.Contains(lower, "messagepack"):
+		return "msgpack"
+	default:
+		return ""
+	}
+}
+
 func statusIfExplicit(status int, explicit bool) int {
 	if explicit {
 		return status
@@ -238,13 +310,13 @@ func httpStatus(expr ast.Expr) (int, bool) {
 	return value, ok
 }
 
-func httpWriteResponse(call *ast.CallExpr, status int, explicit bool, contentType string, errorPath, errorContinues bool, marshalled, rpcResult map[string]string) (catalog.HTTPResponse, bool) {
+func httpWriteResponse(call *ast.CallExpr, status int, explicit bool, contentType string, errorPath, errorContinues bool, marshalled map[string]marshalledHTTPBody, rpcResult map[string]string) (catalog.HTTPResponse, bool) {
 	response := catalog.HTTPResponse{Status: status, ContentType: contentType, Outcome: "success"}
 	if ident, ok := call.Fun.(*ast.SelectorExpr); ok && ident.Sel.Name == "Write" && len(call.Args) > 0 {
 		arg := call.Args[0]
-		if name, ok := arg.(*ast.Ident); ok && marshalled[name.Name] != "" {
-			response.BodyRef = marshalled[name.Name]
-			response.Encoding = "protojson"
+		if name, ok := arg.(*ast.Ident); ok && marshalled[name.Name].ref != "" {
+			response.BodyRef = marshalled[name.Name].ref
+			response.Encoding = marshalled[name.Name].encoding
 		}
 		if raw, ok := byteStringLiteral(arg); ok {
 			response.Encoding = "json"

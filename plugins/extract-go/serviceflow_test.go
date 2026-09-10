@@ -11,6 +11,20 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
+func TestHTTPMarshalPackageEncoding(t *testing.T) {
+	cases := map[string]string{
+		"encoding/json": "json",
+		"google.golang.org/protobuf/encoding/protojson": "protojson",
+		"github.com/vmihailenco/msgpack/v5":             "msgpack",
+		"example.com/project/codec":                     "",
+	}
+	for importPath, want := range cases {
+		if got := httpMarshalPackageEncoding(importPath); got != want {
+			t.Errorf("%s = %q, want %q", importPath, got, want)
+		}
+	}
+}
+
 func TestServiceStyleHTTPAndGRPCFlowsComposeByEntrypoint(t *testing.T) {
 	root := t.TempDir()
 	write := func(name, contents string) {

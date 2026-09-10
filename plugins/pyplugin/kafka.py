@@ -23,6 +23,8 @@ class Spec:
 CONSTRUCTORS = {
     "confluent_kafka.Producer": Spec("confluent-kafka", "producer"),
     "confluent_kafka.Consumer": Spec("confluent-kafka", "consumer"),
+    "confluent_kafka.SerializingProducer": Spec("confluent-kafka", "producer"),
+    "confluent_kafka.DeserializingConsumer": Spec("confluent-kafka", "consumer"),
     "kafka.KafkaProducer": Spec("kafka-python", "producer"),
     "kafka.KafkaConsumer": Spec("kafka-python", "consumer"),
     "aiokafka.AIOKafkaProducer": Spec("aiokafka", "producer"),
@@ -62,6 +64,23 @@ CONFIG_KEYS = {
     "enable_auto_commit": "auto commit",
     "key_serializer": "key serializer",
     "value_serializer": "value serializer",
+    "key_deserializer": "key deserializer",
+    "value_deserializer": "value deserializer",
+    "key.serializer": "key serializer",
+    "value.serializer": "value serializer",
+    "key.deserializer": "key deserializer",
+    "value.deserializer": "value deserializer",
+}
+
+SERDE_KEYS = {
+    "key_serializer",
+    "value_serializer",
+    "key_deserializer",
+    "value_deserializer",
+    "key.serializer",
+    "value.serializer",
+    "key.deserializer",
+    "value.deserializer",
 }
 
 
@@ -72,6 +91,10 @@ class Client:
     config: Dict[str, Any] = field(default_factory=dict)
     source: str = ""
     constructor_topics: List[str] = field(default_factory=list)
+
+    @property
+    def encoding(self) -> str:
+        return encoding_of_text(" ".join(str(self.config.get(key, "")) for key in ("value serializer", "value deserializer")))
 
 
 @dataclass
@@ -86,6 +109,7 @@ class Publish:
     message_expression: str
     key: str = ""
     headers: str = ""
+    encoding: str = ""
 
     @property
     def line(self) -> str:
@@ -181,6 +205,8 @@ def value(
         for key_node, val_node in zip(node.keys, node.values):
             key = value(project, module, key_node, settings, variables, depth + 1)
             val = value(project, module, val_node, settings, variables, depth + 1)
+            if val is None and isinstance(key, str) and key in SERDE_KEYS:
+                val = serialization_expression(module, val_node, variables)
             if not isinstance(key, str) or val is None:
                 continue
             out[key] = val
@@ -239,14 +265,21 @@ def _config_values(project: Project, module: Module, call: ast.Call, settings: s
         first = value(project, module, call.args[0], settings, variables)
         if isinstance(first, dict):
             raw.update(first)
+        # Callable serializer values are not safe scalar values, but their
+        # syntax is still the evidence needed to identify MessagePack.
+        if isinstance(call.args[0], ast.Dict):
+            for key_node, val_node in zip(call.args[0].keys, call.args[0].values):
+                key = value(project, module, key_node, settings, variables)
+                if isinstance(key, str) and key in SERDE_KEYS and key not in raw:
+                    raw[key] = serialization_expression(module, val_node, variables)
     for kw in call.keywords:
         if not kw.arg:
             continue
         resolved = value(project, module, kw.value, settings, variables)
         if resolved is not None:
             raw[kw.arg] = resolved
-        elif kw.arg in ("key_serializer", "value_serializer"):
-            raw[kw.arg] = expression(kw.value)
+        elif kw.arg in SERDE_KEYS:
+            raw[kw.arg] = serialization_expression(module, kw.value, variables)
     out: Dict[str, Any] = {}
     for key, val in raw.items():
         normalized = CONFIG_KEYS.get(key)
@@ -377,7 +410,7 @@ def payload_name(node: Optional[ast.AST], variables: Optional[Dict[str, Tuple[st
         return node.id
     if isinstance(node, ast.Call):
         last = dotted(node.func).split(".")[-1]
-        if last in ("dumps", "dump", "encode", "serialize", "SerializeToString", "asdict", "dict", "model_dump") and node.args:
+        if last in ("dumps", "dump", "encode", "serialize", "SerializeToString", "asdict", "dict", "model_dump", "pack", "packb") and node.args:
             return payload_name(node.args[0], variables, depth + 1)
         return last or "message"
     if isinstance(node, ast.Attribute):
@@ -385,6 +418,43 @@ def payload_name(node: Optional[ast.AST], variables: Optional[Dict[str, Tuple[st
     if isinstance(node, ast.Dict):
         return "message"
     return "message"
+
+
+def encoding_of_text(text: str) -> str:
+    lowered = text.lower()
+    if "msgpack" in lowered or "messagepack" in lowered:
+        return "msgpack"
+    return ""
+
+
+def serialization_expression(module: Optional[Module], node: Optional[ast.AST], variables: Optional[Dict[str, Tuple[str, object]]] = None) -> str:
+    if node is None:
+        return ""
+    parts = [expression(node)]
+    if module is not None:
+        parts.append(external_name(module, dotted(node.func) if isinstance(node, ast.Call) else dotted(node)))
+    owner = node.func.value if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) else (node.value if isinstance(node, ast.Attribute) else None)
+    if isinstance(owner, ast.Name):
+        bound = (variables or {}).get(owner.id)
+        if bound is not None and bound[0] == "expr" and isinstance(bound[1], ast.AST):
+            parts.append(expression(bound[1]))
+    return " ".join(filter(None, parts))
+
+
+def payload_encoding(
+    node: Optional[ast.AST],
+    variables: Optional[Dict[str, Tuple[str, object]]] = None,
+    depth: int = 0,
+    module: Optional[Module] = None,
+) -> str:
+    if node is None or depth > 6:
+        return ""
+    variables = variables or {}
+    if isinstance(node, ast.Name):
+        bound = variables.get(node.id)
+        if bound is not None and bound[0] == "expr" and isinstance(bound[1], ast.AST):
+            return payload_encoding(bound[1], variables, depth + 1, module)
+    return encoding_of_text(serialization_expression(module, node, variables))
 
 
 def _text(node: Optional[ast.AST]) -> str:
@@ -541,6 +611,7 @@ class Scanner:
                 _text(payload),
                 _text(keyword(call, "key")),
                 _text(keyword(call, "headers")),
+                payload_encoding(payload, env, module=module) or client.encoding,
             )
         )
 

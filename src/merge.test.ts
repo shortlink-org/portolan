@@ -757,6 +757,29 @@ describe("mergeCatalogs: schema modules", () => {
     // came from.
     expect(channels?.[0]?.source).toBe("bus/asyncapi.yaml");
   });
+
+  it("keeps a message encoding and reports sources that disagree about it", () => {
+    const first = context("shop", ["shop.cart"]);
+    first.services[0]!.channels = [{
+      address: "shop.cart.basket",
+      messages: [{ name: "cart.BasketCreated", direction: "send", encoding: "msgpack", contentType: "application/msgpack" }],
+    }];
+    const second = context("shop", ["shop.cart"]);
+    second.services[0]!.channels = [{
+      address: "shop.cart.basket",
+      messages: [{ name: "cart.BasketCreated", direction: "send", encoding: "json", contentType: "application/json" }],
+    }];
+
+    const merged = mergeCatalogs([
+      source("a-msgpack.json", { contexts: [first] }),
+      source("b-json.json", { contexts: [second] }),
+    ]);
+    const message = merged.catalog.contexts[0]!.services[0]!.channels![0]!.messages[0]!;
+    expect(message.encoding).toBe("msgpack");
+    expect(message.contentType).toBe("application/msgpack");
+    expect(merged.conflicts.map((conflict) => conflict.message).join(" ")).toMatch(/encoding json.*msgpack/);
+    expect(merged.conflicts.map((conflict) => conflict.message).join(" ")).toMatch(/contentType application\/json.*application\/msgpack/);
+  });
 });
 
 describe("a second source that has seen the flow run", () => {

@@ -75,6 +75,11 @@ function MessageRow({
               {elsewhere}
             </span>
           ) : null}
+          {message.encoding || message.contentType ? (
+            <span className="chip mono" title={message.contentType || "payload encoding"}>
+              {message.encoding || message.contentType}
+            </span>
+          ) : null}
         </div>
         {message.title || message.doc ? (
           <p className="mt-0.5 text-muted">{message.doc || message.title}</p>

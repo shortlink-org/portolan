@@ -1077,7 +1077,10 @@ describe("validateCatalog: channels", () => {
   }
 
   it("accepts a service that declares what it says on the bus", () => {
-    expect(() => validateCatalog(speaking())).not.toThrow();
+    const good = speaking();
+    good.contexts[0]!.services[0]!.channels![0]!.messages[0]!.encoding = "msgpack";
+    good.contexts[0]!.services[0]!.channels![0]!.messages[0]!.contentType = "application/msgpack";
+    expect(() => validateCatalog(good)).not.toThrow();
   });
 
   // A service with no document is the normal case, and it is not a service
@@ -1129,6 +1132,14 @@ describe("validateCatalog: channels", () => {
     message.direction = "publish" as never;
 
     expect(() => validateCatalog(bad)).toThrow(/neither send nor receive/);
+  });
+
+  it("rejects an explicitly empty message encoding", () => {
+    const bad = speaking();
+    const message = bad.contexts[0]!.services[0]!.channels![0]!.messages[0]!;
+    message.encoding = "";
+
+    expect(() => validateCatalog(bad)).toThrow(/empty encoding/);
   });
 });
 

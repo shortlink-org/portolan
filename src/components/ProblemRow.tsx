@@ -31,6 +31,7 @@ const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   "shared-channel": "event",
   "channel-undeclared": "event",
   "channel-unpublished": "service",
+  "message-encoding": "service",
   "subscription-unresolved": "service",
 };
 
@@ -50,6 +51,7 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
   "channel-undeclared":
     "this event goes out on a channel the service does not declare",
   "channel-unpublished": "a declared channel no event of this service names",
+  "message-encoding": "publisher and subscriber use different payload encodings",
   "subscription-unresolved":
     "nothing in the catalog publishes what this service listens for",
 };
@@ -72,6 +74,7 @@ function nearPath(problem: Problem): string | null {
     case "shared-channel":
       return eventPath(problem.id) ?? servicePath(problem.service);
     case "channel-unpublished":
+    case "message-encoding":
     case "subscription-unresolved":
       return servicePath(problem.service);
     case "shared-store":
@@ -110,6 +113,7 @@ function peerPath(problem: Problem): string | null {
       );
     case "shared-store":
     case "shared-channel":
+    case "message-encoding":
       return servicePath(problem.peer);
     case "outbox-payload":
       return storePath(problem.peer);

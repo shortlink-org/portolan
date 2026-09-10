@@ -424,6 +424,7 @@ export type ProblemKind =
   | "shared-channel"
   | "channel-undeclared"
   | "channel-unpublished"
+  | "message-encoding"
   | "subscription-unresolved";
 
 /**

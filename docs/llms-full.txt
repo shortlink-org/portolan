@@ -1373,6 +1373,11 @@ live in another estate — would be the wrong end of the trade.
 service declares — the address the broker knows, and each message on it with the
 direction it travels. What it does **not** answer with is events.
 
+A message's `contentType`, or the document's `defaultContentType` when the
+message leaves it out, is kept as the exact declared media type. MessagePack
+media types are additionally normalized to `encoding: msgpack`, so source and
+contract extractors can be compared without depending on one MIME spelling.
+
 That looks like a gap and is a boundary. `Event.id` is
 `<service>.<aggregate>.<Name>`, and an AsyncAPI document knows the message on the
 wire, not the aggregate that raised it. An extractor that guessed would either

@@ -7,6 +7,7 @@ import (
 
 	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/plugin"
+	"gopkg.in/yaml.v3"
 )
 
 func run3(t *testing.T, root string, opts Options) plugin.Response {
@@ -113,6 +114,24 @@ func TestMessageCarriesItsNameAndSummary(t *testing.T) {
 	}
 	if created.Doc != "A shopper has a basket." {
 		t.Errorf("doc = %q", created.Doc)
+	}
+	if created.Encoding != "msgpack" || created.ContentType != "application/msgpack" {
+		t.Errorf("wire format = %q %q", created.Encoding, created.ContentType)
+	}
+}
+
+func TestMessageContentTypeOverridesTheDocumentDefault(t *testing.T) {
+	doc, err := load("testdata/v3/asyncapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Value: "name"}, {Kind: yaml.ScalarNode, Value: "cart.Packed"},
+		{Kind: yaml.ScalarNode, Value: "contentType"}, {Kind: yaml.ScalarNode, Value: "application/x-msgpack; version=1"},
+	}}
+	message := doc.message(node, "Packed", catalog.ChannelSend)
+	if message.Encoding != "msgpack" || message.ContentType != "application/x-msgpack; version=1" {
+		t.Fatalf("wire format = %+v", message)
 	}
 }
 

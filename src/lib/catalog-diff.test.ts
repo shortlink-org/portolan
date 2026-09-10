@@ -57,6 +57,24 @@ describe("diffCatalogs", () => {
 });
 
 describe("diffCatalogs: what a reviewer is looking for", () => {
+  it("calls a change between known message encodings breaking", () => {
+    const before = JSON.parse(JSON.stringify(catalog)) as Catalog;
+    const service = before.contexts[0]!.services[0]!;
+    service.channels = [{
+      address: "shop.cart.basket",
+      messages: [{ name: "cart.BasketCreated", direction: "send", encoding: "json" }],
+    }];
+    const after = JSON.parse(JSON.stringify(before)) as Catalog;
+    after.contexts[0]!.services[0]!.channels![0]!.messages[0]!.encoding = "msgpack";
+
+    expect(diffCatalogs(before, after)).toEqual([{
+      kind: "message.encoding",
+      severity: "breaking",
+      where: service.id,
+      summary: "send message cart.BasketCreated on shop.cart.basket uses msgpack, was json",
+    }]);
+  });
+
   // The finding the whole report exists for.
   it("names a new event nothing consumes", () => {
     const changes = edited((c) => {

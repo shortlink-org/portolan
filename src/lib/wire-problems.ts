@@ -19,7 +19,7 @@
 // merged catalog, for the same reason the store rule is: each extractor sees
 // one repository and cannot know what another declares.
 
-import type { Catalog, CatalogIndex, Event, Service } from "../catalog";
+import type { Catalog, CatalogIndex, ChannelMessage, Event, Service } from "../catalog";
 import type { Problem } from "./derive";
 
 interface Publisher {
@@ -38,8 +38,69 @@ export function wireProblems(
   return [
     ...sharedChannels(catalog),
     ...documentAgainstCode(catalog),
+    ...messageEncodingMismatches(catalog),
     ...unresolvedSubscriptions(catalog, index),
   ];
+}
+
+interface MessageEndpoint {
+  context: string;
+  service: Service;
+  address: string;
+  source?: string;
+  message: ChannelMessage;
+}
+
+/** Producer and subscriber have both named a format, and those formats differ. */
+function messageEncodingMismatches(catalog: Catalog): Problem[] {
+  const sends = new Map<string, MessageEndpoint[]>();
+  const receives: MessageEndpoint[] = [];
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const channel of service.channels ?? []) {
+        for (const message of channel.messages) {
+          const endpoint = { context: context.id, service, address: channel.address, source: channel.source, message };
+          const key = `${channel.address}\u0000${message.name}`;
+          if (message.direction === "send") {
+            const publishers = sends.get(key) ?? [];
+            publishers.push(endpoint);
+            sends.set(key, publishers);
+          } else {
+            receives.push(endpoint);
+          }
+        }
+      }
+    }
+  }
+
+  const out: Problem[] = [];
+  for (const receiver of receives) {
+    const expected = wireFormat(receiver.message);
+    if (!expected) continue;
+    const key = `${receiver.address}\u0000${receiver.message.name}`;
+    for (const publisher of sends.get(key) ?? []) {
+      const actual = wireFormat(publisher.message);
+      if (!actual || actual === expected) continue;
+      out.push({
+        kind: "message-encoding",
+        severity: "error",
+        context: receiver.context,
+        service: receiver.service.id,
+        id: receiver.service.id,
+        peer: publisher.service.id,
+        note: `${receiver.service.id} expects ${receiver.message.name} on ${receiver.address} as ${expected}, but ${publisher.service.id} sends it as ${actual}.`,
+        source: receiver.source,
+      });
+    }
+  }
+  return out;
+}
+
+function wireFormat(message: ChannelMessage): string {
+  if (message.encoding) return message.encoding.trim().toLowerCase();
+  const contentType = message.contentType?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  if (contentType.includes("msgpack") || contentType.includes("messagepack")) return "msgpack";
+  return contentType;
 }
 
 /**

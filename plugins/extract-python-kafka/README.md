@@ -22,6 +22,12 @@ id, consumer group, key, headers and serializer facts. Authentication values
 are never emitted. Partitions, replication and retention are broker-side facts
 and remain explicitly unknown unless another catalog source declares them.
 
+MessagePack serializers and deserializers declared through `msgpack` or
+`messagepack` calls are normalized to `encoding: "msgpack"` on the affected
+channel message. This includes constructor callbacks and payloads packed
+directly before a publish; Portolan records the wire format without importing
+or executing the codec.
+
 ```json
 {
   "plugin": "python-kafka",

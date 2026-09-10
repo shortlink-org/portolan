@@ -1,5 +1,6 @@
 """Framework-neutral Kafka extraction contracts."""
 
+import ast
 import json
 import os
 import sys
@@ -9,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyplugin"))
 
 from extract import extract  # noqa: E402
+import kafka  # noqa: E402
 from options import Options  # noqa: E402
 from protocol import Builder, Input  # noqa: E402
 
@@ -33,7 +35,7 @@ class PythonKafka(unittest.TestCase):
 
     def test_three_standard_clients_form_message_channels(self):
         channels = {item["address"]: item for item in self.service["channels"]}
-        self.assertEqual(sorted(channels), ["audit.records", "orders.created", "payments.accepted"])
+        self.assertEqual(sorted(channels), ["audit.records", "inventory.snapshots", "orders.created", "payments.accepted"])
         self.assertTrue(all(item["kind"] == "message" for item in channels.values()))
         self.assertEqual(
             [message["direction"] for message in channels["orders.created"]["messages"]],
@@ -49,6 +51,20 @@ class PythonKafka(unittest.TestCase):
         self.assertNotIn("must-not-leak", self.contents)
         self.assertNotIn("sasl.password", self.contents)
         self.assertNotIn("sasl.username", self.contents)
+
+    def test_messagepack_serializer_and_deserializer_are_machine_readable(self):
+        snapshots = next(item for item in self.service["channels"] if item["address"] == "inventory.snapshots")
+        self.assertEqual([message["encoding"] for message in snapshots["messages"]], ["msgpack", "msgpack"])
+        self.assertIn("value serializer: lambda value: msgpack.packb(value)", snapshots["doc"])
+        self.assertIn("value deserializer: msgpack.unpackb", snapshots["doc"])
+
+    def test_direct_messagepack_call_keeps_the_payload_name(self):
+        call = ast.parse("msgpack.packb(snapshot)", mode="eval").body
+        self.assertEqual(kafka.payload_name(call), "snapshot")
+        self.assertEqual(kafka.payload_encoding(call), "msgpack")
+        packer = ast.parse("msgpack.Packer()", mode="eval").body
+        method = ast.parse("packer.pack(snapshot)", mode="eval").body
+        self.assertEqual(kafka.payload_encoding(method, {"packer": ("expr", packer)}), "msgpack")
 
     def test_publish_and_receive_flows_have_kafka_handoffs_and_source(self):
         steps = [step for flow in self.fragment["flows"] for step in flow["steps"]]

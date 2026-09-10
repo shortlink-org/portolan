@@ -81,13 +81,24 @@ def channel(address: str, kind: str, title: str, doc: str, messages: List[Dict[s
     return out
 
 
-def message(name: str, title: str, doc: str, direction: str) -> Dict[str, Any]:
+def message(
+    name: str,
+    title: str,
+    doc: str,
+    direction: str,
+    encoding: str = "",
+    content_type: str = "",
+) -> Dict[str, Any]:
     out: Dict[str, Any] = {"name": name}
     if title:
         out["title"] = title
     if doc:
         out["doc"] = doc
     out["direction"] = direction
+    if encoding:
+        out["encoding"] = encoding
+    if content_type:
+        out["contentType"] = content_type
     return out
 
 

@@ -247,12 +247,25 @@ func (d *document) message(node *yaml.Node, key string, direction catalog.Channe
 		resolved = node
 	}
 
+	contentType := firstNonEmpty(text(child(resolved, "contentType")), text(child(d.root, "defaultContentType")))
+
 	return catalog.ChannelMessage{
-		Name:      firstNonEmpty(text(child(resolved, "name")), key),
-		Title:     text(child(resolved, "title")),
-		Doc:       firstNonEmpty(text(child(resolved, "summary")), text(child(resolved, "description"))),
-		Direction: direction,
+		Name:        firstNonEmpty(text(child(resolved, "name")), key),
+		Title:       text(child(resolved, "title")),
+		Doc:         firstNonEmpty(text(child(resolved, "summary")), text(child(resolved, "description"))),
+		Direction:   direction,
+		Encoding:    messageEncoding(contentType),
+		ContentType: contentType,
 	}
+}
+
+func messageEncoding(contentType string) string {
+	mediaType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	if strings.Contains(mediaType, "msgpack") || strings.Contains(mediaType, "messagepack") {
+		return "msgpack"
+	}
+
+	return ""
 }
 
 func channelNode(doc *document, key string) *yaml.Node {

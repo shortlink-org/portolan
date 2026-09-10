@@ -99,7 +99,7 @@ def channel(topic: str, sends: List[kafka.Publish], receives: List[kafka.Subscri
     for item in sends:
         key = (item.message, "send")
         if key not in seen:
-            messages.append(catalog.message(item.message, title(item.message), message_doc(item), "send"))
+            messages.append(catalog.message(item.message, title(item.message), message_doc(item), "send", item.encoding))
             seen.add(key)
     for item in receives:
         # Kafka subscriptions dispatch records, and source often does not prove
@@ -108,7 +108,7 @@ def channel(topic: str, sends: List[kafka.Publish], receives: List[kafka.Subscri
         name = sends[0].message if len({sent.message for sent in sends}) == 1 else "message"
         key = (name, "receive")
         if key not in seen:
-            messages.append(catalog.message(name, title(name), consumer_doc(item), "receive"))
+            messages.append(catalog.message(name, title(name), consumer_doc(item), "receive", item.client.encoding))
             seen.add(key)
     clients = []
     for item in list(sends) + list(receives):

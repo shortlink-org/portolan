@@ -1,5 +1,6 @@
 import json
 import os
+import msgpack
 
 from aiokafka import AIOKafkaProducer
 from confluent_kafka import Producer
@@ -7,6 +8,7 @@ from django.conf import settings
 from kafka import KafkaProducer
 
 AUDIT_TOPIC = "audit.records"
+SNAPSHOT_TOPIC = "inventory.snapshots"
 
 
 class ClientFactory:
@@ -49,3 +51,11 @@ def publish_audit():
 async def publish_payment(payment):
     producer = AIOKafkaProducer(bootstrap_servers="async-kafka:9092")
     await producer.send_and_wait("payments.accepted", payment)
+
+
+def publish_snapshot(snapshot):
+    producer = KafkaProducer(
+        bootstrap_servers="kafka:9092",
+        value_serializer=lambda value: msgpack.packb(value),
+    )
+    producer.send(SNAPSHOT_TOPIC, snapshot)

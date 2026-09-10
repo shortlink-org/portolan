@@ -260,4 +260,25 @@ describe("wireProblems", () => {
     ]);
     expect(unresolved[0]?.severity).toBe("warning");
   });
+
+  it("reports a MessagePack subscriber paired with a JSON publisher", () => {
+    const publisherChannel = channel("inventory.snapshots", "send inventory.Snapshot");
+    publisherChannel.messages[0]!.encoding = "json";
+    const subscriberChannel = channel("inventory.snapshots", "receive inventory.Snapshot");
+    subscriberChannel.messages[0]!.encoding = "msgpack";
+    const publisher = speaking(service("shop.inventory", []), publisherChannel);
+    const subscriber = speaking(service("shop.search", []), subscriberChannel);
+
+    const mismatch = found(catalogWith([publisher, subscriber])).find(
+      (problem) => problem.kind === "message-encoding",
+    );
+    expect(mismatch).toMatchObject({
+      severity: "error",
+      service: "shop.search",
+      peer: "shop.inventory",
+    });
+    expect(mismatch?.note).toContain("expects inventory.Snapshot");
+    expect(mismatch?.note).toContain("msgpack");
+    expect(mismatch?.note).toContain("json");
+  });
 });

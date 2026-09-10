@@ -74,6 +74,24 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+func TestChannelMessageWireFormatRoundTrip(t *testing.T) {
+	before := ChannelMessage{
+		Name: "cart.BasketCreated", Direction: ChannelSend,
+		Encoding: "msgpack", ContentType: "application/msgpack",
+	}
+	raw, err := json.Marshal(before)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var after ChannelMessage
+	if err := json.Unmarshal(raw, &after); err != nil {
+		t.Fatal(err)
+	}
+	if after.Encoding != before.Encoding || after.ContentType != before.ContentType {
+		t.Fatalf("wire format changed: %+v", after)
+	}
+}
+
 // normalize drops keys whose value carries no information. An optional list
 // written as [] and one left out entirely say the same thing, and holding the
 // mirror to which of the two it produces would test encoding/json rather than

@@ -331,13 +331,31 @@ function diffCalls(before: Service, after: Service, add: Add): void {
 function diffChannels(before: Service, after: Service, add: Add): void {
   const was = byId(before.channels ?? [], (c) => c.address);
   const now = byId(after.channels ?? [], (c) => c.address);
-  const { added, removed } = partition(was, now);
+  const { added, removed, kept } = partition(was, now);
 
   for (const address of added) {
     add("channel.added", "addition", before.id, `"${before.id}" declares channel ${address}`);
   }
   for (const address of removed) {
     add("channel.removed", "breaking", before.id, `"${before.id}" no longer declares channel ${address}`);
+  }
+  for (const address of kept) {
+    const previous = byId(was.get(address)!.messages, (message) => `${message.direction} ${message.name}`);
+    const current = byId(now.get(address)!.messages, (message) => `${message.direction} ${message.name}`);
+    const messages = partition(previous, current).kept;
+    for (const id of messages) {
+      const a = previous.get(id)!;
+      const b = current.get(id)!;
+      const from = a.encoding || a.contentType || "";
+      const to = b.encoding || b.contentType || "";
+      if (from === to) continue;
+      add(
+        "message.encoding",
+        from && to ? "breaking" : "change",
+        before.id,
+        `${a.direction} message ${a.name} on ${address} uses ${to || "an unspecified encoding"}, was ${from || "unspecified"}`,
+      );
+    }
   }
 }
 

@@ -343,9 +343,13 @@ func (s *site) channelsBlock(from string, svc *catalog.Service) string {
 			if eventID := s.wireEvent[message.Name]; eventID != "" {
 				name = s.eventRef(from, eventID, message.Name)
 			}
-			rows = append(rows, []string{string(message.Direction), name, message.Title, message.Doc})
+			format := message.Encoding
+			if format == "" {
+				format = message.ContentType
+			}
+			rows = append(rows, []string{string(message.Direction), name, format, message.Title, message.Doc})
 		}
-		if rendered := table([]string{"Direction", "Message", "Title", "Doc"}, rows); rendered != "" {
+		if rendered := table([]string{"Direction", "Message", "Encoding", "Title", "Doc"}, rows); rendered != "" {
 			b.WriteString(rendered)
 		}
 		b.WriteString("\n")
