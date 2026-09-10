@@ -58,5 +58,13 @@ type Field struct {
 // sorted by the parser before they leave the package.
 type Result struct {
 	Contracts []Contract
-	Warnings  []string
+	// Warnings are what stopped a document from being read in full: a remote
+	// import, a port whose binding is not here. They matter to anyone reading
+	// the contracts, including a client extractor resolving calls against them.
+	Warnings []string
+	// SchemaWarnings are about the quality of the schemas themselves, such as
+	// one name declared twice in a namespace. Nothing failed to resolve; the
+	// loader kept the first and says so. They belong to whoever publishes the
+	// contracts, not to every extractor that happens to read them.
+	SchemaWarnings []string
 }

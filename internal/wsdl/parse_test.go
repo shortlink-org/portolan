@@ -131,3 +131,40 @@ func TestRemoteImportsAreWarningsAndNeverFetched(t *testing.T) {
 		t.Fatalf("contracts = %+v", result.Contracts)
 	}
 }
+
+// A schema copied beside every document that uses it is one finding per
+// namespace, naming the file whose declarations were kept and the files that
+// repeat them. It goes out as a schema warning, not a resolution one, so only
+// the extractor publishing the contracts reports it.
+func TestDuplicateDeclarationsAreSummarisedWithTheirOrigin(t *testing.T) {
+	root := t.TempDir()
+	schema := `
+<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:common">
+  <complexType name="CodeType"/>
+  <complexType name="AmountType"/>
+  <element name="Ping"/>
+</schema>`
+	writeFixture(t, root, "a/common.xsd", schema)
+	writeFixture(t, root, "b/common.xsd", schema)
+	writeFixture(t, root, "c/common.xsd", schema)
+	writeFixture(t, root, "service.wsdl", `
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:local">
+  <types>
+    <xs:schema><xs:import namespace="urn:common" schemaLocation="a/common.xsd"/></xs:schema>
+    <xs:schema><xs:import namespace="urn:common" schemaLocation="b/common.xsd"/></xs:schema>
+    <xs:schema><xs:import namespace="urn:common" schemaLocation="c/common.xsd"/></xs:schema>
+  </types>
+  <portType name="Local"><operation name="Ping"/></portType>
+</definitions>`)
+	result, err := Read(root, "service.wsdl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Warnings) != 0 {
+		t.Errorf("resolution warnings = %v, want none", result.Warnings)
+	}
+	want := "b/common.xsd: duplicate declaration CodeType and 2 more in namespace urn:common (also in c/common.xsd); the declarations in a/common.xsd are used"
+	if len(result.SchemaWarnings) != 1 || result.SchemaWarnings[0] != want {
+		t.Fatalf("schema warnings = %v\nwant [%s]", result.SchemaWarnings, want)
+	}
+}

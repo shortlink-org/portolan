@@ -22,7 +22,7 @@ describe("warning diagnostics", () => {
     const groups = groupWarnings([
       { plugin: "openapi", message: "api.v1: no operationId on 1 of 3 operations; listed by verb and path: POST /book" },
       { plugin: "openapi", message: "api.v2: no operationId on 1 of 3 operations; listed by verb and path: POST /cancel" },
-      { plugin: "wsdl", message: "schema.xsd: duplicate declaration CodeType; the first declaration is used" },
+      { plugin: "wsdl", message: "b/schema.xsd: duplicate declaration CodeType and 2 more in namespace urn:common; the declarations in a/schema.xsd are used" },
     ]);
 
     expect(groups.map(({ plugin, rule, count }) => ({ plugin, rule, count }))).toEqual([

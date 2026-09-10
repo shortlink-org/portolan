@@ -47,18 +47,6 @@ preview.
 
 ## P2 — качество извлечения и UX
 
-### PORTOLAN-11. Дубликаты деклараций WSDL/XSD
-
-**Status:** source quality / investigate
-
-В Amadeus schemas присутствуют повторные declarations в одном namespace.
-Экстрактор выбирает первую, но одинаковое предупреждение затем повторяется в
-WSDL и HTTP client extraction.
-
-Нужно дедуплицировать диагностику и добавить provenance выбранной декларации.
-Если несколько определений несовместимы, severity должна быть выше обычного
-warning.
-
 ### PORTOLAN-14. Улучшить River и Watermill discovery
 
 **Status:** investigate
@@ -95,7 +83,7 @@ generation, лимиты по типам flows, grouping и генерация �
 ## Предлагаемый порядок
 
 1. **Correctness:** PORTOLAN-3 и PORTOLAN-8.
-2. **Extractor depth:** PORTOLAN-11 и PORTOLAN-14—16 по
+2. **Extractor depth:** PORTOLAN-14—16 по
    фактической ценности для следующих подключаемых проектов.
 
 ## Решения, которые нужно принять

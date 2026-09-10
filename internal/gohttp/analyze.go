@@ -1173,6 +1173,9 @@ func (s *scanner) readWSDLContracts() {
 		s.warnings = append(s.warnings, "WSDL discovery: "+err.Error())
 		return
 	}
+	// Only what could stop a call from resolving. Schema-quality findings
+	// are the WSDL extractor's to report; repeating them here would list the
+	// same duplicate twice under two plugin names.
 	s.warnings = append(s.warnings, result.Warnings...)
 	apiIDs := wsdl.APIIDs(result.Contracts)
 	for _, document := range result.Contracts {

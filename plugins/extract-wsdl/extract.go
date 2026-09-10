@@ -32,6 +32,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	for _, warning := range result.Warnings {
 		b.Warn(in.Root, warning)
 	}
+	for _, warning := range result.SchemaWarnings {
+		b.Warn(in.Root, warning)
+	}
 	fragment := catalog.Catalog{
 		Contexts: []catalog.BoundedContext{}, Defs: map[string]catalog.TypeDef{},
 		Flows: []catalog.Flow{}, Adrs: []catalog.Adr{}, Externals: []catalog.External{},

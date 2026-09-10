@@ -142,11 +142,21 @@ type document struct {
 }
 
 type loader struct {
-	root     string
-	docs     map[string]*document
-	loaded   map[string]bool
-	adopted  map[string]map[string]bool
-	warnings []string
+	root       string
+	docs       map[string]*document
+	loaded     map[string]bool
+	adopted    map[string]map[string]bool
+	warnings   []string
+	duplicates []duplicate
+}
+
+// duplicate is one name declared again in a namespace: where the second
+// declaration was found, and where the one the index kept came from.
+type duplicate struct {
+	path      string
+	name      string
+	namespace string
+	origin    string
 }
 
 // Read loads one WSDL document and every local WSDL/XSD import or include it
@@ -358,12 +368,16 @@ type index struct {
 	elements     map[qname]*node
 	complexTypes map[qname]*node
 	namespace    map[*node]string
+	// origin is the document each indexed node was read from, so a duplicate
+	// can say which declaration won.
+	origin map[*node]string
 }
 
 func (l *loader) buildIndex() index {
 	ix := index{
 		messages: map[qname]*node{}, portTypes: map[qname]*node{}, bindings: map[qname]*node{},
 		elements: map[qname]*node{}, complexTypes: map[qname]*node{}, namespace: map[*node]string{},
+		origin: map[*node]string{},
 	}
 	paths := make([]string, 0, len(l.docs))
 	for path := range l.docs {
@@ -380,14 +394,14 @@ func (l *loader) buildIndex() index {
 			for _, child := range root.children {
 				switch child.name.Local {
 				case "message":
-					put(ix.messages, qname{ns, child.attr("name")}, child, &l.warnings, source)
+					ix.put(ix.messages, qname{ns, child.attr("name")}, child, &l.duplicates, source)
 				case "portType", "interface":
-					put(ix.portTypes, qname{ns, child.attr("name")}, child, &l.warnings, source)
+					ix.put(ix.portTypes, qname{ns, child.attr("name")}, child, &l.duplicates, source)
 				case "binding":
-					put(ix.bindings, qname{ns, child.attr("name")}, child, &l.warnings, source)
+					ix.put(ix.bindings, qname{ns, child.attr("name")}, child, &l.duplicates, source)
 				case "types":
 					for _, schema := range child.childrenNamed("schema") {
-						ix.addSchema(schema, source, "", &l.warnings)
+						ix.addSchema(schema, source, "", &l.duplicates)
 					}
 				}
 			}
@@ -401,35 +415,40 @@ func (l *loader) buildIndex() index {
 				sort.Strings(namespaces)
 			}
 			for _, namespace := range namespaces {
-				ix.addSchema(root, source, namespace, &l.warnings)
+				ix.addSchema(root, source, namespace, &l.duplicates)
 			}
 		}
 	}
 	return ix
 }
 
-func (ix *index) addSchema(schema *node, path, adoptedNS string, warnings *[]string) {
+func (ix *index) addSchema(schema *node, path, adoptedNS string, duplicates *[]duplicate) {
 	ns := first(schema.attr("targetNamespace"), adoptedNS)
 	ix.namespace[schema] = ns
 	for _, child := range schema.children {
 		switch child.name.Local {
 		case "element":
-			put(ix.elements, qname{ns, child.attr("name")}, child, warnings, path)
+			ix.put(ix.elements, qname{ns, child.attr("name")}, child, duplicates, path)
 		case "complexType":
-			put(ix.complexTypes, qname{ns, child.attr("name")}, child, warnings, path)
+			ix.put(ix.complexTypes, qname{ns, child.attr("name")}, child, duplicates, path)
 		}
 	}
 }
 
-func put(target map[qname]*node, key qname, value *node, warnings *[]string, path string) {
+// put keeps the first declaration of a name and records every later one.
+// Documents are indexed in path order, so "first" is the alphabetically
+// earliest file, and the same file read under two adopted namespaces is
+// the same node and not a duplicate of itself.
+func (ix *index) put(target map[qname]*node, key qname, value *node, duplicates *[]duplicate, path string) {
 	if key.local == "" {
 		return
 	}
 	if previous, exists := target[key]; exists && previous != value {
-		*warnings = append(*warnings, path+": duplicate declaration "+key.local+" in namespace "+key.ns)
+		*duplicates = append(*duplicates, duplicate{path: path, name: key.local, namespace: key.ns, origin: ix.origin[previous]})
 		return
 	}
 	target[key] = value
+	ix.origin[value] = path
 }
 
 func (l *loader) result(rootPaths []string, includeStandalone bool) Result {
@@ -477,47 +496,57 @@ func (l *loader) result(rootPaths []string, includeStandalone bool) Result {
 		}
 		return contracts[i].Source < contracts[j].Source
 	})
-	l.warnings = summarizeDuplicateWarnings(l.warnings)
 	sort.Strings(l.warnings)
-	return Result{Contracts: contracts, Warnings: unique(l.warnings)}
+	return Result{Contracts: contracts, Warnings: unique(l.warnings), SchemaWarnings: summarizeDuplicates(l.duplicates)}
 }
 
-func summarizeDuplicateWarnings(warnings []string) []string {
+// summarizeDuplicates says once per namespace and winning document which
+// names were declared again and where. A schema copied beside every WSDL that
+// uses it is one finding, not one per type; the reader fixing it wants the
+// file that is kept, the files that repeat it, and enough names to recognise
+// the copy.
+func summarizeDuplicates(duplicates []duplicate) []string {
 	type group struct {
-		first string
-		count int
+		namespace string
+		origin    string
+		names     []string
+		paths     []string
 	}
 	groups := map[string]*group{}
-	var out []string
-	for _, warning := range warnings {
-		const marker = ": duplicate declaration "
-		at := strings.Index(warning, marker)
-		if at < 0 {
-			out = append(out, warning)
-			continue
-		}
-		namespaceAt := strings.LastIndex(warning, " in namespace ")
-		if namespaceAt < 0 {
-			out = append(out, warning)
-			continue
-		}
-		namespace := warning[namespaceAt+len(" in namespace "):]
-		key := namespace
+	var keys []string
+	for _, d := range duplicates {
+		key := d.namespace + "\x00" + d.origin
 		found := groups[key]
 		if found == nil {
-			found = &group{first: warning[:namespaceAt]}
+			found = &group{namespace: d.namespace, origin: d.origin}
 			groups[key] = found
+			keys = append(keys, key)
 		}
-		found.count++
-	}
-	keys := make([]string, 0, len(groups))
-	for key := range groups {
-		keys = append(keys, key)
+		found.names = append(found.names, d.name)
+		found.paths = append(found.paths, d.path)
 	}
 	sort.Strings(keys)
-	for _, namespace := range keys {
-		found := groups[namespace]
-		out = append(out, fmt.Sprintf("%s; %d declarations share names in namespace %s; the first declaration is used", found.first, found.count, namespace))
+	var out []string
+	for _, key := range keys {
+		found := groups[key]
+		names := unique(found.names)
+		paths := unique(found.paths)
+		sort.Strings(paths)
+		var b strings.Builder
+		b.WriteString(paths[0] + ": duplicate declaration " + names[0])
+		if len(names) > 1 {
+			fmt.Fprintf(&b, " and %d more", len(names)-1)
+		}
+		b.WriteString(" in namespace " + found.namespace)
+		if len(paths) > 1 {
+			b.WriteString(" (also in " + strings.Join(paths[1:], ", ") + ")")
+		}
+		if len(names) > 1 {
+			b.WriteString("; the declarations in " + found.origin + " are used")
+		} else {
+			b.WriteString("; the declaration in " + found.origin + " is used")
+		}
+		out = append(out, b.String())
 	}
 	return out
 }
