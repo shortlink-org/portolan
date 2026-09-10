@@ -259,7 +259,7 @@ function gitlabDiff({ pages }) {
 }
 
 function gitlabPages() {
-  return `pages:
+  return `"portolan:pages":
   stage: .post
   image:
     name: ghcr.io/shortlink-org/portolan:${VERSION}
@@ -268,10 +268,9 @@ function gitlabPages() {
     GIT_DEPTH: "0"
   script:
     - BASE_PATH="$(node -p 'new URL(process.env.CI_PAGES_URL).pathname.replace(/\\/?$/, "/") || "/"')"
-    - portolan build --output public --base "$BASE_PATH"
-  artifacts:
-    paths:
-      - public
+    - portolan build --output dist --base "$BASE_PATH"
+  pages:
+    publish: dist
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 `;
@@ -300,7 +299,7 @@ function mergeGitlab(existing, features) {
       .replace(/^\n+|\n+$/g, "");
     return { content: content ? `${content}\n` : "" };
   }
-  if (/^(?:["']?portolan:(?:check|review|pages)["']?|["']?pages["']?)\s*:/m.test(existing)) {
+  if (/^[ \t]*["']?portolan:(?:check|review|pages)["']?\s*:/m.test(existing)) {
     return { conflict: "This pipeline already declares a Portolan job outside the managed region." };
   }
   const block = gitlabBlock(features);
@@ -422,7 +421,7 @@ function installedFeatures(workspace, provider) {
   );
   if (/^[ \t]*["']?portolan:check["']?\s*:/m.test(managed)) selected.add("check");
   if (/^[ \t]*["']?portolan:review["']?\s*:/m.test(managed)) selected.add("diff");
-  if (/^(?:["']?portolan:pages["']?|["']?pages["']?)\s*:/m.test(managed)) selected.add("pages");
+  if (/^[ \t]*["']?portolan:pages["']?\s*:/m.test(managed)) selected.add("pages");
   return selected;
 }
 
