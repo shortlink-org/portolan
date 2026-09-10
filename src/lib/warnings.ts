@@ -68,7 +68,7 @@ const RULES: RuleDefinition[] = [
   },
   {
     id: "catalog.unmapped-proto-peer",
-    matches: /\bmanifest names no peer for that package\b/i,
+    matches: /\bmanifest names no peer for (?:that package|it)\b/i,
     severity: "warning",
     action: "Map the protobuf package under peers, or declare it under externals.",
   },
@@ -80,7 +80,7 @@ const RULES: RuleDefinition[] = [
   },
   {
     id: "flow.unknown-port",
-    matches: /\bis neither a domain port nor a use case\b/i,
+    matches: /\bis neither a domain port(?:,| nor) a use case\b/i,
     severity: "warning",
     action: "Model this dependency as a domain port or use case, or accept that its calls stay outside the flow.",
   },
@@ -103,12 +103,6 @@ const RULES: RuleDefinition[] = [
     action: "Choose an existing concrete model for the application's aggregates option.",
   },
   {
-    id: "django.ambiguous-aggregate-root",
-    matches: /\bmodels to choose from: name the root in the aggregates option\b/i,
-    severity: "warning",
-    action: "Choose the aggregate root explicitly in the django-domain aggregates option.",
-  },
-  {
     id: "django.unknown-http-verb",
     matches: /\bmounted as an HTTP view, but no HTTP verb is declared\b/i,
     severity: "warning",
@@ -122,7 +116,7 @@ const RULES: RuleDefinition[] = [
   },
   {
     id: "watermill.unresolved-topic",
-    matches: /\bWatermill .+ topic could not be resolved\b/i,
+    matches: /\bWatermill .+\btopic (?:generator could not be resolved|unresolved)\b/i,
     severity: "warning",
     action: "Use a literal, constant, or configuration default for the Watermill topic.",
   },
@@ -152,7 +146,7 @@ const RULES: RuleDefinition[] = [
   },
   {
     id: "source.offline-cache",
-    matches: /\bnot fetched \(offline\)\b/i,
+    matches: /\bnot fetched \(offline\)/i,
     severity: "info",
     action: "Regenerate with network access when the vendored copy must be refreshed.",
   },

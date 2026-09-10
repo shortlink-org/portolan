@@ -31,6 +31,15 @@ describe("warning diagnostics", () => {
     ]);
   });
 
+  it("keeps one rule across the wordings the plugins emit for it", () => {
+    const rules = [
+      "calls ledger.v1 and the manifest names no peer for it; add it under `peers` to say which service answers, until then the calls are unresolved",
+      "src/app.rs: port `clock: Clock` is neither a domain port, a use case nor a client; its calls are left out of the flow",
+      "bus/router.go:12:3: Watermill handler orders is registered on topic `cfg.Topic`, which this reader cannot resolve to a literal, a constant, a config default or a caller's argument; the handler is kept with its topic unresolved",
+    ].map((message) => warningDiagnostic({ plugin: "x", message }).rule);
+    expect(rules).toEqual(["catalog.unmapped-proto-peer", "flow.unknown-port", "watermill.unresolved-topic"]);
+  });
+
   it("marks read and parse failures as errors and expected absence as info", () => {
     expect(warningDiagnostic({ plugin: "sql", message: "schema.sql could not be parsed" }).severity).toBe("error");
     expect(warningDiagnostic({ plugin: "river", message: "root: no River jobs were found" }).severity).toBe("info");
