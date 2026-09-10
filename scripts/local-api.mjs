@@ -20,7 +20,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 
 import { loadManifest, readManifest, readManifestText } from "./manifest.mjs";
 import { builtinPluginNames } from "./builtin-plugins.mjs";
-import { djangoAggregateCandidates } from "../src/lib/django-aggregates.ts";
+import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import {
   discoverProject,
