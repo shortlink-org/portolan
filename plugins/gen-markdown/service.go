@@ -42,6 +42,15 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 		}
 		rows = append(rows, []string{"Owners", strings.Join(handles, ", ")})
 	}
+	// Where it answers and whom it is configured to reach, as the manifests
+	// say. Names only: a host is topology, and the value it was cut out of
+	// stays in the manifest.
+	if len(svc.Hosts) > 0 {
+		rows = append(rows, []string{"Hosts", codeList(svc.Hosts)})
+	}
+	if len(svc.Dials) > 0 {
+		rows = append(rows, []string{"Dials", codeList(svc.Dials)})
+	}
 	b.WriteString(defList(rows))
 
 	// The readme is a whole document of its own, so it goes in one level down
@@ -67,6 +76,15 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	for i := range svc.Aggregates {
 		s.renderAggregate(svc, &svc.Aggregates[i])
 	}
+}
+
+// codeList is names, each in code, one line.
+func codeList(names []string) string {
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		out = append(out, code(name))
+	}
+	return strings.Join(out, ", ")
 }
 
 var markdownLink = regexp.MustCompile(`\]\(([^\s)]+)([^)]*)\)`)

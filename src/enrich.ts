@@ -235,6 +235,8 @@ interface HTTPProvider {
   ref: string;
   method: string;
   path: string;
+  /** Set when the manifests, not the route alone, chose this provider. */
+  basis?: "kubernetes-host";
 }
 
 /**
@@ -255,8 +257,16 @@ interface HTTPProvider {
  */
 function resolveHTTPCalls(input: Catalog): Catalog {
   const providers: HTTPProvider[] = [];
+  // What the manifests said, where a tree of them was read: the names each
+  // service answers on, and the names each caller is configured to dial.
+  const hostsByService = new Map<string, Set<string>>();
+  const dialsByService = new Map<string, string[]>();
   for (const context of input.contexts) {
     for (const service of context.services) {
+      if (service.hosts?.length) {
+        hostsByService.set(service.id, new Set(service.hosts));
+      }
+      if (service.dials?.length) dialsByService.set(service.id, service.dials);
       for (const provided of service.provides) {
         for (const method of provided.methods) {
           // A route with an empty method is mounted but its verb is unknown
@@ -297,7 +307,23 @@ function resolveHTTPCalls(input: Catalog): Catalog {
       candidates.filter((provider) => sameHTTPShape(provider.path, route.path)),
     );
     const matches = exact.length > 0 ? exact : uniqueHTTPProviders(candidates);
-    return matches.length === 1 ? matches[0] : undefined;
+    if (matches.length === 1) return matches[0];
+    if (matches.length < 2) return undefined;
+    // Ambiguous by route alone. The manifests may say which of them the
+    // caller reaches: the host the call names, or failing that the hosts the
+    // caller's workload is configured to dial. They only ever decide between
+    // providers of the route; a host never conjures a provider that does not
+    // have it.
+    const host = callHost(call);
+    const dials = dialsByService.get(caller) ?? [];
+    const reachable = matches.filter((provider) => {
+      const hosts = hostsByService.get(provider.service);
+      if (!hosts) return false;
+      return host ? hosts.has(host) : dials.some((dial) => hosts.has(dial));
+    });
+    return reachable.length === 1
+      ? { ...reachable[0]!, basis: "kubernetes-host" }
+      : undefined;
   };
 
   const evidence = (call: Pick<RpcCall, "id" | "source" | "destination">, provider: HTTPProvider): HTTPDestination => {
@@ -307,7 +333,7 @@ function resolveHTTPCalls(input: Catalog): Catalog {
       method: raw?.method ?? provider.method, localPath: raw?.path,
     };
     return { ...destination, resolution: {
-      basis: destination.fullPath ? "full-path" : sameHTTPShape(provider.path, raw?.path ?? "") ? "exact-route" : "unique-suffix",
+      basis: provider.basis ?? (destination.fullPath ? "full-path" : sameHTTPShape(provider.path, raw?.path ?? "") ? "exact-route" : "unique-suffix"),
       provider: provider.service, route: provider.path,
     } };
   };
@@ -383,6 +409,40 @@ function rawHTTPRoute(
   // hosts stays two calls; the route itself is what resolves against providers.
   const match = /^http-client\/([A-Z]+)\s+(\/\S*)(?: @ .+)?$/.exec(id);
   return match ? { method: match[1]!, path: match[2]! } : undefined;
+}
+
+/**
+ * The host a call names, when it names one: the service-discovery alias the
+ * extractor recorded, the hostname of a literal base URL, or the destination
+ * after " @ " in the id when that is a host rather than an expression. A port
+ * is dropped, because a Service's name has none.
+ */
+function callHost(call: RpcCall): string | undefined {
+  const at = /^http-client\/[A-Z]+\s+\/\S*\s@\s(.+)$/.exec(call.id)?.[1];
+  for (const value of [
+    call.destination?.serviceDiscoveryAlias,
+    call.destination?.baseURL?.value,
+    at,
+  ]) {
+    const host = hostOf(value);
+    if (host) return host;
+  }
+  return undefined;
+}
+
+function hostOf(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (trimmed.includes("://")) {
+    try {
+      return new URL(trimmed).hostname || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  // Lower case by the cluster's own rule, so that `Config.SupplierURL` - an
+  // expression the extractor could not evaluate - is not taken for a host.
+  return /^([a-z0-9]([a-z0-9.-]*[a-z0-9])?)(:[0-9]+)?$/.exec(trimmed)?.[1];
 }
 
 function uniqueHTTPProviders(providers: HTTPProvider[]): HTTPProvider[] {

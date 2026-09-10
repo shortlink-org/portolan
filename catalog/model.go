@@ -160,6 +160,23 @@ type Service struct {
 	// list is the one the runner would accept. Absent when nothing declares
 	// any, which is not the same as a service that cannot be built.
 	Commands []Command `json:"commands,omitempty"`
+
+	// Hosts are the names this service answers on, read from what deploys
+	// it: a Kubernetes Service's name in its short, namespaced, `svc` and
+	// fully qualified forms, and the hosts of the Ingress or HTTPRoute in
+	// front of it. Written so that a call another service is configured to
+	// make to `pricing.shop.svc` can find the service that answers. Absent
+	// when nothing in the tree says where the service is reachable.
+	Hosts []string `json:"hosts,omitempty"`
+
+	// Dials are the in-cluster names this service's workload is configured
+	// to reach, read out of its environment and config maps and reduced to
+	// the host alone. A value is never kept: not the variable it came from,
+	// not the scheme, port, path or credentials around the name. Only a name
+	// the cluster resolves qualifies - a Service in the same tree, or a
+	// `<name>.<namespace>.svc` form - so a password in an environment
+	// variable is not something this list can hold by shape.
+	Dials []string `json:"dials,omitempty"`
 }
 
 // Command is one entry of a task runner's file: a make target, an npm script,

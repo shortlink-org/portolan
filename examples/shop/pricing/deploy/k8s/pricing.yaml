@@ -1,0 +1,86 @@
+# What runs pricing in the shop namespace. portolan reads this tree for the
+# names the service answers on and the in-cluster names it dials; the values
+# themselves stay here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pricing
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: pricing
+    app.kubernetes.io/part-of: shop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pricing
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pricing
+        app.kubernetes.io/part-of: shop
+    spec:
+      containers:
+        - name: pricing
+          image: ghcr.io/shortlink-org/pricing:1.4.2
+          ports:
+            - name: grpc
+              containerPort: 9090
+            - name: http
+              containerPort: 8080
+          env:
+            - name: NATS_URL
+              value: nats://nats.shop.svc:4222
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: pricing-database
+                  key: url
+            - name: LOG_LEVEL
+              value: info
+          envFrom:
+            - configMapRef:
+                name: pricing-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pricing-config
+  namespace: shop
+data:
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability.svc:4318
+  PRICE_LIST_TTL: 15m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing
+  namespace: shop
+spec:
+  selector:
+    app.kubernetes.io/name: pricing
+  ports:
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pricing
+  namespace: shop
+spec:
+  rules:
+    - host: shop.example.com
+      http:
+        paths:
+          - path: /pricing
+            pathType: Prefix
+            backend:
+              service:
+                name: pricing
+                port:
+                  name: http

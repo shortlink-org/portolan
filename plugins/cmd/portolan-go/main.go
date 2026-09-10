@@ -26,6 +26,7 @@ import (
 	extractgonats "github.com/shortlink-org/portolan/plugins/extract-go-nats"
 	extractgosqs "github.com/shortlink-org/portolan/plugins/extract-go-sqs"
 	extractgraphql "github.com/shortlink-org/portolan/plugins/extract-graphql"
+	extractk8s "github.com/shortlink-org/portolan/plugins/extract-k8s"
 	extractopenapi "github.com/shortlink-org/portolan/plugins/extract-openapi"
 	extractproject "github.com/shortlink-org/portolan/plugins/extract-project"
 	extractproto "github.com/shortlink-org/portolan/plugins/extract-proto"
@@ -45,30 +46,31 @@ import (
 // Plugins maps a manifest plugin name to what answers it. The names are the
 // ones portolan.json declares as built-ins; a test holds the two in step.
 var Plugins = map[string]func(io.Reader, io.Writer) error{
-	"project":      extractproject.Serve,
-	"commands":     extractcommands.Serve,
-	"go-domain":    extractgo.Serve,
-	"openapi":      extractopenapi.Serve,
-	"wsdl":         extractwsdl.Serve,
-	"redis":        extractredis.Serve,
-	"river":        extractriver.Serve,
-	"watermill":    extractwatermill.Serve,
-	"go-nats":      extractgonats.Serve,
-	"go-sqs":       extractgosqs.Serve,
-	"terraform":    extractterraform.Serve,
-	"asyncapi":     extractasyncapi.Serve,
-	"graphql":      extractgraphql.Serve,
-	"sql":          extractsql.Serve,
-	"proto":        extractproto.Serve,
-	"csr-schemas":  extractcsr.Serve,
-	"adr":          extractadr.Serve,
-	"glossary":     extractglossary.Serve,
-	"flows":        extractflows.Serve,
-	"otel":         verifyotel.Serve,
-	"codeowners":   verifycodeowners.Serve,
-	"markdown":     genmarkdown.Serve,
-	"mermaid":      genmermaid.Serve,
-	"backstage":    genbackstage.Serve,
+	"project":     extractproject.Serve,
+	"commands":    extractcommands.Serve,
+	"go-domain":   extractgo.Serve,
+	"openapi":     extractopenapi.Serve,
+	"wsdl":        extractwsdl.Serve,
+	"redis":       extractredis.Serve,
+	"river":       extractriver.Serve,
+	"watermill":   extractwatermill.Serve,
+	"go-nats":     extractgonats.Serve,
+	"go-sqs":      extractgosqs.Serve,
+	"terraform":   extractterraform.Serve,
+	"k8s":         extractk8s.Serve,
+	"asyncapi":    extractasyncapi.Serve,
+	"graphql":     extractgraphql.Serve,
+	"sql":         extractsql.Serve,
+	"proto":       extractproto.Serve,
+	"csr-schemas": extractcsr.Serve,
+	"adr":         extractadr.Serve,
+	"glossary":    extractglossary.Serve,
+	"flows":       extractflows.Serve,
+	"otel":        verifyotel.Serve,
+	"codeowners":  verifycodeowners.Serve,
+	"markdown":    genmarkdown.Serve,
+	"mermaid":     genmermaid.Serve,
+	"backstage":   genbackstage.Serve,
 }
 
 func main() {

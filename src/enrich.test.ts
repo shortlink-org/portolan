@@ -479,6 +479,92 @@ describe("enrichCatalog: HTTP route correlation", () => {
     ]);
   });
 
+  // The same two providers, and now the manifests say which name each one
+  // answers on. The host the call names decides between them; a host nobody
+  // answers on decides nothing.
+  it("lets the manifests decide between two providers of one route", () => {
+    const toHost = (host: string): Service["consumes"][number] => ({
+      id: `http-client/POST /foo @ ${host}`,
+      peer: host.replace(".", "-"),
+      status: "unresolved",
+      source: "client.go:11",
+      destination: {
+        callSite: "client.go:11",
+        endpointExpression: "path",
+        method: "POST",
+        localPath: "/foo",
+        fullPath: "/foo",
+        serviceDiscoveryAlias: host,
+      },
+    });
+    const caller = service("shop", "oms", {
+      consumes: [
+        toHost("payments.internal"),
+        toHost("ledger.internal"),
+        toHost("nobody.internal"),
+      ],
+    });
+    const payments = {
+      ...httpProvider("payments", "pay", "/foo"),
+      hosts: ["payments", "payments.internal"],
+    };
+    const ledger = {
+      ...httpProvider("ledger", "post", "/foo"),
+      hosts: ["ledger.internal"],
+    };
+
+    const out = enrichCatalog(estate([], [caller, payments, ledger])).catalog;
+    expect(
+      serviceOf(out, "shop.oms").consumes.map((call) => [
+        call.id,
+        call.peer,
+        call.status,
+        call.destination?.resolution?.basis,
+      ]),
+    ).toEqual([
+      ["api/pay", "shop.payments", "declared", "kubernetes-host"],
+      ["api/post", "shop.ledger", "declared", "kubernetes-host"],
+      [
+        "http-client/POST /foo @ nobody.internal",
+        "nobody-internal",
+        "unresolved",
+        undefined,
+      ],
+    ]);
+  });
+
+  it("uses what the caller dials when the call names no host", () => {
+    const caller = service("shop", "oms", {
+      consumes: [
+        {
+          id: "http-client/POST /foo",
+          peer: "http-peer",
+          status: "unresolved",
+          source: "client.go:10",
+        },
+      ],
+      dials: ["ledger.payments.svc"],
+    });
+    const payments = {
+      ...httpProvider("payments", "pay", "/foo"),
+      hosts: ["payments.shop.svc"],
+    };
+    const ledger = {
+      ...httpProvider("ledger", "post", "/foo"),
+      hosts: ["ledger.payments.svc"],
+    };
+
+    const out = enrichCatalog(estate([], [caller, payments, ledger])).catalog;
+    expect(
+      serviceOf(out, "shop.oms").consumes.map((call) => [
+        call.id,
+        call.peer,
+        call.status,
+        call.destination?.resolution?.basis,
+      ]),
+    ).toEqual([["api/post", "shop.ledger", "declared", "kubernetes-host"]]);
+  });
+
   it("resolves a destination-qualified route like a bare one", () => {
     const caller = service("shop", "oms", {
       consumes: [

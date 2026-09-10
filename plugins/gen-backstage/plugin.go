@@ -123,6 +123,7 @@ func render(req plugin.Request, opts Options) (plugin.Response, error) {
 			component.Metadata.Annotations = annotations(opts.SourceBaseURL, svc.ID, svc.Path, svc.Repo, true)
 			component.Metadata.Tags = backstageTags(svc.Technologies)
 			commands(&component.Metadata, svc, opts.SourceBaseURL)
+			reachability(&component.Metadata, svc)
 			depends := []string{}
 			consumes := []string{}
 			for _, call := range svc.Consumes {
@@ -387,6 +388,18 @@ func validateEntity(current entity, all []entity) error {
 		}
 	}
 	return nil
+}
+
+// reachability puts where the service answers and what it dials onto the
+// component, as annotations, for anything that reads the entity. Names and
+// nothing else, which is all the catalog holds of them.
+func reachability(meta *metadata, svc *catalog.Service) {
+	if len(svc.Hosts) > 0 {
+		meta.Annotations["portolan.io/hosts"] = strings.Join(svc.Hosts, ", ")
+	}
+	if len(svc.Dials) > 0 {
+		meta.Annotations["portolan.io/dials"] = strings.Join(svc.Dials, ", ")
+	}
 }
 
 func ownerOf(service *catalog.Service, fallback string) string {

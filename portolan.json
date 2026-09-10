@@ -216,6 +216,12 @@
       }
     },
     {
+      "name": "k8s",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "asyncapi",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
@@ -465,6 +471,17 @@
       }
     },
     {
+      "plugin": "k8s",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "context": "shop",
+        "service": "cart",
+        "paths": ["deploy/k8s"],
+        "out": "k8s.json"
+      }
+    },
+    {
       "plugin": "ts-domain",
       "in": "examples/shop/cart",
       "out": "examples/shop/cart/portolan",
@@ -633,6 +650,17 @@
         "context": "shop",
         "service": "pricing",
         "out": "commands.json"
+      }
+    },
+    {
+      "plugin": "k8s",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "paths": ["deploy/k8s"],
+        "out": "k8s.json"
       }
     },
     {

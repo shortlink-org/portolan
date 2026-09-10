@@ -173,6 +173,24 @@ export interface Service {
    * same as a service that cannot be built.
    */
   commands?: Command[];
+  /**
+   * The names this service answers on, read from what deploys it: a
+   * Kubernetes Service's name in its short, namespaced, `svc` and fully
+   * qualified forms, and the hosts of the Ingress or HTTPRoute in front of
+   * it. Written so that a call another service is configured to make to
+   * `pricing.shop.svc` can find the service that answers. Absent when
+   * nothing in the tree says where the service is reachable.
+   */
+  hosts?: string[];
+  /**
+   * The in-cluster names this service's workload is configured to reach,
+   * read out of its environment and config maps and reduced to the host
+   * alone. A value is never kept: not the variable it came from, not the
+   * scheme, port, path or credentials around the name. Only a name the
+   * cluster resolves qualifies, so a password in an environment variable is
+   * not something this list can hold by shape.
+   */
+  dials?: string[];
 }
 
 /**
@@ -377,7 +395,7 @@ export interface HTTPDestination {
   join?: { expression: string; source: string };
   /** Runtime URL modifiers after the proven join; not evaluated statically. */
   transforms?: { expression: string; source: string }[];
-  resolution?: { basis: "full-path" | "exact-route" | "unique-suffix"; provider: string; route: string };
+  resolution?: { basis: "full-path" | "exact-route" | "unique-suffix" | "kubernetes-host"; provider: string; route: string };
 }
 export interface HTTPBaseURL {
   expression: string;

@@ -4,7 +4,7 @@ import type { HTTPDestination } from "../catalog";
 export function HTTPDestinationEvidence({ destination: d }: { destination: HTTPDestination }) {
   const basis = d.resolution?.basis;
   const rows = [
-    ["Linked by", basis === "full-path" ? "Recovered full path" : basis === "exact-route" ? "Exact route" : basis === "unique-suffix" ? "Unique route suffix (heuristic)" : "Unresolved"],
+    ["Linked by", basis === "full-path" ? "Recovered full path" : basis === "exact-route" ? "Exact route" : basis === "unique-suffix" ? "Unique route suffix (heuristic)" : basis === "kubernetes-host" ? "Kubernetes Service host, from the manifests" : "Unresolved"],
     ["Call site", d.callSite],
     ["Endpoint expression", d.endpointExpression],
     ["Local path", d.localPath],

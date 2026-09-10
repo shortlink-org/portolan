@@ -1595,6 +1595,8 @@ metadata:
             npm run generate:api
             npm run generate:auth
             npm run generate:pricing
+        portolan.io/dials: auth.auth.svc, nats.shop.svc, pricing.shop.svc
+        portolan.io/hosts: cart, cart.shop, cart.shop.svc, cart.shop.svc.cluster.local, shop.example.com
         portolan.io/id: shop.cart
     links:
         - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L12
@@ -2078,6 +2080,8 @@ metadata:
             make gen — Regenerate the gRPC stubs from the vendored protos
             make build — Compile every package
             make test — Run the unit tests
+        portolan.io/dials: nats.shop.svc, otel-collector.observability.svc
+        portolan.io/hosts: pricing, pricing.shop, pricing.shop.svc, pricing.shop.svc.cluster.local, shop.example.com
         portolan.io/id: shop.pricing
     links:
         - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L6

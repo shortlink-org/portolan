@@ -734,6 +734,79 @@ line with its description, and as entity links of type `command`, each
 leading to the line of the runner file it was read from, when `sourceBaseUrl`
 says where the repository is.
 
+### Where it answers, what it dials: the manifests, never the cluster
+
+A catalog that knows what a service provides and what it consumes still has
+holes where the two do not meet by route alone: two services answer
+`POST /foo`, and the caller's code says only that it posts to `$LEDGER_URL`.
+What that variable holds is not in the code. It is in the Deployment, the
+ConfigMap it reads, and the Service and Ingress objects that give the far end
+a name. `extract-k8s` reads those and puts two lists on the service:
+
+- **Hosts** - the names it answers on: a Kubernetes Service's name in its
+  short, namespaced, `svc` and fully qualified forms, and the hosts of the
+  Ingress or Gateway API HTTPRoute in front of it, from a rule whose backend
+  is that Service.
+- **Dials** - the in-cluster names its workload is configured to reach, cut
+  out of its containers' `env` and the ConfigMaps they read.
+
+The merge then has both facts in one place. A call that names a host, or a
+caller whose manifests dial one, resolves against the providers of its route
+when exactly one of them answers on that name, and the evidence says
+`kubernetes-host` as the basis. A host only ever decides between providers of
+the route; it never conjures a provider that does not have it.
+
+#### What is never written
+
+A manifest holds configuration, and configuration is where the passwords are.
+The rule that keeps them out is a rule of shape, not a list of words:
+
+- A `Secret`, a `SealedSecret`, an `ExternalSecret`, or any document with
+  `stringData` is passed over at its `kind`, before its body is decoded. A
+  `secretKeyRef` or `secretRef` is not followed.
+- A value from `env` or a ConfigMap is reduced to the host it names, or to
+  nothing. A URL gives up its hostname and keeps nothing else - not the
+  scheme, the port, the path, the query, nor the user and password in front
+  of the host. A bare `host[:port]` gives up the port. `info`, `true`, a
+  token, a DSN written as `key=value` pairs: none of these is a host, and
+  none passes.
+- What is left qualifies only when the cluster resolves it: a form the tree's
+  own Services answer to, or `<name>.<namespace>.svc[.cluster.local]`, the
+  one shape no name outside a cluster has. A bare `cart` from another
+  repository's manifests is not taken, because nothing distinguishes it from
+  a word.
+- Warnings name files and directories, never values, because the build
+  report is committed.
+
+The fragment carries the variable's name no more than its value: the
+`environmentVariable` the HTTP client extractor records stays what it was, and
+no value is attached to it.
+
+#### What is read, and how far
+
+Every `*.yaml` and `*.yml` under the root, or under the `paths` named in the
+options; anything without `apiVersion` and `kind` - a compose file, a
+workflow - is passed over silently. Multi-document files are split. A file
+holding `{{` is a template and not YAML until rendered, so a directory of
+Helm templates is passed over with one warning for the directory; render the
+chart into the tree, or point `paths` at plain manifests, to have it read.
+Kustomize is read without running it: the base and the overlays are all under
+the root, and two documents of one kind and name - a Deployment and the patch
+laid over it - fold into one, their env and labels unioned. `namespace`
+narrows the read to one namespace; an object naming none is read either way.
+
+The workload the step is about is the Deployment, StatefulSet, DaemonSet,
+ReplicaSet, Job or CronJob named like the service, or labelled so with
+`app.kubernetes.io/name` or `app`, or the only one in the tree. A Job or
+CronJob makes the service's kind `job`; a Deployment says nothing about kind,
+because a webapp and a worker both deploy that way. Several workloads and
+none named is a warning, not a guess.
+
+Nothing is read from a cluster. `kubectl get` would say what runs now, which
+is a different fact from what the repository says should run, changes without
+a commit, and needs a credential the build should not hold. portolan.0011
+records that decision and the alternatives.
+
 ### Outside the estate: an external with a contract
 
 A service calls things nobody here builds - a card network, a tax API, a

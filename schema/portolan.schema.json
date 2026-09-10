@@ -91,6 +91,7 @@
               "go-nats",
               "go-sqs",
               "terraform",
+              "k8s",
               "asyncapi",
               "graphql",
               "sql",
@@ -476,6 +477,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.terraform"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "k8s"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.k8s"
                 }
               }
             }
@@ -2356,6 +2376,50 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "terraform.json"
+        }
+      }
+    },
+    "options.k8s": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory. The workload is found by this name: a Deployment, StatefulSet, DaemonSet, Job or CronJob called so, or labelled so with `app` or `app.kubernetes.io/name`; when the tree holds exactly one workload, that one.",
+          "examples": [
+            "pricing"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Directories under the input root that hold the manifests, so a repository's other YAML - compose files, CI, buf - is not walked. Left out, the whole root is read and anything without `apiVersion` and `kind` is passed over.",
+          "examples": [
+            [
+              "deploy/k8s"
+            ]
+          ]
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Read only the objects in this namespace. An object that names no namespace is read either way. Left out, every namespace.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "k8s.json"
         }
       }
     },

@@ -177,6 +177,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   "go-nats": { label: "NATS", icon: { brand: "NATS" } },
   "go-sqs": { label: "SQS", icon: { lucide: "inbox" } },
   terraform: { label: "Terraform", icon: { brand: "Terraform" } },
+  k8s: { label: "Kubernetes", icon: { brand: "Kubernetes" } },
   asyncapi: { label: "AsyncAPI", icon: { lucide: "file-code" } },
   graphql: { label: "GraphQL", icon: { brand: "GraphQL" } },
   sql: { label: "SQL", icon: { lucide: "database" } },

@@ -35,6 +35,7 @@
 | [portolan.0008](adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 | [portolan.0009](adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
 | [portolan.0010](adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
+| [portolan.0011](adr/portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 |
 
 <!-- portolan/README.md -->
 
@@ -73,6 +74,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0008](../adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 | [portolan.0009](../adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
 | [portolan.0010](../adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
+| [portolan.0011](../adr/portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 |
 
 <!-- portolan/glossary.md -->
 
@@ -965,6 +967,79 @@ line with its description, and as entity links of type `command`, each
 leading to the line of the runner file it was read from, when `sourceBaseUrl`
 says where the repository is.
 
+### Where it answers, what it dials: the manifests, never the cluster
+
+A catalog that knows what a service provides and what it consumes still has
+holes where the two do not meet by route alone: two services answer
+`POST /foo`, and the caller's code says only that it posts to `$LEDGER_URL`.
+What that variable holds is not in the code. It is in the Deployment, the
+ConfigMap it reads, and the Service and Ingress objects that give the far end
+a name. `extract-k8s` reads those and puts two lists on the service:
+
+- **Hosts** - the names it answers on: a Kubernetes Service's name in its
+  short, namespaced, `svc` and fully qualified forms, and the hosts of the
+  Ingress or Gateway API HTTPRoute in front of it, from a rule whose backend
+  is that Service.
+- **Dials** - the in-cluster names its workload is configured to reach, cut
+  out of its containers' `env` and the ConfigMaps they read.
+
+The merge then has both facts in one place. A call that names a host, or a
+caller whose manifests dial one, resolves against the providers of its route
+when exactly one of them answers on that name, and the evidence says
+`kubernetes-host` as the basis. A host only ever decides between providers of
+the route; it never conjures a provider that does not have it.
+
+#### What is never written
+
+A manifest holds configuration, and configuration is where the passwords are.
+The rule that keeps them out is a rule of shape, not a list of words:
+
+- A `Secret`, a `SealedSecret`, an `ExternalSecret`, or any document with
+  `stringData` is passed over at its `kind`, before its body is decoded. A
+  `secretKeyRef` or `secretRef` is not followed.
+- A value from `env` or a ConfigMap is reduced to the host it names, or to
+  nothing. A URL gives up its hostname and keeps nothing else - not the
+  scheme, the port, the path, the query, nor the user and password in front
+  of the host. A bare `host[:port]` gives up the port. `info`, `true`, a
+  token, a DSN written as `key=value` pairs: none of these is a host, and
+  none passes.
+- What is left qualifies only when the cluster resolves it: a form the tree's
+  own Services answer to, or `<name>.<namespace>.svc[.cluster.local]`, the
+  one shape no name outside a cluster has. A bare `cart` from another
+  repository's manifests is not taken, because nothing distinguishes it from
+  a word.
+- Warnings name files and directories, never values, because the build
+  report is committed.
+
+The fragment carries the variable's name no more than its value: the
+`environmentVariable` the HTTP client extractor records stays what it was, and
+no value is attached to it.
+
+#### What is read, and how far
+
+Every `*.yaml` and `*.yml` under the root, or under the `paths` named in the
+options; anything without `apiVersion` and `kind` - a compose file, a
+workflow - is passed over silently. Multi-document files are split. A file
+holding `{{` is a template and not YAML until rendered, so a directory of
+Helm templates is passed over with one warning for the directory; render the
+chart into the tree, or point `paths` at plain manifests, to have it read.
+Kustomize is read without running it: the base and the overlays are all under
+the root, and two documents of one kind and name - a Deployment and the patch
+laid over it - fold into one, their env and labels unioned. `namespace`
+narrows the read to one namespace; an object naming none is read either way.
+
+The workload the step is about is the Deployment, StatefulSet, DaemonSet,
+ReplicaSet, Job or CronJob named like the service, or labelled so with
+`app.kubernetes.io/name` or `app`, or the only one in the tree. A Job or
+CronJob makes the service's kind `job`; a Deployment says nothing about kind,
+because a webapp and a worker both deploy that way. Several workloads and
+none named is a warning, not a guess.
+
+Nothing is read from a cluster. `kubectl get` would say what runs now, which
+is a different fact from what the repository says should run, changes without
+a commit, and needs a credential the build should not hold. portolan.0011
+records that decision and the alternatives.
+
 ### Outside the estate: an external with a contract
 
 A service calls things nobody here builds - a card network, a tax API, a
@@ -1754,6 +1829,7 @@ sequenceDiagram
 | [portolan.0008](portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0009](portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
 | [portolan.0010](portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
+| [portolan.0011](portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
@@ -2591,3 +2667,112 @@ off-by-one portolan.0002 had.
   which upstream commit that was.
 - Neutral: the dev server re-reads provenance when a source changes, not when
   a commit is made; a commit shows after a restart.
+
+<!-- adr/portolan.0011.md -->
+
+# portolan.0011 — The network is read from the manifests, never from the cluster
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-11
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0011-the-network-is-read-from-the-manifests-never-from-the-cluster.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0011-the-network-is-read-from-the-manifests-never-from-the-cluster.md)
+
+### Context and Problem Statement
+
+The catalog knows what a service provides and what it consumes, and the merge
+joins the two by route: a client's `POST /foo` meets the one service whose
+OpenAPI or framework fragment declares it. Where two services declare the
+same route, or where the client's code names its destination only as
+`$LEDGER_URL`, the join has nothing to go on and the call stays unresolved.
+
+What the variable holds is not in the code. It is in what deploys the
+service: the Deployment's `env`, the ConfigMap it reads, and the Service,
+Ingress and HTTPRoute objects that give the far end a name. That is also
+where the passwords are. A reader of those files has to answer two questions
+at once: where to read the network from, and what of what it reads may reach
+a fragment that is committed, rendered and published.
+
+### Decision Drivers
+
+- The join needs the one fact a route cannot carry: which of the estate's
+  services answers on the name the caller is configured with.
+- Regenerating from the same sources must change no byte (portolan.0010); a
+  fact must change when a commit changes it, and not otherwise.
+- No plugin may need a socket, a credential or a binary (portolan.0006,
+  portolan.0008).
+- No value from a manifest - a password, a token, a DSN, a flag, a level, a
+  variable's name - may reach a fragment, a warning or a page. The build
+  report is committed too.
+- Internal DNS names may: a name is topology, and the catalog is a map.
+
+### Considered Options
+
+1. **Read the manifests in the repository**, as a wasm extractor over the
+   tree, and keep names only: the hosts a service answers on and the
+   in-cluster hosts its workload dials.
+2. **Ask the cluster**, through `kubectl get -o json` from a host plugin,
+   with a cached snapshot and a lock for offline replay.
+3. **Keep the configuration**: put a service's environment - variable and
+   value - into the catalog, and let the merge resolve from it.
+4. **Do nothing**: leave such calls unresolved and let a flow written by
+   hand say where they go.
+
+### Decision Outcome
+
+Chosen option: **read the manifests, keep names only.**
+
+`extract-k8s` runs as one more entry of `portolan-go.wasm` over a preopened
+tree. It puts two lists on a service. `hosts` are the names the service
+answers on: a Kubernetes Service's name in its short, namespaced, `svc` and
+fully qualified forms, and the hosts of the Ingress or HTTPRoute in front of
+it. `dials` are the in-cluster names the workload is configured to reach,
+read from its containers' `env` and the ConfigMaps they reference and reduced
+to the host alone. The merge resolves an ambiguous route to the one provider
+that answers on the host the call names, or on a host the caller dials, and
+the evidence says `kubernetes-host` as the basis.
+
+What keeps values out is a rule of shape, not a list of words. A `Secret`,
+`SealedSecret`, `ExternalSecret` or any document carrying `stringData` is
+passed over at its `kind`, before its body is decoded; a `secretKeyRef` or
+`secretRef` is not followed. Every other value is looked at once, in memory,
+for one purpose - does it name a host inside the cluster - and what survives
+is the hostname: a URL gives up its scheme, port, path, query and the user
+and password in front of the host, and a bare `host[:port]` gives up the
+port. What is left qualifies only when the cluster resolves it: a form one of
+the tree's own Services answers to, or `<name>.<namespace>.svc`, the one
+shape no name outside a cluster has. A password does not look like that, nor
+does a token, a level or a flag; a bare word from another repository is not
+taken either, because nothing tells it from a word. Warnings name files and
+directories, never values.
+
+Nothing is read from a cluster, and no environment or config map value is
+kept.
+
+#### Consequences
+
+The extractor is deterministic and needs nothing the tree does not hold, so
+it runs in CI, under `--check`, and offline. Helm templates are not YAML
+until rendered and are passed over with a warning per directory; a chart is
+read by rendering it into the tree, which is a build step and not this
+plugin's. Kustomize is read without running it: base and overlays fold by
+kind and name.
+
+A caller's `dials` from one repository and a provider's `hosts` from another
+meet only in the merge, which is where every cross-repository fact meets.
+
+The catalog gains two list fields on a service and one basis on the
+evidence, and no entity. An environment, a cluster, an Ingress as a thing of
+its own: each is a page nobody has asked for yet, and a decision to be made
+when one does.
+
+Option 2 answers a different question - what runs now, not what the
+repository says should run - and the answer moves without a commit, needs a
+credential in the build, and would have to be snapshotted and locked to be
+reproducible at all. Where the manifests are not in any repository, it is
+the only source; that is a case for a host plugin later, not a reason to
+make the common case need a cluster. Option 3 would put every password one
+misplaced `value` away from a published page and asks the reader to trust a
+list of forbidden words. Option 4 leaves the join blind exactly where the
+estate is most interesting.

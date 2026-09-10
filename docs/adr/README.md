@@ -14,3 +14,4 @@
 | [portolan.0008](portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0009](portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
 | [portolan.0010](portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
+| [portolan.0011](portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 | [portolan](../portolan/README.md) |

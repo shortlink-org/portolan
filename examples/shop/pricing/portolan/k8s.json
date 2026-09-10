@@ -1,0 +1,37 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "hosts": [
+            "pricing",
+            "pricing.shop",
+            "pricing.shop.svc",
+            "pricing.shop.svc.cluster.local",
+            "shop.example.com"
+          ],
+          "dials": [
+            "nats.shop.svc",
+            "otel-collector.observability.svc"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

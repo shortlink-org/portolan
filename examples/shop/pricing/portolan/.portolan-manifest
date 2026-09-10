@@ -13,5 +13,8 @@
   ],
   "commands": [
     "commands.json"
+  ],
+  "k8s": [
+    "k8s.json"
   ]
 }

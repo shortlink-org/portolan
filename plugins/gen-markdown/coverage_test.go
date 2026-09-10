@@ -17,7 +17,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.External{}):         "id slug name summary url provides",
 	reflect.TypeOf(catalog.RepoPin{}):          "repo commit",
 	reflect.TypeOf(catalog.BoundedContext{}):   "id slug name summary kind classification viewId services",
-	reflect.TypeOf(catalog.Service{}):          "id slug name repo path readme kind technologies provides consumes copies aggregates stores modules channels owners commands",
+	reflect.TypeOf(catalog.Service{}):          "id slug name repo path readme kind technologies provides consumes copies aggregates stores modules channels owners commands hosts dials",
 	reflect.TypeOf(catalog.Command{}):          "runner name run doc body source",
 	reflect.TypeOf(catalog.RpcService{}):       "id methods source messages enums module",
 	reflect.TypeOf(catalog.RpcEnum{}):          "name doc values",

@@ -1,0 +1,38 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "hosts": [
+            "cart",
+            "cart.shop",
+            "cart.shop.svc",
+            "cart.shop.svc.cluster.local",
+            "shop.example.com"
+          ],
+          "dials": [
+            "auth.auth.svc",
+            "nats.shop.svc",
+            "pricing.shop.svc"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

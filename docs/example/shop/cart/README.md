@@ -7,6 +7,8 @@
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/cart/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/cart)
 - **Owners:** `@shortlink-org/shop`
+- **Hosts:** `cart`, `cart.shop`, `cart.shop.svc`, `cart.shop.svc.cluster.local`, `shop.example.com`
+- **Dials:** `auth.auth.svc`, `nats.shop.svc`, `pricing.shop.svc`
 
 Service `cart` — bounded context **shop**. TypeScript on Node.js.
 

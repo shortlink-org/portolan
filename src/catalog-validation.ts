@@ -253,6 +253,27 @@ export function validateCatalog(catalog: Catalog): Catalog {
         }
         technologies.add(technology);
       }
+      // Hosts and dials are names, and a name is checked the way a handle
+      // is: not blank, not listed twice. Two services behind one Ingress
+      // host is one host on two pages, which is what the manifests say.
+      for (const field of ["hosts", "dials"] as const) {
+        const names = new Set<string>();
+        for (const name of service[field] ?? []) {
+          if (!name.trim()) {
+            fail(
+              `service "${service.id}" has a ${field.slice(0, -1)} with no name`,
+              `service ${service.id}`,
+            );
+          }
+          if (names.has(name)) {
+            fail(
+              `service "${service.id}" names ${field.slice(0, -1)} "${name}" twice`,
+              `service ${service.id}`,
+            );
+          }
+          names.add(name);
+        }
+      }
       for (const call of service.consumes) rpcIds.add(call.id);
       for (const provided of service.provides) {
         for (const method of provided.methods) {

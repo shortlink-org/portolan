@@ -499,6 +499,8 @@ function mergeService(
       ...(incoming.commands
         ? { commands: incoming.commands.map((c) => ({ ...c })) }
         : {}),
+      ...(incoming.hosts ? { hosts: [...incoming.hosts] } : {}),
+      ...(incoming.dials ? { dials: [...incoming.dials] } : {}),
     });
     origin.set(incoming.id, path);
 
@@ -590,6 +592,18 @@ function mergeService(
       }
     }
     existing.commands = commands;
+  }
+
+  // Unioned like owners: two manifest trees naming where a service answers,
+  // or what it dials, are two deployments of it, and the page shows both.
+  for (const field of ["hosts", "dials"] as const) {
+    const theirs = incoming[field];
+    if (!theirs?.length) continue;
+    const names = existing[field] ?? [];
+    for (const name of theirs) {
+      if (!names.includes(name)) names.push(name);
+    }
+    existing[field] = names;
   }
 
   if (incoming.channels?.length) {
