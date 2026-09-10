@@ -1,0 +1,385 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.shop",
+          "slug": "shop",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.shop.db"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.shop.db",
+      "slug": "db",
+      "name": "Acme Shop database",
+      "kind": "mysql",
+      "owner": "shop.shop",
+      "tables": [
+        {
+          "id": "shop.shop.db.customers",
+          "name": "customers",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigint unsigned",
+              "nullable": false,
+              "pk": true,
+              "maps": "Customer.id"
+            },
+            {
+              "name": "first_name",
+              "type": "varchar(255)",
+              "nullable": false,
+              "maps": "Customer.first_name"
+            },
+            {
+              "name": "last_name",
+              "type": "varchar(255)",
+              "nullable": false,
+              "maps": "Customer.last_name"
+            },
+            {
+              "name": "email",
+              "type": "varchar(255)",
+              "nullable": false,
+              "maps": "Customer.email"
+            },
+            {
+              "name": "password",
+              "type": "varchar(255)",
+              "nullable": false,
+              "maps": "Customer.password"
+            },
+            {
+              "name": "status",
+              "type": "boolean",
+              "nullable": false,
+              "maps": "Customer.status"
+            },
+            {
+              "name": "date_of_birth",
+              "type": "date",
+              "nullable": true,
+              "maps": "Customer.date_of_birth"
+            },
+            {
+              "name": "remember_token",
+              "type": "varchar(100)",
+              "nullable": true
+            },
+            {
+              "name": "created_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "Customer.created_at"
+            },
+            {
+              "name": "updated_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "Customer.updated_at"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "customers_email_unique",
+              "columns": [
+                "email"
+              ],
+              "unique": true
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.shop.models-customer",
+            "block": "shop.shop.models-customer.customer"
+          }
+        },
+        {
+          "id": "shop.shop.db.orders",
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "int unsigned",
+              "nullable": false,
+              "pk": true,
+              "maps": "Order.id"
+            },
+            {
+              "name": "increment_id",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "type": "varchar(255)",
+              "nullable": true,
+              "maps": "Order.status",
+              "doc": "Where the order is on its way to the customer."
+            },
+            {
+              "name": "customer_id",
+              "type": "bigint unsigned",
+              "nullable": true,
+              "fk": {
+                "table": "shop.shop.db.customers",
+                "column": "id",
+                "onDelete": "set null"
+              },
+              "maps": "Order.customer_id"
+            },
+            {
+              "name": "grand_total",
+              "type": "decimal(12,4)",
+              "nullable": false,
+              "maps": "Order.grand_total"
+            },
+            {
+              "name": "placed_at",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "Order.placed_at"
+            },
+            {
+              "name": "created_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "Order.created_at"
+            },
+            {
+              "name": "updated_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "Order.updated_at"
+            },
+            {
+              "name": "channel",
+              "type": "varchar(32)",
+              "nullable": true
+            }
+          ],
+          "indexes": [
+            {
+              "name": "orders_increment_id_unique",
+              "columns": [
+                "increment_id"
+              ],
+              "unique": true
+            },
+            {
+              "name": "orders_status_placed_at_index",
+              "columns": [
+                "status",
+                "placed_at"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.shop.models-sales",
+            "block": "shop.shop.models-sales.order"
+          },
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Order.findOrFail",
+              "source": "testdata/shop/packages/Acme/Sales/src/Jobs/IndexOrder.php:31"
+            },
+            {
+              "operation": "write",
+              "method": "Order.create",
+              "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:32"
+            },
+            {
+              "operation": "read",
+              "method": "Order.findOrFail",
+              "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:60"
+            },
+            {
+              "operation": "write",
+              "method": "Order.update",
+              "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:64"
+            }
+          ]
+        },
+        {
+          "id": "shop.shop.db.order_items",
+          "name": "order_items",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigint unsigned",
+              "nullable": false,
+              "pk": true,
+              "maps": "OrderItem.id"
+            },
+            {
+              "name": "order_id",
+              "type": "int unsigned",
+              "nullable": false,
+              "fk": {
+                "table": "shop.shop.db.orders",
+                "column": "id",
+                "onDelete": "cascade"
+              },
+              "maps": "OrderItem.order_id"
+            },
+            {
+              "name": "sku",
+              "type": "varchar(64)",
+              "nullable": false,
+              "maps": "OrderItem.sku"
+            },
+            {
+              "name": "qty_ordered",
+              "type": "int unsigned",
+              "nullable": false,
+              "maps": "OrderItem.qty_ordered"
+            },
+            {
+              "name": "price",
+              "type": "decimal(12,4)",
+              "nullable": false,
+              "maps": "OrderItem.price"
+            },
+            {
+              "name": "created_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "OrderItem.created_at"
+            },
+            {
+              "name": "updated_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "OrderItem.updated_at"
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.shop.models-sales",
+            "block": "shop.shop.models-sales.order-item"
+          }
+        },
+        {
+          "id": "shop.shop.db.carts",
+          "name": "carts",
+          "columns": [
+            {
+              "name": "id",
+              "type": "int unsigned",
+              "nullable": false,
+              "pk": true,
+              "maps": "Cart.id"
+            },
+            {
+              "name": "is_guest",
+              "type": "boolean",
+              "nullable": false,
+              "maps": "Cart.is_guest"
+            },
+            {
+              "name": "items_count",
+              "type": "int",
+              "nullable": false,
+              "maps": "Cart.items_count"
+            },
+            {
+              "name": "customer_id",
+              "type": "bigint unsigned",
+              "nullable": true,
+              "fk": {
+                "table": "shop.shop.db.customers",
+                "column": "id",
+                "onDelete": "cascade"
+              },
+              "maps": "Cart.customer_id"
+            },
+            {
+              "name": "created_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "Cart.created_at"
+            },
+            {
+              "name": "updated_at",
+              "type": "timestamp",
+              "nullable": true,
+              "maps": "Cart.updated_at"
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.shop.models-checkout",
+            "block": "shop.shop.models-checkout.cart"
+          },
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Cart.find",
+              "source": "testdata/shop/packages/Acme/Checkout/src/Jobs/SendCartReminder.php:23"
+            }
+          ]
+        },
+        {
+          "id": "shop.shop.db.cart_items",
+          "name": "cart_items",
+          "columns": [
+            {
+              "name": "id",
+              "type": "int unsigned",
+              "nullable": false,
+              "pk": true,
+              "maps": "CartItem.id"
+            },
+            {
+              "name": "cart_id",
+              "type": "int unsigned",
+              "nullable": false,
+              "fk": {
+                "table": "shop.shop.db.carts",
+                "column": "id",
+                "onDelete": "cascade"
+              },
+              "maps": "CartItem.cart_id"
+            },
+            {
+              "name": "sku",
+              "type": "varchar(255)",
+              "nullable": false,
+              "maps": "CartItem.sku"
+            },
+            {
+              "name": "quantity",
+              "type": "int",
+              "nullable": false,
+              "maps": "CartItem.quantity"
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.shop.models-checkout",
+            "block": "shop.shop.models-checkout.cart-item"
+          }
+        }
+      ],
+      "source": "testdata/shop"
+    }
+  ]
+}

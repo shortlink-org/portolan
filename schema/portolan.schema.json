@@ -1550,10 +1550,32 @@
             "modules/*"
           ]
         },
+        "store": {
+          "type": "string",
+          "description": "Slug of the database the migrations describe and the models read and write. The store's id is the service id and this slug.",
+          "default": "db",
+          "examples": [
+            "mysql"
+          ]
+        },
+        "storeKind": {
+          "enum": [
+            "postgres",
+            "mysql",
+            "sqlite",
+            "other"
+          ],
+          "description": "Which database the migrations are the schema of. Read off config/database.php's default connection when left out - `env('DB_CONNECTION', 'mysql')` names it - and mysql when that cannot be read; given here, it wins."
+        },
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory. One extractor writes one file, so that a fragment carries the provenance of the run that produced it.",
           "default": "domain.json"
+        },
+        "storesOut": {
+          "type": "string",
+          "description": "Name of the store fragment, inside the step's output directory. Written when the migrations declare tables or the code reaches any.",
+          "default": "stores.json"
         },
         "openapiOut": {
           "type": "string",

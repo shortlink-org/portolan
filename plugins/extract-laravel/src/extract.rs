@@ -1,6 +1,7 @@
-//! One application in, one fragment out - two, when the routes prove an HTTP
-//! contract. A fragment, not a catalog: it carries one context and one
-//! service, and is merged with everything else before anything validates it.
+//! One application in, one fragment out - three, when the routes prove an
+//! HTTP contract and the migrations a database. A fragment, not a catalog:
+//! it carries one context and one service, and is merged with everything
+//! else before anything validates it.
 //!
 //! The service is the application; each module is a model group under it,
 //! the way a Django application is under extract-django. A monolith of
@@ -12,16 +13,19 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::catalog::{
-    Aggregate, Catalog, Context, Event, EventConsumer, EventVersion, Flow, FlowNode, HttpRoute, Participant, RpcMethod, RpcService, Service, Step, Wire,
+    Aggregate, Catalog, Channel, ChannelMessage, Column, Context, Event, EventConsumer, EventVersion, Flow, FlowNode, ForeignKey, Handoff, HttpRoute,
+    Participant, Persists, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
 };
 use crate::events::{self, Events, Kind, Listener};
-use crate::ids::{aggregate_id, event_id, sentence, service_id, short, slug, title};
+use crate::ids::{aggregate_id, block_id, event_id, sentence, service_id, short, slug, title};
+use crate::jobs::{self, Jobs};
 use crate::layout::{self, Module};
 use crate::models;
 use crate::openapi::{self, Op};
 use crate::protocol::{Builder, File, Input, Options, Response};
 use crate::routes::{self, Action, Endpoint};
 use crate::source::{Base, ClassInfo, MethodInfo, Tree, summary};
+use crate::stores;
 use crate::yaml::to_yaml;
 
 pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
@@ -70,11 +74,15 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
 
     let module_slugs: Vec<String> = modules.iter().map(|m| m.slug.clone()).collect();
     let events = events::read(&tree, &module_slugs);
+    let jobs = jobs::read(&tree);
+    let schema = stores::read_schema(&tree);
     let endpoints: Vec<Endpoint> = tree.files.iter().filter(|f| layout::is_route_file(&f.path)).flat_map(routes::read).collect();
 
     // Aggregates: one model group per module that has anything in it.
     let mut aggregates: Vec<Aggregate> = Vec::new();
     let mut event_ids: BTreeMap<String, String> = BTreeMap::new();
+    // table name → (aggregate id, block id, model): what a table persists.
+    let mut persisted: BTreeMap<String, (String, String, String)> = BTreeMap::new();
     for (i, m) in modules.iter().enumerate() {
         let agg_id = aggregate_id(&svc_id, &format!("models-{}", m.slug));
         for decl in events.decls.iter().filter(|d| d.module == i) {
@@ -85,6 +93,13 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         let agg_slug = format!("models-{}", m.slug);
         let agg_id = aggregate_id(&svc_id, &agg_slug);
         let found = models::read_models(&tree, i);
+        for model in &found {
+            persisted.entry(stores::table_of_model(model.class)).or_insert((
+                agg_id.clone(),
+                block_id(&agg_id, &slug(&model.class.name)),
+                model.class.fqn.clone(),
+            ));
+        }
         let entities = found.iter().map(|model| models::block_of(model, &agg_id)).collect::<Vec<_>>();
         let enums = models::read_enums(&tree, i, &found, &agg_id);
         let mut named = 0;
@@ -146,6 +161,47 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             enums,
         });
     }
+
+    // The store: the tables the migrations replay, and every access the
+    // code makes to one, whether or not a migration declared it.
+    let store_slug = if opts.store.is_empty() { "db".to_string() } else { opts.store.clone() };
+    let store_id = format!("{svc_id}.{store_slug}");
+    let mut table_accesses: BTreeMap<String, Vec<TableAccess>> = BTreeMap::new();
+    for (file, chain, owner) in events::every_chain(&tree) {
+        let Some((class, _)) = owner else { continue };
+        let Some(access) = stores::access_of(&tree, class, chain) else { continue };
+        let entry = table_accesses.entry(access.table.clone()).or_default();
+        let source = format!("{}:{}", rel(&file.path), chain.line);
+        if !entry.iter().any(|a| a.method == access.method && a.source == source) {
+            entry.push(TableAccess {
+                operation: access.operation,
+                method: access.method,
+                source,
+            });
+        }
+    }
+    let has_store = !schema.tables.is_empty() || !table_accesses.is_empty();
+    let store_kind = if !opts.store_kind.is_empty() {
+        opts.store_kind.clone()
+    } else {
+        stores::env_default(&root.join("config").join("database.php"), "DB_CONNECTION")
+            .map(|c| stores::store_kind(&c).to_string())
+            .unwrap_or_else(|| "mysql".into())
+    };
+    let queue_driver = stores::env_default(&root.join("config").join("queue.php"), "QUEUE_CONNECTION").unwrap_or_else(|| "sync".into());
+
+    let lanes = Lanes {
+        svc_id: svc_id.clone(),
+        context: context.clone(),
+        store: if has_store {
+            Some((store_id.clone(), format!("{service}-{store_slug}")))
+        } else {
+            None
+        },
+        events: &events,
+        event_ids: &event_ids,
+        jobs: &jobs,
+    };
 
     // Endpoints: one interface per module with routes, and one operation per route.
     let openapi_name = if opts.openapi_out.is_empty() {
@@ -234,18 +290,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             },
         });
 
-        // The flow: the call in, then whatever the handler publishes, followed
+        // The flow: the call in, then whatever the handler does, followed
         // through the classes it holds.
-        let mut publishes = Vec::new();
+        let mut effects = Vec::new();
         if let Some((class, method)) = &controller {
-            follow(&tree, class, method, 5, &mut BTreeSet::new(), &mut publishes);
-        }
-        let mut flow_slug = format!("{service}-{}", op_id.replace('_', "-"));
-        let stem = flow_slug.clone();
-        let mut n = 2;
-        while !flow_slugs.insert(flow_slug.clone()) {
-            flow_slug = format!("{stem}-{n}");
-            n += 1;
+            follow(&tree, &jobs, class, method, 5, &mut BTreeSet::new(), &mut effects);
         }
         let mut participants = vec![
             Participant {
@@ -254,12 +303,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                 context: None,
                 label: None,
             },
-            Participant {
-                id: svc_id.clone(),
-                kind: "service".into(),
-                context: Some(context.clone()),
-                label: None,
-            },
+            lanes.service(),
         ];
         let mut steps = vec![FlowNode::Step(Step {
             id: "s1".into(),
@@ -271,18 +315,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             reference: None,
             note: None,
             line: Some(format!("{}:{}", rel(&ep.file), ep.line)),
+            handoff: None,
+            store_access: None,
         })];
-        if !publishes.is_empty() {
-            participants.push(Participant {
-                id: "bus".into(),
-                kind: "broker".into(),
-                context: None,
-                label: None,
-            });
-        }
-        for (key, file, line) in &publishes {
-            steps.push(publish_step(steps.len() + 1, &svc_id, key, &events, &event_ids, &rel(file), *line));
-        }
+        lanes.steps(&effects, &mut steps, &mut participants, &rel);
+        let flow_slug = unique(&mut flow_slugs, format!("{service}-{}", op_id.replace('_', "-")));
         flows.push(Flow {
             id: format!("flow.{flow_slug}"),
             slug: flow_slug,
@@ -315,13 +352,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         let handler = tree.class(&class).and_then(|c| find_method(&tree, c, &method));
         let first = listeners[0];
         let source_file = tree.file_of(&class).map(|f| f.path.clone()).unwrap_or_else(|| first.file.clone());
-        let mut flow_slug = format!("{service}-{}-{}", slug(short(&class)), slug(&method));
-        let stem = flow_slug.clone();
-        let mut n = 2;
-        while !flow_slugs.insert(flow_slug.clone()) {
-            flow_slug = format!("{stem}-{n}");
-            n += 1;
-        }
+        let flow_slug = unique(&mut flow_slugs, format!("{service}-{}-{}", slug(short(&class)), slug(&method)));
         let mut steps = Vec::new();
         for l in &listeners {
             let known = event_ids.contains_key(&l.key);
@@ -350,13 +381,14 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                     Some(format!("Reacts to `{}`, which is not an event this tree dispatches.", l.key))
                 },
                 line: Some(format!("{}:{line}", rel(&source_file))),
+                handoff: None,
+                store_access: None,
             }));
         }
-        let mut publishes = Vec::new();
-        follow(&tree, &class, &method, 5, &mut BTreeSet::new(), &mut publishes);
-        for (key, file, line) in &publishes {
-            steps.push(publish_step(steps.len() + 1, &svc_id, key, &events, &event_ids, &rel(file), *line));
-        }
+        let mut effects = Vec::new();
+        follow(&tree, &jobs, &class, &method, 5, &mut BTreeSet::new(), &mut effects);
+        let mut participants = vec![lanes.bus(), lanes.service()];
+        lanes.steps(&effects, &mut steps, &mut participants, &rel);
         // `handle` says nothing; the class was named for what it does.
         let flow_name = if matches!(method.as_str(), "handle" | "__invoke") {
             sentence(&slug(short(&class)))
@@ -370,27 +402,124 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             summary: handler.map(|(_, m)| summary(&m.doc)).unwrap_or_default(),
             source: rel(&source_file),
             owner: context.clone(),
-            participants: vec![
-                Participant {
-                    id: "bus".into(),
-                    kind: "broker".into(),
-                    context: None,
-                    label: None,
-                },
-                Participant {
-                    id: svc_id.clone(),
-                    kind: "service".into(),
-                    context: Some(context.clone()),
-                    label: None,
-                },
-            ],
+            participants,
             steps,
+        });
+    }
+
+    // Workers: one flow per job, from the queue in.
+    let mut sorted_jobs: Vec<&jobs::Job> = jobs.jobs.iter().collect();
+    sorted_jobs.sort_by(|a, c| a.fqn.cmp(&c.fqn));
+    for job in &sorted_jobs {
+        let queue = jobs.queue_of(&job.fqn, None);
+        let handler = tree
+            .class(&job.fqn)
+            .and_then(|c| find_method(&tree, c, "handle").or_else(|| find_method(&tree, c, "__invoke")));
+        let flow_slug = unique(&mut flow_slugs, format!("{service}-job-{}", slug(&job.name)));
+        let mut participants = vec![lanes.queue(&queue), lanes.service()];
+        let mut steps = vec![FlowNode::Step(Step {
+            id: "s1".into(),
+            from: lanes.queue(&queue).id,
+            to: svc_id.clone(),
+            kind: "call".into(),
+            label: format!("work {}", job.name),
+            status: "declared".into(),
+            reference: None,
+            note: None,
+            line: Some(format!("{}:{}", rel(&job.file), handler.map(|(_, m)| m.line).unwrap_or(job.line))),
+            handoff: Some(Handoff {
+                kind: "job".into(),
+                transport: "laravel-queue".into(),
+                channel: queue.clone(),
+                message: job.fqn.clone(),
+                direction: "receive".into(),
+            }),
+            store_access: None,
+        })];
+        let mut effects = Vec::new();
+        if let Some((_, m)) = handler {
+            follow(&tree, &jobs, &job.fqn, &m.name, 5, &mut BTreeSet::new(), &mut effects);
+        }
+        lanes.steps(&effects, &mut steps, &mut participants, &rel);
+        flows.push(Flow {
+            id: format!("flow.{flow_slug}"),
+            slug: flow_slug,
+            name: sentence(&slug(&job.name)),
+            summary: summary(&job.doc),
+            source: rel(&job.file),
+            owner: context.clone(),
+            participants,
+            steps,
+        });
+    }
+
+    // Channels: one per queue, with what is put on it and what works it.
+    let mut queues: BTreeMap<String, Vec<&jobs::Job>> = BTreeMap::new();
+    for job in &sorted_jobs {
+        queues.entry(jobs.queue_of(&job.fqn, None)).or_default().push(job);
+    }
+    for d in &jobs.dispatches {
+        if let Some(job) = jobs.job(&d.job) {
+            let queue = jobs.queue_of(&d.job, d.queue.as_deref());
+            let entry = queues.entry(queue).or_default();
+            if !entry.iter().any(|j| j.fqn == job.fqn) {
+                entry.push(job);
+            }
+        }
+    }
+    let mut channels: Vec<Channel> = Vec::new();
+    for (queue, jobs_on) in &queues {
+        let mut messages = Vec::new();
+        let mut source = String::new();
+        let mut jobs_on: Vec<&&jobs::Job> = jobs_on.iter().collect();
+        jobs_on.sort_by(|a, c| a.fqn.cmp(&c.fqn));
+        for job in jobs_on {
+            let sent = jobs
+                .dispatches
+                .iter()
+                .filter(|d| d.job == job.fqn && jobs.queue_of(&d.job, d.queue.as_deref()) == *queue)
+                .min_by_key(|d| (d.file.clone(), d.line));
+            if let Some(d) = sent {
+                if source.is_empty() {
+                    source = format!("{}:{}", rel(&d.file), d.line);
+                }
+                messages.push(ChannelMessage {
+                    name: job.fqn.clone(),
+                    title: job.name.clone(),
+                    doc: summary(&job.doc),
+                    direction: "send".into(),
+                });
+            }
+            let doc = summary(&job.doc);
+            messages.push(ChannelMessage {
+                name: job.fqn.clone(),
+                title: job.name.clone(),
+                doc: format!(
+                    "Worked by `{}::handle` on the `{queue}` queue.{}{doc}",
+                    job.name,
+                    if doc.is_empty() { "" } else { " " }
+                ),
+                direction: "receive".into(),
+            });
+        }
+        if source.is_empty()
+            && let Some(job) = jobs_on_first(&queues[queue])
+        {
+            source = format!("{}:{}", rel(&job.file), job.line);
+        }
+        channels.push(Channel {
+            address: queue.clone(),
+            kind: "job".into(),
+            title: format!("Queue · {queue}"),
+            doc: format!("Jobs queued and worked through Laravel's queue over {queue_driver}."),
+            messages,
+            source,
         });
     }
 
     let svc = Service {
         id: svc_id.clone(),
-        slug: service,
+        slug: service.clone(),
         name: name.clone(),
         repo: if opts.repo.is_empty() { composer_repo(&root) } else { opts.repo.clone() },
         path: rel(&root),
@@ -398,6 +527,8 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         provides: rpc_services,
         consumes: vec![],
         aggregates,
+        channels,
+        stores: vec![],
     };
     if svc.aggregates.is_empty() && !modules.is_empty() {
         b.warn(
@@ -423,6 +554,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         defs: serde_json::Map::new(),
         flows,
         adrs: vec![],
+        stores: vec![],
     };
     let contents = serde_json::to_string_pretty(&fragment).unwrap_or_default() + "\n";
     b.files.push(File {
@@ -435,6 +567,147 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             contents: to_yaml(&openapi::document(&ops, &name)),
         });
     }
+
+    // The store fragment: the tables, what each persists, and who touches it.
+    if has_store {
+        let mut tables: Vec<Table> = Vec::new();
+        let mut seen: BTreeSet<String> = BTreeSet::new();
+        let mut missing_fk: BTreeSet<String> = BTreeSet::new();
+        for def in &schema.tables {
+            seen.insert(def.name.clone());
+            let persists = persisted.get(&def.name);
+            let model_fields: Vec<String> = persists
+                .and_then(|(_, _, fqn)| tree.class(fqn))
+                .map(|c| models::fields_of(c).into_iter().map(|f| f.name).collect())
+                .unwrap_or_default();
+            let model_name = persists.and_then(|(_, _, fqn)| tree.class(fqn)).map(|c| c.name.clone());
+            tables.push(Table {
+                id: format!("{store_id}.{}", def.name),
+                name: def.name.clone(),
+                doc: String::new(),
+                columns: def
+                    .columns
+                    .iter()
+                    .map(|c| Column {
+                        name: c.name.clone(),
+                        type_: c.type_.clone(),
+                        nullable: c.nullable,
+                        pk: c.pk,
+                        // A key into a table this tree does not create - the
+                        // framework's, or a package not read - has nowhere to
+                        // point; it is dropped and reported once per target.
+                        fk: c.fk.clone().and_then(|f| {
+                            let known = schema
+                                .tables
+                                .iter()
+                                .any(|t| t.name == f.table && t.columns.iter().any(|col| col.name == f.column));
+                            if known {
+                                Some(ForeignKey {
+                                    table: format!("{store_id}.{}", f.table),
+                                    ..f
+                                })
+                            } else {
+                                missing_fk.insert(format!("{}.{}", f.table, f.column));
+                                None
+                            }
+                        }),
+                        maps: match &model_name {
+                            Some(model) if model_fields.contains(&c.name) => Some(format!("{model}.{}", c.name)),
+                            _ => None,
+                        },
+                        doc: c.doc.clone(),
+                    })
+                    .collect(),
+                indexes: def
+                    .indexes
+                    .iter()
+                    .map(|i| crate::catalog::TableIndex {
+                        name: i.name.clone(),
+                        columns: i.columns.clone(),
+                        unique: i.unique,
+                    })
+                    .collect(),
+                persists: persists.map(|(aggregate, block, _)| Persists {
+                    aggregate: aggregate.clone(),
+                    block: block.clone(),
+                }),
+                accesses: table_accesses.remove(&def.name).unwrap_or_default(),
+            });
+        }
+        for target in &missing_fk {
+            b.warn(
+                &store_id,
+                format!("a foreign key points at `{target}`, which no migration in the tree creates; the key is left off"),
+            );
+        }
+        // A table the code reaches that no migration here declares: kept,
+        // with no columns, so that the access has somewhere to land.
+        for (name, accesses) in table_accesses {
+            if seen.contains(&name) {
+                continue;
+            }
+            let persists = persisted.get(&name);
+            b.warn(
+                &format!("{store_id}.{name}"),
+                format!("the code reads or writes `{name}`, which no migration in the tree creates; the table is kept with no columns"),
+            );
+            tables.push(Table {
+                id: format!("{store_id}.{name}"),
+                name: name.clone(),
+                doc: String::new(),
+                columns: vec![],
+                indexes: vec![],
+                persists: persists.map(|(aggregate, block, _)| Persists {
+                    aggregate: aggregate.clone(),
+                    block: block.clone(),
+                }),
+                accesses,
+            });
+        }
+        let store_fragment = Catalog {
+            contexts: vec![Context {
+                id: context.clone(),
+                slug: context.clone(),
+                name: String::new(),
+                summary: String::new(),
+                classification: None,
+                services: vec![Service {
+                    id: svc_id.clone(),
+                    slug: service.clone(),
+                    name: String::new(),
+                    repo: String::new(),
+                    path: String::new(),
+                    readme: String::new(),
+                    provides: vec![],
+                    consumes: vec![],
+                    aggregates: vec![],
+                    channels: vec![],
+                    stores: vec![store_id.clone()],
+                }],
+            }],
+            defs: serde_json::Map::new(),
+            flows: vec![],
+            adrs: vec![],
+            stores: vec![Store {
+                id: store_id.clone(),
+                slug: store_slug,
+                name: format!("{name} database"),
+                kind: store_kind,
+                owner: svc_id.clone(),
+                tables,
+                source: rel(&root),
+            }],
+        };
+        b.files.push(File {
+            name: if opts.stores_out.is_empty() {
+                "stores.json".into()
+            } else {
+                opts.stores_out.clone()
+            },
+            contents: serde_json::to_string_pretty(&store_fragment).unwrap_or_default() + "\n",
+        });
+    }
+
     Response {
         files: b.files,
         warnings: b.warnings,
@@ -442,19 +715,152 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     }
 }
 
-fn publish_step(n: usize, svc_id: &str, key: &str, events: &Events, event_ids: &BTreeMap<String, String>, file: &str, line: u32) -> FlowNode {
-    let known = event_ids.get(key);
-    FlowNode::Step(Step {
-        id: format!("s{n}"),
-        from: svc_id.to_string(),
-        to: "bus".into(),
-        kind: "event".into(),
-        label: events.display(key),
-        status: if known.is_some() { "declared".into() } else { "unresolved".into() },
-        reference: known.cloned(),
-        note: None,
-        line: Some(format!("{file}:{line}")),
-    })
+fn jobs_on_first<'a>(jobs: &[&'a jobs::Job]) -> Option<&'a jobs::Job> {
+    jobs.iter().min_by_key(|j| (&j.file, j.line)).copied()
+}
+
+/// A slug nobody else in the run has: the stem, or the stem numbered.
+fn unique(taken: &mut BTreeSet<String>, stem: String) -> String {
+    let mut candidate = stem.clone();
+    let mut n = 2;
+    while !taken.insert(candidate.clone()) {
+        candidate = format!("{stem}-{n}");
+        n += 1;
+    }
+    candidate
+}
+
+/// What a method does that a flow draws: an event out, a job handed to a
+/// queue, a table read or written.
+#[derive(Debug, Clone)]
+enum Effect {
+    Publish { key: String, file: PathBuf, line: u32 },
+    Enqueue { job: String, queue: String, file: PathBuf, line: u32 },
+    Access { method: String, file: PathBuf, line: u32 },
+}
+
+/// The lanes a flow can have besides the caller: the service, the bus, the
+/// store, and one broker per queue - and how each effect becomes a step.
+struct Lanes<'a> {
+    svc_id: String,
+    context: String,
+    store: Option<(String, String)>,
+    events: &'a Events,
+    event_ids: &'a BTreeMap<String, String>,
+    jobs: &'a Jobs,
+}
+
+impl Lanes<'_> {
+    fn service(&self) -> Participant {
+        Participant {
+            id: self.svc_id.clone(),
+            kind: "service".into(),
+            context: Some(self.context.clone()),
+            label: None,
+        }
+    }
+    fn bus(&self) -> Participant {
+        Participant {
+            id: "bus".into(),
+            kind: "broker".into(),
+            context: None,
+            label: None,
+        }
+    }
+    fn queue(&self, queue: &str) -> Participant {
+        Participant {
+            id: format!("queue-{}", slug(queue)),
+            kind: "broker".into(),
+            context: None,
+            label: Some(format!("Queue · {queue}")),
+        }
+    }
+    fn store_lane(&self) -> Option<Participant> {
+        self.store.as_ref().map(|(_, id)| Participant {
+            id: id.clone(),
+            kind: "store".into(),
+            context: Some(self.context.clone()),
+            label: None,
+        })
+    }
+
+    fn steps(&self, effects: &[Effect], steps: &mut Vec<FlowNode>, participants: &mut Vec<Participant>, rel: &dyn Fn(&Path) -> String) {
+        let mut lane = |p: Participant| {
+            if !participants.iter().any(|x| x.id == p.id) {
+                participants.push(p);
+            }
+        };
+        for effect in effects {
+            let n = steps.len() + 1;
+            match effect {
+                Effect::Publish { key, file, line } => {
+                    lane(self.bus());
+                    let known = self.event_ids.get(key);
+                    steps.push(FlowNode::Step(Step {
+                        id: format!("s{n}"),
+                        from: self.svc_id.clone(),
+                        to: "bus".into(),
+                        kind: "event".into(),
+                        label: self.events.display(key),
+                        status: if known.is_some() { "declared".into() } else { "unresolved".into() },
+                        reference: known.cloned(),
+                        note: None,
+                        line: Some(format!("{}:{line}", rel(file))),
+                        handoff: None,
+                        store_access: None,
+                    }));
+                }
+                Effect::Enqueue { job, queue, file, line } => {
+                    let broker = self.queue(queue);
+                    let to = broker.id.clone();
+                    lane(broker);
+                    steps.push(FlowNode::Step(Step {
+                        id: format!("s{n}"),
+                        from: self.svc_id.clone(),
+                        to,
+                        kind: "call".into(),
+                        label: format!(
+                            "enqueue {}",
+                            self.jobs.job(job).map(|j| j.name.clone()).unwrap_or_else(|| short(job).to_string())
+                        ),
+                        status: "declared".into(),
+                        reference: None,
+                        note: None,
+                        line: Some(format!("{}:{line}", rel(file))),
+                        handoff: Some(Handoff {
+                            kind: "job".into(),
+                            transport: "laravel-queue".into(),
+                            channel: queue.clone(),
+                            message: job.clone(),
+                            direction: "send".into(),
+                        }),
+                        store_access: None,
+                    }));
+                }
+                Effect::Access { method, file, line } => {
+                    let Some(store) = self.store_lane() else { continue };
+                    let to = store.id.clone();
+                    lane(store);
+                    steps.push(FlowNode::Step(Step {
+                        id: format!("s{n}"),
+                        from: self.svc_id.clone(),
+                        to,
+                        kind: "call".into(),
+                        label: method.clone(),
+                        status: "declared".into(),
+                        reference: None,
+                        note: None,
+                        line: Some(format!("{}:{line}", rel(file))),
+                        handoff: None,
+                        store_access: Some(StoreAccess {
+                            store: self.store.as_ref().map(|(id, _)| id.clone()).unwrap_or_default(),
+                            method: method.clone(),
+                        }),
+                    }));
+                }
+            }
+        }
+    }
 }
 
 /// A method by name on a class or, failing that, up its parents in the tree.
@@ -478,10 +884,11 @@ fn find_method<'a>(tree: &'a Tree, class: &'a ClassInfo, name: &str) -> Option<(
     None
 }
 
-/// What a method publishes, itself and through the methods it calls on the
+/// What a method does, itself and through the methods it calls on the
 /// classes it holds: `$this->orders->create(...)` reaches OrderRepository's
-/// `create` when the constructor promoted `$orders` with that type.
-fn follow(tree: &Tree, class: &str, method: &str, depth: usize, visited: &mut BTreeSet<(String, String)>, out: &mut Vec<(String, PathBuf, u32)>) {
+/// `create` when the constructor promoted `$orders` with that type, and a
+/// step is drawn for each event, job and table on the way.
+fn follow(tree: &Tree, jobs: &Jobs, class: &str, method: &str, depth: usize, visited: &mut BTreeSet<(String, String)>, out: &mut Vec<Effect>) {
     if depth == 0 || !visited.insert((class.to_string(), method.to_string())) {
         return;
     }
@@ -494,9 +901,41 @@ fn follow(tree: &Tree, class: &str, method: &str, depth: usize, visited: &mut BT
     }
     for chain in flat {
         if let Some(key) = events::dispatched(tree, chain) {
-            if !out.iter().any(|(k, f, l)| k == &key && f == &file.path && *l == chain.line) {
-                out.push((key, file.path.clone(), chain.line));
+            push_unique(
+                out,
+                Effect::Publish {
+                    key,
+                    file: file.path.clone(),
+                    line: chain.line,
+                },
+            );
+            continue;
+        }
+        let enqueued = jobs::dispatched(tree, jobs, chain);
+        if !enqueued.is_empty() {
+            for (job, queue) in enqueued {
+                let queue = jobs.queue_of(&job, queue.as_deref());
+                push_unique(
+                    out,
+                    Effect::Enqueue {
+                        job,
+                        queue,
+                        file: file.path.clone(),
+                        line: chain.line,
+                    },
+                );
             }
+            continue;
+        }
+        if let Some(access) = stores::access_of(tree, owner, chain) {
+            push_unique(
+                out,
+                Effect::Access {
+                    method: access.method,
+                    file: file.path.clone(),
+                    line: chain.line,
+                },
+            );
             continue;
         }
         let target = match &chain.base {
@@ -523,8 +962,40 @@ fn follow(tree: &Tree, class: &str, method: &str, depth: usize, visited: &mut BT
             _ => None,
         };
         if let Some((target, name)) = target.filter(|(t, _)| tree.class(t).is_some()) {
-            follow(tree, &target, &name, depth - 1, visited, out);
+            follow(tree, jobs, &target, &name, depth - 1, visited, out);
         }
+    }
+}
+
+fn push_unique(out: &mut Vec<Effect>, effect: Effect) {
+    let same = |a: &Effect| match (a, &effect) {
+        (Effect::Publish { key: k1, file: f1, line: l1 }, Effect::Publish { key: k2, file: f2, line: l2 }) => k1 == k2 && f1 == f2 && l1 == l2,
+        (
+            Effect::Enqueue {
+                job: j1, file: f1, line: l1, ..
+            },
+            Effect::Enqueue {
+                job: j2, file: f2, line: l2, ..
+            },
+        ) => j1 == j2 && f1 == f2 && l1 == l2,
+        (
+            Effect::Access {
+                method: m1,
+                file: f1,
+                line: l1,
+                ..
+            },
+            Effect::Access {
+                method: m2,
+                file: f2,
+                line: l2,
+                ..
+            },
+        ) => m1 == m2 && f1 == f2 && l1 == l2,
+        _ => false,
+    };
+    if !out.iter().any(same) {
+        out.push(effect);
     }
 }
 

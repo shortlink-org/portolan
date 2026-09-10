@@ -571,6 +571,23 @@
                   }
                 },
                 {
+                  "id": "shop.shop.models-sales.SalesOrderIndexed",
+                  "slug": "sales-order-indexed",
+                  "name": "SalesOrderIndexed",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Sales/src/Jobs/IndexOrder.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "sales.order.indexed"
+                  }
+                },
+                {
                   "id": "shop.shop.models-sales.SalesOrderCancelBefore",
                   "slug": "sales-order-cancel-before",
                   "name": "SalesOrderCancelBefore",
@@ -663,6 +680,50 @@
                 }
               ]
             }
+          ],
+          "channels": [
+            {
+              "address": "indexing",
+              "kind": "job",
+              "title": "Queue · indexing",
+              "doc": "Jobs queued and worked through Laravel's queue over redis.",
+              "messages": [
+                {
+                  "name": "Acme\\Sales\\Jobs\\IndexOrder",
+                  "title": "IndexOrder",
+                  "doc": "Puts the order in the search index, so the back office finds it.",
+                  "direction": "send"
+                },
+                {
+                  "name": "Acme\\Sales\\Jobs\\IndexOrder",
+                  "title": "IndexOrder",
+                  "doc": "Worked by `IndexOrder::handle` on the `indexing` queue. Puts the order in the search index, so the back office finds it.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:50"
+            },
+            {
+              "address": "mail",
+              "kind": "job",
+              "title": "Queue · mail",
+              "doc": "Jobs queued and worked through Laravel's queue over redis.",
+              "messages": [
+                {
+                  "name": "Acme\\Checkout\\Jobs\\SendCartReminder",
+                  "title": "SendCartReminder",
+                  "doc": "Reminds a customer of what they left in the cart.",
+                  "direction": "send"
+                },
+                {
+                  "name": "Acme\\Checkout\\Jobs\\SendCartReminder",
+                  "title": "SendCartReminder",
+                  "doc": "Worked by `SendCartReminder::handle` on the `mail` queue. Reminds a customer of what they left in the cart.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:30"
+            }
           ]
         }
       ]
@@ -724,6 +785,12 @@
           "id": "bus",
           "kind": "broker",
           "context": null
+        },
+        {
+          "id": "queue-mail",
+          "kind": "broker",
+          "context": null,
+          "label": "Queue · mail"
         }
       ],
       "steps": [
@@ -746,7 +813,24 @@
           "label": "CheckoutCartAddAfter",
           "status": "declared",
           "ref": "shop.shop.models-checkout.CheckoutCartAddAfter",
-          "line": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:27"
+          "line": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:28"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.shop",
+          "to": "queue-mail",
+          "kind": "call",
+          "label": "enqueue SendCartReminder",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:30",
+          "handoff": {
+            "kind": "job",
+            "transport": "laravel-queue",
+            "channel": "mail",
+            "message": "Acme\\Checkout\\Jobs\\SendCartReminder",
+            "direction": "send"
+          }
         }
       ]
     },
@@ -794,7 +878,7 @@
           "label": "CheckoutCartItemDeleteAfter",
           "status": "declared",
           "ref": "shop.shop.models-checkout.CheckoutCartItemDeleteAfter",
-          "line": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:36"
+          "line": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:39"
         }
       ]
     },
@@ -852,6 +936,17 @@
           "id": "bus",
           "kind": "broker",
           "context": null
+        },
+        {
+          "id": "shop-db",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "queue-indexing",
+          "kind": "broker",
+          "context": null,
+          "label": "Queue · indexing"
         }
       ],
       "steps": [
@@ -874,18 +969,21 @@
           "label": "CheckoutOrderSaveBefore",
           "status": "declared",
           "ref": "shop.shop.models-checkout.CheckoutOrderSaveBefore",
-          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:20"
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:30"
         },
         {
           "type": "step",
           "id": "s3",
           "from": "shop.shop",
-          "to": "bus",
-          "kind": "event",
-          "label": "CheckoutOrderOrderitemSaveBefore",
+          "to": "shop-db",
+          "kind": "call",
+          "label": "Order.create",
           "status": "declared",
-          "ref": "shop.shop.models-checkout.CheckoutOrderOrderitemSaveBefore",
-          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:25"
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:32",
+          "storeAccess": {
+            "store": "shop.shop.db",
+            "method": "Order.create"
+          }
         },
         {
           "type": "step",
@@ -893,10 +991,10 @@
           "from": "shop.shop",
           "to": "bus",
           "kind": "event",
-          "label": "OrderPlaced",
+          "label": "CheckoutOrderOrderitemSaveBefore",
           "status": "declared",
-          "ref": "shop.shop.models-sales.OrderPlaced",
-          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:29"
+          "ref": "shop.shop.models-checkout.CheckoutOrderOrderitemSaveBefore",
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:35"
         },
         {
           "type": "step",
@@ -904,10 +1002,38 @@
           "from": "shop.shop",
           "to": "bus",
           "kind": "event",
+          "label": "OrderPlaced",
+          "status": "declared",
+          "ref": "shop.shop.models-sales.OrderPlaced",
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:39"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
           "label": "CheckoutOrderSaveAfter",
           "status": "declared",
           "ref": "shop.shop.models-checkout.CheckoutOrderSaveAfter",
-          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:31"
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:41"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "shop.shop",
+          "to": "queue-indexing",
+          "kind": "call",
+          "label": "enqueue IndexOrder",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:50",
+          "handoff": {
+            "kind": "job",
+            "transport": "laravel-queue",
+            "channel": "indexing",
+            "message": "Acme\\Sales\\Jobs\\IndexOrder",
+            "direction": "send"
+          }
         }
       ]
     },
@@ -1210,6 +1336,140 @@
           "status": "declared",
           "ref": "shop.shop.models-checkout.InventoryStockReserved",
           "line": "testdata/shop/packages/Acme/Checkout/src/Listeners/ReserveStockOnOrderPlaced.php:16"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-job-send-cart-reminder",
+      "slug": "shop-job-send-cart-reminder",
+      "name": "Send cart reminder",
+      "summary": "Reminds a customer of what they left in the cart.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Jobs/SendCartReminder.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "queue-mail",
+          "kind": "broker",
+          "context": null,
+          "label": "Queue · mail"
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "shop-db",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "queue-mail",
+          "to": "shop.shop",
+          "kind": "call",
+          "label": "work SendCartReminder",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Jobs/SendCartReminder.php:21",
+          "handoff": {
+            "kind": "job",
+            "transport": "laravel-queue",
+            "channel": "mail",
+            "message": "Acme\\Checkout\\Jobs\\SendCartReminder",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "shop-db",
+          "kind": "call",
+          "label": "Cart.find",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Jobs/SendCartReminder.php:23",
+          "storeAccess": {
+            "store": "shop.shop.db",
+            "method": "Cart.find"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-job-index-order",
+      "slug": "shop-job-index-order",
+      "name": "Index order",
+      "summary": "Puts the order in the search index, so the back office finds it.",
+      "source": "testdata/shop/packages/Acme/Sales/src/Jobs/IndexOrder.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "queue-indexing",
+          "kind": "broker",
+          "context": null,
+          "label": "Queue · indexing"
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "shop-db",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "queue-indexing",
+          "to": "shop.shop",
+          "kind": "call",
+          "label": "work IndexOrder",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Sales/src/Jobs/IndexOrder.php:29",
+          "handoff": {
+            "kind": "job",
+            "transport": "laravel-queue",
+            "channel": "indexing",
+            "message": "Acme\\Sales\\Jobs\\IndexOrder",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "shop-db",
+          "kind": "call",
+          "label": "Order.findOrFail",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Sales/src/Jobs/IndexOrder.php:31",
+          "storeAccess": {
+            "store": "shop.shop.db",
+            "method": "Order.findOrFail"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "SalesOrderIndexed",
+          "status": "declared",
+          "ref": "shop.shop.models-sales.SalesOrderIndexed",
+          "line": "testdata/shop/packages/Acme/Sales/src/Jobs/IndexOrder.php:33"
         }
       ]
     }

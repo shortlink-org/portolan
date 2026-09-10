@@ -62,7 +62,7 @@ fn declares_class_events_with_payloads_and_named_events_without() {
     let fragment = common::fragment();
     let sales = &fragment["contexts"][0]["services"][0]["aggregates"][2];
     let names: Vec<&str> = sales["events"].as_array().unwrap().iter().map(|e| e["name"].as_str().unwrap()).collect();
-    assert_eq!(names, ["OrderPlaced", "SalesOrderCancelBefore", "SalesOrderCancelAfter"]);
+    assert_eq!(names, ["OrderPlaced", "SalesOrderIndexed", "SalesOrderCancelBefore", "SalesOrderCancelAfter"]);
 
     let placed = &sales["events"][0];
     assert_eq!(placed["wire"]["name"], "Acme\\Sales\\Events\\OrderPlaced");
@@ -80,7 +80,7 @@ fn declares_class_events_with_payloads_and_named_events_without() {
     let checkout = &fragment["contexts"][0]["services"][0]["aggregates"][0];
     let names: Vec<&str> = checkout["events"].as_array().unwrap().iter().map(|e| e["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"CheckoutOrderSaveAfter"), "{names:?}");
-    let cancel = &sales["events"][2];
+    let cancel = &sales["events"][3];
     assert_eq!(cancel["wire"]["name"], "sales.order.cancel.after");
     assert_eq!(cancel["versions"][0]["fields"].as_array().unwrap().len(), 0);
     assert_eq!(cancel["consumers"][0]["note"], "ReleaseStock::onOrderCanceled");
@@ -158,16 +158,26 @@ fn follows_a_request_into_what_it_publishes_and_a_listener_out_of_what_it_reacts
         [
             "rpc shop_checkout_onepage_orders_store declared",
             "event CheckoutOrderSaveBefore declared",
+            "call Order.create declared",
             "event CheckoutOrderOrderitemSaveBefore declared",
             "event OrderPlaced declared",
             "event CheckoutOrderSaveAfter declared",
+            "call enqueue IndexOrder declared",
         ]
     );
-    assert_eq!(place["steps"][3]["ref"], "shop.shop.models-sales.OrderPlaced");
+    assert_eq!(place["steps"][4]["ref"], "shop.shop.models-sales.OrderPlaced");
     assert_eq!(
-        place["steps"][3]["line"],
-        "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:29"
+        place["steps"][4]["line"],
+        "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:39"
     );
+    // The repository's `model()` names a Concord contract; the model implementing it owns the table.
+    assert_eq!(place["steps"][2]["to"], "shop-db");
+    assert_eq!(place["steps"][2]["storeAccess"]["store"], "shop.shop.db");
+    assert_eq!(place["steps"][6]["to"], "queue-indexing");
+    assert_eq!(place["steps"][6]["handoff"]["message"], "Acme\\Sales\\Jobs\\IndexOrder");
+    assert_eq!(place["steps"][6]["handoff"]["direction"], "send");
+    let lanes: Vec<&str> = place["participants"].as_array().unwrap().iter().map(|p| p["id"].as_str().unwrap()).collect();
+    assert_eq!(lanes, ["client", "shop.shop", "bus", "shop-db", "queue-indexing"]);
 
     let reserve = flow("shop-reserve-stock-on-order-placed-handle");
     assert_eq!(reserve["name"], "Reserve stock on order placed");
@@ -180,6 +190,113 @@ fn follows_a_request_into_what_it_publishes_and_a_listener_out_of_what_it_reacts
 
     // A route answering every verb draws no flow.
     assert!(flows.iter().all(|f| f["slug"] != "shop-shop-customer"));
+}
+
+#[test]
+fn replays_the_migrations_into_the_store_and_says_who_touches_what() {
+    let stores = common::stores();
+    let store = &stores["stores"][0];
+    assert_eq!(store["id"], "shop.shop.db");
+    assert_eq!(store["kind"], "mysql", "config/database.php names mysql as the default connection");
+    assert_eq!(store["owner"], "shop.shop");
+    assert_eq!(stores["contexts"][0]["services"][0]["stores"][0], "shop.shop.db");
+
+    let names: Vec<&str> = store["tables"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
+    assert_eq!(
+        names,
+        ["customers", "orders", "order_items", "carts", "cart_items"],
+        "in migration order, across modules"
+    );
+    let orders = &store["tables"][1];
+    assert_eq!(orders["persists"]["block"], "shop.shop.models-sales.order");
+    let cols: Vec<String> = orders["columns"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| format!("{}:{}", c["name"].as_str().unwrap(), c["type"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        cols,
+        [
+            "id:int unsigned",
+            "increment_id:varchar(255)",
+            "status:varchar(255)",
+            "customer_id:bigint unsigned",
+            "grand_total:decimal(12,4)",
+            "placed_at:datetime",
+            "created_at:timestamp",
+            "updated_at:timestamp",
+            "channel:varchar(32)",
+        ],
+        "items_count was dropped by a later migration and channel added"
+    );
+    assert_eq!(orders["columns"][0]["pk"], true);
+    assert_eq!(orders["columns"][2]["doc"], "Where the order is on its way to the customer.");
+    assert_eq!(orders["columns"][2]["maps"], "Order.status");
+    assert_eq!(orders["columns"][3]["fk"]["table"], "shop.shop.db.customers");
+    assert_eq!(orders["columns"][3]["fk"]["onDelete"], "set null");
+    let accesses: Vec<String> = orders["accesses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| format!("{} {}", a["operation"].as_str().unwrap(), a["method"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        accesses,
+        ["read Order.findOrFail", "write Order.create", "read Order.findOrFail", "write Order.update"]
+    );
+    let items = &store["tables"][2];
+    assert_eq!(items["columns"][1]["fk"]["table"], "shop.shop.db.orders");
+    assert_eq!(items["columns"][1]["fk"]["onDelete"], "cascade");
+}
+
+#[test]
+fn puts_jobs_on_their_queues_and_works_them() {
+    let fragment = common::fragment();
+    let channels = fragment["contexts"][0]["services"][0]["channels"].as_array().unwrap();
+    let summary: Vec<String> = channels
+        .iter()
+        .map(|c| {
+            format!(
+                "{} [{}]",
+                c["address"].as_str().unwrap(),
+                c["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|m| format!("{} {}", m["title"].as_str().unwrap(), m["direction"].as_str().unwrap()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })
+        .collect();
+    assert_eq!(
+        summary,
+        [
+            "indexing [IndexOrder send, IndexOrder receive]",
+            "mail [SendCartReminder send, SendCartReminder receive]"
+        ]
+    );
+    assert_eq!(channels[0]["kind"], "job");
+    assert_eq!(channels[0]["doc"], "Jobs queued and worked through Laravel's queue over redis.");
+
+    let flows = fragment["flows"].as_array().unwrap();
+    let worker = flows.iter().find(|f| f["slug"] == "shop-job-index-order").expect("a flow per job");
+    assert_eq!(worker["name"], "Index order");
+    let steps: Vec<String> = worker["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| format!("{} {}", s["kind"].as_str().unwrap(), s["label"].as_str().unwrap()))
+        .collect();
+    assert_eq!(steps, ["call work IndexOrder", "call Order.findOrFail", "event SalesOrderIndexed"]);
+    assert_eq!(worker["steps"][0]["from"], "queue-indexing");
+    assert_eq!(worker["steps"][0]["handoff"]["direction"], "receive");
+    let reminder = flows.iter().find(|f| f["slug"] == "shop-job-send-cart-reminder").unwrap();
+    assert_eq!(
+        reminder["participants"][0]["id"], "queue-mail",
+        "a job with no queue of its own is worked where it is dispatched"
+    );
 }
 
 #[test]

@@ -11,6 +11,8 @@ pub struct Catalog {
     pub defs: serde_json::Map<String, serde_json::Value>,
     pub flows: Vec<Flow>,
     pub adrs: Vec<serde_json::Value>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub stores: Vec<Store>,
 }
 
 #[derive(Debug, Serialize)]
@@ -35,6 +37,101 @@ pub struct Service {
     pub provides: Vec<RpcService>,
     pub consumes: Vec<serde_json::Value>,
     pub aggregates: Vec<Aggregate>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub channels: Vec<Channel>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub stores: Vec<String>,
+}
+
+/// A queue the service puts jobs on and works: the same shape extract-celery
+/// writes for a Celery queue.
+#[derive(Debug, Serialize)]
+pub struct Channel {
+    pub address: String,
+    pub kind: String,
+    pub title: String,
+    pub doc: String,
+    pub messages: Vec<ChannelMessage>,
+    pub source: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChannelMessage {
+    pub name: String,
+    pub title: String,
+    pub doc: String,
+    pub direction: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Store {
+    pub id: String,
+    pub slug: String,
+    pub name: String,
+    pub kind: String,
+    pub owner: String,
+    pub tables: Vec<Table>,
+    pub source: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Table {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub doc: String,
+    pub columns: Vec<Column>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub indexes: Vec<TableIndex>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub persists: Option<Persists>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub accesses: Vec<TableAccess>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Persists {
+    pub aggregate: String,
+    pub block: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TableAccess {
+    pub operation: String,
+    pub method: String,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TableIndex {
+    pub name: String,
+    pub columns: Vec<String>,
+    pub unique: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Column {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub nullable: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub pk: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fk: Option<ForeignKey>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maps: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForeignKey {
+    pub table: String,
+    pub column: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub on_delete: Option<String>,
 }
 
 /// An interface the service answers on: here, the HTTP routes of one module,
@@ -201,4 +298,23 @@ pub struct Step {
     pub note: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub line: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handoff: Option<Handoff>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "storeAccess")]
+    pub store_access: Option<StoreAccess>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Handoff {
+    pub kind: String,
+    pub transport: String,
+    pub channel: String,
+    pub message: String,
+    pub direction: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StoreAccess {
+    pub store: String,
+    pub method: String,
 }

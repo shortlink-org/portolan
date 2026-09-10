@@ -266,6 +266,9 @@ pub struct SourceFile {
     /// Local name → the full name a `use` line brought it in under.
     pub uses: BTreeMap<String, String>,
     pub classes: Vec<ClassInfo>,
+    /// `new class extends Migration { ... }`: read like a class, kept apart
+    /// so that nothing takes one for a declaration.
+    pub anonymous: Vec<ClassInfo>,
     /// Chains made outside any class: what a route file is.
     pub chains: Vec<Chain>,
     pub parse_errors: usize,
@@ -299,8 +302,11 @@ const SKIP: &[&str] = &[
     "Resources",
     "lang",
     "views",
-    "Database",
-    "database",
+    "Seeders",
+    "seeders",
+    "Seeds",
+    "Factories",
+    "factories",
     ".git",
 ];
 
@@ -418,6 +424,7 @@ pub fn parse_bytes(path: &Path, text: &[u8]) -> SourceFile {
             namespace: String::new(),
             uses: BTreeMap::new(),
             classes: Vec::new(),
+            anonymous: Vec::new(),
             chains: Vec::new(),
             parse_errors: program.errors.len(),
         },
@@ -812,7 +819,8 @@ impl<'ast, 'arena> Reader<'ast, 'arena> {
     fn class_like(
         &mut self,
         kind: ClassKind,
-        name: &LocalIdentifier<'arena>,
+        name: &str,
+        anonymous: bool,
         attribute_lists: &Sequence<'arena, AttributeList<'arena>>,
         modifiers: Option<&Sequence<'arena, Modifier<'arena>>>,
         extends: Option<&Extends<'arena>>,
@@ -820,7 +828,7 @@ impl<'ast, 'arena> Reader<'ast, 'arena> {
         members: &'ast Sequence<'arena, ClassLikeMember<'arena>>,
         node: &impl HasSpan,
     ) {
-        let name = text(name.value);
+        let name = name.to_string();
         let mut class = ClassInfo {
             kind,
             fqn: self.in_namespace(&name),
@@ -925,7 +933,11 @@ impl<'ast, 'arena> Reader<'ast, 'arena> {
                 }
             }
         }
-        self.out.classes.push(class);
+        if anonymous {
+            self.out.anonymous.push(class);
+        } else {
+            self.out.classes.push(class);
+        }
     }
 
     fn method(&mut self, m: &'ast Method<'arena>) -> MethodInfo {
@@ -1049,7 +1061,8 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reader<'ast, 'arena> {
     fn walk_class(&mut self, class: &'ast Class<'arena>, _context: &mut ()) {
         self.class_like(
             ClassKind::Class,
-            &class.name,
+            &text(class.name.value),
+            false,
             &class.attribute_lists,
             Some(&class.modifiers),
             class.extends.as_ref(),
@@ -1062,7 +1075,8 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reader<'ast, 'arena> {
     fn walk_interface(&mut self, interface: &'ast Interface<'arena>, _context: &mut ()) {
         self.class_like(
             ClassKind::Interface,
-            &interface.name,
+            &text(interface.name.value),
+            false,
             &interface.attribute_lists,
             None,
             interface.extends.as_ref(),
@@ -1075,7 +1089,8 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reader<'ast, 'arena> {
     fn walk_trait(&mut self, r#trait: &'ast Trait<'arena>, _context: &mut ()) {
         self.class_like(
             ClassKind::Trait,
-            &r#trait.name,
+            &text(r#trait.name.value),
+            false,
             &r#trait.attribute_lists,
             None,
             None,
@@ -1088,13 +1103,28 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reader<'ast, 'arena> {
     fn walk_enum(&mut self, r#enum: &'ast Enum<'arena>, _context: &mut ()) {
         self.class_like(
             ClassKind::Enum,
-            &r#enum.name,
+            &text(r#enum.name.value),
+            false,
             &r#enum.attribute_lists,
             None,
             None,
             r#enum.implements.as_ref(),
             &r#enum.members,
             r#enum,
+        );
+    }
+
+    fn walk_anonymous_class(&mut self, class: &'ast AnonymousClass<'arena>, _context: &mut ()) {
+        self.class_like(
+            ClassKind::Class,
+            "class@anonymous",
+            true,
+            &class.attribute_lists,
+            Some(&class.modifiers),
+            class.extends.as_ref(),
+            class.implements.as_ref(),
+            &class.members,
+            class,
         );
     }
 

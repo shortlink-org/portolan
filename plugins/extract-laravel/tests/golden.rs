@@ -13,6 +13,13 @@ fn reads_the_fixture_into_the_golden_fragment() {
 }
 
 #[test]
+fn reads_the_migrations_into_the_golden_store_fragment() {
+    let got = common::stores();
+    let want: serde_json::Value = serde_json::from_str(include_str!("../testdata/shop/expected-stores.json")).expect("the golden is JSON");
+    assert_eq!(got, want, "the store fragment differs from testdata/shop/expected-stores.json");
+}
+
+#[test]
 fn writes_the_inferred_openapi_document_it_promised() {
     let got = common::openapi();
     let want = include_str!("../testdata/shop/openapi.inferred.yaml");

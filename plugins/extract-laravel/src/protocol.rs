@@ -80,9 +80,15 @@ pub struct Options {
     #[serde(default)]
     pub modules: String,
     #[serde(default)]
+    pub store: String,
+    #[serde(default)]
+    pub store_kind: String,
+    #[serde(default)]
     pub out: String,
     #[serde(default)]
     pub openapi_out: String,
+    #[serde(default)]
+    pub stores_out: String,
 }
 
 /// Collects what the run produces: the fragment, and every diagnostic beside

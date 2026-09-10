@@ -127,19 +127,60 @@ event's id when the tree dispatches it, and the step is unresolved with a
 note when it does not - a framework event, or a name nobody in the tree
 dispatches, which is reported.
 
+**Store.** The migrations, replayed. `extract-sql` reads DDL and a Laravel
+schema is not DDL, so `Schema::create('orders', function (Blueprint $table)
+{ ... })` is read here, one `$table->...` line at a time, in the order the
+migration files sort - which is the order Laravel runs them - with
+`Schema::table` alterations, `dropColumn`, `renameColumn`, `drop` and
+`rename` applied on the way; only `up()` is read. Every column type Laravel's
+blueprint has is mapped to its SQL spelling (`string` → `varchar(255)`,
+`foreignId` → `bigint unsigned`, `decimal(12, 4)`, `enum('a','b')`,
+`timestamps()` → two nullable timestamps), `nullable`, `unsigned`, `unique`,
+`index`, `primary` and `comment` are honoured, and a foreign key is read
+from `foreignId()->constrained()` and `foreign()->references()->on()`, with
+its `onDelete`. The store is `<service>.<store>` (`db` unless the manifest
+says), its kind read off config/database.php's default connection - mysql
+when that cannot be read - and it goes into a second fragment, `stores.json`,
+the way extract-django writes one. A table maps to the model whose `$table`
+names it, or whose name Eloquent would pluralise to it (`OrderItem` →
+`order_items`); its `persists` is that model's block and each column shared
+with the model's fields carries `maps`. A table the code reaches that no
+migration in the tree creates is kept with no columns, and reported.
+
+**Table access.** `Order::create(...)`, `Order::where(...)->update(...)`,
+`$this->model->find(...)` in a repository whose `model()` names the model -
+or the Concord contract the model implements - and
+`DB::table('orders')->insert(...)`: each is an access of the table, read,
+write or delete by the strongest method on the chain, listed on the table
+and drawn as a step to the store lane in every flow that reaches it.
+
+**Job.** A class under `Jobs/` or implementing `ShouldQueue`. Every way one
+is handed to the queue is read - `Job::dispatch(...)`, `dispatch(new Job)`,
+`Bus::dispatch(new Job)`, the lists of `Bus::chain` and `Bus::batch` - and
+the queue is the site's `onQueue('mail')`, else the job's own `$queue`, else
+the queue its first dispatch site names, else `default`. Each queue is a
+channel of kind `job` on the service, with a `send` message per job put on
+it and a `receive` per job worked from it, the shape extract-celery writes
+for a Celery queue; the transport is the connection config/queue.php
+defaults to. A dispatch is a hop in the flow that makes it, a `call` to the
+`Queue · mail` lane with a `job` handoff, and every job has a worker flow of
+its own from the queue in through what `handle()` does.
+
 ## What it does not read
 
-Jobs and queues (`dispatch(new Job)`, `ShouldQueue`), which are hops rather
-than events; lifecycles; form requests and API resources as schemas; Concord
-proxies and `Contracts` as a second name for a model; `$hidden`, accessors,
-scopes; middleware and authorization. Each is a next step, not an oversight.
+Lifecycles; form requests and API resources as schemas; `$hidden`,
+accessors, scopes; broadcasting (`ShouldBroadcast`), mail and notifications,
+which go through the queue but are not jobs; `Cache::` and `Redis::`, which
+are a keyspace and not a table; middleware and authorization. Each is a next
+step, not an oversight.
 
 ## Options
 
 See `options.schema.json`. `context` and `service` default to the input
 directory's name; `modules` picks the layout; `repo` defaults to
 composer.json's `support.source` or `homepage` when either is a repository;
-`out` and `openapiOut` name the two files.
+`store` and `storeKind` name the database; `out`, `openapiOut` and
+`storesOut` name the three files.
 
 ## Trying it on a real one
 
@@ -150,7 +191,10 @@ printf '%s' '{"input":{"root":"bagisto","output":"bagisto/portolan"},"options":{
 ```
 
 On Bagisto 2.4 that is 41 packages read in well under a second: 28 model
-groups, 125 models, 22 enums, 326 events - most of them named, dispatched
+groups, 125 models, 22 enums, 309 events - most of them named, dispatched
 from admin and storefront controllers and owned by the package their name
 says, 50 of them with a listener - ten HTTP interfaces with 520 operations,
-593 flows, and one controller the admin routes name that does not exist.
+a database of 138 tables and 1300 columns replayed from 189 migrations with
+185 foreign keys and 120 places the code reads or writes them, 17 jobs on
+one queue, 610 flows, and one controller the admin routes name that does not
+exist.

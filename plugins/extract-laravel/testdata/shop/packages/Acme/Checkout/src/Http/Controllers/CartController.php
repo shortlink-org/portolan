@@ -3,6 +3,7 @@
 namespace Acme\Checkout\Http\Controllers;
 
 use Acme\Checkout\Facades\Cart;
+use Acme\Checkout\Jobs\SendCartReminder;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -25,6 +26,8 @@ class CartController extends Controller
         $cart = Cart::addProduct($id, $request->all());
 
         event('checkout.cart.add.after', $cart);
+
+        dispatch(new SendCartReminder($cart))->onQueue('mail')->delay(now()->addHours(24));
 
         return redirect()->back();
     }

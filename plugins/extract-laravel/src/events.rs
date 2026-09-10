@@ -75,7 +75,12 @@ impl Events {
 }
 
 pub fn is_event_class(file: &SourceFile, class: &ClassInfo) -> bool {
-    class.kind == ClassKind::Class && !class.is_abstract && (file.has_segment("Events") || class.traits.iter().any(|t| short(t) == "Dispatchable"))
+    class.kind == ClassKind::Class
+        && !class.is_abstract
+        // A job is dispatchable too, and is not an event.
+        && !class.implements.iter().any(|i| short(i) == "ShouldQueue")
+        && !file.has_segment("Jobs")
+        && (file.has_segment("Events") || class.traits.iter().any(|t| short(t) == "Dispatchable"))
 }
 
 /// Everything the tree declares, dispatches and listens to. `modules` are
