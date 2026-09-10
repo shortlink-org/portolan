@@ -257,6 +257,38 @@ describe("enrichCatalog: HTTP route correlation", () => {
     expect(enrichCatalog(once).catalog).toEqual(once);
   });
 
+  it("never confirms a link against a mounted route whose verb is unknown", () => {
+    // extract-django keeps a mounted `Planet.fetch` in `provides` with an
+    // empty method when no declaration proves the verb; the path alone is a
+    // candidate to look at, not a fact to link on.
+    const caller = httpCaller("/geo/planet/fetch");
+    const geo = service("shop", "geo", {
+      provides: [
+        {
+          id: "shop.geo.geo",
+          source: "geo/portolan/openapi.inferred.yaml",
+          methods: [
+            {
+              name: "geo_planet_fetch",
+              doc: "",
+              request: "",
+              response: "",
+              http: { method: "", path: "/geo/planet/fetch" },
+            },
+          ],
+        },
+      ],
+    });
+
+    const once = enrichCatalog(estate([], [caller, geo])).catalog;
+    expect(serviceOf(once, "shop.oms").consumes).toEqual([
+      expect.objectContaining({
+        id: "http-client/POST /geo/planet/fetch",
+        status: "unresolved",
+      }),
+    ]);
+  });
+
   it("joins HTTP integrations contributed by independently added projects", () => {
     const caller = service("aviacore", "aviacore", {
       consumes: [

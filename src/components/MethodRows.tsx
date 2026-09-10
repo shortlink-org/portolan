@@ -167,8 +167,15 @@ export function MethodRows({
                   className={method.deprecated ? "line-through" : undefined}
                 />
                 {method.http ? (
-                  <span className="chip mono" title="the route this operation answers on">
-                    {method.http.method} {method.http.path}
+                  <span
+                    className="chip mono"
+                    title={
+                      method.http.method
+                        ? "the route this operation answers on"
+                        : "the route this operation answers on; the HTTP verb is not declared in source"
+                    }
+                  >
+                    {method.http.method ? `${method.http.method} ${method.http.path}` : method.http.path}
                   </span>
                 ) : null}
                 {method.soap ? (

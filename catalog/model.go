@@ -257,7 +257,10 @@ type RpcMethod struct {
 }
 
 type HttpRoute struct {
-	// Method is upper case: POST.
+	// Method is upper case: POST. It is empty when a framework extractor
+	// proved the mount but no declaration proved the verb (extract-django's
+	// `Planet.fetch`); such a route is never matched against an outbound
+	// call, and a renderer shows the path alone.
 	Method string `json:"method"`
 	// Path is the template as the document writes it: /v1/users/{id}.
 	Path string `json:"path"`

@@ -11,12 +11,13 @@ from __future__ import annotations
 import ast
 import re
 from dataclasses import dataclass, field as dc_field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
+import verbs as verbs_module
 from apps import App
 from ids import slug
 from routing import Route, Routes
-from source import Module, const_str, doc, dotted, keyword, methods
+from source import Module, Project, const_str, doc, dotted, keyword, methods
 
 # The actions a ViewSet has without writing one.
 ACTIONS = {
@@ -61,6 +62,10 @@ class Endpoint:
     doc: str = ""
     use_cases: List[str] = dc_field(default_factory=list)
     path_parameters: Dict[str, str] = dc_field(default_factory=dict)
+    # Where the verb was read when the handler's name did not say it: a
+    # decorator, ``http_method_names``, a ``request.method`` branch or a
+    # project wrapper, with the file:line. Empty when the verb is unknown.
+    verb_source: str = ""
 
 
 def basenames(app: App) -> Dict[str, str]:
@@ -95,18 +100,29 @@ def view_name(name: str) -> str:
     return slug(name).replace("-", "_")
 
 
-def verb_of(node: ast.AST, action: str) -> str:
-    decorator = None
+HANDLER_NAMES = ("get", "post", "put", "patch", "delete")
+
+
+def verbs_of(node: ast.AST, action: str) -> Tuple[str, ...]:
+    """The verbs a handler answers by its own declaration: every method an
+    ``@action``/``@api_view`` lists, else what its conventional name means.
+    Empty for a handler whose name is the project's own."""
     for dec in getattr(node, "decorator_list", []):
         if isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] in ("action", "api_view"):
-            decorator = dec
-    if decorator is not None:
-        methods_arg = keyword(decorator, "methods")
-        if methods_arg is None and decorator.args:
-            methods_arg = decorator.args[0]
-        if isinstance(methods_arg, (ast.List, ast.Tuple, ast.Set)) and methods_arg.elts:
-            return const_str(methods_arg.elts[0]).upper()
-    return ACTIONS.get(action, "" if action not in ("get", "post", "put", "patch", "delete") else action.upper())
+            listed = verbs_module.listed_verbs(dec)
+            if listed:
+                return listed
+    if action in ACTIONS:
+        return (ACTIONS[action],)
+    return (action.upper(),) if action in HANDLER_NAMES else ()
+
+
+def is_action(node: ast.AST) -> bool:
+    return any(isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] == "action" for dec in getattr(node, "decorator_list", []))
+
+
+def is_api_view(node: ast.AST) -> bool:
+    return any(isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] == "api_view" for dec in getattr(node, "decorator_list", []))
 
 
 def route_base(route: Route, fallback: str) -> str:
@@ -134,8 +150,10 @@ def action_path(route: Route, node: ast.AST, action: str) -> str:
     return base + ("/{id}" if detail else "") + ("/" + suffix if action not in ACTIONS else "") + "/"
 
 
-def endpoint(node: ast.AST, module: Module, view: str, action: str, verb: str, base: str, route: Optional[Route], description: str = "") -> Endpoint:
+def endpoint(node: ast.AST, module: Module, view: str, action: str, verb: str, base: str, route: Optional[Route], description: str = "", suffix: str = "", verb_source: str = "") -> Endpoint:
     ident = base if base == action or base.endswith("_" + action) else "%s_%s" % (base, action)
+    if suffix:
+        ident = "%s_%s" % (ident, suffix)
     return Endpoint(
         id=ident,
         action=action,
@@ -147,11 +165,30 @@ def endpoint(node: ast.AST, module: Module, view: str, action: str, verb: str, b
         route_source=route.source if route else "",
         doc=description,
         path_parameters=dict(route.parameters) if route else {},
+        verb_source=verb_source,
     )
 
 
-def read_endpoints(app: App, b, routes: Optional[Routes] = None) -> List[Endpoint]:
+def unknown_verb(b, route: Route) -> None:
+    b.warn(
+        route.source,
+        "%s is mounted as an HTTP view, but no HTTP verb is declared; the route is kept with its verb unknown and no operation is inferred for it. "
+        "Declare the verb with require_http_methods, @api_view, http_method_names or a branch on request.method" % route.view,
+    )
+
+
+def expand(handler: ast.AST, module: Module, view: str, action: str, verb_list: Tuple[str, ...], base: str, route: Optional[Route], description: str, verb_source: str) -> List[Endpoint]:
+    """One endpoint per verb. The first keeps the plain id; a second verb on
+    the same handler is told apart by the verb, ``planet_fetch_post``."""
+    out = []
+    for index, verb in enumerate(verb_list):
+        out.append(endpoint(handler, module, view, action, verb, base, route, description, suffix=verb.lower() if index else "", verb_source=verb_source))
+    return out
+
+
+def read_endpoints(app: App, b, routes: Optional[Routes] = None, project: Optional[Project] = None) -> List[Endpoint]:
     registered = basenames(app)
+    reader = verbs_module.Reader(project)
     out: List[Endpoint] = []
     for module in app.package("views"):
         for node in module.classes():
@@ -165,62 +202,71 @@ def read_endpoints(app: App, b, routes: Optional[Routes] = None) -> List[Endpoin
                 base = view_name(node.name)
                 b.warn(module.rel, "%s is registered by no router in %s/urls.py; its endpoints are named after the class" % (node.name, app.rel))
             handlers = {handler.name: handler for handler in methods(node)}
-            declared = []
+            method_routes: Dict[str, List[Route]] = {}
+            for route in mounted:
+                if "." in route.view:
+                    method_routes.setdefault(route.view.split(".", 1)[1], []).append(route)
+            # (action, verbs, handler, doc, where the verb was read)
+            declared: List[Tuple[str, Tuple[str, ...], ast.AST, str, str]] = []
             for handler in handlers.values():
                 if handler.name.startswith("_"):
                     continue
-                is_action = any(
-                    isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] == "action" for dec in getattr(handler, "decorator_list", [])
-                )
-                if handler.name not in ACTIONS and not is_action and handler.name not in ("get", "post", "put", "patch", "delete"):
-                    # A plain Django class may expose an arbitrarily named
-                    # method directly in URLConf (`Planet.fetch`). The route
-                    # proves the HTTP entrypoint but, without a method
-                    # decorator or request-method branch, not one particular
-                    # verb. Keep it as a flow root and leave it out of the
-                    # inferred OpenAPI contract.
-                    if handler.name not in {
-                        route.view.split(".", 1)[1]
-                        for route in mounted
-                        if "." in route.view
-                    }:
-                        continue
-                declared.append((handler.name, verb_of(handler, handler.name), handler, doc(handler)))
+                verb_list = verbs_of(handler, handler.name)
+                verb_source = ""
+                if not verb_list and not is_action(handler) and handler.name not in method_routes:
+                    continue
+                if not verb_list:
+                    # A plain class may expose an arbitrarily named method
+                    # directly in URLConf (`Planet.fetch`). The route proves
+                    # the HTTP entrypoint; the verb is read off what the
+                    # handler, its class or a project wrapper declares, and
+                    # is left unknown - never guessed - when none of them does.
+                    evidence = reader.for_handler(module, handler, node)
+                    if evidence is not None:
+                        verb_list, verb_source = evidence.verbs, "%s at %s" % (evidence.rule, evidence.source)
+                    else:
+                        verb_list = ("",)
+                declared.append((handler.name, verb_list, handler, doc(handler), verb_source))
             inherited = []
             for inherited_base in bases:
                 inherited += GENERIC_ACTIONS.get(inherited_base, [])
             for action, verb in inherited:
-                same_direct_handler = mounted and all(not route.router for route in mounted) and any(item[1] == verb for item in declared)
+                same_direct_handler = mounted and all(not route.router for route in mounted) and any(verb in item[1] for item in declared)
                 if action not in handlers and not any(item[0] == action for item in declared) and not same_direct_handler:
-                    declared.append((action, verb, node, doc(node)))
+                    declared.append((action, (verb,), node, doc(node), ""))
             class_routes = routes.for_view(module.dotted, node.name) if routes else []
-            method_routes = {route.view.split(".", 1)[1]: route for route in mounted if "." in route.view}
             if not class_routes and not method_routes:
-                for action, verb, handler, description in declared:
-                    out.append(endpoint(handler, module, node.name, action, verb, base or view_name(node.name), None, description))
+                for action, verb_list, handler, description, verb_source in declared:
+                    out += expand(handler, module, node.name, action, verb_list, base or view_name(node.name), None, description, verb_source)
                 continue
-            for action, verb, handler, description in declared:
-                targets = class_routes or ([method_routes[action]] if action in method_routes else [])
-                for route in targets:
-                    if not verb:
-                        b.warn(
-                            route.source,
-                            "%s is mounted as an HTTP view, but no HTTP verb is declared; its flow is extracted and the route is omitted from inferred OpenAPI"
-                            % route.view,
-                        )
-                    out.append(endpoint(handler, module, node.name, action, verb, route_base(route, base or view_name(node.name)), route, description))
+            for action, verb_list, handler, description, verb_source in declared:
+                for route in class_routes or method_routes.get(action, []):
+                    if "" in verb_list:
+                        unknown_verb(b, route)
+                    out += expand(handler, module, node.name, action, verb_list, route_base(route, base or view_name(node.name)), route, description, verb_source)
         for node in module.functions():
             mounted = routes.for_view(module.dotted, node.name) if routes else []
-            if not mounted and not any(isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] == "api_view" for dec in getattr(node, "decorator_list", [])):
+            if not mounted and not is_api_view(node):
                 continue
-            verb = verb_of(node, node.name)
-            if not verb:
+            verb_list = verbs_of(node, node.name)
+            verb_source = ""
+            if not verb_list:
+                evidence = reader.for_handler(module, node)
+                if evidence is not None:
+                    verb_list, verb_source = evidence.verbs, "%s at %s" % (evidence.rule, evidence.source)
+                elif mounted:
+                    verb_list = ("",)
+                else:
+                    continue
+            if not mounted:
+                for verb in verb_list:
+                    out.append(Endpoint(id=node.name, action=node.name, view="", verb=verb, node=node, module=module, doc=doc(node), verb_source=verb_source))
                 continue
-            if mounted:
-                for route in mounted:
-                    out.append(endpoint(node, module, "", verb.lower(), verb, route_base(route, node.name), route, doc(node)))
-            else:
-                out.append(Endpoint(id=node.name, action=node.name, view="", verb=verb, node=node, module=module, doc=doc(node)))
+            for route in mounted:
+                if "" in verb_list:
+                    unknown_verb(b, route)
+                for verb in verb_list:
+                    out.append(endpoint(node, module, "", verb.lower() or node.name, verb, route_base(route, node.name), route, doc(node), verb_source=verb_source))
     unique = {}
     for found in out:
         unique[(found.id, found.verb, found.path, found.module.rel)] = found

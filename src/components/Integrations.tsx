@@ -210,7 +210,7 @@ export function Integrations({ groups }: { groups: IntegrationGroup[] }) {
                         <RowActions copy={call.id} label={call.id} />
                         {method?.http ? (
                           <p className="mono w-full text-muted">
-                            {method.http.method} {method.http.path}
+                            {method.http.method ? `${method.http.method} ${method.http.path}` : method.http.path}
                           </p>
                         ) : null}
                         {call.note ? (

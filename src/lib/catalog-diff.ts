@@ -245,7 +245,7 @@ function diffOwners(before: Service, after: Service, add: Add): void {
 function signature(method: RpcMethod): string {
   const parts = [method.request ?? "?", method.response ?? "?"];
   if (method.streaming) parts.push(method.streaming);
-  if (method.http) parts.push(`${method.http.method} ${method.http.path}`);
+  if (method.http) parts.push(`${method.http.method || "?"} ${method.http.path}`);
   if (method.soap) {
     parts.push(
       [

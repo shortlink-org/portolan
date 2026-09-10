@@ -74,7 +74,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     endpoint_apps = routed_applications(project, applications, route_table)
     endpoints = []
     for app in endpoint_apps:
-        endpoints += [(app, endpoint) for endpoint in transport.read_endpoints(app, b, route_table)]
+        endpoints += [(app, endpoint) for endpoint in transport.read_endpoints(app, b, route_table, project)]
     serializer_registry = serializers_module.read(project, endpoint_apps)
     auth_registry = auth_module.Registry(project, opts.settings, b)
 
@@ -292,7 +292,7 @@ def http_contracts(endpoints, svc_id: str, source: str) -> List[Dict[str, Any]]:
     grouped: Dict[str, List[Any]] = {}
     apps: Dict[str, Any] = {}
     for app, endpoint in endpoints:
-        if not endpoint.verb or not endpoint.path:
+        if not endpoint.path:
             continue
         grouped.setdefault(app.dotted, []).append(endpoint)
         apps[app.dotted] = app
@@ -309,6 +309,10 @@ def http_contracts(endpoints, svc_id: str, source: str) -> List[Dict[str, Any]]:
             method = {"name": name}
             if endpoint.doc:
                 method["doc"] = endpoint.doc
+            # A mounted route whose verb no declaration proves keeps its path
+            # with the method empty: the route is a fact of the URLConf, the
+            # verb is explicitly unknown, and the merge will not match an
+            # outbound call against it until somebody declares it.
             method["http"] = {"method": endpoint.verb, "path": endpoint.path}
             methods.append(method)
         if not methods:
@@ -328,7 +332,21 @@ def openapi_document(endpoints, service_name: str, b: Builder, serializer_regist
     tags = set()
     operation_ids = set()
     for app, endpoint in sorted(endpoints, key=lambda item: (item[1].path, item[1].verb, item[0].label, item[1].id)):
-        if not endpoint.path or not endpoint.verb:
+        if not endpoint.path:
+            continue
+        if not endpoint.verb:
+            # The path is mounted; which verb answers there is not written
+            # down. A path item without operations says exactly that, where
+            # inventing a GET would be read as a fact.
+            path_item = paths.setdefault(endpoint.path, {})
+            path_item.setdefault("summary", title(endpoint.action))
+            path_item.setdefault(
+                "description",
+                "Mounted in URLConf by %s, but no HTTP verb is declared in source; no operation is inferred." % endpoint.route_source,
+            )
+            path_item.setdefault("x-portolan-inferred", True)
+            path_item.setdefault("x-portolan-source", endpoint.route_source)
+            path_item.setdefault("x-portolan-verb", "unknown")
             continue
         method = endpoint.verb.lower()
         path_item = paths.setdefault(endpoint.path, {})

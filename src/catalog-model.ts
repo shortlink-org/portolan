@@ -297,7 +297,11 @@ export interface RpcMethod {
 }
 
 export interface HttpRoute {
-  /** Upper case: `POST`. */
+  /**
+   * Upper case: `POST`. Empty when a framework extractor proved the mount but
+   * no declaration proved the verb; such a route is never matched against an
+   * outbound call, and renderers show the path alone.
+   */
   method: string;
   /** As templated in the document: `/v1/users/{id}`. */
   path: string;

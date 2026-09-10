@@ -96,11 +96,70 @@ class Maintenance:
     @classmethod
     def fetch(cls, request):
         return None
+
+from django.http import HttpResponseNotAllowed
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_GET, require_http_methods
+from rest_framework.decorators import api_view
+from .helpers import ensure_post, guarded
+
+class Planet:
+    @classmethod
+    @require_http_methods(["POST"])
+    def fetch(cls, request):
+        return None
+
+    @classmethod
+    @ensure_post
+    def refresh(cls, request):
+        return None
+
+    @classmethod
+    def reindex(cls, request):
+        if request.method != "PUT":
+            return HttpResponseNotAllowed(["PUT"])
+        return None
+
+    @classmethod
+    def status(cls, request):
+        return guarded(request, cls._status)
+
+    @classmethod
+    def _status(cls):
+        return None
+
+@method_decorator(require_GET, name="dispatch")
+class Reports:
+    @classmethod
+    def summary(cls, request):
+        return None
+
+class Exports:
+    http_method_names = ["patch", "options", "head"]
+
+    @classmethod
+    def run(cls, request):
+        return None
+
+@api_view(["GET", "POST"])
+def toggle(request):
+    return None
+''',
+            "orders/helpers.py": '''
+from django.views.decorators.http import require_POST
+
+def ensure_post(view):
+    return require_POST(view)
+
+def guarded(request, handler):
+    if request.method.lower() in ("delete", "patch"):
+        return handler()
+    return None
 ''',
             "orders/urls.py": '''
 from django.urls import path, re_path
 from rest_framework.routers import DefaultRouter
-from .views import Health, Maintenance, OrderDetail, OrderList, OrderViewSet
+from .views import Exports, Health, Maintenance, OrderDetail, OrderList, OrderViewSet, Planet, Reports, toggle
 
 router = DefaultRouter()
 router.register("orders", OrderViewSet, basename="order")
@@ -109,6 +168,13 @@ urlpatterns = [
     path("manual/<uuid:pk>/", OrderDetail.as_view(), name="order-detail"),
     re_path(r"^health/(?P<region>[^/]+)/$", Health.get),
     path("maintenance/fetch", Maintenance.fetch),
+    path("planet/fetch", Planet.fetch),
+    path("planet/refresh", Planet.refresh),
+    path("planet/reindex", Planet.reindex),
+    path("planet/status", Planet.status),
+    path("reports/summary", Reports.summary),
+    path("exports/run", Exports.run),
+    path("toggle/", toggle),
 ] + router.urls
 ''',
         }
@@ -162,6 +228,48 @@ urlpatterns = [
         spec = openapi_document([(app, item) for item in endpoints], "Orders", Builder())
         parameter = spec["paths"]["/api/v2/manual/{pk}/"]["get"]["parameters"][0]
         self.assertEqual(parameter["schema"], {"type": "string", "format": "uuid"})
+
+    def test_a_mounted_method_takes_its_verb_from_what_the_code_declares(self):
+        routes = routing.read(self.project)
+        app = apps.discover(self.project, ["orders"])[0]
+        b = Builder()
+        endpoints = transport.read_endpoints(app, b, routes, self.project)
+        verbs = {}
+        for item in endpoints:
+            verbs.setdefault(item.path, set()).add(item.verb)
+        # Each tier of evidence, from the handler outwards.
+        self.assertEqual(verbs["/api/v2/planet/fetch"], {"POST"})  # @require_http_methods on the handler
+        self.assertEqual(verbs["/api/v2/reports/summary"], {"GET"})  # @method_decorator(require_GET, name="dispatch") on the class
+        self.assertEqual(verbs["/api/v2/exports/run"], {"PATCH"})  # http_method_names, less HEAD and OPTIONS
+        self.assertEqual(verbs["/api/v2/planet/reindex"], {"PUT"})  # a branch on request.method
+        self.assertEqual(verbs["/api/v2/planet/refresh"], {"POST"})  # a project decorator that applies require_POST
+        self.assertEqual(verbs["/api/v2/planet/status"], {"DELETE", "PATCH"})  # a wrapper the handler hands request to
+        self.assertEqual(verbs["/api/v2/toggle/"], {"GET", "POST"})  # every method @api_view lists, not the first
+        fetch = next(item for item in endpoints if item.path == "/api/v2/planet/fetch")
+        self.assertTrue(fetch.verb_source.startswith("decorator at orders/views.py:"), fetch.verb_source)
+        status = {item.id: item.verb_source for item in endpoints if item.path == "/api/v2/planet/status"}
+        self.assertEqual(sorted(status), ["api_v2_planet_status", "api_v2_planet_status_patch"])
+        self.assertTrue(all(source.startswith("wrapper guarded at orders/helpers.py:") for source in status.values()), status)
+
+        # No tier speaks for Maintenance.fetch: the verb is unknown, and the
+        # route stays in the model saying so instead of disappearing.
+        self.assertEqual(verbs["/api/v2/maintenance/fetch"], {""})
+        self.assertEqual(
+            [w.message.split(";")[0] for w in b.warnings if w.ref == "orders/urls.py:12"],
+            ["Maintenance.fetch is mounted as an HTTP view, but no HTTP verb is declared"],
+        )
+        pairs = [(app, item) for item in endpoints]
+        contracts = http_contracts(pairs, "shop.orders", "orders/portolan/openapi.inferred.yaml")
+        methods = {method["name"]: method["http"] for method in contracts[0]["methods"]}
+        self.assertEqual(methods["api_v2_maintenance_fetch"], {"method": "", "path": "/api/v2/maintenance/fetch"})
+        self.assertEqual(methods["api_v2_planet_status_patch"], {"method": "PATCH", "path": "/api/v2/planet/status"})
+        spec = openapi_document(pairs, "Orders", Builder())
+        unknown = spec["paths"]["/api/v2/maintenance/fetch"]
+        self.assertEqual(unknown["x-portolan-verb"], "unknown")
+        self.assertEqual(unknown["x-portolan-source"], "orders/urls.py:12")
+        self.assertFalse({"get", "post", "put", "patch", "delete"} & set(unknown))
+        self.assertIn("post", spec["paths"]["/api/v2/planet/fetch"])
+        self.assertEqual(sorted(spec["paths"]["/api/v2/planet/status"]), ["delete", "patch"])
 
     def test_queryset_and_serializer_metadata_resolve_the_inherited_action_model(self):
         routes = routing.read(self.project)

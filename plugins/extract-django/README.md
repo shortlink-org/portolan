@@ -171,9 +171,24 @@ observable effects. Traversal is bounded and cycles are cut by symbol, so a
 recursive helper cannot make extraction recursive. ORM models from routed
 applications remain visible here even when the application has no unambiguous
 aggregate root. A URLConf may directly mount an arbitrarily named method of a
-plain class, such as `Planet.fetch`; that is still an HTTP flow root. When no
-decorator or conventional handler name proves one verb, the flow is retained
-but the route is omitted from inferred OpenAPI rather than guessed. An
+plain class, such as `Planet.fetch`, or a plain function; that is still an
+HTTP flow root, and its verb is read off what the code declares, in the order
+a reviewer would trust it: a decorator on the handler (`@action(methods=…)`,
+`@api_view`, `@require_http_methods([…])`, `@require_GET`, `@require_POST`,
+`@require_safe`, also through `method_decorator`), the same decorators on the
+class (`@method_decorator(…, name="dispatch")`), the class's
+`http_method_names` (less `HEAD`, `OPTIONS` and `TRACE`, which every route
+answers), a branch on `request.method` in the handler body, and last a project
+wrapper — a decorator or a function the handler hands `request` to — whose own
+body does one of those, followed a bounded number of levels deep. The first
+tier that speaks decides; a declaration listing several verbs makes one
+endpoint per verb, `planet_status` and `planet_status_patch`. When none of
+them speaks, the verb is not guessed: the route stays in `provides` with an
+empty `http.method`, the inferred OpenAPI document keeps the path as an item
+with no operations and `x-portolan-verb: unknown`, the flow is retained, and
+a diagnostic names the route. The merge never matches an outbound call
+against a route whose verb is unknown, so the link waits for a declaration
+rather than being confirmed by the path alone. An
 inherited DRF generic action has no local handler body, so
 its framework behaviour is reconstructed instead: list/retrieve read the
 model, create/update validate through the selected serializer and persist it,

@@ -203,7 +203,9 @@ func (s *site) providesBlock(from string, provides []catalog.RpcService, owner *
 			method := &rpc.Methods[j]
 			route := ""
 			if method.HTTP != nil {
-				route = code(method.HTTP.Method + " " + method.HTTP.Path)
+				// An empty method is a mounted route whose verb no
+				// declaration proves; the path alone is what is known.
+				route = code(strings.TrimSpace(method.HTTP.Method + " " + method.HTTP.Path))
 			}
 			if method.SOAP != nil {
 				soap := "SOAP"

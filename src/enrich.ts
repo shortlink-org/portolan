@@ -259,7 +259,10 @@ function resolveHTTPCalls(input: Catalog): Catalog {
     for (const service of context.services) {
       for (const provided of service.provides) {
         for (const method of provided.methods) {
-          if (!method.http) continue;
+          // A route with an empty method is mounted but its verb is unknown
+          // (extract-django's `Planet.fetch`); the path alone never confirms
+          // a link, so it is kept out of the candidates deliberately.
+          if (!method.http || !method.http.method) continue;
           providers.push({
             service: service.id,
             context: context.id,
