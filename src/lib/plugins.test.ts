@@ -3,10 +3,12 @@ import {
   CATEGORY_ORDER,
   hasPluginLabel,
   landingInputs,
+  pluginIcon,
   pluginIndex,
   pluginsByCategory,
   runtimeLabel,
 } from "./plugins";
+import { techGlyph } from "./tech";
 
 describe("plugin index", () => {
   it("is written by npm run schema and names every plugin once", () => {
@@ -28,6 +30,20 @@ describe("plugin index", () => {
   it("has a display name for every plugin", () => {
     const unnamed = pluginIndex.filter((entry) => !hasPluginLabel(entry.name)).map((entry) => entry.name);
     expect(unnamed).toEqual([]);
+  });
+
+  // A brand named here that the mark list does not carry would draw as the
+  // generic code glyph, which is a wrong picture rather than a missing one.
+  it("resolves every brand mark it names", () => {
+    const unresolved = pluginIndex
+      .map((entry) => pluginIcon(entry.name, entry.category))
+      .filter((icon): icon is { brand: string } => "brand" in icon && techGlyph(icon.brand) === null)
+      .map((icon) => icon.brand);
+    expect(unresolved).toEqual([]);
+  });
+
+  it("falls back to the category's glyph for a plugin nobody named", () => {
+    expect(pluginIcon("something-new", "messaging")).toEqual({ lucide: "message" });
   });
 
   it("groups by category in reading order and drops empty groups", () => {

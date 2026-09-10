@@ -30,6 +30,7 @@ import {
   siApachepulsar,
   siArgo,
   siAuth0,
+  siBackstage,
   siBun,
   siC,
   siCelery,
@@ -93,7 +94,9 @@ import {
   siLinkerd,
   siLua,
   siMariadb,
+  siMarkdown,
   siMeilisearch,
+  siMermaid,
   siMinio,
   siMongodb,
   siMqtt,
@@ -374,6 +377,11 @@ export const TECH_MARKS: readonly TechMark[] = [
   mark(siJest),
   mark(siVitest),
   mark(siCypress),
+
+  // What the generators write to.
+  mark(siMarkdown),
+  mark(siMermaid),
+  mark(siBackstage),
 ];
 
 const BY_KEY: ReadonlyMap<string, TechGlyph> = (() => {

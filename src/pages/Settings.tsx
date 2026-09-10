@@ -48,7 +48,8 @@ import {
 import type { Discovery, ProjectDraft, ProjectPlan, RunEvent } from "../lib/local-api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { localKeys, localStatusQuery } from "../lib/queries";
-import { pluginByName } from "../lib/plugins";
+import { pluginByName, pluginIcon } from "../lib/plugins";
+import { PluginIcon } from "../components/PluginIcon";
 import { bare, sourceHref, treeHref } from "../lib/source-link";
 import { paths } from "../routes";
 import { CapabilityEmpty, Empty, SectionTitle } from "../components/PageHeader";
@@ -527,6 +528,7 @@ function PluginsList() {
               <details key={plugin.name} id={`plugin-${plugin.name}`} className="group scroll-mt-4 border-t border-line">
                 <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3 py-1.5 hover:bg-surface/60">
                   {health === "healthy" ? <HealthDot health={health} /> : null}
+                  <PluginIcon icon={pluginIcon(plugin.name, shipped?.category)} className="text-muted" />
                   <span className="mono truncate text-ink" title={plugin.name}>{plugin.name}</span>
                   <Runtime plugin={plugin} icon />
                   {health === "healthy" ? null : <HealthBadge health={health} />}

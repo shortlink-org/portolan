@@ -65,90 +65,139 @@ export const CATEGORY_ORDER: PluginCategory[] = [
   "exports",
 ];
 
-export const CATEGORY_LABEL: Record<PluginCategory, { title: string; what: string }> = {
+/**
+ * A glyph without a brand: one of the lucide icons PluginIcon knows to draw.
+ * Named here as words rather than components so this module stays free of
+ * React and the tests can read it.
+ */
+export type PluginGlyph =
+  | "code"
+  | "contract"
+  | "message"
+  | "database"
+  | "repository"
+  | "pen"
+  | "shield"
+  | "fork"
+  | "share"
+  | "inbox"
+  | "file-code"
+  | "package"
+  | "waves"
+  | "workflow"
+  | "users"
+  | "globe"
+  | "terminal"
+  | "book"
+  | "spell-check"
+  | "route";
+
+/** A brand's own mark, looked up by the name `techGlyph` answers to, or a lucide glyph. */
+export type PluginIconSpec = { brand: string } | { lucide: PluginGlyph };
+
+export const CATEGORY_LABEL: Record<PluginCategory, { title: string; what: string; icon: PluginGlyph }> = {
   code: {
     title: "Languages",
     what: "The aggregates, events and use cases a service declares in its source.",
+    icon: "code",
   },
   contracts: {
     title: "Contracts",
     what: "What a service provides and calls, read from the interface it publishes.",
+    icon: "contract",
   },
   messaging: {
     title: "Queues and topics",
     what: "The subjects, queues and jobs a service sends on and listens to.",
+    icon: "message",
   },
   data: {
     title: "Data stores",
     what: "The stores a service keeps, and the shape of what is in them.",
+    icon: "database",
   },
   repository: {
     title: "Repository",
     what: "What the repository says about itself: its metadata and its task runners.",
+    icon: "repository",
   },
   documents: {
     title: "Written by hand",
     what: "Decisions, glossaries and flows that people wrote down.",
+    icon: "pen",
   },
   evidence: {
     title: "Evidence",
     what: "The catalog checked against something outside the code.",
+    icon: "shield",
   },
   sources: {
     title: "Other repositories",
     what: "Trees fetched from elsewhere, pinned, for the extractors to read.",
+    icon: "fork",
   },
   exports: {
     title: "Exports",
     what: "The catalog turned into something else.",
+    icon: "share",
   },
 };
 
-/** What a plugin is called where a person reads it, keyed by manifest name. */
-const PLUGIN_LABEL: Record<string, string> = {
-  project: "Project metadata",
-  commands: "Task runners",
-  "go-domain": "Go",
-  "ts-domain": "TypeScript",
-  "rust-domain": "Rust",
-  "laravel-domain": "Laravel",
-  "java-domain": "Java",
-  "django-domain": "Django",
-  celery: "Celery",
-  "python-kafka": "Kafka",
-  openapi: "OpenAPI",
-  wsdl: "WSDL",
-  "http-clients": "HTTP clients",
-  redis: "Redis",
-  river: "River",
-  watermill: "Watermill",
-  "go-nats": "NATS",
-  "go-sqs": "SQS",
-  asyncapi: "AsyncAPI",
-  graphql: "GraphQL",
-  sql: "SQL",
-  markdown: "Markdown",
-  mermaid: "Mermaid",
-  backstage: "Backstage",
-  otel: "OpenTelemetry",
-  codeowners: "CODEOWNERS",
-  adr: "Decision records",
-  glossary: "Glossary",
-  flows: "Flows",
-  bsr: "Buf Schema Registry",
-  git: "Git",
-  csr: "Confluent Schema Registry",
-  "csr-schemas": "Registry schemas",
-  proto: "Protobuf",
+/**
+ * What a plugin is called where a person reads it, and the mark beside the
+ * name, keyed by manifest name. A brand mark where the plugin reads one
+ * technology and the reader knows its logo; a lucide glyph where it reads a
+ * format or a convention that has none.
+ */
+const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
+  project: { label: "Project metadata", icon: { lucide: "repository" } },
+  commands: { label: "Task runners", icon: { lucide: "terminal" } },
+  "go-domain": { label: "Go", icon: { brand: "Go" } },
+  "ts-domain": { label: "TypeScript", icon: { brand: "TypeScript" } },
+  "rust-domain": { label: "Rust", icon: { brand: "Rust" } },
+  "laravel-domain": { label: "Laravel", icon: { brand: "Laravel" } },
+  "java-domain": { label: "Java", icon: { brand: "Java" } },
+  "django-domain": { label: "Django", icon: { brand: "Django" } },
+  celery: { label: "Celery", icon: { brand: "Celery" } },
+  "python-kafka": { label: "Kafka", icon: { brand: "Kafka" } },
+  openapi: { label: "OpenAPI", icon: { brand: "OpenAPI" } },
+  wsdl: { label: "WSDL", icon: { lucide: "file-code" } },
+  "http-clients": { label: "HTTP clients", icon: { lucide: "globe" } },
+  redis: { label: "Redis", icon: { brand: "Redis" } },
+  river: { label: "River", icon: { lucide: "waves" } },
+  watermill: { label: "Watermill", icon: { lucide: "workflow" } },
+  "go-nats": { label: "NATS", icon: { brand: "NATS" } },
+  "go-sqs": { label: "SQS", icon: { lucide: "inbox" } },
+  asyncapi: { label: "AsyncAPI", icon: { lucide: "file-code" } },
+  graphql: { label: "GraphQL", icon: { brand: "GraphQL" } },
+  sql: { label: "SQL", icon: { lucide: "database" } },
+  markdown: { label: "Markdown", icon: { brand: "Markdown" } },
+  mermaid: { label: "Mermaid", icon: { brand: "Mermaid" } },
+  backstage: { label: "Backstage", icon: { brand: "Backstage" } },
+  otel: { label: "OpenTelemetry", icon: { brand: "OpenTelemetry" } },
+  codeowners: { label: "CODEOWNERS", icon: { lucide: "users" } },
+  adr: { label: "Decision records", icon: { lucide: "book" } },
+  glossary: { label: "Glossary", icon: { lucide: "spell-check" } },
+  flows: { label: "Flows", icon: { lucide: "route" } },
+  bsr: { label: "Buf Schema Registry", icon: { lucide: "package" } },
+  git: { label: "Git", icon: { brand: "Git" } },
+  csr: { label: "Confluent Schema Registry", icon: { lucide: "package" } },
+  "csr-schemas": { label: "Registry schemas", icon: { lucide: "file-code" } },
+  proto: { label: "Protobuf", icon: { lucide: "file-code" } },
 };
 
 export function pluginLabel(name: string): string {
-  return PLUGIN_LABEL[name] ?? name;
+  return PLUGIN_META[name]?.label ?? name;
 }
 
 /** True when the plugin has a name a reader would recognise, not a manifest key. */
 export function hasPluginLabel(name: string): boolean {
-  return name in PLUGIN_LABEL;
+  return name in PLUGIN_META;
+}
+
+/** The mark beside a plugin's name; a plugin nobody named yet gets its category's glyph. */
+export function pluginIcon(name: string, category?: PluginCategory): PluginIconSpec {
+  return PLUGIN_META[name]?.icon ?? { lucide: CATEGORY_LABEL[category ?? "code"].icon };
 }
 
 export function pluginByName(name: string): PluginEntry | undefined {
@@ -159,6 +208,7 @@ export interface PluginGroup {
   category: PluginCategory;
   title: string;
   what: string;
+  icon: PluginGlyph;
   plugins: PluginEntry[];
 }
 

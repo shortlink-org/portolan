@@ -1,10 +1,13 @@
 import { useDocumentTitle } from "../app/title";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { ArrowUpRight, ShieldCheck, Terminal } from "lucide-react";
+import { CatIllustration } from "../components/CatIllustration";
 import { SectionTitle } from "../components/PageHeader";
+import { PluginIcon } from "../components/PluginIcon";
 import {
   pluginsByCategory,
+  pluginIcon,
   pluginLabel,
   pluginSourceHref,
   runtimeLabel,
@@ -14,6 +17,9 @@ import { PRODUCT_REPOSITORY } from "../lib/product";
 import { paths } from "../routes";
 
 const PHASE_LABEL = { extract: "extract", verify: "verify", generate: "generate" } as const;
+
+/** Every cat the site has drawn; any of them suits a page that is a list. */
+const CAT_SCENES = ["about", "clear", "unchanged", "onboarding", "search", "trial"] as const;
 
 /**
  * Every plugin the package ships, grouped by what it reads or what it makes.
@@ -30,6 +36,9 @@ export function PluginIndex() {
   const total = groups.reduce((n, group) => n + group.plugins.length, 0);
   const { hash } = useLocation();
   const target = hash.startsWith("#plugin-") ? hash.slice("#plugin-".length) : null;
+  // A different cat each visit, the same one for the visit: picked once, not
+  // on every render, or a hash change would swap it mid-scroll.
+  const [cat] = useState(() => CAT_SCENES[Math.floor(Math.random() * CAT_SCENES.length)] ?? "about");
 
   // A link from Settings names one plugin. The card grid settles a frame after
   // the route commits, so the scroll waits for it rather than landing where
@@ -45,6 +54,10 @@ export function PluginIndex() {
 
   return (
     <div className="h-full overflow-y-auto p-gutter">
+      {/* The intro is a paragraph wide; on a wide screen the rest of the row
+          was empty, and a cat is a better use of it than nothing. */}
+      <div className="grid gap-grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+      <div>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">Plugins</h1>
         <span className="mono text-muted">{total} shipped</span>
@@ -69,10 +82,14 @@ export function PluginIndex() {
         </a>
         .
       </p>
+      </div>
+      <CatIllustration scene={cat} className="hidden xl:block h-[126px] w-[180px] justify-self-end" />
+      </div>
 
       <nav aria-label="Categories" className="mt-4 flex flex-wrap gap-1.5">
         {groups.map((group) => (
-          <a key={group.category} href={`#${group.category}`} className="chip border-line-strong hover:border-accent hover:text-accent">
+          <a key={group.category} href={`#${group.category}`} className="chip inline-flex items-center gap-1.5 border-line-strong hover:border-accent hover:text-accent">
+            <PluginIcon icon={{ lucide: group.icon }} size={12} />
             {group.title} <span className="text-muted/70">{group.plugins.length}</span>
           </a>
         ))}
@@ -82,7 +99,10 @@ export function PluginIndex() {
         {groups.map((group) => (
           <section key={group.category} id={group.category} className="scroll-mt-4">
             <SectionTitle anchor={group.category} right={<span className="mono text-muted">{group.plugins.length}</span>}>
-              {group.title}
+              <span className="inline-flex items-center gap-2">
+                <PluginIcon icon={{ lucide: group.icon }} className="text-muted" />
+                {group.title}
+              </span>
             </SectionTitle>
             <p className="mb-3 max-w-prose text-muted">{group.what}</p>
             <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))]">
@@ -110,7 +130,8 @@ function PluginCard({ entry, highlighted }: { entry: PluginEntry; highlighted: b
       // while its cards scroll under it.
       className={`card card-static flex scroll-mt-14 flex-col gap-3 ${highlighted ? "border-accent" : ""}`}
     >
-      <header className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <PluginIcon icon={pluginIcon(entry.name, entry.category)} size={16} className="text-ink" />
         <h3 className="font-semibold text-ink">{pluginLabel(entry.name)}</h3>
         <span className="mono text-muted" title="the name a manifest step uses">{entry.name}</span>
         {entry.plugin !== entry.name ? (
