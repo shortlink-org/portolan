@@ -1,30 +1,32 @@
 use std::sync::Arc;
 
-use crate::application::order::usecases::confirm_order::{Input, Payments, UseCase as ConfirmOrder};
+use crate::application::order::usecases::confirm_order::{Input, UseCase as ConfirmOrder};
 use crate::domain::order::Error;
 use crate::domain::order::port::Orders;
+use crate::infrastructure::payments::{PAYMENT_AUTHORIZED, PaymentAuthorized};
 use crate::pkg::messaging::Message;
 
-/// Confirms the order once the payment for it is authorised (ADR oms.0005).
-/// The publisher is `payments.ledger`, and the name is the one it puts on the
-/// message: every service on this bus names its events after itself.
-pub struct ConfirmOrderOnPaymentAuthorized<O: Orders, P: Payments> {
-    confirm_order: Arc<ConfirmOrder<O, P>>,
+/// Applies the ledger's public fact; it never calls Authorize.
+pub struct ConfirmOrderOnPaymentAuthorized<O: Orders> {
+    confirm_order: Arc<ConfirmOrder<O>>,
 }
-
-impl<O: Orders, P: Payments> ConfirmOrderOnPaymentAuthorized<O, P> {
-    pub fn new(confirm_order: Arc<ConfirmOrder<O, P>>) -> Self {
-        ConfirmOrderOnPaymentAuthorized { confirm_order }
+impl<O: Orders> ConfirmOrderOnPaymentAuthorized<O> {
+    pub fn new(confirm_order: Arc<ConfirmOrder<O>>) -> Self {
+        Self { confirm_order }
     }
-
     pub async fn handle(&self, message: &Message) -> Result<(), Error> {
-        // The name the ledger puts on the message, spelled out here because
-        // the name is the claim the catalog reads.
-        if message.event_name() != "ledger.PaymentAuthorized" {
+        if message.event_name() != PAYMENT_AUTHORIZED {
             return Ok(());
         }
-        let order_id = message.payload["orderId"].as_str().unwrap_or_default().to_string();
-        self.confirm_order.handle(Input { order_id }).await?;
-        Ok(())
+        let event: PaymentAuthorized =
+            serde_json::from_value(message.payload.clone()).map_err(|e| Error::Payment(format!("decoding PaymentAuthorized: {e}")))?;
+        self.confirm_order
+            .handle(Input {
+                order_id: event.order_id,
+                payment_id: event.payment_id,
+                amount: event.amount,
+                authorized_at: event.occurred_at,
+            })
+            .await
     }
 }

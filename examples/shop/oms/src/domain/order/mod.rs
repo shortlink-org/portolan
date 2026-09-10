@@ -28,6 +28,8 @@ pub enum Error {
     NotFound(String),
     #[error("the order was changed by somebody else; read it again")]
     Conflict,
+    #[error("payments: {0}")]
+    Payment(String),
     #[error("store: {0}")]
     Store(String),
 }

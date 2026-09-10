@@ -1,0 +1,9 @@
+{
+  "paymentId": "basket-1",
+  "orderId": "basket-1",
+  "amount": {
+    "amountMinor": 900,
+    "currency": "EUR"
+  },
+  "occurredAt": "2026-09-05T12:00:01Z"
+}

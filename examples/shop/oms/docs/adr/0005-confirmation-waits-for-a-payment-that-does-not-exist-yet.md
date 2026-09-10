@@ -1,6 +1,6 @@
 # oms.0005 — Confirmation waits for a payment service that does not exist yet
 
-- **Status:** accepted
+- **Status:** superseded by oms.0006
 - **Date:** 2026-09-05
 - **Scope:** shop.oms
 

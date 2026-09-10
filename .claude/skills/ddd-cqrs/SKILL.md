@@ -12,13 +12,14 @@ outgrows the table the aggregate lives in.
 ## Rules
 
 **A use case is a command or a query, never both.** A command changes one
-aggregate and answers with what the caller needs to go on. A query changes
+aggregate by default and answers with what the caller needs to go on. A query changes
 nothing and answers the question it was asked. The package name says which:
 a verb for a command (`login`, `plan_route`, `issue_quote`), `get_`, `list_`
 or `track_` for a query.
 
-**A query writes nothing, opens nothing, publishes nothing.** No unit of
-work, no outbox, no event: reading is not a fact anybody reacts to. A read
+**A query writes nothing and publishes nothing.** No write unit of
+work, no outbox, no event: reading is not a fact anybody reacts to. A reader may use a read-only transaction when its consistency contract needs
+a stable snapshot. A read
 that must leave a record (an audited disclosure, a "seen" mark) is a
 command that also answers, and is named as one.
 
@@ -27,9 +28,8 @@ exists to run commands. Handed out, it invites a caller to run one on a copy
 nobody will save, and it carries a version into a place where the version
 means nothing. The output holds what the caller needs and nothing they could
 build on by mistake ([ddd-use-case](../ddd-use-case/SKILL.md)).
-`examples/auth/.../usecases/get` is the shape. Where a query returns the
-root today (`oms/get_order`, `delivery/track_shipment`) that is a finding
-for [ddd-review](../ddd-review/SKILL.md), not an allowed exception.
+`examples/auth/internal/user/application/get` is the shape. Check the actual target's result types before reporting a violation;
+examples in other contexts may have evolved.
 
 **The repository keeps the reads the commands need.** `ByID`, `ByToken`,
 `ByUserID` exist because a decision loads through them. A read that only a
@@ -50,25 +50,34 @@ order to try them:
 Moving down the table buys a shape or a speed and pays in freshness. The
 query's README says which form it is and what "now" means for its answer.
 
-**A projection is built from events and from nothing else.** An empty
-table plus a replay of the topic gives the same rows. A projector never
-reads another aggregate's table to fill a column: what it needs is on the
-event, and when it is not, the event is missing a field. That is a change to
-the event, versioned in its path (`org.0002`), not a join in the projector.
+**A projection is built from events and from nothing else.** A documented retained log, or consistent snapshot plus its versioned suffix,
+rebuilds the rows and checkpoints. Name retention and bootstrap procedures;
+a cleaned outbox does not promise complete history. A projector never
+reads another aggregate's table to fill a column: what it needs must be provided by the
+public integration contract. Evolve that payload with an explicit schema
+compatibility plan; do not expose private domain fields or query peer tables
+to complete it. Schema versions are independent of stream positions.
 
 **A projector is an adapter, not a policy.** Both subscribe to the bus. A
 policy carries a decision and calls a use case; a projector carries none
 and writes rows ([ddd-policy](../ddd-policy/SKILL.md)). It lives in
-infrastructure, implements the bus's handler type, handles the events it
-knows and passes over the rest. It calls no use case and no repository.
+infrastructure, implements the bus's handler type, handles integration-event records under the ordered stream contract,
+including explicit no-ops for known irrelevant positions. It calls no use case and no repository.
 
-**A projector is idempotent.** The relay delivers at least once
-(`auth.0011`, `cart.0008`), so the same event arrives twice and the rows
-come out the same. Upsert by aggregate id; skip, do not fail, an event older
-than what the row already holds, by the aggregate version when the event
-carries one and by occurred-at otherwise. An event the projector does not
-know is acknowledged and passed over, as the consumer side of the outbox
-already does.
+**A projector advances each stream strictly by version + 1.** Follow the
+stream envelope and checkpoint contract in
+[ddd-domain-event](../ddd-domain-event/SKILL.md). Apply only `lastVersion + 1`;
+acknowledge versions already committed without repeating effects; park/recover
+ahead-of-sequence records without applying them or advancing the checkpoint.
+No occurred-at fallback and no jump to the latest version. This rule covers
+both snapshot events and deltas.
+
+Update the projection and its per-consumer, per-stream checkpoint in one local
+transaction. Lock or compare-and-swap the checkpoint so concurrent deliveries
+cannot apply twice. Multi-stream projections keep independent checkpoints;
+versions from different aggregates are not comparable. An explicit supported
+no-op advances the stream; unknown required types/schema versions stop it for
+compatibility handling instead of silently losing a position.
 
 **A projection runs after the commit, never inside it.** The projector
 hangs off the bus behind the outbox, so the rows trail the aggregate by
@@ -76,8 +85,8 @@ the relay's lag. Whoever just ran a command reads their own write from the
 command's answer, or through the first form; never from a projection.
 "Read your own write" is not a promise a projection can keep.
 
-**Freshness is written down.** A projection row carries when it was
-projected or the version it reflects; a materialized view is drawn by the
+**Freshness is written down.** A projection exposes processing time separately from business occurred-at
+and the versions/checkpoints it reflects; a materialized view is drawn by the
 catalog as one that can be stale; the query's README says so under
 Answers. A reader who does not know an answer can be stale will build on it
 as if it could not.
@@ -105,7 +114,7 @@ the cache is bypassed there ([ddd-unit-of-work](../ddd-unit-of-work/SKILL.md)).
 
 | Piece | Layer | Where |
 |---|---|---|
-| query use case | application | `usecases/<get_x>/`, beside the commands: one entry point, `dto`, README; the flow extractors read `usecases/` |
+| query use case | application | `<module>/application/<get_x>/`, beside commands; input/result types and README owned by the slice; verify extraction against the target layout |
 | `Reader` port | application | `port.go` in the query's package |
 | SQL reader | infrastructure | one package per reader, named after the query it serves |
 | projector | infrastructure | one package per projection: the handler, the upsert, and the projection's migrations numbered from 1 |
@@ -122,11 +131,12 @@ the last event projected; the row says when".
 ## Checklist
 
 - Package is a command or a query; the name says which.
-- A query holds no unit of work, no publisher, no clock it does not read from.
-- A query returns a DTO in its own `dto`; never the root.
+- A query holds no write unit of work, no publisher, no clock it does not read from.
+- A query returns a slice-owned read DTO/result; never the root.
 - A screen-only read is a `Reader` in the query package, not a repository method.
 - The form is the cheapest that answers; the README names it and states freshness.
-- Projection: rebuildable by replay; fed by events only; projector idempotent, passes over unknown events, subscribed at assembly.
+- Projection: retained history or snapshot plus suffix; integration records only; atomic rows/checkpoint and strict version + 1 per stream.
+- Duplicates do nothing; gaps and unknown required records are recovered before advancing; subscriptions are wired in assembly.
 - No command reads a projection; no projection is refreshed inside a command's transaction.
 - Copies of foreign facts are projections with `-- from:` on the column; the storefront keeps none.
 

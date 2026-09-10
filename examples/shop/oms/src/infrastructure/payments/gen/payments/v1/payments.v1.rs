@@ -3,17 +3,22 @@
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AuthorizeRequest {
     #[prost(string, tag="1")]
+    pub payment_id: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
     pub order_id: ::prost::alloc::string::String,
-    #[prost(int64, tag="2")]
+    #[prost(int64, tag="3")]
     pub amount_minor: i64,
-    #[prost(string, tag="3")]
+    #[prost(string, tag="4")]
     pub currency: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AuthorizeResponse {
-    /// The hold, to capture or void by.
     #[prost(string, tag="1")]
-    pub authorization_id: ::prost::alloc::string::String,
+    pub payment_id: ::prost::alloc::string::String,
+    #[prost(bool, tag="3")]
+    pub authorized: bool,
+    #[prost(string, tag="4")]
+    pub reason: ::prost::alloc::string::String,
 }
 include!("payments.v1.tonic.rs");
 // @@protoc_insertion_point(module)

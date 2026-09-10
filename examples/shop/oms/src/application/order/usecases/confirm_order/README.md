@@ -1,6 +1,22 @@
 # Confirm order
 
-Confirms a placed order once its total is authorised with payments, and says
-so with `OrderConfirmed`. Payments is asked synchronously, because the answer
-is what decides; no service in the estate provides `payments.v1` yet, so the
-call is a stand-in until one does (ADR oms.0005).
+## What it does
+
+Applies an authorization fact containing order id, public payment id, amount
+and occurrence time. Checks identity and total, then confirms a placed order.
+There is no ledger client on this operation.
+
+## What follows from it
+
+A committed change emits OrderConfirmed. Its existing authorizationId field
+contains the public ledger payment id. Repeated facts and late facts for a
+cancelled order change nothing.
+
+## Answers
+
+Success or no-op; mismatch, missing order or persistence conflict/failure.
+
+## Sequence
+
+Ledger event or successful authorization reply → confirm_order → repository.
+See oms.0006 for the two delivery paths and their retry semantics.

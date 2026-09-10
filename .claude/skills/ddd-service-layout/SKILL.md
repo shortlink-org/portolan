@@ -1,80 +1,65 @@
 ---
 name: ddd-service-layout
-description: Lay out a new service, or place a new package in an existing one, so that the domain depends on nothing and every other layer depends inward. Use when starting a service in any language, adding a package and unsure which layer owns it, or reviewing an import that crosses layers.
+description: Place modules and packages in a service with inward dependencies, following its accepted ADRs. Use when creating a service, adding a capability, or reviewing boundaries between domain, application, infrastructure, integration contracts and assembly.
 ---
 
 # Service layout
 
-A service is four layers plus shared plumbing. The layers are named by what they
-know, and the whole discipline is the direction of the arrows.
+Read the target service's README, accepted ADRs and dependency rules before
+choosing paths. Follow the architecture accepted for that context; an example
+from another context does not override it. If a requested change reverses a
+recorded decision, explain the trade-off and record its replacement with
+[ddd-adr](../ddd-adr/SKILL.md). Do not restore an older layout to satisfy a
+stale example in a skill.
 
-```
-domain          knows nothing outside itself
-application     knows domain
-infrastructure  knows domain and application (to satisfy their ports)
-assembly        knows everything; the only place that does
-pkg             plumbing with no domain in it (unit of work, test harnesses)
-```
+For new services, establish context ownership with
+[ddd-strategic-design](../ddd-strategic-design/SKILL.md) first. The current Go
+reference is `examples/auth`, especially `auth.0012` through `auth.0016`.
 
-## Rules
+## Module boundaries
 
-**Domain imports nothing above it.** No database driver, no HTTP, no message
-bus, no generated client. What the domain needs from the outside it states as
-a port (an interface) and somebody outside hands it an implementation.
+Auth uses vertical feature modules (`user`, `session`, `lockout`). Each owns:
 
-**One package per aggregate in the domain.** Each holds the root, its value
-objects, its events and its ports. Two aggregates never import each other,
-even inside one service: they are linked by identifiers only.
-
-**One package per use case in the application layer.** A use case is one
-scenario with one entry point; its input and output are separate types in a
-`dto` subpackage so the shape that crosses the edge is visible on its own.
-
-**One package per port in infrastructure**, named after the port it serves:
-storage for one aggregate, publishing for one aggregate, the client for one
-external service, one transport. Each implements its port and nothing else.
-
-**Two domains know about each other in exactly two places:** a policy in the
-application layer (see [ddd-policy](../ddd-policy/SKILL.md)) and assembly (see
-[ddd-assembly](../ddd-assembly/SKILL.md)). An import between two domain
-packages, or between two use cases of different aggregates, is a defect.
-
-**A service README says what the service owns and what it refuses to own.**
-Sections, in order: what it does; what it does not do (and that the
-omissions are deliberate); the domain as a table of aggregate, root, value
-objects, events; the rules, each with the reason it is a rule. See
-`examples/auth/README.md` for the shape.
-
-**The vocabulary is a separate file.** `GLOSSARY.md` beside the README, one
-per context; the README does not define terms. See
-[ddd-ubiquitous-language](../ddd-ubiquitous-language/SKILL.md).
-
-**Each domain package and each use case package has its own README.** The
-domain one lists states and draws the transitions
-([ddd-state-machine](../ddd-state-machine/SKILL.md)); the use case one says
-what it does, what follows, the answers and the sequence
-([ddd-use-case](../ddd-use-case/SKILL.md)). Decisions with a rejected
-alternative go to `docs/adr/` ([ddd-adr](../ddd-adr/SKILL.md)).
-
-## Placing a new thing
-
-| It is | It goes in |
+| Part | Responsibility and allowed knowledge |
 |---|---|
-| a rule about one aggregate's state | the aggregate |
-| a rule about a value on its own | the value object's rules |
-| a decision that needs several aggregates but no I/O | a domain service |
-| "when X happened, do Y" across aggregates | a policy |
-| a scenario a caller asks for, that changes something | a command use case |
-| a question a caller asks, that changes nothing | a query use case; its read port in its package ([ddd-cqrs](../ddd-cqrs/SKILL.md)) |
-| rows assembled from events, for a query, across aggregates or services | a projection, kept by a projector in infrastructure |
-| something that talks to a database, bus, other service, or the network | infrastructure |
-| the knowledge that two things exist and fit together | assembly |
+| `domain` | its own invariants, aggregates, value objects and domain events; no peer module or infrastructure |
+| `application` | use case slices and consumer-owned ports; its own domain and application |
+| `infrastructure` | repositories, clients, HTTP handlers, event consumers; implements ports and translates peer contracts |
+| `integration` | public event DTOs and explicit mapping at the outbox boundary |
+| `di` | local bindings and subscriptions; composed by the service root |
 
-## Checklist
+Shared runtime mechanics belong in `platform`; the generated HTTP server and
+root composition stay service-wide. Business behaviour stays with the module
+that owns the state it changes. An adapter may know both sides; domain and
+application packages may not import another module. Domain services stay pure
+and accept local domain values; translate foreign facts at the boundary.
 
-- No file in the domain imports a driver, a framework, a client, or another aggregate.
-- Every use case names exactly the ports it uses, and no more; a query names no publisher and no unit of work.
-- Every infrastructure package names the one port it implements.
-- Only policy and assembly mention two domains in one file.
+## Placing work
 
-Language-specific layout: [references/go.md](references/go.md).
+- An aggregate is a consistency boundary justified by its invariants, not a
+  directory rule: [ddd-aggregate](../ddd-aggregate/SKILL.md).
+- Each use case is a slice under its module's `application`. Input/output
+  types belong to the slice (`Command`, `Query`, `Result` in auth); a separate
+  `dto` subpackage is not required.
+- A port belongs to its consumer. An infrastructure adapter may satisfy
+  several small compatible ports; do not duplicate it solely to enforce a
+  one-port-per-adapter rule.
+- Cross-module clients live in the consuming module's infrastructure, with
+  wiring in local DI. Event-driven policies live with the affected module,
+  under its messaging infrastructure in auth; see
+  [ddd-policy](../ddd-policy/SKILL.md).
+- Readers and projectors live in the owning module's infrastructure. Long
+  processes follow [ddd-process-manager](../ddd-process-manager/SKILL.md).
+
+## Documentation and checks
+
+The service README states ownership, deliberate omissions and module layout.
+Keep one `GLOSSARY.md` per context. Domain READMEs explain invariants and
+lifecycle; use case READMEs explain steps, answers and derived flow links.
+Use the repository's ADR location and naming rather than moving existing records.
+
+Check the target's executable dependency rules. Auth uses `depguard` in
+`.golangci.yml`; application tests use local mocks and infrastructure tests
+own their backends. Review only the boundaries affected by the task.
+
+Go paths and reference decisions: [references/go.md](references/go.md).

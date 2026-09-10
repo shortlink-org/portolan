@@ -1,70 +1,31 @@
-# Use case in Go
+# Use cases in Go
 
-From `examples/auth/internal/application/session/usecases/login`.
+Current [login slice](../../../../examples/auth/internal/session/application/login/usecase.go):
 
-```
-application/<aggregate>/usecases/<use_case>/
-  usecase.go      UseCase, New, Handle
-  port.go         ports declared by this use case (Authenticator, Risk), closed sets, its own errors
-  dto/input.go
-  dto/output.go   omitted when the answer is "no content"
-  usecase_test.go
-  README.md
-```
-
-```go
-package login
-
-type Authenticator interface {
-    Authenticate(ctx context.Context, email, password string) (userID string, err error)
-}
-
-type Risk interface {
-    Assess(ctx context.Context, attempt Attempt) (Verdict, error)
-}
-
-type Verdict string
-const (
-    VerdictAllow Verdict = "allow"
-    VerdictBlock Verdict = "block"
-)
-
-var ErrBlocked = errors.New("login: attempt blocked")
-
-type UseCase struct {
-    repo  session.Repository
-    auth  Authenticator
-    risk  Risk
-    now   func() time.Time
-    newID func() string
-}
-
-func New(repo session.Repository, auth Authenticator, risk Risk, now func() time.Time, newID func() string) *UseCase
-
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
-    userID, err := uc.auth.Authenticate(ctx, in.Email, in.Password)
-    if err != nil {
-        return dto.Output{}, err // pass through untouched
-    }
-    verdict, err := uc.risk.Assess(ctx, Attempt{UserID: userID})
-    if err != nil {
-        return dto.Output{}, err // unreachable is not a verdict
-    }
-    if verdict == VerdictBlock { ... return dto.Output{}, ErrBlocked }
-
-    sess, ev, err := session.Start(uc.newID(), userID, uc.now())
-    ...
-    if err := uc.repo.Save(ctx, sess, ev); err != nil { return dto.Output{}, err }
-    return dto.Output{Token: sess.Token.String(), ExpiresAt: sess.ExpiresAt}, nil
-}
+```text
+internal/session/application/login/
+  usecase.go        orchestration and constructor
+  model.go          Command and Result
+  port.go           consumer-owned interfaces and verdict values
+  errors.go         slice-owned outcomes
+  usecase_test.go   tests over local Mockery mocks
+  .mockery.yml      generation configuration
+  README.md         steps, consequences, answers, derived sequence link
 ```
 
-Conventions:
+[Input/result](../../../../examples/auth/internal/session/application/login/model.go)
+stay in package `login`. Use `Handle(ctx, Command) (Result, error)` or
+`Handle(ctx, Command) error`; a read uses `Query`. The
+[get slice](../../../../examples/auth/internal/user/application/get/model.go)
+shows query and read result types.
 
-- `Handle(ctx, dto.Input) (dto.Output, error)`; when there is nothing to
-  return, `Handle(ctx, dto.Input) error`.
-- Package name is the verb in snake_case; import it as-is (`login`,
-  `change_password`).
-- A use case that needs two aggregates in one transaction wraps both saves
-  in the unit of work; the repositories' own transactions join it. See
-  [ddd-adapters](../../ddd-adapters/references/go.md).
+[Identity adapter](../../../../examples/auth/internal/session/infrastructure/identity/adapter.go)
+bridges user credential checking to login's port. Neither application package
+imports its peer. The current adapter preserves the already-classified refusal;
+where port contracts differ, translate at the adapter without exposing hidden
+credential distinctions.
+
+[Credential checking](../../../../examples/auth/internal/user/application/check_credentials/usecase.go)
+returns one application credential error and records lockout outcomes. It is a
+command despite the word "check". [Password ports](../../../../examples/auth/internal/user/application/change_password/port.go)
+keep hashing and verification out of the aggregate.

@@ -1,0 +1,20 @@
+{
+  "basketId": "basket-1",
+  "customerId": "customer-1",
+  "items": [
+    {
+      "sku": "tea",
+      "quantity": 2,
+      "unitPrice": {
+        "amountMinor": 450,
+        "currency": "EUR"
+      }
+    }
+  ],
+  "total": {
+    "amountMinor": 900,
+    "currency": "EUR"
+  },
+  "quoteId": "quote-1",
+  "occurredAt": "2026-09-05T12:00:00.000Z"
+}

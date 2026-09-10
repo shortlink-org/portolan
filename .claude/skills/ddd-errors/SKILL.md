@@ -1,77 +1,44 @@
 ---
 name: ddd-errors
-description: Define and route errors across the layers of a service — sentinels in the domain, markers for validation, wrapping in adapters, pass-through on ports, one mapping at the transport. Use when adding an error, deciding what a caller can act on, wrapping a storage or network failure, or mapping an error to a status, in any language.
+description: Own and classify errors at domain, application, adapter and transport boundaries. Use when adding refusals, mapping peer errors to a consumer port, or preserving causes without leaking protocol or security details.
 ---
 
 # Errors
 
-An error is an answer a caller can act on. Each layer adds what it knows and
-takes nothing away.
+Follow the target's accepted error ownership. In auth, `auth.0015` assigns
+invariant, lifecycle, repository-contract and optimistic-conflict sentinels to
+the domain, orchestration outcomes to application, and HTTP semantics to the edge.
 
 ## Rules
 
-**The domain declares one sentinel per answer.** Not found, conflict,
-invalid credentials, already taken: each is a named, comparable value at the
-package level, prefixed with the package name. A caller tests identity, never
-message text.
+- Declare one comparable error per outcome the owning layer distinguishes.
+  Use `errors.Is`/`errors.As` in Go, never message comparisons.
+- Value-object validation wraps rule failures with its marker. Report only
+  supported public reasons at the edge.
+- Application owns credential refusal and blocked-login outcomes. Unknown
+  user, wrong password and locked account are deliberately classified into
+  one non-enumerating credential refusal by the credential-checking use case.
+- A port's errors belong to its consumer contract. A cross-module adapter
+  maps peer outcomes where the contracts differ, preserving operational causes
+  where useful. Preserve an already-agreed refusal unchanged when the contract
+  permits it, as auth's identity adapter does; never reveal hidden distinctions.
+- Within a contract, preserve error classification when adding context with
+  `%w`. Map known storage constraints to the correct domain outcome; wrap
+  unexpected errors with operation context. External unavailability or an
+  unknown verdict is an error, not a business decision.
+- HTTP adapters are the sole mapping to status and public text. Equivalent
+  credential failures remain equivalent; unrecognised failures return a fixed
+  500 without internal detail. Test each new public mapping.
 
-**Validation raises a marker that wraps the rules.** A value object has one
-`ErrInvalid`; the specification's joined failures are inside it. Callers
-test the marker; the leaves are for reporting. See
-[ddd-specification](../ddd-specification/SKILL.md).
-
-**Failures that must stay indistinguishable are one sentinel.** Wrong
-password and unknown address are both `ErrInvalidCredentials`. The
-distinction is decided in the domain once, and no layer above may reintroduce
-it.
-
-**Conflict has one meaning and one remedy.** The copy in hand is not what is
-stored: read again, redo the change, save again. The message says so.
-
-**Adapters translate, then wrap.** A storage error that means a domain thing
-becomes the domain sentinel, told apart by constraint name. Anything else is
-wrapped with the package and the operation: `user: inserting <id>: <cause>`.
-The cause is kept for the log; the sentinel is what the caller tests.
-
-**Ports pass errors through untouched.** A use case returns what its port
-returned. Translating it would be the one way to accidentally make a wrong
-password distinguishable from an unknown address. The adapter between two
-domains in assembly passes through too.
-
-**An error from an external service is not a decision.** Unreachable risk
-means nothing is issued and nothing is ended; it is an error, not a verdict.
-An unknown value from the other side is an error, not a default.
-
-**A use case declares the errors that are its own.** `ErrBlocked` is
-login's: it exists because login decided something. It lives in the use
-case's package, not the domain.
-
-**The transport maps in one function per package.** Sentinels and markers
-to codes and messages; the same failure cannot get two codes from two
-endpoints. Reasons for a validation failure are flattened into a list. Anything
-unrecognised is 500 with no detail: the detail stays on this side.
-
-**Nothing swallows silently except by decision.** A cache failure is
-swallowed because the database is still there, and the comment says it wants
-a metric. A subscriber failure in the in-process bus fails the publisher,
-because silent loss is the worst outcome. Both are written down where they
-happen.
-
-## Where each error is born
-
-| Kind | Born in | Tested by |
-|---|---|---|
-| domain sentinel | aggregate package | use case, transport, tests |
-| validation marker + rule leaves | value object | transport (marker), reasons list (leaves) |
-| use case decision | use case package | transport |
-| storage/network wrapped cause | adapter | logs; caller sees the sentinel it maps to, or 500 |
+Optimistic conflict means the loaded version is stale. Re-read and re-evaluate
+only where retrying preserves intent; a background idempotent loop may retry
+locally with a bound, while an interactive conflicting edit may return 409.
 
 ## Checklist
 
-- Every domain answer a caller acts on has a sentinel.
-- Value objects: one marker, rules inside it.
-- Adapters map by constraint, wrap the rest with package and operation.
-- No layer between adapter and transport rewrites an error.
-- Transport: one mapping function; 500 leaks nothing.
+- Errors belong to the layer that owns the outcome.
+- Foreign failures conform to the consuming port's contract; translation is explicit where needed.
+- Classification and causes survive wrapping; security-equivalent outcomes stay equivalent.
+- Only the transport chooses status codes and public messages.
 
-Language-specific: [references/go.md](references/go.md).
+Current Go reference: [references/go.md](references/go.md).

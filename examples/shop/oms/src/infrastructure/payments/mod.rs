@@ -6,7 +6,7 @@ pub mod client;
 pub mod generated;
 pub mod stand_in;
 
-use crate::application::order::usecases::confirm_order::Payments;
+use crate::application::order::usecases::request_payment::{Authorization, Payments};
 use crate::domain::order::Error;
 use crate::domain::order::vo::Money;
 
@@ -17,10 +17,23 @@ pub enum AnyPayments {
 }
 
 impl Payments for AnyPayments {
-    async fn authorize(&self, order_id: &str, total: &Money) -> Result<String, Error> {
+    async fn authorize(&self, payment_id: &str, order_id: &str, total: &Money) -> Result<Authorization, Error> {
         match self {
-            AnyPayments::Client(c) => c.authorize(order_id, total).await,
-            AnyPayments::Permissive(p) => p.authorize(order_id, total).await,
+            AnyPayments::Client(c) => c.authorize(payment_id, order_id, total).await,
+            AnyPayments::Permissive(p) => p.authorize(payment_id, order_id, total).await,
         }
     }
+}
+
+/// Ledger-owned integration contract, distinct from its private gateway handle.
+pub const TOPIC: &str = "payments.ledger.payment";
+pub const PAYMENT_AUTHORIZED: &str = "ledger.PaymentAuthorized";
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaymentAuthorized {
+    pub payment_id: String,
+    pub order_id: String,
+    pub amount: Money,
+    pub occurred_at: chrono::DateTime<chrono::Utc>,
 }

@@ -9,6 +9,10 @@ One context, one vocabulary. A word means one thing inside the boundary,
 and it is the same word in the glossary, the code, the events, the API and
 the diagram. A reader who learns the glossary can read the tree.
 
+Choose or revisit context boundaries with
+[ddd-strategic-design](../ddd-strategic-design/SKILL.md); a glossary names the
+model inside an established boundary.
+
 ## Rules
 
 **The glossary is its own file.** `GLOSSARY.md` next to the service README,

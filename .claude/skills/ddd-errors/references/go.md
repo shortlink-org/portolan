@@ -1,60 +1,22 @@
 # Errors in Go
 
-Sentinels, `domain/user/user.go`:
+Follow [auth.0015](../../../../examples/auth/docs/adr/0015-errors-are-owned-and-classified-at-the-edge.md):
 
-```go
-var (
-    ErrInvalidCredentials = errors.New("user: invalid credentials")
-    ErrNotFound           = errors.New("user: not found")
-    ErrEmailTaken         = errors.New("user: email already registered")
-    ErrConflict           = errors.New("user: changed by somebody else")
-)
-```
+- [Domain errors](../../../../examples/auth/internal/user/domain/errors.go)
+  own invariant and repository outcomes such as uniqueness/conflict.
+- [Application errors](../../../../examples/auth/internal/user/application/errors.go)
+  own credential refusal; [login errors](../../../../examples/auth/internal/session/application/login/errors.go)
+  own a blocked attempt.
+- [Credential checking](../../../../examples/auth/internal/user/application/check_credentials/usecase.go)
+  deliberately maps malformed/unknown credentials, lockout and wrong password
+  to one refusal while preserving operational failures.
+- [Repository](../../../../examples/auth/internal/user/infrastructure/repository/postgres.go)
+  translates known database constraints and wraps other causes.
+- [HTTP mapping](../../../../examples/auth/internal/user/infrastructure/http/errors.go)
+  chooses public codes and text; [mapping tests](../../../../examples/auth/internal/user/infrastructure/http/errors_test.go)
+  pin their equivalence and detail limits.
 
-Marker wrapping rules, `vo/password/password.go`:
-
-```go
-var ErrInvalid = errors.New("password is not acceptable")
-return Hash{}, fmt.Errorf("%w: %w", ErrInvalid, err) // two %w: marker and joined rules both match errors.Is
-```
-
-Use case's own error, `usecases/login/port.go`:
-
-```go
-var ErrBlocked = errors.New("login: attempt blocked")
-```
-
-Adapter translation and wrapping, `repository/user/postgres.go`:
-
-```go
-var pgErr *pgconn.PgError
-if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-    if pgErr.ConstraintName == "users_email_key" {
-        return user.ErrEmailTaken
-    }
-    return user.ErrConflict
-}
-if err != nil {
-    return fmt.Errorf("user: inserting %s: %w", u.ID, err)
-}
-if tag.RowsAffected() == 0 {
-    return user.ErrConflict
-}
-```
-
-External client, `risk/client.go`:
-
-```go
-if err != nil { return "", fmt.Errorf("risk: assess: %w", err) }
-default:      return "", fmt.Errorf("risk: assess: verdict %d is not one this service knows", v)
-```
-
-Transport mapping, `transport/http/user/errors.go`: `status(err) (int, string)`
-with `errors.Is` arms and a `default: 500, "internal error"`; `reasons(err)`
-walks `Unwrap() []error` and `Unwrap() error` to list the leaves.
-
-Conventions:
-
-- `errors.Is` / `errors.As` everywhere; never compare `Error()` strings.
-- Wrap with `%w`, prefix with the package name and the operation and id.
-- Sentinels are `var`, not functions returning new errors, so identity holds.
+Use `errors.Is` / `errors.As`, and `%w` when adding context. Do not move
+`ErrInvalidCredentials` back to the root or infer that every port error must
+always be passed through: preservation versus translation follows the consuming
+contract. A shared protocol classification is not a shared service-wide error type.

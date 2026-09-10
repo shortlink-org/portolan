@@ -1,37 +1,40 @@
-use std::future::Future;
+use chrono::{DateTime, Utc};
 
-use super::Clock;
-use crate::domain::order::Error;
 use crate::domain::order::port::Orders;
 use crate::domain::order::vo::Money;
-
-/// Somebody who can hold the order's total against the customer's instrument.
-/// Declared here, by the one use case that needs it, and filled by an adapter
-/// over the ledger's contract - or by a stand-in while there is no ledger.
-pub trait Payments: Send + Sync {
-    fn authorize(&self, order_id: &str, total: &Money) -> impl Future<Output = Result<String, Error>> + Send;
-}
+use crate::domain::order::{Error, Status};
 
 pub struct Input {
     pub order_id: String,
+    pub payment_id: String,
+    pub amount: Money,
+    pub authorized_at: DateTime<Utc>,
 }
 
-pub struct UseCase<O: Orders, P: Payments> {
+/// Applies an authorization fact. It has no payment port and cannot authorize
+/// again. Both the RPC answer and ledger event reach this idempotent operation.
+pub struct UseCase<O: Orders> {
     orders: O,
-    payments: P,
-    clock: Clock,
 }
 
-impl<O: Orders, P: Payments> UseCase<O, P> {
-    pub fn new(orders: O, payments: P, clock: Clock) -> Self {
-        UseCase { orders, payments, clock }
+impl<O: Orders> UseCase<O> {
+    pub fn new(orders: O) -> Self {
+        Self { orders }
     }
 
     pub async fn handle(&self, input: Input) -> Result<(), Error> {
         let mut order = self.orders.by_id(&input.order_id).await?;
-        let authorization_id = self.payments.authorize(&order.id, &order.total).await?;
-        let confirmed = order.confirm(authorization_id, (self.clock)())?;
-        self.orders.save(&order, &[&confirmed]).await?;
-        Ok(())
+        if input.payment_id != order.id || input.amount != order.total {
+            return Err(Error::Payment("authorization does not match the checkout".into()));
+        }
+        // A late authorization must never resurrect a cancelled order. Repeated
+        // RPC/event delivery must not emit a second OrderConfirmed either.
+        if order.status != Status::Placed {
+            return Ok(());
+        }
+        // authorizationId is retained on the existing event for compatibility;
+        // it carries the public ledger payment id, never the gateway's handle.
+        let confirmed = order.confirm(input.payment_id, input.authorized_at)?;
+        self.orders.save(&order, &[&confirmed]).await
     }
 }

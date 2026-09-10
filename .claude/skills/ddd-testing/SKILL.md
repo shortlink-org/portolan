@@ -1,84 +1,58 @@
 ---
 name: ddd-testing
-description: Test a service built in layers — the aggregate and value objects without I/O, domain services without a store, use cases against a real database with ports satisfied inline, adapters against the real backend. Use when writing or reviewing tests for any of those, deciding what to fake, or fixing time in a test, in any language.
+description: Test domain rules, application orchestration and infrastructure guarantees at their owning boundaries. Use when changing tests in a layered service, choosing mocks versus a real backend, or validating event delivery and transactions.
 ---
 
 # Testing
 
-Each layer is tested at the boundary it owns. Nothing is mocked that can be
-run for real cheaply, and nothing is run for real that the layer does not
-touch.
+Read the target service's accepted architecture and test configuration first.
+Current auth uses package-local Mockery mocks for application and policy tests;
+Postgres and Redis belong in infrastructure, platform and composition tests.
+Do not restore the old all-use-cases-on-a-database harness.
 
-## Rules
+## Choose the boundary
 
-**Domain tests need no I/O.** Aggregate commands, value object rules, and
-domain services are called with values and asserted on their return. A
-domain service is handed aggregates built by the domain's own constructors
-and asked for its decision.
-
-**"Now" is a fixed value.** Every constructor and command takes time as a
-parameter, and the use case takes a clock; tests pass a constant. A test that
-reads the wall clock is a test that fails on a slow machine.
-
-**A port is satisfied inline, as a function.** The use case declared
-`Authenticator` as one method; the test defines a function type that
-implements it and writes three-line helpers named for what they do:
-`vouches(userID)`, `refuses()`, `allows()`, `blocks()`. No mocking library.
-
-**A use case is tested against a real database.** The harness builds the
-repository over a real store reached exactly the way the service reaches it,
-with the same transaction lookup assembly wires. A test that reached the
-database any other way would exercise a path the service does not have, and
-the transaction lookup is the thing most worth not getting wrong.
-
-**Isolation is a database per test.** One container serves the package; each
-test gets its own schema. Cheap and total.
-
-**Events are asserted.** The harness subscribes an in-process bus that
-records everything published, and a test says how many events and which. A
-refused login announces nothing; a successful one announces exactly one
-`SessionStarted`.
-
-**A test is named for the rule it pins.** "No session without the
-authenticator", "authenticator failure is not rewritten", "ends sessions
-older than the change". The comment above it says why the rule exists. A
-test that fails should tell the reader which rule broke.
-
-**Skip, do not fail, when the backend is unavailable.** A machine without
-Docker still runs the domain tests, and the run stays honest about what it
-did not do.
-
-**A query is tested on the same store as a command, without a bus.** Rows
-are written through the repository, the DTO is asserted, and no recording
-bus is subscribed: a query publishes nothing, and the test says so by not
-listening. A projector is tested by replay: its migrations on a per-test
-schema, the handler called with events built by their constructors, the
-same event twice and then an older one, and the rows asserted unchanged.
-
-**Adapters are tested against their backend.** Repository against Postgres,
-cache against Redis, with the same harnesses. The cache test checks the
-rules that are about caching: bypass inside a transaction, survival of a
-cache outage, a miss not being stored.
-
-## What to fake, what to run
-
-| Layer | Runs for real | Faked |
+| Layer | Exercise | Dependencies |
 |---|---|---|
-| aggregate, value object, domain service | everything | nothing |
-| use case | repository over a real database, in-proc bus | other domains' ports, external services, clock |
-| adapter | its backend | nothing |
-| policy | the use case it calls, over a real database | the event, built by its constructor |
-| query | repository or reader over a real database | nothing; no bus |
-| projector | its table over a real database | the events, built by their constructors |
-| transport | the generated server | the use cases, as interfaces |
+| domain and pure services | invariants, commands, value policies, lifecycle | values and explicit time; no I/O |
+| application slice | ordering, refusals, commands, results, expected writes/events | package-local mocks of consumed ports |
+| policy | integration DTO to receiving command, failures and redelivery | mock the injected use case |
+| repository/outbox/UoW | real commit/rollback, optimistic conflict, event mapping | real backend, local fixture setup |
+| cache | invalidation, transaction bypass, backend outage | mocks for unit cases; Redis for backend semantics |
+| HTTP | request mapping, authentication, public errors | generated server and mocked use cases |
+| projector | stream ordering and atomic rows/checkpoint | real store for transaction/concurrency guarantees |
+| composition | bindings and shared transaction lookup | focused assembled integration tests |
 
-## Checklist
+Use deterministic clocks and id generators where the operation consumes them.
+Name tests for business rules or infrastructure guarantees. In auth mocks are
+configured by package-local `.mockery.yml`; regenerate only affected packages.
+Keep setup helpers local instead of creating another shared test package.
 
-- Domain tests import no infrastructure.
-- Fixed `now`; injected id generator.
-- Ports faked as function types with intention-revealing helpers.
-- Use case harness: real store, recording bus, per-test database.
-- Every test names a rule; refused paths assert no events.
-- Projector: the same event twice and an older one leave the rows unchanged.
+## Events and versions
 
-Language-specific: [references/go.md](references/go.md).
+Assert what actually commits. A recording in-process bus alone does not verify
+the outbox or after-commit delivery. Repository tests must cover a failed outbox
+append rolling back the aggregate and a failed aggregate write appending nothing.
+
+A refusal normally has no success event, but some refused commands intentionally
+change state (a blocked login ends sessions; credential failures update lockout).
+Assert the events and writes the documented business rule requires.
+
+For ordered consumers test: 1 then 2; duplicate 2; 3 arriving before 2; recovery
+of the missing position; two consumers racing; failure between effect and
+checkpoint; replay from a snapshot checkpoint. A gap changes neither rows nor
+checkpoint, and a redelivery repeats no effects. See
+[ddd-domain-event](../ddd-domain-event/SKILL.md).
+
+A query's no-write contract is verified by read-only ports or explicit negative
+mock expectations, not by omitting an observer. Query orchestration can use
+mocks; SQL readers require backend tests for their SQL semantics.
+
+## Running checks
+
+Run the focused checks covering the change. Local backend-dependent tests may
+skip when Docker is absent, with the skip reported. A required integration CI
+job must provision its backend and fail if the required checks cannot run.
+Do not claim transaction guarantees from a mocked test or a skipped backend test.
+
+Current Go examples: [references/go.md](references/go.md).

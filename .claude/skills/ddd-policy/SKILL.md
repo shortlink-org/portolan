@@ -1,67 +1,50 @@
 ---
 name: ddd-policy
-description: Write a domain service (a pure decision across several aggregates) or a policy ("when X has happened, do Y" across aggregates, driven by an event). Use when a rule belongs to no single aggregate, when one aggregate's change must cause something in another, or when tempted to call a second use case from inside a first, in any language.
+description: Place a pure domain decision or an event-driven reaction in the module that owns its outcome. Use for a rule outside one aggregate, or when one module reacts to another module's integration event.
 ---
 
 # Domain service and policy
 
-Two homes for a rule that does not sit on one aggregate. A **domain service**
-decides; a **policy** reacts.
+A domain service decides using local domain values; a policy reacts to a fact.
+For a reaction that must remember several steps, deadlines or compensations,
+use [ddd-process-manager](../ddd-process-manager/SKILL.md).
 
 ## Domain service
 
-A decision that belongs to the domain but needs several aggregates, and no
-I/O.
+Keep the decision pure. Pass the relevant aggregate instances, local values
+and explicit times; no repository, client or clock is called inside it.
+Aggregates do not import the service that reasons about them. Do not import a
+foreign module's aggregate to make a decision: translate required facts to
+local values through a consumer-owned port.
 
-- **Pure.** It is handed the aggregates it reasons about and returns an
-  answer. Loading them and writing the outcome is the caller's job. That
-  keeps the decision testable without a store and stops the package becoming
-  a second home for use cases.
-- **Imports the aggregate; never the reverse.** An aggregate does not call
-  its own domain service; somebody outside does.
-- **Exists because the decision is not obvious.** "Revoke everything" on a
-  password change is wrong twice: it ends the session the change was made
-  from, and it ends sessions started against the *new* password while the
-  event was in flight. The service spells out what survives.
-- **Time comes from the event, never the clock.** The two differ once
-  anything is asynchronous, and the difference is exactly the aggregates
-  changed in between.
+Choose time by meaning. A credential change's occurred-at determines which
+sessions predate it; an explicit current time can determine which sessions
+are still live. Do not substitute processing time for business occurrence time.
 
 ## Policy
 
-"When X has happened, do Y", where X and Y belong to different aggregates.
+- Own the reaction in the module whose state changes. In current auth it is
+  `session/infrastructure/messaging/policy`, following `auth.0012` and `auth.0013`.
+- Consume the producer's public integration-event DTO, not its domain event
+  or root. Translate it to the receiving use case's command.
+- Call a use case through a small consumer-owned interface; never bypass its
+  rules by writing the repository. Inject that interface in local DI.
+- Subscribe in assembly. An unrelated event is outside a type-specific
+  policy's scope; decoding a malformed supported event must fail delivery.
+- Keep reactions idempotent under redelivery. If they depend on event order,
+  enforce the stream's strict version progression before applying them; see
+  [ddd-domain-event](../ddd-domain-event/SKILL.md).
 
-- **Hangs off the fact, not off the use case that produced it.** Every way a
-  password can change — the owner, a support reset, an import — publishes
-  the same event, and each gets the behaviour without asking. Written as a
-  call inside one flow, the rule would have to be remembered at every new way
-  in, and the one that forgot would silently not have it.
-- **One of two places that knows two domains exist** (the other is
-  assembly). Aggregates never import each other; the policy imports one
-  domain's event and the other domain's use case.
-- **Reacts to one event; passes over everything else.** Anything else on the
-  bus is not this policy's business and is not an error.
-- **Calls a use case; does not reach into a repository.** The policy
-  translates the event into the input of a use case on the other side
-  (`end_after_credential_change`), which owns its own transaction and rules.
-- **Carries what the event carries.** The session to spare is `by` on the
-  event; an administrative reset leaves it empty and spares nothing, which is
-  what a reset is for.
-
-## When it is neither
-
-| You want | Use |
-|---|---|
-| a check on one aggregate's state | a command on the aggregate |
-| a decision over several aggregates, no I/O | a domain service |
-| a reaction in aggregate B to a fact from aggregate A | a policy |
-| a scenario a caller asks for | a use case |
+A rule caused by every password change belongs behind the event, so new ways
+to change a password inherit it. A synchronous need such as credential checking
+is a port on the caller, implemented by a cross-module adapter, not a policy.
 
 ## Checklist
 
-- Domain service has no ports and no clock; inputs are aggregates and times.
-- Policy handles exactly one event type and returns nothing for the rest.
-- Policy calls a use case, never a repository.
-- No aggregate imports the other; the policy is the only bridge outside assembly.
+- Decision uses local values and explicit time, without I/O.
+- Reaction is owned by the affected module and consumes an integration contract.
+- Policy calls an injected use case, not a repository.
+- Assembly owns subscriptions; retries cannot repeat the business effect.
+- Multi-step durable progress routes to a process manager.
 
-Language-specific: [references/go.md](references/go.md).
+Current Go reference: [references/go.md](references/go.md).

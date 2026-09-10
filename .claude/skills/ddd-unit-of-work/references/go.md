@@ -1,76 +1,24 @@
 # Unit of work in Go
 
-`examples/auth/internal/pkg/uow/uow.go`, over `go-sdk/uow` and the SDK's
-Postgres router:
+Read [platform/uow](../../../../examples/auth/internal/platform/uow/uow.go).
+`Do` joins the transaction carried by `go-sdk/uow` when one exists; otherwise
+it opens a transaction and supplies the shared lookup context.
 
-```go
-type UnitOfWork struct{ router *replica.Router }
+[Root storage wiring](../../../../examples/auth/internal/di/provider/storage.go)
+and [outbox wiring](../../../../examples/auth/internal/di/provider/outbox.go)
+must use the same lookup. The [user repository](../../../../examples/auth/internal/user/infrastructure/repository/postgres.go)
+commits aggregate storage and mapped integration-event append together.
 
-func (u *UnitOfWork) Do(ctx context.Context, fn func(ctx context.Context) error) error {
-    if sdkuow.HasTx(ctx) {
-        return fn(ctx) // re-entrant
-    }
-    return u.router.InTx(ctx, pgx.TxOptions{}, func(txCtx context.Context, tx pgx.Tx) error {
-        return fn(sdkuow.WithTx(txCtx, tx))
-    })
-}
-```
+[Session revocation](../../../../examples/auth/internal/session/application/end_after_credential_change/usecase.go)
+shows per-item handling of independent aggregate updates; re-read and re-evaluate
+on an optimistic conflict under the operation's bounded retry policy. Do not
+repeat external effects inside a blind retry loop.
 
-Assembly hands the same lookup to everyone (`provider/storage.go`,
-`provider/outbox.go`):
+A new projector uses its own local transaction for rows and checkpoint, applying
+strictly version + 1. It never tries to join the already-committed producer unit.
+See [projector procedure](../../ddd-cqrs/references/go.md).
 
-```go
-store, err := postgres.New(ctx, cfg, log, postgres.WithTxLookup(sdkuow.FromContext))
-publisher, err := sdkoutbox.NewPublisher(sdkuow.FromContext)
-```
-
-Repository `Save`, one unit for aggregate and events:
-
-```go
-func (p *Postgres) Save(ctx context.Context, u *user.User, events ...event.Event) error {
-    return p.uow.Do(ctx, func(ctx context.Context) error {
-        if u.Version == 0 { insert } else { update }
-        if len(events) == 0 || p.bus == nil { return nil }
-        return p.bus.Publish(ctx, events)
-    })
-}
-```
-
-One unit per independent aggregate, with retry on conflict
-(`usecases/end_after_credential_change/usecase.go`):
-
-```go
-for _, doomed := range change.Ends(sessions, uc.now()) {
-    if err := uc.end(ctx, doomed.ID); err != nil { return err }
-}
-
-func (uc *UseCase) end(ctx context.Context, id string) error {
-    for attempt := range retries {
-        current, err := uc.repo.ByID(ctx, id)
-        if errors.Is(err, session.ErrNotFound) { return nil }
-        if err != nil { return err }
-        ev, ended := current.Revoke(event.ReasonPasswordChanged, uc.now())
-        if !ended { return nil }
-        switch err := uc.repo.Save(ctx, current, ev); {
-        case err == nil:                          return nil
-        case errors.Is(err, session.ErrConflict): continue // re-read, redo
-        default:                                  return err
-        }
-    }
-    ...
-}
-```
-
-Two aggregates in one unit, when the rule demands it:
-
-```go
-return uc.uow.Do(ctx, func(ctx context.Context) error {
-    if err := uc.orders.Save(ctx, order, placed); err != nil { return err }
-    return uc.baskets.Save(ctx, basket, checkedOut)
-})
-```
-
-Cache bypass (`repository/session/cached.go`): `if sdkuow.HasTx(ctx) { return c.next.ByToken(ctx, presented) }`.
-
-Test harness (`pkg/postgrestest`): `postgrestest.Store(t, source)` returns
-the router and a `*uow.UnitOfWork` built with `WithTxLookup(sdkuow.FromContext)`.
+Backend fixtures belong beside infrastructure/platform/composition tests, not
+every use case. [UoW tests](../../../../examples/auth/internal/platform/uow/uow_test.go)
+and [outbox tests](../../../../examples/auth/internal/di/provider/outbox_test.go)
+verify the production lookup path.

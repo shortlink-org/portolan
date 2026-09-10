@@ -12,7 +12,7 @@ func NewOrSpecification[T any](specs ...Specification[T]) Specification[T]
 func NewNotSpecification[T any](spec Specification[T]) Specification[T]
 ```
 
-A rule, `examples/auth/internal/domain/user/vo/email/rules/no_display_name.go` style:
+A rule, `examples/auth/internal/user/domain/vo/email/rules/no_display_name.go` style:
 
 ```go
 package rules

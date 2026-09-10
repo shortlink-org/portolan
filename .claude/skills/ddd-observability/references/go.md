@@ -4,7 +4,7 @@ Exporter, `cmd/auth/main.go`: if `TRACER_URI` is set, an OTLP gRPC exporter
 and a tracer provider are installed with `otel.SetTracerProvider`; otherwise
 the global provider stays the SDK's no-op.
 
-HTTP, `infrastructure/transport/http/telemetry.go`:
+HTTP, `transport/http/telemetry.go`:
 
 ```go
 func traced(router http.Handler) http.Handler {
@@ -31,7 +31,7 @@ func named(next gen.StrictHandlerFunc, operationID string) gen.StrictHandlerFunc
 }
 ```
 
-Events, `pkg/messaging/tracing.go`:
+Events, `platform/messaging/tracing.go`:
 
 ```go
 const AttrEventName = "event.name"
@@ -54,12 +54,12 @@ func StartPublish(ctx context.Context, topic string, msg *message.Message, event
 func StartConsume(ctx context.Context, topic, eventName string) (context.Context, trace.Span) // SpanKindConsumer, "process"
 ```
 
-Called from `repository/<aggregate>/publisher.go` per event on publish, and
+Called from `<module>/infrastructure/repository/publisher.go` per event on publish, and
 from the dispatcher in `Handle(relay, byName)` per event on consume. The
 relay's middleware extracts the context from the message before the
 dispatcher runs, so `StartConsume` parents on the publish span.
 
-Database: the SDK's pgx tracer, wired in `provider/storage.go`.
+Database: the SDK's pgx tracer, wired in `internal/di/provider/storage.go`.
 
 Recording, `telemetry/`: `otel-collector.yaml` writes OTLP JSON to a file;
 `record.sh` starts Postgres, the collector and the service, drives every

@@ -65,6 +65,7 @@ fn status(e: order::Error) -> Status {
         order::Error::Move { from, to } => Status::failed_precondition(format!("a {from} order cannot become {to}")),
         order::Error::Conflict => Status::aborted("the order was changed by somebody else; read it again"),
         order::Error::Empty | order::Error::Currency => Status::invalid_argument(e.to_string()),
+        order::Error::Payment(_) => Status::unavailable("payment operation could not be completed"),
         order::Error::Store(_) => Status::internal("the order could not be read or written"),
     }
 }

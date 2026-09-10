@@ -1,80 +1,27 @@
 # Testing in Go
 
-From `examples/auth/internal/application/session/usecases/login/usecase_test.go`,
-`domain/session/services/credential_change_test.go`, `pkg/postgrestest`.
+Current auth references:
 
-A port satisfied inline:
+- [Login tests](../../../../examples/auth/internal/session/application/login/usecase_test.go)
+  use package-local Mockery mocks for repository and external ports.
+- [Policy tests](../../../../examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change_test.go)
+  mock the receiving use case.
+- [Domain tests](../../../../examples/auth/internal/user/domain/user_test.go)
+  run with values and fixed time.
+- [Repository tests](../../../../examples/auth/internal/user/infrastructure/repository/postgres_test.go)
+  and [local fixture](../../../../examples/auth/internal/user/infrastructure/repository/database_test.go)
+  own their real backend; [publisher tests](../../../../examples/auth/internal/user/infrastructure/repository/publisher_test.go)
+  cover the event boundary.
+- [UoW tests](../../../../examples/auth/internal/platform/uow/uow_test.go) and
+  [composition tests](../../../../examples/auth/internal/di/provider/outbox_test.go)
+  cover shared transaction wiring.
+- [Dependency configuration](../../../../examples/auth/.golangci.yml) forbids
+  testcontainers in application tests.
 
-```go
-type authFunc func(ctx context.Context, email, password string) (string, error)
+Inspect the package's `.mockery.yml` and generation directive before changing a
+port; regenerate affected local mocks. Avoid requiring hand-written function
+fakes or banning the mocking library already adopted by the project.
 
-func (f authFunc) Authenticate(ctx context.Context, email, password string) (string, error) {
-    return f(ctx, email, password)
-}
-
-func vouches(userID string) login.Authenticator {
-    return authFunc(func(context.Context, string, string) (string, error) { return userID, nil })
-}
-
-func refuses() login.Authenticator {
-    return authFunc(func(context.Context, string, string) (string, error) {
-        return "", user.ErrInvalidCredentials
-    })
-}
-```
-
-The harness:
-
-```go
-var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
-
-type harness struct {
-    uc     *login.UseCase
-    store  *repo.Postgres
-    events []event.Event
-}
-
-func newHarnessWith(t *testing.T, auth login.Authenticator, risk login.Risk) *harness {
-    t.Helper()
-    h := &harness{}
-    b := bus.NewInProc()
-    b.Subscribe("", func(_ context.Context, e event.Event) error {
-        h.events = append(h.events, e)
-        return nil
-    })
-    router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
-    h.store = repo.NewPostgres(router, unit, b)
-    h.uc = login.New(h.store, auth, risk, func() time.Time { return now }, func() string { return "s1" })
-    return h
-}
-
-func TestMain(m *testing.M) {
-    code := m.Run()
-    postgrestest.Stop()
-    os.Exit(code)
-}
-```
-
-A test named for its rule:
-
-```go
-// The rule this use case exists to enforce: no session for a user the user
-// domain did not vouch for.
-func TestNoSessionWithoutTheAuthenticator(t *testing.T) {
-    h := newHarness(t, refuses())
-    out, err := h.uc.Handle(ctx, dto.Input{Email: "ada@example.com", Password: "wrong"})
-    if !errors.Is(err, user.ErrInvalidCredentials) {
-        t.Fatalf("= %v, want the authenticator's error untouched", err)
-    }
-    if out.Token != "" { t.Error("a refused login handed out a token") }
-    if len(h.events) != 0 { t.Errorf("%d events, want a refused login to announce nothing", len(h.events)) }
-}
-```
-
-`pkg/postgrestest` starts one testcontainers Postgres per package, gives a
-database per test, applies the adapter's migrations from its embedded FS,
-and builds the store with the same `WithTxLookup(sdkuow.FromContext)` that
-assembly uses. It skips when Docker is absent. `pkg/redistest` does the same
-for the cache.
-
-Standard library `testing` only; no assertion or mocking libraries.
+Real-store tests establish persistence guarantees; mocked use-case tests establish
+orchestration. Run the affected packages with the service's documented tooling,
+report backend skips, and enforce backend availability in required CI jobs.

@@ -108,5 +108,9 @@ use cases with closed answers, a policy fed from the bus, and the records
 above. What it deliberately does not have yet, and the review skill will
 name: no version on the aggregates, so a stale copy is not refused; events
 published after the save rather than with it, so there is no outbox and a
-crash between the two loses the fact; no tests; no tracing. Each is a known
+crash between the two loses the fact; only the checkout wire-contract test so far; no tracing. Each is a known
 gap, not an oversight, and none of them changes what the catalog shows.
+
+The [checkout scenario](../../scenarios/README.md) runs the real cart and OMS
+against this ledger, with an isolated local gateway. It also verifies the
+consumer/provider protobuf subsets and the authorization event payload.

@@ -1,79 +1,24 @@
-# Assembly in Go (wire)
+# Assembly in Go
 
-From `examples/auth/internal/di`.
+Current auth uses module-local Wire sets:
 
-```
-di/
-  app.go            App{Handler, Driver, Relay, Cache}; Run; Close
-  wire.go           wire.Build(provider.Config, provider.Clock, ...)
-  wire_gen.go       generated
-  provider/
-    clock.go        func() time.Time, func() string
-    config.go
-    storage.go      postgres store with WithTxLookup(sdkuow.FromContext); uow.New
-    cache.go
-    bus.go          in-proc buses the relay hands events to; policy subscriptions
-    outbox.go       outbox publishers bound to Publisher ports; relay reading every topic into its bus
-    repository.go   postgres repos, cache decorator, bound to Repository ports
-    risk.go         gRPC client or Permissive; risk.New bound to login.Risk
-    authenticator.go  user authenticate use case adapted to login.Authenticator
-    usecase.go      every use case constructor
-    transport.go    handlers, generated server, middleware
-```
+- [User set](../../../../examples/auth/internal/user/di/set.go) composes its
+  [application](../../../../examples/auth/internal/user/di/application.go),
+  [infrastructure](../../../../examples/auth/internal/user/di/infrastructure.go)
+  and HTTP providers.
+- [Session set](../../../../examples/auth/internal/session/di/set.go) also owns
+  [policy](../../../../examples/auth/internal/session/di/policy.go) and
+  [risk configuration](../../../../examples/auth/internal/session/di/risk.go).
+- [Root wire](../../../../examples/auth/internal/di/wire.go) composes feature sets;
+  [providers](../../../../examples/auth/internal/di/provider) own shared resources,
+  buses, subscriptions and outbox topics.
+- [App](../../../../examples/auth/internal/di/app.go) exposes resource lifecycle.
 
-The cross-domain adapter, `provider/authenticator.go`:
+A cross-module implementation belongs to consuming infrastructure, such as
+[identity](../../../../examples/auth/internal/session/infrastructure/identity/adapter.go),
+not a translation type in root DI. Local sets bind it to consumer ports.
 
-```go
-func ProvideAuthenticator(uc *authenticate.UseCase) login.Authenticator {
-    return authenticator{uc: uc}
-}
-
-type authenticator struct{ uc *authenticate.UseCase }
-
-func (a authenticator) Authenticate(ctx context.Context, email, password string) (string, error) {
-    out, err := a.uc.Handle(ctx, dto.Input{Email: email, Password: password})
-    if err != nil {
-        return "", err // untouched
-    }
-    return out.UserID, nil
-}
-```
-
-Binding a port, `provider/outbox.go`:
-
-```go
-var Outbox = wire.NewSet(
-    ProvideOutboxPublisher,          // sdkoutbox.NewPublisher(sdkuow.FromContext)
-    userrepo.NewPublisher,
-    wire.Bind(new(userdomain.Publisher), new(*userrepo.Publisher)),
-    sessionrepo.NewPublisher,
-    wire.Bind(new(sessiondomain.Publisher), new(*sessionrepo.Publisher)),
-    ProvideWatermill,
-    ProvideRelay,
-)
-```
-
-Subscribing a policy, in `ProvideBuses`, and reading every topic, in
-`ProvideRelay`:
-
-```go
-users := userbus.NewInProc(userdto.Topic)
-users.Subscribe(userevent.TopicPasswordChanged, revoke.Handle)
-
-userrepo.Handle(relay, buses.Users)       // every topic, not only the listened-to ones
-sessionrepo.Handle(relay, buses.Sessions)
-lockoutrepo.Handle(relay, buses.Lockouts)
-```
-
-The App:
-
-```go
-type App struct {
-    Handler http.Handler
-    Driver  *postgres.Store
-    Relay   *sdkoutbox.Relay
-    Cache   sdkcache.Cache
-}
-func (a App) Run(ctx context.Context) error  // relay.Run; the only blocking part
-func (a App) Close()                         // relay, cache if io.Closer, driver
-```
+Verify shared transaction lookup with the focused
+[outbox composition tests](../../../../examples/auth/internal/di/provider/outbox_test.go).
+Regenerate the affected Wire graph when bindings change; do not copy a stale
+`wire.Build` list from a skill.

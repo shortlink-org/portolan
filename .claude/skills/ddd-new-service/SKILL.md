@@ -1,79 +1,67 @@
 ---
 name: ddd-new-service
-description: Start here to build a new service, or a new aggregate inside one, in layers — the order to write things in, and which skill to open at each step. Use when asked to create a service, add a bounded context, or add an aggregate with its use cases end to end, in any language.
+description: Implement a new service, module or aggregate using the target's accepted architecture and the relevant DDD skills. Use for end-to-end capability work after establishing business ownership and context boundaries.
 ---
 
-# New service
+# New service or capability
 
-Write the domain first and the edges last. Each step produces something the
-next step compiles against, and nothing is written before the thing it
-depends on exists.
+Read the target README, accepted ADRs and dependency checks first. Follow
+[ddd-service-layout](../ddd-service-layout/SKILL.md); do not copy an obsolete
+layout from a reference. Current auth uses feature modules, local DI,
+integration-event DTOs, application cryptographic ports and package-local mocks
+(`auth.0012`–`auth.0016`). These are reference decisions, not a reason to
+restructure an unrelated context.
 
-## Before writing
+## Before implementation
 
-1. **Say what the service owns and what it refuses to own.** Write the
-   README's first two sections now: what it does, what it does not do. The
-   omissions are deliberate and listed. [ddd-service-layout](../ddd-service-layout/SKILL.md)
-2. **Find the aggregates by asking about the lock.** What changes together
-   is one aggregate; what changes at a different rate or without the other
-   is two, linked by id. Write the domain table in the README: root, value
-   objects, events. [ddd-aggregate](../ddd-aggregate/SKILL.md)
-3. **Write the rules down with their reasons.** Every rule the README lists
-   will become a specification, a command check, or a policy.
-4. **Start the glossary.** `GLOSSARY.md` with every noun the README used,
-   one sentence each and what it is not. Names in code come from here.
-   [ddd-ubiquitous-language](../ddd-ubiquitous-language/SKILL.md)
-5. **Record the decisions that had an alternative.** One ADR each, before
-   the code that depends on them. [ddd-adr](../ddd-adr/SKILL.md)
+1. Establish responsibility and exclusions. For a new or disputed boundary use
+   [ddd-strategic-design](../ddd-strategic-design/SKILL.md): scenarios, domain
+   experts, subdomain role, context ownership and relationships. A new capability
+   may fit an existing module; do not assume a new microservice.
+2. State immediate business invariants and concurrent scenarios. Derive aggregates
+   from those consistency requirements with [ddd-aggregate](../ddd-aggregate/SKILL.md),
+   then assess size and contention. Document eventual consistency and repair
+   wherever a rule spans boundaries.
+3. Add local terms to the context's [glossary](../ddd-ubiquitous-language/SKILL.md).
+   Record consequential alternatives with [ddd-adr](../ddd-adr/SKILL.md).
 
-## Order of work
+## Implementation order
 
-| Step | Write | Skill |
-|---|---|---|
-| 1 | Value objects with their rules and composite | [ddd-value-object](../ddd-value-object/SKILL.md), [ddd-specification](../ddd-specification/SKILL.md) |
-| 2 | Events: name, aggregate id, occurred-at, payload without secrets | [ddd-domain-event](../ddd-domain-event/SKILL.md) |
-| 3 | Aggregate root: identity, version, constructors and commands returning events, sentinels; the domain README with its state diagram | [ddd-aggregate](../ddd-aggregate/SKILL.md), [ddd-state-machine](../ddd-state-machine/SKILL.md), [ddd-errors](../ddd-errors/SKILL.md) |
-| 4 | Ports in the domain: repository with `Save(aggregate, events...)`, publisher | [ddd-aggregate](../ddd-aggregate/SKILL.md) |
-| 5 | Domain tests: commands, rules, no I/O | [ddd-testing](../ddd-testing/SKILL.md) |
-| 6 | Domain services for decisions across aggregates, pure | [ddd-policy](../ddd-policy/SKILL.md) |
-| 7 | Use cases, one package each, with dto and the ports only they need; README with sequence diagram per use case | [ddd-use-case](../ddd-use-case/SKILL.md) |
-| 8 | Policies for "when X happened, do Y" across aggregates | [ddd-policy](../ddd-policy/SKILL.md) |
-| 8a | Queries, one package each, answering with a DTO; a `Reader` port where the repository's reads do not answer; a projector only where events must be assembled | [ddd-cqrs](../ddd-cqrs/SKILL.md) |
-| 9 | Unit of work, repositories with their migrations, outbox publisher, in-process bus | [ddd-unit-of-work](../ddd-unit-of-work/SKILL.md), [ddd-adapters](../ddd-adapters/SKILL.md) |
-| 10 | Use case tests on a real store with ports faked inline | [ddd-testing](../ddd-testing/SKILL.md) |
-| 11 | Adapters for other services, over a contract copy and generated client | [ddd-adapters](../ddd-adapters/SKILL.md) |
-| 12 | Transport from a specification: handlers, one status mapping | [ddd-transport](../ddd-transport/SKILL.md), [ddd-security](../ddd-security/SKILL.md) |
-| 13 | Assembly: providers by concern, cross-domain adapters, policy subscriptions, the App | [ddd-assembly](../ddd-assembly/SKILL.md) |
-| 14 | Tracing, optional by configuration; a scrubbed recording | [ddd-observability](../ddd-observability/SKILL.md) |
-| 15 | Finish the README: rules with reasons, the rule that spans aggregates, HTTP pointer; the LikeC4 model of the context | [ddd-service-layout](../ddd-service-layout/SKILL.md), [ddd-ubiquitous-language](../ddd-ubiquitous-language/references/likec4.md) |
+| Work | Guidance |
+|---|---|
+| Domain values, rules and aggregate operations | [value objects](../ddd-value-object/SKILL.md), [specifications](../ddd-specification/SKILL.md), [aggregate](../ddd-aggregate/SKILL.md), [lifecycle](../ddd-state-machine/SKILL.md) |
+| Domain facts, public integration DTOs and ordered stream contract | [events](../ddd-domain-event/SKILL.md); schema version and stream position are distinct |
+| Slice-owned commands/queries, results, ports and error outcomes | [use cases](../ddd-use-case/SKILL.md), [errors](../ddd-errors/SKILL.md), [CQRS](../ddd-cqrs/SKILL.md) |
+| Pure decisions and independent event reactions | [policy](../ddd-policy/SKILL.md) |
+| Multi-step progress, deadlines or compensation, when required | [process manager](../ddd-process-manager/SKILL.md), including Temporal as an option |
+| Stores, migrations, transactional event mapping/outbox, peer adapters | [unit of work](../ddd-unit-of-work/SKILL.md), [adapters](../ddd-adapters/SKILL.md) |
+| HTTP/RPC and credentials where relevant | [transport](../ddd-transport/SKILL.md), [security](../ddd-security/SKILL.md) |
+| Module DI, root composition and background workers | [assembly](../ddd-assembly/SKILL.md) |
+| Tracing and derived documentation | [observability](../ddd-observability/SKILL.md), [language/model](../ddd-ubiquitous-language/SKILL.md) |
 
-## Adding an aggregate to an existing service
+Write tests with the behaviour they cover; run focused checks together after
+implementation, following [ddd-testing](../ddd-testing/SKILL.md). In auth,
+application/policy tests use local mocks; infrastructure and composition tests
+verify real persistence and outbox guarantees. A recording bus is not proof of
+transactional publication.
 
-Steps 1 to 10 for the new aggregate, then: a policy if something in the
-service reacts to its events, the transport for its use cases, and the
-assembly lines for its repository, publisher, use cases and handlers. The
-existing aggregates do not change; if one has to import the new one, stop
-and reread [ddd-policy](../ddd-policy/SKILL.md).
+## Existing service changes
 
-## Adding a use case to an existing aggregate
+For a new aggregate, implement only the needed domain, slices, adapters and
+local wiring. A peer need is a consumer-owned port, translated in the consuming
+module's infrastructure. For a new query, choose the cheapest adequate read
+model; no event or projector is required merely because it is a query.
 
-A command on the aggregate if the rule is new (step 3), then step 7, its
-test (step 10), its endpoint (step 12), and its line in assembly (step 13).
-If the use case needs another domain, declare the port in the use case and
-adapt in assembly; never import.
-
-## Adding a query
-
-A query is a use case that changes nothing, so steps 7, 10, 12 and 13
-apply and nothing else does: no command, no event, no policy. Choose the
-cheapest form that answers ([ddd-cqrs](../ddd-cqrs/SKILL.md)); a read the
-domain does not need for a command is a `Reader` in the query package, not
-a method on the repository. A projection adds a projector, its migrations,
-and a subscription at assembly, beside the policies.
+An ordered projection must specify strict version + 1, atomic rows/checkpoint,
+duplicate and gap handling, and retained history or snapshot bootstrap before
+being described as replayable. Current auth's integration events do not yet
+supply this ordered envelope; do not claim that they do.
 
 ## Done when
 
-- Every checklist in the skills above passes.
-- `examples/auth` is the reference: when unsure what a step looks like, open
-  the matching path there.
-- Reviewed with [ddd-review](../ddd-review/SKILL.md).
+- Applicable invariants, accepted ADRs and dependency rules are satisfied.
+- Relevant layer tests have passed; skipped checks are reported accurately.
+- New terminology and consequential decisions are recorded.
+- If catalog/diagram output changed, generation and the actual rendered region
+  are verified under the project's AGENTS.md.
+- [ddd-review](../ddd-review/SKILL.md) checks the affected scope.

@@ -14,17 +14,29 @@ leave the aggregate in a state the domain says is impossible.
 **Identity is minted once and never reused.** It is not a natural key: a user
 is identified by an id, not by their email, because people change addresses.
 
-**One aggregate or two: ask about the lock.** Two things belong under one root
-only when they change together. If one is written far more often than the
-other, or is changed without the other changing at all, they are two
-aggregates linked by an identifier and nothing else. (A session is revoked
-without the user changing; so `Session` is not inside `User`.)
+**Choose the boundary from invariants.** List the business rules that must
+remain true immediately after every committed command, including concurrent
+commands. Put the state required to enforce those rules under one root.
+Changes at different rates and lock contention are useful signals to reassess
+size; they do not prove that an invariant can safely cross a boundary.
+
+For each proposed split, state the allowed inconsistency window and who repairs
+or compensates a partial outcome. If no temporary inconsistency is acceptable,
+keep the rule atomic or document an explicit coordination design. Challenge
+unbounded collections and unnecessary loading without sacrificing the invariant.
+
+Example: changing one order line need not change the others, yet a total limit
+may require those lines to stay within one consistency boundary. A session can
+be separate from a user only with explicit semantics for credential changes,
+revocation delay and concurrent session creation. Establish context ownership
+first with [ddd-strategic-design](../ddd-strategic-design/SKILL.md).
 
 **Version travels on the aggregate.** The store compares it before writing
 and refuses a stale copy. It lives on the aggregate rather than only in the
 repository so that a copy that has gone stale can say so. Zero means never
 stored. The refusal is one sentinel error, and the answer to it is always the
-same: read again, redo the change, save again.
+same: re-read and re-evaluate the command before another save. Retry automatically
+only where doing so preserves the caller's intent, with a bounded policy.
 
 **A command returns its event; it does not buffer it.** An aggregate that
 quietly accumulates events carries hidden state and has to know the word
@@ -34,12 +46,12 @@ the caller's business.
 **An idempotent command says when it did nothing.** Revoking twice returns
 "not ended" and no event. An event for a non-event is worse than no event.
 
-**One error for failures that must stay indistinguishable.** A wrong password
-and an unknown address both answer `invalid credentials`. The distinction is
-what an attacker came to learn.
+**Errors belong to the layer that owns the outcome.** The aggregate owns
+invariant and lifecycle errors; application owns credential-checking outcomes.
+See [ddd-errors](../ddd-errors/SKILL.md) and auth's accepted `auth.0015`.
 
 **Errors are named sentinels at the package level**, one per distinct answer
-a caller can act on: not found, conflict, invalid credentials, already taken.
+a caller can act on in this layer: not found, conflict, already taken.
 
 **The aggregate hands out copies.** A repository never returns the object it
 holds: a mutation would reach storage without a save, and a failed save would
@@ -61,15 +73,16 @@ The repository interface is declared **in the domain**, next to the root. It
 states what the domain needs, not what any database offers.
 
 - `Save(aggregate, events...)` takes the events the change produced. A fact
-  about a change that did not commit is worse than no fact, so there is no
-  way to store without offering events and no way to offer events without
-  storing.
+  about a change that did not commit is worse than no fact, so the adapter commits the state and supplied events together. A variadic
+  signature alone does not enforce that callers supplied every required fact;
+  verify this in command and repository tests.
 - Queries are named by what they answer: `ByID`, `ByToken`, `ByUserID`. A
   query that exists for one caller says so in its comment, and returns what
   the *decision* needs, not what the store finds convenient (every session of
   a user, live or dead, because deciding which to end belongs to the domain).
-- A separate `Publisher` port carries events that already happened. The
-  domain does not care whether that is a bus, an outbox row or a log line.
+- A separate `Publisher` port accepts domain events for transactional
+  recording. Its adapter maps them to integration DTOs before the outbox append;
+  consumers receive those DTOs after commit, not aggregate event objects.
 
 ## Checklist
 
@@ -77,7 +90,8 @@ states what the domain needs, not what any database offers.
 - Every command returns `(event, error)` or `(event, didSomething)`.
 - No import of another aggregate; references are ids.
 - Repository interface lives in the domain package; `Save` takes events.
-- Sentinel errors cover every answer the transport will have to map.
+- Invariants justify the consistency boundary, including concurrent commands.
+- Domain sentinels describe domain outcomes; application owns orchestration refusals.
 - Domain package README lists states and draws the transitions.
 
 Language-specific: [references/go.md](references/go.md).

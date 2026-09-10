@@ -6,11 +6,12 @@
 
 use std::sync::Arc;
 
-use oms::application::order::usecases::{cancel_order, confirm_order, get_order, place_order, wall_clock};
+use oms::application::order::usecases::{cancel_order, confirm_order, get_order, place_order, request_payment, wall_clock};
 use oms::application::policy::confirm_order_on_payment_authorized::ConfirmOrderOnPaymentAuthorized;
 use oms::application::policy::place_order_on_basket_checked_out::PlaceOrderOnBasketCheckedOut;
+use oms::application::policy::request_payment_on_order_placed::{ORDER_PLACED, RequestPaymentOnOrderPlaced};
 use oms::infrastructure::cart::{self, BasketCheckedOut};
-use oms::infrastructure::payments::{AnyPayments, client::PaymentsClient, stand_in::PermissivePayments};
+use oms::infrastructure::payments::{AnyPayments, PAYMENT_AUTHORIZED, TOPIC as PAYMENTS_TOPIC, client::PaymentsClient, stand_in::PermissivePayments};
 use oms::infrastructure::repository::order::PostgresOrders;
 use oms::infrastructure::transport::grpc::order::OrderHandlers;
 use oms::infrastructure::transport::grpc::order::generated::shop::v1::order_service_server::OrderServiceServer;
@@ -19,11 +20,6 @@ use oms::pkg::messaging::nats::NatsBus;
 use oms::pkg::messaging::{AnyBus, Bus, BusError, Handler, Message};
 use oms::pkg::outbox::relay::Relay;
 use oms::telemetry;
-
-/// The subject the ledger will publish on, when there is a ledger: declared
-/// here ahead of it, so the catalog can say the subscription exists.
-const PAYMENTS_TOPIC: &str = "payments.ledger.payment";
-const PAYMENT_AUTHORIZED: &str = "payments.PaymentAuthorized";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -49,7 +45,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let orders = PostgresOrders::new(pool.clone());
     let place_order = Arc::new(place_order::UseCase::new(orders.clone(), wall_clock()));
     let get_order = Arc::new(get_order::UseCase::new(orders.clone()));
-    let confirm_order = Arc::new(confirm_order::UseCase::new(orders.clone(), payments, wall_clock()));
+    let confirm_order = Arc::new(confirm_order::UseCase::new(orders.clone()));
+    let request_payment = Arc::new(request_payment::UseCase::new(orders.clone(), payments));
     let cancel_order = Arc::new(cancel_order::UseCase::new(orders.clone(), wall_clock()));
 
     // The policies, subscribed on the bus by the subject their event travels on.
@@ -62,6 +59,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     });
     bus.subscribe(cart::TOPIC, cart::BASKET_CHECKED_OUT, handler).await?;
+    let on_placed = Arc::new(RequestPaymentOnOrderPlaced::new(request_payment, confirm_order.clone(), wall_clock()));
+    let handler: Handler = Arc::new(move |message: Message| {
+        let policy = on_placed.clone();
+        Box::pin(async move { policy.handle(&message).await.map_err(|e| BusError(e.to_string())) })
+    });
+    bus.subscribe(oms::infrastructure::repository::order::TOPIC, ORDER_PLACED, handler).await?;
     let on_authorized = Arc::new(ConfirmOrderOnPaymentAuthorized::new(confirm_order));
     let handler: Handler = Arc::new(move |message: Message| {
         let policy = on_authorized.clone();

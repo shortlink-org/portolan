@@ -1,51 +1,20 @@
-# Domain service and policy in Go
+# Policies in Go
 
-Domain service, `examples/auth/internal/domain/session/services/credential_change.go`:
+Read the current sources instead of recreating the former global policy package:
 
-```go
-package services // imports domain/session; session never imports services
+- [Pure credential-change decision](../../../../examples/auth/internal/session/domain/services/credential_change.go):
+  occurrence time selects sessions older than the change; explicit current time
+  checks whether a session is still live.
+- [Receiving use case](../../../../examples/auth/internal/session/application/end_after_credential_change/usecase.go):
+  owns repository operations and retry semantics.
+- [Integration policy](../../../../examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go):
+  consumes user integration events and calls an injected session operation.
+- [Policy tests](../../../../examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change_test.go):
+  local mocks, no application database harness.
+- [Local policy set](../../../../examples/auth/internal/session/di/policy.go) and
+  [bus subscriptions](../../../../examples/auth/internal/di/provider/bus.go).
 
-type CredentialChange struct {
-    At   time.Time // from the event, never from the clock
-    Keep string    // the session to spare; empty spares none
-}
-
-// Ends returns the sessions this change puts an end to. Pure: no ports.
-func (c CredentialChange) Ends(sessions []*session.Session, now time.Time) []*session.Session {
-    doomed := make([]*session.Session, 0, len(sessions))
-    for _, s := range sessions {
-        if s == nil || s.ID == c.Keep { continue }
-        if !s.Live(now) { continue }            // already dead: no event for a non-event
-        if s.IssuedAt.Before(c.At) { doomed = append(doomed, s) }
-    }
-    return doomed
-}
-```
-
-Policy, `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go`:
-
-```go
-package policy
-
-type RevokeSessionsOnPasswordChange struct {
-    end *end_after_credential_change.UseCase
-}
-
-func New(end *end_after_credential_change.UseCase) *RevokeSessionsOnPasswordChange
-
-func (p *RevokeSessionsOnPasswordChange) Handle(ctx context.Context, e userevent.Event) error {
-    changed, ok := e.(userevent.PasswordChanged)
-    if !ok {
-        return nil // not this policy's business
-    }
-    return p.end.Handle(ctx, sessiondto.Input{
-        UserID:    changed.UserID(),
-        ChangedAt: changed.OccurredAt(),
-        Keep:      changed.By(),
-    })
-}
-```
-
-Wiring the policy to the event name happens in assembly, as a
-`map[string]Handler` handed to the relay; see
-[ddd-assembly](../../ddd-assembly/references/go.md).
+The policy belongs to session because session state changes. It does not import
+user aggregate event types. A durable multi-step workflow uses
+[ddd-process-manager](../../ddd-process-manager/SKILL.md), not a chain of hidden
+repository operations inside the policy.

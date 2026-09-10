@@ -1,7 +1,4 @@
-# The client of payments, from the narrowed copy of its contract vendored under
-# src/infrastructure/payments/proto: the one rpc oms calls (ADR org.0001). No
-# service in the estate provides payments.v1 yet, so it is not in the registry.
-#   buf generate --template buf.payments.gen.yaml
+# Generate the ledger-compatible consumer subset.
 version: v2
 inputs:
   - directory: src/infrastructure/payments/proto

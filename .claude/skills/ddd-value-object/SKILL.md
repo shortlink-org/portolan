@@ -35,13 +35,16 @@ stored hash is *parsed*. Raising the minimum must not lock out everyone who
 registered under the old one. Parsing a stored form is reading a fact, not
 making one.
 
-**A stored form carries everything needed to read it back.** A hash stores
-its algorithm and cost beside the digest, so raising the cost leaves old
-hashes verifiable.
+**A stored form carries everything needed to read it back.** In auth the
+hash value object is opaque and immutable. The infrastructure password adapter
+owns salt generation, key derivation, verification and stored algorithm/cost
+handling; application slices declare the ports they consume (`auth.0016`).
+Domain password policy remains separate and runs before hashing on creation or
+change, never on credential checking. Plaintext does not enter an aggregate.
 
-**A secret's `String()` is its storage encoding, never a display.** And
-comparison of secrets is constant-time: a timing difference tells an attacker
-how much of a guess was right.
+**Serialization is explicit.** Use the target value object's storage accessor;
+never use a secret's representation for logging or display. Constant-time
+credential comparison belongs to the cryptographic adapter in current auth.
 
 **Opaque means opaque.** A token carries no claims. Nothing outside its
 domain can read anything out of it, and revoking it is a fact in the store,
@@ -54,7 +57,7 @@ not a signature waiting to expire.
 | the shape of one value | that value's rules |
 | the relationship between fields of one aggregate | the aggregate's command |
 | uniqueness across aggregates (email taken) | the store, mapped to a domain error |
-| whether a presented secret matches | the value object's `Matches`, without the policy |
+| whether a presented secret matches | application verifier port, implemented by the cryptographic adapter without the creation policy |
 
 ## Checklist
 

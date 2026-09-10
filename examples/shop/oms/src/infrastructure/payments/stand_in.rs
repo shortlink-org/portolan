@@ -1,14 +1,12 @@
-use crate::application::order::usecases::confirm_order::Payments;
+use crate::application::order::usecases::request_payment::{Authorization, Payments};
 use crate::domain::order::Error;
 use crate::domain::order::vo::Money;
 
-/// Authorises everything, for running without a ledger. What it hands back is
-/// recognisably not an authorisation, so a page showing one is not mistaken
-/// for the real thing.
+/// Explicit local-only stand-in. Production examples set PAYMENTS_ADDR.
 pub struct PermissivePayments;
 
 impl Payments for PermissivePayments {
-    async fn authorize(&self, order_id: &str, _total: &Money) -> Result<String, Error> {
-        Ok(format!("stand-in:{order_id}"))
+    async fn authorize(&self, payment_id: &str, _order_id: &str, _total: &Money) -> Result<Authorization, Error> {
+        Ok(Authorization::Authorized { payment_id: payment_id.into() })
     }
 }

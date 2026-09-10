@@ -1,6 +1,6 @@
 # State machine in Go
 
-From `examples/auth/internal/domain/session/session.go`. The state is
+From `examples/auth/internal/session/session/domain.go`. The state is
 derived from two fields; no `State` enum is stored, because the store needs
 the timestamps anyway and a stored enum would be a second source of truth.
 

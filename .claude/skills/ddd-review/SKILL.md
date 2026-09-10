@@ -1,122 +1,87 @@
 ---
 name: ddd-review
-description: Review a service, a package, or a diff against the layered-DDD rules — dependency direction, aggregate boundaries, events, use cases, adapters, transport, errors, security, tests. Use when asked to review a service for DDD compliance, to check a change before merge, or to find where a codebase departs from these rules, in any language.
+description: Review a service, module or diff for DDD boundaries, invariants, integration contracts and transaction guarantees against its accepted ADRs. Use when a DDD review is requested; keep findings scoped to the requested code.
 ---
 
 # Review
 
-Walk the layers from the inside out. For each finding, name the rule, the
-file, and what the alternative costs, in that order; a finding without a
-reason is a preference.
+Read the target README, accepted ADRs and executable dependency rules first.
+Treat current scoped decisions as the baseline; do not flag their deliberate
+choices because another example or an older skill uses a different layout.
+Current auth's baseline includes `auth.0012`–`auth.0016`. A gap in a reference
+example is not proof that an uninspected target has the same gap.
 
-## Dependency direction
+For each finding provide evidence, the affected business or technical guarantee,
+and a concrete correction. Distinguish correctness defects from architectural
+trade-offs and documentation drift. Follow links below only for the layers
+relevant to the requested review.
 
-- Domain imports no driver, framework, client, or other aggregate.
-- Use cases import their own domain only; a need from another domain is an interface declared in the use case.
-- Only policy and assembly mention two domains in one file.
-- No package imports assembly.
+## Context and aggregate boundaries
 
-## Language and records
+- Ownership, local language and upstream/downstream contracts are explicit;
+  a context is not inferred from deployment or tables alone.
+  [Strategic design](../ddd-strategic-design/SKILL.md).
+- Aggregate boundaries protect stated immediate invariants under concurrency.
+  Frequency of changes is a sizing signal, not sufficient proof for a split.
+  Cross-boundary rules state acceptable delay and repair/compensation.
+  [Aggregate](../ddd-aggregate/SKILL.md).
+- Commands enforce invariants; no-op and refused outcomes are deliberate.
+  State and events commit together, and stale writes cannot silently overwrite.
+  [Unit of work](../ddd-unit-of-work/SKILL.md).
 
-- `GLOSSARY.md` exists; every package, type, command, event and route name is in it; no synonyms, no double meanings.
-- Foreign enums and names mapped in one adapter, never seen inward.
-- Decisions with a rejected alternative have an ADR; supersession is a new record; the code names the ADR where it bites.
-- LikeC4 model spells names as the glossary does; called-but-unmodelled peers are `unknown`, not missing.
+## Modules, use cases and assembly
 
-## Aggregate
+- Domain/application do not import peer modules or infrastructure. Ports belong
+  to consumers; cross-module adapters translate in consuming infrastructure.
+- Feature modules own their layers and local DI where the target adopts that
+  layout. Root assembly composes modules and shared runtime. No forced global
+  horizontal layout or mandatory `dto` subpackage.
+  [Layout](../ddd-service-layout/SKILL.md), [assembly](../ddd-assembly/SKILL.md).
+- Slices own input/result types and orchestration. A query does not mutate;
+  credential checking that records lockout outcomes is a command even if its
+  name sounds like a read. Foreign error outcomes conform to local port contracts, with explicit mapping where needed.
+  [Use cases](../ddd-use-case/SKILL.md), [errors](../ddd-errors/SKILL.md).
+- Domain decisions are pure. Policies consume integration DTOs and invoke the
+  receiving module's use case. Durable multi-step processes define timeouts,
+  idempotency, progress and compensation; engine code does not own invariants.
+  [Policy](../ddd-policy/SKILL.md), [process manager](../ddd-process-manager/SKILL.md).
 
-- Root has identity separate from natural keys, and a version.
-- Every rule about state is in a command on the root; no setter bypasses one.
-- Commands return events; nothing buffers them; idempotent commands report "did nothing" and return no event.
-- Repositories hand out copies; `Save` takes events.
-- One sentinel per answer a caller can act on; indistinguishable failures share one.
-- Domain README lists states and draws transitions; every arrow has an event, time-derived states have none; commands have no side effects; terminal states stay terminal.
+## Events, delivery and reads
 
-## Value objects and specifications
+- Domain facts and public integration DTOs are distinct; mapping plus outbox
+  append shares the aggregate transaction, delivery happens after commit.
+- Ordered records have immutable `(streamID, version)` identity. The next
+  applicable record is exactly `lastVersion + 1`; already committed versions
+  do nothing, and gaps do not advance state. No timestamp fallback.
+- Rows/effects and the consumer's checkpoint commit atomically with concurrency
+  protection. Separate streams have separate checkpoints. Multiple facts in a
+  save are batched or separately sequenced; filtering does not conceal positions.
+- Required unknown records are recovered through compatibility handling. Replay
+  names a retained log or snapshot plus suffix; an outbox alone is insufficient.
+  [Events](../ddd-domain-event/SKILL.md), [CQRS](../ddd-cqrs/SKILL.md).
+- Queries return slice-owned DTOs, using the cheapest sufficient read model and
+  documented freshness. Projector transactions are local and after producer
+  commit. A command does not treat a stale projection as authoritative state.
 
-- Constructor is the only way in; fields private; immutable.
-- One rule per file with its own error; `composite.go` is the only list; `And` joins failures.
-- One marker error wraps the rules; callers test the marker.
-- Creation policy is not applied on parse or check.
-- No I/O in a specification.
+## Edges, security and tests
 
-## Events
-
-- Past tense; name, aggregate id, occurred-at in the domain.
-- Names are shared constants.
-- No secrets; opaque ids stay opaque; reasons are closed sets.
-- Nothing published where nothing happened.
-
-## Use cases
-
-- One package each; `dto` in and out; struct holds exactly its ports plus clock and id generator.
-- Order of steps stated and justified.
-- Refusals from ports pass through; external failure is not a decision.
-- Output carries nothing a client could build on by mistake.
-- README: what it does / what follows / answers / sequence as a link to the derived flow page; a hand-drawn diagram only where no tooling derives one, and then naming ports, not adapters.
-
-## Queries and read models
-
-- Every use case is a command or a query; the name says which; a query holds no publisher, no unit of work, no clock it does not read from.
-- A query returns a DTO from its own `dto`, never the aggregate root.
-- A read only a screen needs is a `Reader` in the query package, not a method on the repository.
-- The form is the cheapest that answers; the README names it and states freshness under Answers.
-- Projection: rebuilt by replay from events alone; projector idempotent, skips older events, passes over unknown ones, subscribed at assembly; migrations in its own package.
-- No command reads a projection; no projection refreshed inside a command's transaction.
-- A copy of another service's fact is a projection column with `-- from:`; the storefront keeps none.
-
-## Domain services and policies
-
-- Domain service is pure, imports the aggregate, takes time from the event.
-- Policy handles one event, ignores the rest, calls a use case, never a repository.
-- A rule across aggregates is not a call inside one use case.
-
-## Adapters
-
-- Each implements one port; nothing else exported for a use case to reach for.
-- No transaction handling in statements; unit of work re-entrant, one lookup shared by driver, outbox and cache; `Save` writes aggregate and events in one transaction.
-- No second `Save` on a copy that was already saved; the caller re-reads.
-- Independent aggregates in a loop: one transaction each, conflict retried per item; two aggregates in one unit only with a stated reason.
-- Migrations inside the store package, numbered per aggregate, no cross-aggregate references, no down files.
-- Update compares version; zero rows is conflict; storage errors mapped by constraint, rest wrapped with package and operation.
-- Cache: same port, hot path only, bypassed in a transaction, failures swallowed with a note, misses not stored, keys prefixed.
-- External client: one package knows both sides; unknown enum is an error; the stub is a client, not an adapter.
-
-## Transport
-
-- Server generated from the spec.
-- One status function per package; validation is one arm with reasons listed.
-- Indistinguishable failures: one code and message; blocked is 401 not 403; 500 leaks nothing.
-- Auth dependencies explicit in the handlers that need them.
-
-## Security
-
-- No plaintext secret on a struct, in an event, in a log, in a span.
-- Constant-time compare; hash parameters stored with the digest.
-- Current password required on change; blocked attempt ends sessions before refusing.
-- README lists deliberate omissions.
-
-## Assembly
-
-- Provider per concern; adapter to port bindings there.
-- Cross-domain adapters and event-to-policy map live here and nowhere else.
-- App exposes handler, opened resources, background processes; close is asked, not assumed.
-
-## Observability
-
-- No-op without configuration.
-- Route-template span names; producer and consumer spans per event with its name; context carried across the outbox.
-- Committed recording is scrubbed.
-
-## Tests
-
-- Domain tests import no infrastructure; fixed "now".
-- Ports faked as function types with helpers named for intent.
-- Use cases on a real store with a recording bus; refused paths assert no events.
-- Tests named for the rule they pin.
+- Cryptographic mechanisms are behind application ports where `auth.0016`
+  applies; domain policy and opaque hashes stay inward. Plaintext does not enter
+  aggregates, repositories, events or telemetry. Credential refusals remain
+  indistinguishable across local contracts and public responses.
+  [Security](../ddd-security/SKILL.md), [transport](../ddd-transport/SKILL.md).
+- Application and policy tests use local port mocks in current auth. Backend
+  tests live at infrastructure/platform/composition boundaries and prove rollback,
+  conflict and outbox guarantees. Ordered consumers cover duplicates, gaps,
+  concurrency and checkpoint rollback. Refused commands may intentionally emit
+  protective effects such as revocation; assert the stated rule.
+  [Testing](../ddd-testing/SKILL.md).
+- Glossary, ADR and generated documentation references match current paths and
+  behaviour. Follow project UI verification rules if generated output changed.
 
 ## Reporting
 
-Group findings by layer, most inward first: a domain finding usually
-explains several outer ones. Quote the rule from the skill it comes from
-and link it. Say what to change, not only what is wrong.
+Order findings by impact, explain their layer and link the evidence. Quote the
+relevant rule or scoped ADR, not just a preference. Report what was actually
+inspected and any remaining uncertainty; do not imply a full service audit from
+a narrow diff review.

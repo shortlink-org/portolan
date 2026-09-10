@@ -7,3 +7,5 @@
 | [oms.0003](0003-lines-are-copied-never-repriced.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
 | [oms.0004](0004-cancel-is-allowed-until-dispatch.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
 | [oms.0005](0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |
+
+- [oms.0006](0006-order-placed-requests-ledger-authorization.md) — OrderPlaced requests ledger authorization; supersedes oms.0005.

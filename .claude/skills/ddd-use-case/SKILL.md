@@ -10,11 +10,13 @@ refusal out. It orchestrates; the rules are in the aggregate.
 
 ## Rules
 
-**One package per use case.** The package holds the use case, its `dto`
-(input and output as separate types), the ports only it needs, and a README.
+**One slice per use case inside its feature module.** The package holds the
+use case, input and output types, the ports only it needs, and a README. In
+auth use `Command` or `Query` and `Result` in `model.go` or `command.go`; no
+separate `dto` subpackage is required. Follow the target's accepted ADRs.
 
 **A use case is a command or a query, never both.** A command changes one
-aggregate; a query changes nothing and answers with a DTO, never the root.
+aggregate by default; a query changes nothing and answers with a DTO, never the root.
 The read side, from the repository's own reads to a projection, is
 [ddd-cqrs](../ddd-cqrs/SKILL.md).
 
@@ -30,18 +32,21 @@ package. Same for `Risk`: an attempt in, a verdict out. The adapter over the
 real thing is handed in at assembly.
 
 **A use case never imports another domain, or another domain's use case.**
-It states the need as an interface; assembly adapts the other domain's use
-case to that shape. This keeps the knowledge that both domains exist in one
-place.
+It states the need as a consumer-owned interface; an adapter in the consuming
+module's infrastructure translates the peer's contract. Local DI wires it.
+Domain and application packages remain independent of peer modules.
 
 **The order of steps is the rule.** Authenticate, then ask risk, then start a
 session: a session is never issued for a user the user domain did not vouch
 for, and never for an attempt risk judged hostile. Write the order down in
 the comment on the handler.
 
-**A refusal from a port is passed through untouched.** Translating it would
-be the one way to accidentally make a wrong password distinguishable from an
-unknown address.
+**A refusal follows the consuming port's contract.** Cross-module adapters
+map outcomes where contracts differ or preserve an agreed refusal; the use case preserves classification
+or deliberately combines outcomes it owns. Credential checking collapses wrong
+password and unknown address into one application error. Never convert an
+operational failure into a credential refusal. See
+[ddd-errors](../ddd-errors/SKILL.md).
 
 **An error from an external service is not a verdict.** Risk being
 unreachable means nothing is issued and nothing is ended.
@@ -55,7 +60,7 @@ on by mistake.** The session id is not in login's answer: it names a row in
 this service's store and putting it on the wire would invite something to be
 built on it.
 
-**A rule that spans aggregates is not written here.** Change-password does
+**A reaction to a peer's fact belongs to a policy.** Change-password does
 not touch sessions. It publishes `PasswordChanged`; a policy ends the
 sessions. See [ddd-policy](../ddd-policy/SKILL.md).
 
@@ -90,7 +95,7 @@ sequenceDiagram
     participant Repo as session.Repository
     C->>L: Handle(email, password)
     L->>A: Authenticate(email, password)
-    A-->>L: userID | refusal (passed through)
+    A-->>L: userID | refusal (local contract)
     L->>R: Assess(attempt)
     R-->>L: allow | block | error (no decision)
     alt block
@@ -104,15 +109,15 @@ sequenceDiagram
     end
 ```
 
-See `examples/auth/internal/application/session/usecases/login/README.md`.
+See `examples/auth/internal/session/application/login/README.md`.
 
 ## Checklist
 
-- Package per use case; `dto/input` and `dto/output` separate.
+- Slice per use case; input and result types owned by the slice.
 - Command or query; a query returns a DTO and holds no publisher or unit of work.
 - Constructor takes ports and clocks; struct has nothing else.
-- Cross-domain need is an interface declared here, satisfied at assembly.
-- Refusals pass through; external failures are not decisions.
+- Cross-module need is an interface declared here, adapted in consuming infrastructure and wired in local DI.
+- Refusals follow the local port contract; external failures are not decisions.
 - README with the four sections; the sequence is a link to the derived flow, or, without tooling, a diagram that names ports, not adapters.
 
 Language-specific: [references/go.md](references/go.md).

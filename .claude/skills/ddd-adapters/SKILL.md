@@ -5,7 +5,8 @@ description: Write an infrastructure adapter — a repository over a database, a
 
 # Adapters
 
-An adapter implements one port and nothing else. Infrastructure knows the
+An adapter implements consumer-owned ports. One implementation may satisfy
+several small compatible ports, as auth's password adapter does. Infrastructure knows the
 domain; the domain does not know infrastructure exists.
 
 ## Repository
@@ -36,16 +37,16 @@ domain; the domain does not know infrastructure exists.
 
 ## Publisher (outbox)
 
-- Writes each event as a message into the transaction in flight. Outside a
-  transaction it refuses rather than quietly writing on its own connection.
-- Sits beside the repository because both are adapters for the same domain's
-  ports; neither knows about the other.
-- The consumer side reads the domain's topic back and hands every event to
-  the domain's bus, as a domain event, not a message: whatever reacts to a
-  fact should not have to know it spent time in a table. It does not
-  dispatch by name; who listens is the bus's business. Unknown event names
-  are acknowledged and passed over, not failed: leaving them would block
-  everything behind them, and they are not broken, just unreadable here.
+- Map domain events to the module's public integration DTOs inside the same
+  transaction that stores the aggregate, following `auth.0013`.
+- Append using the shared transaction lookup; refuse publication outside it.
+  Deliver after commit to integration-event buses and policy consumers.
+- Preserve record identity and version across relay retries. Ordered streams
+  and projectors obey [ddd-domain-event](../ddd-domain-event/SKILL.md): strictly
+  version + 1, duplicate no-op, recover gaps, atomic effect/checkpoint.
+- Auth's legacy unversioned dispatcher acknowledges unknown names and fails
+  malformed known payloads. A required unknown record in a new ordered stream
+  needs compatibility recovery; acknowledging it as irrelevant is not safe.
 
 ## Cache (decorator)
 
@@ -73,8 +74,9 @@ domain; the domain does not know infrastructure exists.
 - **An unknown value from the other side is an error, not a default.** The
   contract changed, and guessing which way is how a new `BLOCK` variant
   becomes a login.
-- **A stub for running without the service is a *client*, not an adapter**,
-  so the one adapter is still the only code that reads a verdict.
+- **Optional-service behaviour is explicit configuration.** Follow the target's
+  adapter/client seam; auth supplies a configured permissive implementation when
+  risk is disabled, and enabled risk fails closed on an unavailable peer.
 - The contract copy (proto, schema) lives in the consumer's infrastructure,
   next to the generated client.
 
@@ -83,33 +85,33 @@ domain; the domain does not know infrastructure exists.
 The read side of [ddd-cqrs](../ddd-cqrs/SKILL.md), in two adapters:
 
 - **A reader implements a query's `Reader` port** and scans straight into
-  the query's DTOs. It has no `Save`, hands out no aggregate and joins no
-  unit of work; it reads the tables the repository writes, and that is
+  the query's DTOs. It has no `Save`, hands out no aggregate and opens no
+  write unit of work; it reads the tables the repository writes, and that is
   its whole coupling to the domain.
-- **A projector is a bus subscriber that writes rows.** Same handler type
-  as a policy, subscribed beside them at assembly; it calls no use case and
-  no repository. Idempotent: upsert by aggregate id, skip an event older
-  than the row, pass over events it does not know. Its migrations live in
-  its own package, numbered from 1 under the projection's name.
-- **Neither joins the unit of work.** A query opens none; a projector runs
-  behind the outbox, after the transaction it would have wanted committed.
+- **A projector consumes integration records and writes rows.** It owns
+  migrations and a checkpoint per stream. Apply exactly the next version;
+  commit rows and checkpoint together under a concurrency guard. Duplicates
+  do nothing; gaps are recovered before advancing.
+- **A projector opens its own transaction.** It cannot join the producer's
+  already-committed transaction, but its own writes must still be atomic.
+  A reader uses the read consistency required by its query contract.
 
 ## In-process bus
 
-For tests and local runs. Delivery is synchronous, a subscriber's error fails
-the publishing use case, and delivery stops at the first failure. That is the
-point: silent loss is the worst outcome here. A real bus swaps the failure
-for a retry and an outbox, not for a log line.
+In current auth, the relay delivers integration DTOs to an in-process bus after
+the producing transaction commits. Subscriber failure fails that delivery for
+retry, not the already-committed command. A synchronous recording bus in a unit
+test does not prove outbox semantics.
 
 ## Checklist
 
-- Adapter names the one port it implements; nothing else is exported that a use case could reach for.
+- Adapter names the consumer-owned ports it implements; use cases depend on those contracts.
 - No transaction handling in statements; unit of work per [ddd-unit-of-work](../ddd-unit-of-work/SKILL.md).
 - Migrations inside the store package, numbered per aggregate, no cross-aggregate references, no down files.
 - Version compared on update; zero rows is conflict.
 - Storage errors mapped to domain sentinels by constraint.
 - Cache: same port, hot path only, bypass in transaction, failures swallowed, misses not stored.
-- External client: unknown enum is an error; stub is a client.
-- Reader: scans into the query's DTOs, no `Save`. Projector: idempotent, skips older events, passes over unknown ones, own migrations.
+- External client: unknown enum is an error; disabled and unavailable modes are distinct.
+- Reader returns slice-owned DTOs. Projector commits rows/checkpoint locally, strictly version + 1; duplicate no-op, gaps recovered, own migrations.
 
 Language-specific: [references/go.md](references/go.md).

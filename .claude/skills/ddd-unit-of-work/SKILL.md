@@ -46,7 +46,8 @@ change. A conflict on one is re-read and retried; the rest proceed.
 
 **Two aggregates in one transaction only when the rule needs both to
 change together.** Then the use case wraps both saves in the unit of work,
-and the repositories join it. This is rare, and the comment says why.
+and the repositories join it. Revisit the aggregate boundary first; preserve
+a cross-root unit only with a documented invariant and one transactional store.
 
 **A conflict is not a failure of the loop.** In a loop over aggregates, a
 version conflict on one means somebody else wrote it (a logout from that
@@ -57,10 +58,10 @@ move on.
 cache would decide on a copy taken before the transaction began, one the
 transaction never saw and cannot have locked.
 
-**Tests reach the store the same way.** The harness builds the store with
-the same transaction lookup assembly wires; a test that reached it any other
-way would exercise a path the service does not have, and the lookup is the
-thing most worth not getting wrong.
+**Infrastructure and composition tests use the production transaction lookup.**
+Package-local backend fixtures verify commit/rollback and shared lookup wiring.
+Application and policy tests use local mocks; do not move real-store fixtures
+into every use case. See [ddd-testing](../ddd-testing/SKILL.md).
 
 ## What joins the unit
 
@@ -70,9 +71,9 @@ thing most worth not getting wrong.
 | outbox publisher | appends to the same transaction; refuses without one |
 | cache decorator | bypassed on reads |
 | second repository | joins; commit is shared |
-| external service call | not transactional; make it before the write, treat failure as no decision |
-| query use case, reader | opens none and joins none; a query changes nothing ([ddd-cqrs](../ddd-cqrs/SKILL.md)) |
-| projector | never inside; it runs behind the outbox, after the commit it reflects |
+| external service call | outside database atomicity; a read failure is no verdict, a remote write needs idempotency and durable coordination |
+| query use case, reader | no write unit; a read-only snapshot transaction may satisfy its consistency contract ([ddd-cqrs](../ddd-cqrs/SKILL.md)) |
+| projector | after producer commit, opens its own transaction for rows and strict stream checkpoint |
 
 ## Checklist
 
@@ -81,6 +82,6 @@ thing most worth not getting wrong.
 - `Save` = aggregate + events, one unit; a saved copy is stale, re-read before writing again.
 - Loops over independent aggregates: one unit each, conflicts retried per item.
 - Cache bypassed when a transaction is in flight; no command reads a projection.
-- Test harness uses the same lookup.
+- Infrastructure/composition tests use the same lookup; projector effects and checkpoints commit atomically.
 
 Language-specific: [references/go.md](references/go.md).

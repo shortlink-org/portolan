@@ -1,48 +1,27 @@
 # Layout in Go
 
-Read off `examples/auth`. Paths are relative to the service root.
+The current reference follows [auth.0012](../../../../examples/auth/docs/adr/0012-feature-slices-own-their-layers.md).
+Paths below are relative to `examples/auth`:
 
-```
-README.md                             what it does / does not do / domain / rules
-GLOSSARY.md                           the context's terms
-docs/adr/                             decision records
-cmd/<service>/main.go                 entry point; builds the app via wire, runs it
+```text
 internal/
-  domain/<aggregate>/
-    README.md                         states and transitions
-    <aggregate>.go                    root type, constructors, commands, sentinel errors
-    port.go                           Repository and Publisher interfaces
-    event/                            one file per event + event.go with the interface and topic names
-    vo/<value>/                       value object; rules/ beneath it, one spec per file
-    services/                         domain services, pure
-  application/
-    <aggregate>/usecases/<use_case>/
-      usecase.go                      UseCase struct, New, Handle
-      port.go                         ports only this use case needs (optional)
-      dto/input.go, dto/output.go     what crosses the edge
-      README.md                       what it does / what follows / answers
-    policy/                           "when X happened, do Y" across aggregates
-  infrastructure/
-    repository/<aggregate>/           postgres.go, cached.go, publisher.go, dto/, migrations/
-    bus/<aggregate>/                  in-process bus for tests and local runs
-    reader/<query>/                   SQL reader for one query's Reader port, scanning into its dto
-    projector/<projection>/           bus subscriber that keeps one projection; its migrations/ beside it
-    <external-service>/               adapter over a generated client; proto/ and gen/ beside it
-    transport/http/                   server.go, gen/ (from openapi.yaml), <aggregate>/ handlers
-  di/
-    app.go, wire.go, wire_gen.go      the assembled application
-    provider/                         one file per concern: clock, storage, bus, usecase, transport
-  pkg/
-    uow/                              unit of work
-    postgrestest/, redistest/         test harnesses
+  user/                               session/ and lockout/ follow the same shape
+    domain/                           root, errors, rules, ports, event/, vo/
+    application/<use_case>/           usecase.go, model.go or command.go, port.go, tests
+    infrastructure/                   repository/, password/, lockout/, http/, bus/
+    integration/event/                wire DTOs and outbox mapping
+    di/                               application.go, infrastructure.go, http.go, set.go
+  session/infrastructure/messaging/policy/
+  platform/                           uow/, messaging/, tracing/
+  transport/http/                     shared server, telemetry, generated contract
+  di/                                 root composition and shared resource providers
 ```
 
-Package naming: the aggregate package is the noun (`user`, `session`); the
-use case package is the verb phrase in snake_case (`change_password`,
-`end_after_credential_change`); the infrastructure package repeats the
-aggregate name under the port it serves (`repository/user`, `bus/user`).
+Ports belong to consumers. Adapters in the consuming feature may bridge two
+modules; domain/application may not. Each application slice owns its `Command`
+or `Query` and `Result`; a `dto` subpackage is not mandatory. Test fixtures and
+Mockery configuration are package-local.
 
-Import direction is checked by eye and by the compiler: `domain/*` imports
-only the standard library, the value objects beneath it, and a specification
-helper; `application/*` imports `domain/*`; `infrastructure/*` imports both;
-`di` imports everything.
+Use [.golangci.yml](../../../../examples/auth/.golangci.yml) for executable
+`depguard` boundaries. Read [README](../../../../examples/auth/README.md) and
+scoped ADRs before applying this layout to another service.
