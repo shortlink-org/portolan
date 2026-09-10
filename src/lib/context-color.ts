@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { catalog } from "../data";
 
-const CTX_SLOTS = 6;
+export const CTX_SLOTS = 6;
 
 /** Context colour is assigned deterministically by index in catalog order. */
 const order: string[] = catalog.contexts.map((c) => c.id);

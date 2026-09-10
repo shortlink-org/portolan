@@ -127,6 +127,26 @@ export function groupsOf(
   return groups;
 }
 
+/** The group a card belongs to: its aggregate, or the ungrouped rest. */
+export function groupKey(node: Pick<ErNode, "aggregate">): string {
+  return node.aggregate ?? UNGROUPED;
+}
+
+/**
+ * The spec without the groups a reader hid: their cards gone, and with them
+ * every edge that touched one. What is left lays out and searches like a
+ * smaller schema, which is the point of hiding.
+ */
+export function hideGroups(spec: ErSpec, hidden: ReadonlySet<string>): ErSpec {
+  if (hidden.size === 0) return spec;
+  const nodes = spec.nodes.filter((n) => !hidden.has(groupKey(n)));
+  const kept = new Set(nodes.map((n) => n.id));
+  return {
+    nodes,
+    edges: spec.edges.filter((e) => kept.has(e.from) && kept.has(e.to)),
+  };
+}
+
 /** Whether a schema is big enough, and grouped enough, for the two-step layout to help. */
 export function canGroup(spec: ErSpec): boolean {
   if (spec.nodes.length < GROUP_MIN_TABLES) return false;

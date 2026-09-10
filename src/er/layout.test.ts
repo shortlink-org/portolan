@@ -9,7 +9,7 @@ import { buildIndex, validateCatalog } from "../catalog";
 import { pathologicalCatalog, wideCatalog } from "../lib/scenarios";
 import { erSpec } from "./spec";
 import type { ErNode, ErSpec } from "./spec";
-import { canGroup, groupsOf, layoutEr, layoutInput } from "./layout";
+import { canGroup, groupsOf, hideGroups, layoutEr, layoutInput } from "./layout";
 
 describe("layoutInput", () => {
   const bad = pathologicalCatalog();
@@ -149,6 +149,18 @@ describe("grouping a big schema", () => {
     expect(laid.width / laid.height).toBeGreaterThan(1);
     // The key inside a group put its parent left of its child.
     expect(laid.positions["s.t0"]?.x ?? 0).toBeLessThan(laid.positions["s.t3"]?.x ?? 0);
+  });
+
+  it("hides a group with every edge that touched it, and leaves the rest as it was", () => {
+    const spec = schema(6, ["a.x", "a.y"], 2);
+    spec.edges.push(
+      { id: "in-x", kind: "fk", from: "s.t2", to: "s.t0", fromColumn: "x_id", toColumn: "id", onDelete: null } as unknown as ErSpec["edges"][number],
+      { id: "x-y", kind: "fk", from: "s.t1", to: "s.t0", fromColumn: "x_id", toColumn: "id", onDelete: null } as unknown as ErSpec["edges"][number],
+    );
+    expect(hideGroups(spec, new Set())).toBe(spec);
+    const without = hideGroups(spec, new Set(["a.y", "other"]));
+    expect(without.nodes.map((n) => n.id)).toEqual(["s.t0", "s.t2", "s.t4"]);
+    expect(without.edges.map((e) => e.id)).toEqual(["in-x"]);
   });
 
   it("stays one flow unless asked", async () => {

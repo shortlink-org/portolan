@@ -21,7 +21,7 @@ import {
 } from "@xyflow/react";
 import type { Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Columns3, Eye, FileCode2, ImageDown, LayoutGrid, Maximize2, Search, Waypoints, Workflow } from "lucide-react";
+import { Columns3, Eye, FileCode2, ImageDown, LayoutGrid, ListFilter, Maximize2, Search, Waypoints, Workflow } from "lucide-react";
 import type { Store } from "../catalog";
 import { storeViews } from "../catalog";
 import { index } from "../data";
@@ -34,8 +34,9 @@ import type { ErGroupNode } from "./GroupNode";
 import type { ErFlowNode } from "./RelationCard";
 import { EDGE_W, EDGE_W_LIT } from "../graph/theme";
 import { ErMarkers, MARKER_FLOW, MARKER_MANY, MARKER_ONE } from "./markers";
-import { canGroup, layoutEr } from "./layout";
-import type { ErGroupFrame } from "./layout";
+import { canGroup, groupsOf, hideGroups, layoutEr } from "./layout";
+import type { ErGroupFrame, ErGrouping } from "./layout";
+import { CTX_SLOTS } from "../lib/context-color";
 import { lineageChain } from "./lineage";
 import type { LineageMaps } from "./lineage";
 import { erSpec, matchingNodes } from "./spec";
@@ -110,7 +111,7 @@ function Canvas({
   const clear = useSelectionStore((s) => s.clear);
   const selectionId = useSelectionStore((s) => s.selection?.id ?? null);
 
-  const spec: ErSpec = useMemo(
+  const full: ErSpec = useMemo(
     () =>
       erSpec(index, store, {
         mode,
@@ -121,6 +122,24 @@ function Canvas({
       }),
     [store, mode, expanded, ghost, showViews, showLineage],
   );
+  // Groups the reader switched off. Everything below reads the spec with
+  // them gone, so a hidden group is hidden from the search and the layout
+  // too, not only from the eye.
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const spec: ErSpec = useMemo(() => hideGroups(full, hidden), [full, hidden]);
+  const nameOf = useCallback(
+    (aggregate: string) => index.aggregateById.get(aggregate)?.name ?? (aggregate.split(".").at(-1) ?? aggregate),
+    [],
+  );
+  const groupList = useMemo(() => groupsOf(full.nodes, nameOf), [full, nameOf]);
+  const onHide = useCallback((id: string, hide: boolean) => {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (hide) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
 
   const matched = useMemo(() => matchingNodes(spec, term), [spec, term]);
   const matchedIds = useMemo(() => [...matched], [matched]);
@@ -129,7 +148,7 @@ function Canvas({
   const [cursor, setCursor] = useState(-1);
   useEffect(() => setCursor(-1), [term]);
 
-  const groupable = useMemo(() => canGroup(spec), [spec]);
+  const groupable = useMemo(() => canGroup(full), [full]);
   const arrangement: Arrangement = groupable ? (chosen ?? "groups") : "flow";
 
   useEffect(() => {
@@ -142,14 +161,14 @@ function Canvas({
     void layoutEr(spec, {
       grouped: arrangement === "groups",
       aspectRatio,
-      nameOf: (aggregate) => index.aggregateById.get(aggregate)?.name ?? (aggregate.split(".").at(-1) ?? aggregate),
+      nameOf,
     }).then((result) => {
       if (!cancelled) setLayout({ positions: result.positions, groups: result.groups, ready: true });
     });
     return () => {
       cancelled = true;
     };
-  }, [spec, arrangement]);
+  }, [spec, arrangement, nameOf]);
 
   // Which columns need an anchor, per table. A column with no relationship
   // gets no handle: React Flow measures every handle it is given, and a wide
@@ -292,9 +311,16 @@ function Canvas({
         connectable: false,
         focusable: false,
         zIndex: -1,
-        data: { name: group.name, aggregate: group.aggregate, count: group.count },
+        data: {
+          name: group.name,
+          aggregate: group.aggregate,
+          count: group.count,
+          // By the group's place in the full list, so that hiding a
+          // neighbour does not recolour the rest.
+          tint: `var(--ctx-${Math.max(0, groupList.findIndex((g) => g.id === group.id)) % CTX_SLOTS})`,
+        },
       })),
-    [layout.groups],
+    [layout.groups, groupList],
   );
 
   const cards: ErFlowNode[] = useMemo(
@@ -417,6 +443,9 @@ function Canvas({
         onJump={onJump}
         arrangement={groupable ? arrangement : null}
         onArrangement={setChosen}
+        groups={groupable ? groupList : []}
+        hidden={hidden}
+        onHide={onHide}
         views={views}
         showViews={showViews}
         onShowViews={setShowViews}
@@ -466,6 +495,9 @@ function Toolbar({
   onJump,
   arrangement,
   onArrangement,
+  groups,
+  hidden,
+  onHide,
   views,
   showViews,
   onShowViews,
@@ -485,6 +517,10 @@ function Toolbar({
   /** How the cards are laid out; null when the schema is too small for the choice to matter. */
   arrangement: Arrangement | null;
   onArrangement: (value: Arrangement) => void;
+  /** The model groups a reader can switch off; empty when the schema is too small to bother. */
+  groups: ErGrouping[];
+  hidden: ReadonlySet<string>;
+  onHide: (id: string, hide: boolean) => void;
   /** How many views this store has; with none, the toggle is not a choice. */
   views: number;
   showViews: boolean;
@@ -591,6 +627,42 @@ function Toolbar({
             <LayoutGrid size={11} aria-hidden className="inline" /> groups
           </button>
         </div>
+      ) : null}
+
+      {/* Which groups are on the canvas. A big schema is read one module at a
+          time, and a module is easier to read with its neighbours gone. */}
+      {groups.length > 0 ? (
+        <details className="relative">
+          <summary
+            className="seg mono cursor-pointer list-none bg-canvas px-2 py-1 text-muted hover:bg-surface"
+            title="Show or hide model groups"
+          >
+            <ListFilter size={11} aria-hidden className="inline" /> {groups.length - hidden.size}/{groups.length}
+          </summary>
+          <div className="absolute left-0 top-full z-20 mt-1 max-h-72 w-64 overflow-y-auto rounded-card border border-line bg-surface p-1 shadow-card">
+            <div className="flex gap-2 px-2 py-1">
+              <button type="button" className="mono text-accent hover:underline" onClick={() => groups.forEach((g) => onHide(g.id, false))}>
+                all
+              </button>
+              <button type="button" className="mono text-accent hover:underline" onClick={() => groups.forEach((g) => onHide(g.id, true))}>
+                none
+              </button>
+            </div>
+            {groups.map((group, i) => (
+              <label key={group.id} className="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1 hover:bg-canvas">
+                <input
+                  type="checkbox"
+                  checked={!hidden.has(group.id)}
+                  onChange={(e) => onHide(group.id, !e.target.checked)}
+                  aria-label={`Show ${group.name}`}
+                />
+                <span className="dot" style={{ color: `var(--ctx-${i % CTX_SLOTS})` }} />
+                <span className="mono min-w-0 flex-1 truncate">{group.name}</span>
+                <span className="mono tnum text-muted">{group.nodes.length}</span>
+              </label>
+            ))}
+          </div>
+        </details>
       ) : null}
 
       {/* Two toggles rather than one: a reader who wants the tables alone and a
