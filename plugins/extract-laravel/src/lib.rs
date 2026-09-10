@@ -1,0 +1,62 @@
+//! portolan-extract-laravel: a Laravel application in, a catalog fragment
+//! out. The PHP twin of extract-django, on the same protocol: one JSON
+//! request on stdin, one JSON response on stdout, and a `describe` that
+//! answers with what the plugin is and what it can be told.
+
+pub mod catalog;
+pub mod events;
+pub mod extract;
+pub mod ids;
+pub mod layout;
+pub mod models;
+pub mod openapi;
+pub mod protocol;
+pub mod routes;
+pub mod source;
+pub mod yaml;
+
+use protocol::{Descriptor, Options, Request, Response};
+
+const OPTIONS_SCHEMA: &str = include_str!("../options.schema.json");
+
+pub fn descriptor() -> Descriptor {
+    Descriptor {
+        name: "extract-laravel".into(),
+        summary: "Reads a Laravel application by its framework - Eloquent models, events and listeners, routes and controllers - into a catalog fragment and an inferred HTTP contract.".into(),
+        phases: vec!["extract".into()],
+        options: serde_json::from_str(OPTIONS_SCHEMA).expect("options.schema.json is JSON"),
+    }
+}
+
+/// One request in, one response out, as JSON either way.
+pub fn serve(raw: &str, cwd: &std::path::Path) -> Result<String, String> {
+    let req: Request = serde_json::from_str(raw).map_err(|e| format!("the request is not a portolan plugin request: {e}"))?;
+    if !req.portolan_version.is_empty() && req.portolan_version != "0.1.0" {
+        return Err(format!("unsupported portolan protocol {:?} (plugin supports 0.1.0)", req.portolan_version));
+    }
+    if req.kind == "describe" {
+        let resp = Response {
+            files: vec![],
+            warnings: vec![],
+            describe: Some(descriptor()),
+        };
+        return serde_json::to_string(&resp).map_err(|e| e.to_string());
+    }
+    if req.input.root.is_empty() {
+        return Err("no input root: an extractor has nothing to read".into());
+    }
+    let opts: Options = if req.options.is_null() {
+        Options::default()
+    } else {
+        serde_json::from_value(req.options).map_err(|e| format!("options: {e}"))?
+    };
+    let resp = extract::extract(&req.input, &opts, cwd);
+    for warning in &resp.warnings {
+        if warning.reference.is_empty() {
+            eprintln!("warning: {}", warning.message);
+        } else {
+            eprintln!("warning: {}: {}", warning.reference, warning.message);
+        }
+    }
+    serde_json::to_string(&resp).map_err(|e| e.to_string())
+}

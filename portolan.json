@@ -126,6 +126,13 @@
       }
     },
     {
+      "name": "laravel-domain",
+      "process": {
+        "command": "cargo",
+        "args": ["run", "--quiet", "--manifest-path", "plugins/extract-laravel/Cargo.toml"]
+      }
+    },
+    {
       "name": "java-domain",
       "process": {
         "command": "java",

@@ -1,0 +1,7 @@
+{
+  "name": "acme/plain",
+  "type": "project",
+  "require": {
+    "laravel/framework": "^11.0"
+  }
+}

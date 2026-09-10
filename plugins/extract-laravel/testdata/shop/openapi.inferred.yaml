@@ -1,0 +1,148 @@
+openapi: 3.1.0
+info:
+  title: Acme Shop HTTP API
+  version: inferred
+  description: Generated statically from Laravel route files and controller declarations. Unknown details are left unspecified.
+tags:
+  - name: checkout
+  - name: customer
+paths:
+  /checkout/cart:
+    get:
+      operationId: shop_checkout_cart_index
+      summary: Shows the cart.
+      tags:
+        - checkout
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:11"
+      x-portolan-route: shop.checkout.cart.index
+  /checkout/cart/add/{id}:
+    post:
+      operationId: shop_checkout_cart_store
+      summary: Puts a product in the cart.
+      description: "Puts a product in the cart.\n\nThe quantity comes from the request and is clamped to what is in stock."
+      tags:
+        - checkout
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:13"
+      x-portolan-route: shop.checkout.cart.store
+  /checkout/cart/remove/{id}:
+    delete:
+      operationId: shop_checkout_cart_remove
+      summary: Shop checkout cart remove
+      tags:
+        - checkout
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:15"
+      x-portolan-route: shop.checkout.cart.remove
+  /checkout/onepage:
+    get:
+      operationId: shop_checkout_onepage_index
+      summary: The one page the whole checkout happens on.
+      tags:
+        - checkout
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:22"
+      x-portolan-route: shop.checkout.onepage.index
+  /checkout/onepage/orders:
+    post:
+      operationId: shop_checkout_onepage_orders_store
+      summary: Places the order for the cart.
+      tags:
+        - checkout
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:24"
+      x-portolan-route: shop.checkout.onepage.orders.store
+  /checkout/onepage/success:
+    get:
+      operationId: shop_checkout_onepage_success
+      summary: Thanks the customer.
+      tags:
+        - checkout
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:26"
+      x-portolan-route: shop.checkout.onepage.success
+  /customer/addresses:
+    get:
+      operationId: shop_customer_addresses_index
+      summary: Shop customer addresses index
+      tags:
+        - customer
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:12"
+      x-portolan-route: shop.customer.addresses.index
+    post:
+      operationId: shop_customer_addresses_store
+      summary: Shop customer addresses store
+      tags:
+        - customer
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:12"
+      x-portolan-route: shop.customer.addresses.store
+  /customer/legacy:
+    summary: Any customer legacy
+    x-portolan-inferred: true
+    x-portolan-source: "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:14"
+    x-portolan-verb: any
+  /customer/login:
+    post:
+      operationId: shop_customer_session_create
+      summary: Logs the customer in.
+      tags:
+        - customer
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:8"
+      x-portolan-route: shop.customer.session.create
+  /customer/logout:
+    delete:
+      operationId: shop_customer_session_destroy
+      summary: Logs the customer out.
+      tags:
+        - customer
+      responses:
+        default:
+          description: Response schema and status are not available from static Laravel route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:10"
+      x-portolan-route: shop.customer.session.destroy
+x-portolan-inferred: true
+x-portolan-generator: extract-laravel

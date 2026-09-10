@@ -56,3 +56,6 @@ plugins/extract-java/build
 /verify-otel
 /verify-codeowners
 /gen-markdown
+
+# The Laravel plugin builds into its own target directory
+plugins/extract-laravel/target

@@ -1,0 +1,1218 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.shop",
+          "slug": "shop",
+          "name": "Acme Shop",
+          "repo": "github.com/acme/shop",
+          "path": "testdata/shop",
+          "readme": "# Acme Shop\n\nA storefront and its back office in one Laravel application, one package per\nmodule. Packages talk to each other through named events, which is what the\ncatalog is here to show.",
+          "provides": [
+            {
+              "id": "shop.shop.checkout",
+              "methods": [
+                {
+                  "name": "shop_checkout_cart_index",
+                  "doc": "Shows the cart.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/checkout/cart"
+                  }
+                },
+                {
+                  "name": "shop_checkout_cart_remove",
+                  "doc": "Shop checkout cart remove",
+                  "http": {
+                    "method": "DELETE",
+                    "path": "/checkout/cart/remove/{id}"
+                  }
+                },
+                {
+                  "name": "shop_checkout_cart_store",
+                  "doc": "Puts a product in the cart.",
+                  "http": {
+                    "method": "POST",
+                    "path": "/checkout/cart/add/{id}"
+                  }
+                },
+                {
+                  "name": "shop_checkout_onepage_index",
+                  "doc": "The one page the whole checkout happens on.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/checkout/onepage"
+                  }
+                },
+                {
+                  "name": "shop_checkout_onepage_orders_store",
+                  "doc": "Places the order for the cart.",
+                  "http": {
+                    "method": "POST",
+                    "path": "/checkout/onepage/orders"
+                  }
+                },
+                {
+                  "name": "shop_checkout_onepage_success",
+                  "doc": "Thanks the customer.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/checkout/onepage/success"
+                  }
+                }
+              ],
+              "source": "testdata/shop/portolan/openapi.inferred.yaml"
+            },
+            {
+              "id": "shop.shop.customer",
+              "methods": [
+                {
+                  "name": "shop_customer_addresses_index",
+                  "doc": "Shop customer addresses index",
+                  "http": {
+                    "method": "GET",
+                    "path": "/customer/addresses"
+                  }
+                },
+                {
+                  "name": "shop_customer_addresses_store",
+                  "doc": "Shop customer addresses store",
+                  "http": {
+                    "method": "POST",
+                    "path": "/customer/addresses"
+                  }
+                },
+                {
+                  "name": "shop_customer_session_create",
+                  "doc": "Logs the customer in.",
+                  "http": {
+                    "method": "POST",
+                    "path": "/customer/login"
+                  }
+                },
+                {
+                  "name": "shop_customer_session_destroy",
+                  "doc": "Logs the customer out.",
+                  "http": {
+                    "method": "DELETE",
+                    "path": "/customer/logout"
+                  }
+                }
+              ],
+              "source": "testdata/shop/portolan/openapi.inferred.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "shop.shop.models-checkout",
+              "slug": "models-checkout",
+              "name": "Checkout",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [
+                {
+                  "id": "shop.shop.models-checkout.cart",
+                  "slug": "cart",
+                  "name": "Cart",
+                  "doc": "What a customer is about to buy.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "is_guest",
+                      "type": "boolean",
+                      "doc": ""
+                    },
+                    {
+                      "name": "items_count",
+                      "type": "integer",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customer_id",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "created_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "updated_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "items",
+                      "type": "HasMany[CartItem]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customer",
+                      "type": "BelongsTo[Customer]",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.shop.models-checkout.cart-item",
+                  "slug": "cart-item",
+                  "name": "CartItem",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "cart_id",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "sku",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "created_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "updated_at",
+                      "type": "datetime",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [],
+              "events": [
+                {
+                  "id": "shop.shop.models-checkout.CheckoutCartAddAfter",
+                  "slug": "checkout-cart-add-after",
+                  "name": "CheckoutCartAddAfter",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "checkout.cart.add.after"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-checkout.CheckoutCartItemDeleteAfter",
+                  "slug": "checkout-cart-item-delete-after",
+                  "name": "CheckoutCartItemDeleteAfter",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "checkout.cart.item.delete.after"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-checkout.InventoryStockReserved",
+                  "slug": "inventory-stock-reserved",
+                  "name": "InventoryStockReserved",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/ReserveStockOnOrderPlaced.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "inventory.stock.reserved"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-checkout.CheckoutOrderSaveBefore",
+                  "slug": "checkout-order-save-before",
+                  "name": "CheckoutOrderSaveBefore",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "checkout.order.save.before"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-checkout.CheckoutOrderOrderitemSaveBefore",
+                  "slug": "checkout-order-orderitem-save-before",
+                  "name": "CheckoutOrderOrderitemSaveBefore",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "checkout.order.orderitem.save.before"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-checkout.CheckoutOrderSaveAfter",
+                  "slug": "checkout-order-save-after",
+                  "name": "CheckoutOrderSaveAfter",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "checkout.order.save.after"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "shop.shop.models-customer",
+              "slug": "models-customer",
+              "name": "Customer",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [
+                {
+                  "id": "shop.shop.models-customer.customer",
+                  "slug": "customer",
+                  "name": "Customer",
+                  "doc": "Somebody who can log in and buy.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "boolean",
+                      "doc": ""
+                    },
+                    {
+                      "name": "date_of_birth",
+                      "type": "date",
+                      "doc": ""
+                    },
+                    {
+                      "name": "first_name",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "last_name",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "email",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "password",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "created_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "updated_at",
+                      "type": "datetime",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [],
+              "events": [
+                {
+                  "id": "shop.shop.models-customer.CustomerAfterLogin",
+                  "slug": "customer-after-login",
+                  "name": "CustomerAfterLogin",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.shop",
+                      "status": "declared",
+                      "note": "CustomerEventsHandler::onCustomerLogin"
+                    }
+                  ],
+                  "wire": {
+                    "name": "customer.after.login"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-customer.CustomerAfterLogout",
+                  "slug": "customer-after-logout",
+                  "name": "CustomerAfterLogout",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "customer.after.logout"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "shop.shop.models-sales",
+              "slug": "models-sales",
+              "name": "Sales",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [
+                {
+                  "id": "shop.shop.models-sales.order",
+                  "slug": "order",
+                  "name": "Order",
+                  "doc": "What a customer bought, from the moment they paid.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "grand_total",
+                      "type": "float",
+                      "doc": ""
+                    },
+                    {
+                      "name": "placed_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customer_id",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "created_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "updated_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "items",
+                      "type": "HasMany[OrderItem]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customer",
+                      "type": "BelongsTo[Customer]",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.shop.models-sales.order-item",
+                  "slug": "order-item",
+                  "name": "OrderItem",
+                  "doc": "One product on an order, at the price it was bought for.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "qty_ordered",
+                      "type": "integer",
+                      "doc": ""
+                    },
+                    {
+                      "name": "price",
+                      "type": "float",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order_id",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "sku",
+                      "type": "mixed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "created_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "updated_at",
+                      "type": "datetime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order",
+                      "type": "BelongsTo[Order]",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [],
+              "events": [
+                {
+                  "id": "shop.shop.models-sales.OrderPlaced",
+                  "slug": "order-placed",
+                  "name": "OrderPlaced",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The customer paid and the order is theirs to wait for.",
+                      "source": "testdata/shop/packages/Acme/Sales/src/Events/OrderPlaced.php",
+                      "fields": [
+                        {
+                          "name": "order",
+                          "type": "Order",
+                          "doc": ""
+                        },
+                        {
+                          "name": "itemCount",
+                          "type": "int",
+                          "doc": ""
+                        },
+                        {
+                          "name": "channel",
+                          "type": "string",
+                          "doc": "Where the order came from, for the analytics."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.shop",
+                      "status": "declared",
+                      "note": "ReserveStockOnOrderPlaced::handle"
+                    }
+                  ],
+                  "wire": {
+                    "name": "Acme\\Sales\\Events\\OrderPlaced"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-sales.SalesOrderCancelBefore",
+                  "slug": "sales-order-cancel-before",
+                  "name": "SalesOrderCancelBefore",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "sales.order.cancel.before"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-sales.SalesOrderCancelAfter",
+                  "slug": "sales-order-cancel-after",
+                  "name": "SalesOrderCancelAfter",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.shop",
+                      "status": "declared",
+                      "note": "ReleaseStock::onOrderCanceled"
+                    }
+                  ],
+                  "wire": {
+                    "name": "sales.order.cancel.after"
+                  }
+                }
+              ],
+              "enums": [
+                {
+                  "id": "shop.shop.models-sales.shipment-status",
+                  "slug": "shipment-status",
+                  "name": "ShipmentStatus",
+                  "doc": "Where a shipment is on its way to the customer.",
+                  "values": [
+                    {
+                      "name": "packed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "shipped",
+                      "doc": "Handed to the carrier."
+                    },
+                    {
+                      "name": "delivered",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.shop.models-sales.order-status",
+                  "slug": "order-status",
+                  "name": "Order Status",
+                  "doc": "",
+                  "values": [
+                    {
+                      "name": "pending",
+                      "doc": "Placed, not yet paid."
+                    },
+                    {
+                      "name": "processing",
+                      "doc": "Being picked and packed."
+                    },
+                    {
+                      "name": "completed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "canceled",
+                      "doc": "Cancelled before it shipped.",
+                      "deprecated": true
+                    },
+                    {
+                      "name": "closed",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.shop-shop-checkout-cart-index",
+      "slug": "shop-shop-checkout-cart-index",
+      "name": "Shop checkout cart index",
+      "summary": "Shows the cart.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_checkout_cart_index",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:11"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-checkout-cart-store",
+      "slug": "shop-shop-checkout-cart-store",
+      "name": "Shop checkout cart store",
+      "summary": "Puts a product in the cart.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_checkout_cart_store",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:13"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "CheckoutCartAddAfter",
+          "status": "declared",
+          "ref": "shop.shop.models-checkout.CheckoutCartAddAfter",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:27"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-checkout-cart-remove",
+      "slug": "shop-shop-checkout-cart-remove",
+      "name": "Shop checkout cart remove",
+      "summary": "",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_checkout_cart_remove",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:15"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "CheckoutCartItemDeleteAfter",
+          "status": "declared",
+          "ref": "shop.shop.models-checkout.CheckoutCartItemDeleteAfter",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:36"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-checkout-onepage-index",
+      "slug": "shop-shop-checkout-onepage-index",
+      "name": "Shop checkout onepage index",
+      "summary": "The one page the whole checkout happens on.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_checkout_onepage_index",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:22"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-checkout-onepage-orders-store",
+      "slug": "shop-shop-checkout-onepage-orders-store",
+      "name": "Shop checkout onepage orders store",
+      "summary": "Places the order for the cart.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_checkout_onepage_orders_store",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:24"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "CheckoutOrderSaveBefore",
+          "status": "declared",
+          "ref": "shop.shop.models-checkout.CheckoutOrderSaveBefore",
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:20"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "CheckoutOrderOrderitemSaveBefore",
+          "status": "declared",
+          "ref": "shop.shop.models-checkout.CheckoutOrderOrderitemSaveBefore",
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:25"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "OrderPlaced",
+          "status": "declared",
+          "ref": "shop.shop.models-sales.OrderPlaced",
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:29"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "CheckoutOrderSaveAfter",
+          "status": "declared",
+          "ref": "shop.shop.models-checkout.CheckoutOrderSaveAfter",
+          "line": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:31"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-checkout-onepage-success",
+      "slug": "shop-shop-checkout-onepage-success",
+      "name": "Shop checkout onepage success",
+      "summary": "Thanks the customer.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_checkout_onepage_success",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php:26"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-customer-session-create",
+      "slug": "shop-shop-customer-session-create",
+      "name": "Shop customer session create",
+      "summary": "Logs the customer in.",
+      "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_customer_session_create",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:8"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "CustomerAfterLogin",
+          "status": "declared",
+          "ref": "shop.shop.models-customer.CustomerAfterLogin",
+          "line": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php:16"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-customer-session-destroy",
+      "slug": "shop-shop-customer-session-destroy",
+      "name": "Shop customer session destroy",
+      "summary": "Logs the customer out.",
+      "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_customer_session_destroy",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:10"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "CustomerAfterLogout",
+          "status": "declared",
+          "ref": "shop.shop.models-customer.CustomerAfterLogout",
+          "line": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php:28"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-customer-addresses-index",
+      "slug": "shop-shop-customer-addresses-index",
+      "name": "Shop customer addresses index",
+      "summary": "",
+      "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_customer_addresses_index",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:12"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-shop-customer-addresses-store",
+      "slug": "shop-shop-customer-addresses-store",
+      "name": "Shop customer addresses store",
+      "summary": "",
+      "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.shop",
+          "kind": "rpc",
+          "label": "shop_customer_addresses_store",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:12"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-customer-events-handler-on-customer-login",
+      "slug": "shop-customer-events-handler-on-customer-login",
+      "name": "On customer login",
+      "summary": "Moves what a guest put in their cart over to the customer they turned out to be.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/CustomerEventsHandler.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.shop",
+          "kind": "event",
+          "label": "CustomerAfterLogin",
+          "status": "declared",
+          "ref": "shop.shop.models-customer.CustomerAfterLogin",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Listeners/CustomerEventsHandler.php:13"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-release-stock-on-order-canceled",
+      "slug": "shop-release-stock-on-order-canceled",
+      "name": "On order canceled",
+      "summary": "",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Providers/EventServiceProvider.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.shop",
+          "kind": "event",
+          "label": "SalesOrderCancelAfter",
+          "status": "declared",
+          "ref": "shop.shop.models-sales.SalesOrderCancelAfter",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Providers/EventServiceProvider.php:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-reserve-stock-on-order-placed-handle",
+      "slug": "shop-reserve-stock-on-order-placed-handle",
+      "name": "Reserve stock on order placed",
+      "summary": "Takes the ordered quantities out of what is available to sell.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/ReserveStockOnOrderPlaced.php",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.shop",
+          "kind": "event",
+          "label": "OrderPlaced",
+          "status": "declared",
+          "ref": "shop.shop.models-sales.OrderPlaced",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Listeners/ReserveStockOnOrderPlaced.php:13"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "InventoryStockReserved",
+          "status": "declared",
+          "ref": "shop.shop.models-checkout.InventoryStockReserved",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Listeners/ReserveStockOnOrderPlaced.php:16"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

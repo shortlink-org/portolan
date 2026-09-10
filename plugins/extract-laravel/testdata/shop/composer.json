@@ -1,0 +1,20 @@
+{
+  "name": "acme/shop",
+  "description": "A shop built from packages, the way Bagisto is.",
+  "type": "project",
+  "homepage": "https://acme.example",
+  "support": {
+    "source": "https://github.com/acme/shop"
+  },
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^11.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Acme\\Sales\\": "packages/Acme/Sales/src",
+      "Acme\\Checkout\\": "packages/Acme/Checkout/src",
+      "Acme\\Customer\\": "packages/Acme/Customer/src"
+    }
+  }
+}

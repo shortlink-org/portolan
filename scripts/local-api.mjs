@@ -311,7 +311,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
       out: "project.json",
     };
   }
-  if (["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin)) {
+  if (["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain"].includes(plugin)) {
     return { ...common, ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}), ...detectedOptions, serviceName: project.name, out: "domain.json" };
   }
   if (plugin === "sql") return { ...common, store: "pg", ...detectedOptions, out: "stores.json" };
@@ -431,7 +431,7 @@ export function planProject(workspace, manifest, request) {
   };
   const out = posix.join(finalRoot, "portolan");
   const detectionByPlugin = new Map(discovery.detections.map((item) => [item.plugin, item]));
-  const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin));
+  const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain"].includes(plugin));
   const projectDetectionOptions = {
     groupKind: splitDeployables ? "system" : hasDomainModel ? "bounded-context" : "system",
     ...(hasDomainModel ? { componentKind: "service" } : {}),
@@ -456,7 +456,7 @@ export function planProject(workspace, manifest, request) {
     if (!splitDeployables) {
       const options = plugin === "project"
         ? projectDetectionOptions
-        : ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin)
+        : ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain"].includes(plugin)
           ? domainDetectionOptions(plugin)
           : detectionByPlugin.get(plugin)?.options;
       return [{ plugin, in: finalRoot, out, options: pluginOptions(plugin, project, options) }];

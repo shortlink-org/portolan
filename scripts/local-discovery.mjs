@@ -387,6 +387,9 @@ function detectionsFor(root, files) {
   const tsDomain = files.has("package.json") ? laidOutDomainEvidence(root, files, "typescript") : "";
   const rustDomain = files.has("Cargo.toml") ? laidOutDomainEvidence(root, files, "rust") : "";
   const javaDomain = ["pom.xml", "build.gradle", "build.gradle.kts"].some((name) => files.has(name)) ? laidOutDomainEvidence(root, files, "java") : "";
+  // A Laravel application keeps its Eloquent models under app/Models, or
+  // under each package's src/Models when it is built from packages.
+  const laravelDomain = files.has("composer.json") ? matches(files, /^(?:app|packages\/[^/]+\/[^/]+\/src)\/Models\/[^/]+\.php$/)[0] ?? "" : "";
   return [
     detected("project", projectEvidence, {}, projectEvidence.join(", ")),
     detected("go-domain", goDomain ? [goDomain] : [], {}, goDomain),
@@ -394,6 +397,7 @@ function detectionsFor(root, files) {
     detected("rust-domain", rustDomain ? [rustDomain] : [], {}, rustDomain),
     detected("java-domain", javaDomain ? [javaDomain] : [], {}, javaDomain),
     detected("django-domain", files.has("manage.py") && matches(files, /(^|\/)models(?:\/[^/]+)?\.py$/i).length ? ["manage.py"] : []),
+    detected("laravel-domain", laravelDomain ? [laravelDomain] : [], {}, laravelDomain),
     detected("celery", celery, {}, celery[0]),
     detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
     detected(

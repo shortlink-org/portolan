@@ -27,8 +27,9 @@ if (!plugin?.process) {
 const command = plugin.process.command;
 const args = [...(plugin.process.args ?? [])];
 
-if (command === "cargo" && existsSync(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"))) {
-  run(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"), []);
+const prebuilt = command === "cargo" ? prebuiltCargoBinary(args) : "";
+if (prebuilt) {
+  run(prebuilt, []);
 } else if (command === "go") {
   buildAndRunGo(args);
 } else {
@@ -72,6 +73,18 @@ function buildAndRunGo(argv) {
     return;
   }
   run(executable, argv.slice(2));
+}
+
+// A Rust plugin already built in release mode under its own crate directory,
+// `plugins/extract-rust/target/release/portolan-extract-rust`, is run as it
+// is; the crate is named after its directory, which is what the manifest
+// path names.
+function prebuiltCargoBinary(argv) {
+  const manifest = argv[argv.indexOf("--manifest-path") + 1];
+  if (!manifest || argv.indexOf("--manifest-path") < 0) return "";
+  const crate = dirname(manifest).split("/").pop();
+  const binary = resolve(installRoot, dirname(manifest), "target", "release", `portolan-${crate}`);
+  return existsSync(binary) ? binary : "";
 }
 
 function resolveArgument(executable, index) {

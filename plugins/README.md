@@ -154,7 +154,11 @@ a value's name is the constant's literal, because that is what the wire
 carries, and the constant's own name only for an iota. A `Deprecated:`
 paragraph in the doc marks the value. In Rust it is a `pub enum` whose every
 variant is a bare name, the literal an `as_str` answers standing in for the
-variant. In Java it is a top-level enum in the aggregate's package. In proto,
+variant. In Java it is a top-level enum in the aggregate's package. In PHP it
+is a backed `enum` anywhere in the module, and on an Eloquent model the
+constants that share a prefix - `STATUS_PENDING = 'pending'` beside
+`STATUS_CLOSED = 'closed'` - with `@deprecated` in a constant's docblock
+marking the value; see `extract-laravel/README.md`. In proto,
 the enums the messages reach through their fields sit on the interface as
 `enums`, with the numbers the wire uses.
 
@@ -863,7 +867,7 @@ trusted not to write the tree it reads, the same trust a process plugin has
 today; a `sha256` pins that trust to a build.
 
 `process` is the escape hatch for a plugin that needs a toolchain: the typed Go
-HTTP client analyzer and the Rust, Java, Python and TypeScript extractors run in
+HTTP client analyzer and the Rust, Java, Python, PHP and TypeScript extractors run in
 their own runtimes. It gets the same protocol
 and none of the sandbox, which is the trade being made and the reason it is
 not the default. It declares `command` and an `args` array; the host never
