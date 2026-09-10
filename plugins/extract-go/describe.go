@@ -12,7 +12,7 @@ var optionsSchema []byte
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
 		Name:    "extract-go",
-		Summary: "Reads a Go service with go/parser alone and answers with its domain: aggregates, events, use cases and the flows they imply.",
+		Summary: "Reads Go source with go/parser: domain aggregates, events and use cases, plus registered HTTP execution flows in conventional services.",
 		Phases:  []string{plugin.PhaseExtract},
 		Options: optionsSchema,
 	}

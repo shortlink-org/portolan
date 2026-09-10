@@ -67,9 +67,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	if len(service.Aggregates) == 0 {
-		if opts.Scope == "" {
-			b.Warn(svcID, "no aggregate domain packages found; supported layouts include internal/domain/<aggregate> and internal/<aggregate>/domain")
-		}
 		service.Aggregates = []catalog.Aggregate{}
 	}
 
@@ -90,10 +87,17 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		externals: opts.Externals,
 		events:    opts.Events,
 	}, layout, endpoints, eventIDs(service.Aggregates), b)
-	if opts.Scope != "" {
-		serviceFlows, serviceCalls := extractServiceFlows(root, opts, b)
-		flows = append(flows, serviceFlows...)
-		calls = mergeRPCCalls(calls, serviceCalls)
+	// Registered execution roots do not require a DDD layout or a deployable
+	// scope. Keep the richer domain flow when it already covers a handler.
+	covered := map[string]bool{}
+	for _, endpoint := range endpoints {
+		covered[at(endpoint.source, endpoint.line)] = true
+	}
+	serviceFlows, serviceCalls := extractServiceFlows(root, opts, b, covered)
+	flows = append(flows, serviceFlows...)
+	calls = mergeRPCCalls(calls, serviceCalls)
+	if len(service.Aggregates) == 0 && len(flows) == 0 && opts.Scope == "" {
+		b.Warn(svcID, "no aggregate domain packages or supported execution flows found")
 	}
 	// What the service calls is read off its flows: the generated client in
 	// the tree names the rpc, and a step on it is the call being made.

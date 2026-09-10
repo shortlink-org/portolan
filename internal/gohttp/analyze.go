@@ -279,6 +279,7 @@ func Analyze(root string) (Result, error) {
 		endpointFlows = s.endpointFlows(flows)
 	}
 	rootFlows := s.rootFlows(flows, endpointFlows)
+	sort.Strings(s.warnings)
 	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, EndpointFlows: endpointFlows, RootFlows: rootFlows, TypedCallGraph: len(s.typedEdges) > 0, TypedCallGraphError: s.typedCallGraphError, Warnings: s.warnings}, nil
 }
 

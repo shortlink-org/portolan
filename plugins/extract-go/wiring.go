@@ -33,13 +33,24 @@ import (
 // these are read off the adapter: the struct the provider returns, and which
 // field's Handle each of its methods calls. Such a binding is keyed by port
 // and method, "user/authenticate.Lockout.Failed", beside the port-level key
-// the single-use-case case produces. An adapter this cannot read falls back to
-// the first use case in the signature, which is the reading it always had.
+// the single-use-case case produces. Unreadable or competing bindings remain
+// unresolved; parameter and file order never choose an implementation.
 //
 // A provider that builds its port out of something else is not a binding
 // between use cases and does not appear here.
 func portBindings(root string, layouts ...sourceLayout) map[string]string {
+	out, _ := readPortBindings(root, layouts...)
+	return out
+}
+
+func readPortBindings(root string, layouts ...sourceLayout) (map[string]string, map[string][]string) {
+	type provider struct {
+		targets []string
+		methods map[string]string
+	}
+	providers := map[string][]provider{}
 	out := map[string]string{}
+	ambiguous := map[string][]string{}
 
 	packages := goPackageDirs(root, "internal")
 	if len(layouts) > 0 {
@@ -81,22 +92,51 @@ func portBindings(root string, layouts ...sourceLayout) map[string]string {
 					continue
 				}
 
-				if len(bound) > 1 {
-					perMethod := methodBindings(file, fn, useCases)
-					for method, useCase := range perMethod {
-						out[port+"."+method] = useCase
-					}
-					if len(perMethod) > 0 {
-						continue
-					}
-				}
-
-				out[port] = bound[0]
+				providers[port] = append(providers[port], provider{
+					targets: bound, methods: methodBindings(file, fn, useCases),
+				})
 			}
 		}
 	}
 
-	return out
+	for port, declarations := range providers {
+		allTargets := map[string]bool{}
+		methods := map[string]bool{}
+		uncertain := false
+		for _, declaration := range declarations {
+			uncertain = uncertain || len(declaration.targets) != 1
+			for _, target := range declaration.targets {
+				allTargets[target] = true
+			}
+			for method := range declaration.methods {
+				methods[method] = true
+			}
+		}
+		if len(allTargets) == 1 && !uncertain {
+			out[port] = sortedKeys(allTargets)[0]
+			continue
+		}
+		ambiguous[port] = sortedKeys(allTargets)
+		for method := range methods {
+			targets := map[string]bool{}
+			complete := true
+			for _, declaration := range declarations {
+				target := declaration.methods[method]
+				if target == "" && len(declaration.targets) == 1 {
+					target = declaration.targets[0]
+				}
+				if target == "" {
+					complete = false
+				} else {
+					targets[target] = true
+				}
+			}
+			if complete && len(targets) == 1 {
+				out[port+"."+method] = sortedKeys(targets)[0]
+			}
+		}
+	}
+	return out, ambiguous
 }
 
 // methodBindings reads which use case each method of a provider's adapter
@@ -128,27 +168,37 @@ func returnedType(fn *ast.FuncDecl) string {
 		return ""
 	}
 
-	name := ""
+	names := map[string]bool{}
+	unknown := false
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		if _, closure := n.(*ast.FuncLit); closure {
+			return false
+		}
 		ret, ok := n.(*ast.ReturnStmt)
-		if !ok || len(ret.Results) != 1 || name != "" {
+		if !ok {
 			return true
 		}
-
+		if len(ret.Results) != 1 {
+			unknown = true
+			return false
+		}
 		expr := ret.Results[0]
 		if unary, ok := expr.(*ast.UnaryExpr); ok {
 			expr = unary.X
 		}
 		if lit, ok := expr.(*ast.CompositeLit); ok {
 			if ident, ok := lit.Type.(*ast.Ident); ok {
-				name = ident.Name
+				names[ident.Name] = true
+				return false
 			}
 		}
-
-		return true
+		unknown = true
+		return false
 	})
-
-	return name
+	if unknown || len(names) != 1 {
+		return ""
+	}
+	return sortedKeys(names)[0]
 }
 
 // adapterFields reads the field types of a struct declared in the file.
@@ -182,7 +232,7 @@ func adapterFields(file *ast.File, typeName string) map[string]ast.Expr {
 
 // handleCalls reads, for every method on typeName in the file, the field whose
 // Handle it calls: `l.failed.Handle(ctx, ...)` gives Failed -> "failed". A
-// method that calls Handle on two fields is read as the first; none here does.
+// method that calls Handle on two fields has no single target.
 func handleCalls(file *ast.File, typeName string) map[string]string {
 	out := map[string]string{}
 
@@ -196,7 +246,11 @@ func handleCalls(file *ast.File, typeName string) map[string]string {
 			continue
 		}
 
+		fields := map[string]bool{}
 		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			if _, closure := n.(*ast.FuncLit); closure {
+				return false
+			}
 			call, ok := n.(*ast.CallExpr)
 			if !ok {
 				return true
@@ -213,12 +267,13 @@ func handleCalls(file *ast.File, typeName string) map[string]string {
 			if !ok || base.Name != recv {
 				return true
 			}
-			if _, seen := out[fn.Name.Name]; !seen {
-				out[fn.Name.Name] = field.Sel.Name
-			}
+			fields[field.Sel.Name] = true
 
 			return true
 		})
+		if len(fields) == 1 {
+			out[fn.Name.Name] = sortedKeys(fields)[0]
+		}
 	}
 
 	return out

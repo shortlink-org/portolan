@@ -2,6 +2,7 @@ package extractgo
 
 import (
 	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
 	"sort"
@@ -189,6 +190,15 @@ func goPackageDirs(root, rel string) []string {
 			return nil
 		}
 		if entry.IsDir() {
+			if filename != base {
+				switch entry.Name() {
+				case "vendor", "node_modules", "testdata":
+					return filepath.SkipDir
+				}
+				if _, err := os.Stat(filepath.Join(filename, "go.mod")); err == nil {
+					return filepath.SkipDir
+				}
+			}
 			if filename != base && strings.HasPrefix(entry.Name(), ".") {
 				return filepath.SkipDir
 			}

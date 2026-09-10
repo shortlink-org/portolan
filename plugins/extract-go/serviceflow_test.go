@@ -139,3 +139,96 @@ func (c *userRPCClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.Ca
 		t.Fatalf("store = %+v", store)
 	}
 }
+
+func TestRegisteredPlainGoServicesDoNotRequireDDDOrScope(t *testing.T) {
+	for _, dir := range []string{"", "web", "internal/handlers"} {
+		for _, registration := range []string{
+			`func Register(h *Handler) { http.HandleFunc("POST /orders", h.Create) }`,
+			`func Register(h *Handler) { mux := http.NewServeMux(); mux.HandleFunc("POST /orders", h.Create) }`,
+			`func Register(mux *http.ServeMux, h *Handler) { mux.Handle("POST /orders", http.HandlerFunc(h.Create)) }`,
+			`func Register() { http.HandleFunc("POST /orders", Create) }; func Create(w http.ResponseWriter, req *http.Request) { service := &Service{}; service.Execute() }`,
+		} {
+			t.Run(dir+registration, func(t *testing.T) {
+				root := t.TempDir()
+				writeQualitySource(t, root, "go.mod", "module example.com/plain\n\ngo 1.24\n")
+				writeQualitySource(t, root, filepath.Join(dir, "routes.go"), `package web
+import "net/http"
+type Repository interface { Save() }
+type Service struct { repo Repository }
+func (s *Service) Execute() { s.repo.Save() }
+type Handler struct { service *Service }
+func (h *Handler) Create(w http.ResponseWriter, req *http.Request) { h.service.Execute() }
+`+registration)
+				response, err := extract(plugin.Input{Root: root}, Options{Context: "shop", Service: "orders", Store: "pg"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				var fragment catalog.Catalog
+				if err := json.Unmarshal([]byte(response.Files[0].Contents), &fragment); err != nil {
+					t.Fatal(err)
+				}
+				if len(fragment.Flows) != 1 {
+					t.Fatalf("flows = %+v; warnings = %+v", fragment.Flows, response.Warnings())
+				}
+				flow := fragment.Flows[0]
+				if flow.Name != "POST /orders" || flow.Trigger == nil || flow.Trigger.Kind != "http" {
+					t.Fatalf("wrong root: %+v", flow)
+				}
+				if len(flow.Steps) != 3 {
+					t.Fatalf("steps = %+v", flow.Steps)
+				}
+				save := flow.Steps[2].(*catalog.Step)
+				if save.Label != "Save" || save.StoreAccess == nil || save.StoreAccess.Store != "shop.orders.pg" {
+					t.Fatalf("lost Service.Execute -> Repository.Save: %+v", save)
+				}
+				if len(fragment.Contexts[0].Services[0].Aggregates) != 0 {
+					t.Fatal("invented aggregate")
+				}
+				if len(response.Warnings()) != 0 {
+					t.Fatalf("unexpected warnings: %+v", response.Warnings())
+				}
+			})
+		}
+	}
+}
+
+func TestPlainServiceDiscoveryExcludesUnregisteredAndForeignPackages(t *testing.T) {
+	root := t.TempDir()
+	writeQualitySource(t, root, "go.mod", "module example.com/plain\n")
+	source := `package handlers
+import "net/http"
+type Handler struct{}
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {}
+func Register(h *Handler) { http.HandleFunc("POST /orders",h.Create) }
+`
+	writeQualitySource(t, root, "web/routes.go", source)
+	writeQualitySource(t, root, "nested/go.mod", "module example.com/foreign\n")
+	for _, dir := range []string{"nested", "vendor/x", "testdata/x", "node_modules/x"} {
+		writeQualitySource(t, root, dir+"/routes.go", source)
+	}
+	writeQualitySource(t, root, "web/unregistered.go", `package handlers
+func (h *Handler) Unregistered(w http.ResponseWriter, r *http.Request) {}
+`)
+	endpoints := serviceEndpoints(root, "")
+	if len(endpoints) != 1 || endpoints[0].label != "POST /orders" {
+		t.Fatalf("endpoints = %+v", endpoints)
+	}
+	if scoped := serviceEndpoints(root, "another"); len(scoped) != 0 {
+		t.Fatalf("scope leaked: %+v", scoped)
+	}
+}
+
+func TestRouterLikeBusinessMethodsAreNotRegistrations(t *testing.T) {
+	root := t.TempDir()
+	writeQualitySource(t, root, "web/service.go", `package web
+import "net/http"
+type Store struct{}
+func (s *Store) Get(key string, cb func()) {}
+type Handler struct { store *Store }
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {}
+func (h *Handler) Run() { h.store.Get("/orders",h.Create) }
+`)
+	if endpoints := serviceEndpoints(root, ""); len(endpoints) != 0 {
+		t.Fatalf("business method became a route: %+v", endpoints)
+	}
+}

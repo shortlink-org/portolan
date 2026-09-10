@@ -2,6 +2,7 @@ package extracthttpclients
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -667,10 +668,12 @@ func (*Client) Rules() { _, _ = http.Get("https://alpha.example/v1/rules") }
 	}
 }
 
-func TestFallsBackToSyntaxWhenTypedPackagesDoNotLoad(t *testing.T) {
-	root := t.TempDir()
-	writeHTTPFixture(t, root, "go.mod", "module example.com/fallback\n\ngo 1.27.0\n")
-	writeHTTPFixture(t, root, "app/main.go", `package app
+func TestPartialTypedAnalysisAndSyntaxFallback(t *testing.T) {
+	for _, dependent := range []bool{false, true} {
+		t.Run(fmt.Sprintf("broken_dependency_%v", dependent), func(t *testing.T) {
+			root := t.TempDir()
+			writeHTTPFixture(t, root, "go.mod", "module example.com/fallback\n\ngo 1.27.0\n")
+			writeHTTPFixture(t, root, "app/main.go", `package app
 import (
   "net/http"
   "example.com/fallback/connector"
@@ -684,31 +687,47 @@ func Search() {
   _, _ = http.Get("https://fallback.example/search")
 }
 `)
-	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+			writeHTTPFixture(t, root, "connector/factory.go", `package connector
 import "example.com/fallback/provider/alpha"
 type API interface { Search() }
 func Build(name string) API {
   switch name { case "only": return alpha.New(); default: return nil }
 }
 `)
-	writeHTTPFixture(t, root, "provider/alpha/connector.go", `package alpha
+			writeHTTPFixture(t, root, "provider/alpha/connector.go", `package alpha
 type Connector struct{}
 func New() *Connector { return &Connector{} }
 func (*Connector) Search() {}
 `)
-	writeHTTPFixture(t, root, "broken/broken.go", `package broken
+			writeHTTPFixture(t, root, "broken/broken.go", `package broken
 import _ "example.com/missing/private"
 `)
 
-	analysis, err := gohttp.Analyze(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if analysis.TypedCallGraph || analysis.TypedCallGraphError == "" {
-		t.Fatalf("typed fallback = %v / %q", analysis.TypedCallGraph, analysis.TypedCallGraphError)
-	}
-	if len(analysis.Calls) != 1 || analysis.Calls[0].Path != "/search" {
-		t.Fatalf("syntax calls = %+v", analysis.Calls)
+			if dependent {
+				writeHTTPFixture(t, root, "provider/alpha/broken.go", `package alpha
+import _ "example.com/missing/private"
+`)
+			}
+			analysis, err := gohttp.Analyze(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if dependent {
+				if analysis.TypedCallGraph || analysis.TypedCallGraphError == "" {
+					t.Fatalf("typed fallback = %v / %q", analysis.TypedCallGraph, analysis.TypedCallGraphError)
+				}
+			} else {
+				if !analysis.TypedCallGraph || analysis.TypedCallGraphError != "" {
+					t.Fatalf("independent typed facts lost: %v / %q", analysis.TypedCallGraph, analysis.TypedCallGraphError)
+				}
+				if !strings.Contains(strings.Join(analysis.Warnings, "\n"), "typed call graph is partial") {
+					t.Fatalf("missing partial diagnostic: %v", analysis.Warnings)
+				}
+			}
+			if len(analysis.Calls) != 1 || analysis.Calls[0].Path != "/search" {
+				t.Fatalf("syntax calls = %+v", analysis.Calls)
+			}
+		})
 	}
 }
 

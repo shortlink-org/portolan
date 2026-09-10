@@ -31,7 +31,7 @@ type serviceEndpoint struct {
 	fn         *ast.FuncDecl
 }
 
-func extractServiceFlows(root string, opts Options, b *plugin.Builder) ([]catalog.Flow, []catalog.RpcCall) {
+func extractServiceFlows(root string, opts Options, b *plugin.Builder, covered ...map[string]bool) ([]catalog.Flow, []catalog.RpcCall) {
 	r := newFlowReader(root, flowOptions{
 		context: opts.Context, svcID: serviceID(opts.Context, opts.Service), service: opts.Service,
 		store: opts.Store, peers: opts.Peers, externals: opts.Externals, events: opts.Events, serviceStyle: true,
@@ -39,6 +39,10 @@ func extractServiceFlows(root string, opts Options, b *plugin.Builder) ([]catalo
 
 	var out []catalog.Flow
 	for _, endpoint := range serviceEndpoints(root, opts.Scope) {
+		file, line := endpoint.pkg.position(endpoint.fn.Pos())
+		if len(covered) > 0 && covered[0][at(file, line)] {
+			continue
+		}
 		d := newDraft()
 		d.lane(r.serviceLane())
 		var endpointScope *scope
@@ -453,8 +457,8 @@ func mergeRPCCalls(left, right []catalog.RpcCall) []catalog.RpcCall {
 func serviceEndpoints(root, scope string) []serviceEndpoint {
 	var out []serviceEndpoint
 	owned := "internal/" + strings.Trim(scope, "/")
-	for _, dir := range goPackageDirs(root, "internal") {
-		if dir != owned && !strings.HasPrefix(dir, owned+"/") {
+	for _, dir := range goPackageDirs(root, ".") {
+		if scope != "" && dir != owned && !strings.HasPrefix(dir, owned+"/") {
 			continue
 		}
 		p, err := parsePkg(root, dir)
@@ -479,14 +483,16 @@ func serviceEndpoints(root, scope string) []serviceEndpoint {
 var httpRouteMethods = map[string]string{
 	"Get": "GET", "Post": "POST", "Put": "PUT", "Patch": "PATCH", "Delete": "DELETE",
 	"Head": "HEAD", "Options": "OPTIONS",
+	"GET": "GET", "POST": "POST", "PUT": "PUT", "PATCH": "PATCH", "DELETE": "DELETE",
+	"HEAD": "HEAD", "OPTIONS": "OPTIONS",
 }
 
 func httpServiceEndpoints(p *pkg, dir string) []serviceEndpoint {
-	if path.Base(dir) != "http" {
-		return nil
-	}
 	mounts := map[string]string{}
-	for _, decl := range allMethods(p) {
+	for _, decl := range allFunctions(p) {
+		if decl.fn.Body == nil {
+			continue
+		}
 		ast.Inspect(decl.fn.Body, func(node ast.Node) bool {
 			call, ok := node.(*ast.CallExpr)
 			if !ok {
@@ -513,11 +519,11 @@ func httpServiceEndpoints(p *pkg, dir string) []serviceEndpoint {
 	}
 
 	var out []serviceEndpoint
-	for _, decl := range allMethods(p) {
+	for _, decl := range allFunctions(p) {
 		if decl.fn.Body == nil {
 			continue
 		}
-		recv := receiverIdent(decl.fn)
+		routers := httpRouterNames(p, decl.fn)
 		ast.Inspect(decl.fn.Body, func(node ast.Node) bool {
 			call, ok := node.(*ast.CallExpr)
 			if !ok {
@@ -527,23 +533,26 @@ func httpServiceEndpoints(p *pkg, dir string) []serviceEndpoint {
 			if !ok || len(call.Args) < 2 {
 				return true
 			}
-			method, route := httpRouteMethods[sel.Sel.Name]
-			if !route {
+			method := httpRouteMethods[sel.Sel.Name]
+			router := routers[types.ExprString(sel.X)]
+			standard := router == "net/http" && (sel.Sel.Name == "HandleFunc" || sel.Sel.Name == "Handle")
+			if !standard && (method == "" || (router == "" && path.Base(dir) != "http")) {
 				return true
 			}
 			routePath, ok := stringLiteral(call.Args[0])
-			if !ok || !strings.HasPrefix(routePath, "/") {
-				return true
-			}
-			handler, ok := call.Args[len(call.Args)-1].(*ast.SelectorExpr)
 			if !ok {
 				return true
 			}
-			owner, ok := handler.X.(*ast.Ident)
-			if !ok || owner.Name != recv {
+			if standard {
+				method = "ANY"
+				if verb, rest, found := strings.Cut(routePath, " "); found {
+					method, routePath = verb, strings.TrimSpace(rest)
+				}
+			}
+			if !strings.HasPrefix(routePath, "/") {
 				return true
 			}
-			target := p.methods(decl.recvType)[handler.Sel.Name]
+			targetType, target := registeredHTTPHandler(p, decl.fn, call.Args[len(call.Args)-1])
 			if target == nil {
 				return true
 			}
@@ -551,8 +560,8 @@ func httpServiceEndpoints(p *pkg, dir string) []serviceEndpoint {
 			source, line := p.position(call.Pos())
 			out = append(out, serviceEndpoint{
 				kind: "http", method: method, path: fullPath, label: method + " " + fullPath,
-				entrypoint: functionEntry(dir, decl.recvType, handler.Sel.Name), source: source, line: line,
-				pkg: p, recvType: decl.recvType, fn: target,
+				entrypoint: functionEntry(dir, targetType, target.Name.Name), source: source, line: line,
+				pkg: p, recvType: targetType, fn: target,
 			})
 			return true
 		})
@@ -567,15 +576,156 @@ type methodDecl struct {
 
 func allMethods(p *pkg) []methodDecl {
 	var out []methodDecl
-	for _, file := range p.files {
-		for _, raw := range file.Decls {
-			fn, ok := raw.(*ast.FuncDecl)
-			if !ok || fn.Recv == nil || len(fn.Recv.List) == 0 {
-				continue
-			}
-			out = append(out, methodDecl{recvType: receiverName(fn.Recv.List[0].Type), fn: fn})
+	for _, decl := range allFunctions(p) {
+		if decl.recvType != "" {
+			out = append(out, decl)
 		}
 	}
+	return out
+}
+
+func allFunctions(p *pkg) []methodDecl {
+	var out []methodDecl
+	for _, file := range p.files {
+		for _, raw := range file.Decls {
+			if fn, ok := raw.(*ast.FuncDecl); ok {
+				out = append(out, methodDecl{recvType: receiverTypeName(fn), fn: fn})
+			}
+		}
+	}
+	return out
+}
+
+// Registration is the entrypoint evidence; the package and receiver names
+// carry no architectural meaning. Resolve same-package functions and methods
+// on explicitly typed parameters or local composite literals.
+func registeredHTTPHandler(p *pkg, owner *ast.FuncDecl, expr ast.Expr) (string, *ast.FuncDecl) {
+	if call, ok := expr.(*ast.CallExpr); ok && len(call.Args) == 1 {
+		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "HandlerFunc" {
+			if alias, ok := sel.X.(*ast.Ident); ok && importsOf(p)[alias.Name] == "net/http" {
+				expr = call.Args[0]
+			}
+		}
+	}
+	if ident, ok := expr.(*ast.Ident); ok {
+		for _, decl := range allFunctions(p) {
+			if decl.recvType == "" && decl.fn.Name.Name == ident.Name {
+				return "", decl.fn
+			}
+		}
+	}
+	sel, ok := expr.(*ast.SelectorExpr)
+	if !ok {
+		return "", nil
+	}
+	ownerName, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return "", nil
+	}
+	declared := localDeclaredTypes(owner)
+	if recv := receiverIdent(owner); recv != "" {
+		declared[recv] = receiverTypeName(owner)
+	}
+	typ := strings.TrimPrefix(declared[ownerName.Name], "*")
+	return typ, p.methods(typ)[sel.Sel.Name]
+}
+
+func localDeclaredTypes(fn *ast.FuncDecl) map[string]string {
+	out := map[string]string{}
+	if fn.Type.Params != nil {
+		for _, field := range fn.Type.Params.List {
+			for _, name := range field.Names {
+				out[name.Name] = types.ExprString(field.Type)
+			}
+		}
+	}
+	if fn.Body == nil {
+		return out
+	}
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		switch value := node.(type) {
+		case *ast.ValueSpec:
+			if value.Type != nil {
+				for _, name := range value.Names {
+					out[name.Name] = types.ExprString(value.Type)
+				}
+			}
+		case *ast.AssignStmt:
+			for i, rhs := range value.Rhs {
+				if i >= len(value.Lhs) {
+					continue
+				}
+				if unary, ok := rhs.(*ast.UnaryExpr); ok {
+					rhs = unary.X
+				}
+				literal, ok := rhs.(*ast.CompositeLit)
+				name, named := value.Lhs[i].(*ast.Ident)
+				if ok && named {
+					out[name.Name] = types.ExprString(literal.Type)
+				}
+			}
+		}
+		return true
+	})
+	return out
+}
+
+func httpRouterNames(p *pkg, fn *ast.FuncDecl) map[string]string {
+	imports := importsOf(p)
+	out := map[string]string{}
+	known := func(alias string) string {
+		imported := imports[alias]
+		if imported == "net/http" {
+			return imported
+		}
+		if imported == "github.com/go-chi/chi/v5" || imported == "github.com/go-chi/chi" || imported == "github.com/gin-gonic/gin" || imported == "github.com/labstack/echo/v4" {
+			return "verbs"
+		}
+		return ""
+	}
+	for alias, imported := range imports {
+		if imported == "net/http" {
+			out[alias] = imported
+		}
+	}
+	declared := localDeclaredTypes(fn)
+	for field, typ := range fieldsOfStruct(p, receiverTypeName(fn)) {
+		declared[receiverIdent(fn)+"."+field] = typ
+	}
+	for name, typ := range declared {
+		alias, _, _ := strings.Cut(strings.TrimPrefix(typ, "*"), ".")
+		if kind := known(alias); kind != "" {
+			out[name] = kind
+		}
+	}
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		assignment, ok := node.(*ast.AssignStmt)
+		if !ok {
+			return true
+		}
+		for i, rhs := range assignment.Rhs {
+			if i >= len(assignment.Lhs) {
+				continue
+			}
+			call, ok := rhs.(*ast.CallExpr)
+			if !ok {
+				continue
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				continue
+			}
+			alias, ok := sel.X.(*ast.Ident)
+			if !ok {
+				continue
+			}
+			kind := known(alias.Name)
+			if kind != "" && (sel.Sel.Name == "NewServeMux" || sel.Sel.Name == "NewRouter" || sel.Sel.Name == "New" || sel.Sel.Name == "Default") {
+				out[types.ExprString(assignment.Lhs[i])] = kind
+			}
+		}
+		return true
+	})
 	return out
 }
 
@@ -719,7 +869,10 @@ func storeLike(field, declared string, imports map[string]string) bool {
 }
 
 func functionEntry(dir, recv, method string) string {
-	name := recv + "." + method
+	name := method
+	if recv != "" {
+		name = recv + "." + method
+	}
 	if dir == "" || dir == "." {
 		return name
 	}

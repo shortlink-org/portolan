@@ -67,13 +67,14 @@ type flowOptions struct {
 }
 
 type flowReader struct {
-	root     string
-	opts     flowOptions
-	layout   sourceLayout
-	b        *plugin.Builder
-	bindings map[string]string
-	useCases map[string]*pkg
-	domains  map[string]*pkg
+	root              string
+	opts              flowOptions
+	layout            sourceLayout
+	b                 *plugin.Builder
+	bindings          map[string]string
+	ambiguousBindings map[string][]string
+	useCases          map[string]*pkg
+	domains           map[string]*pkg
 	// referenced records the events some step named, so that an event nothing
 	// here could follow can be reported rather than silently left out.
 	referenced  map[string]bool
@@ -93,6 +94,7 @@ type flowReader struct {
 	// httpResponses is populated only while one net/http handler is walked.
 	// Keying by the exact call position lets the ordinary statement walker put
 	// response arrows inside the same if/else frame as the source write.
+	walking       map[string]bool
 	httpResponses map[token.Pos]catalog.HTTPResponse
 }
 
@@ -129,7 +131,6 @@ func newFlowReader(root string, opts flowOptions, b *plugin.Builder, layouts ...
 		opts:           opts,
 		layout:         layout,
 		b:              b,
-		bindings:       portBindings(root, layout),
 		adapters:       adapterBindings(root, layout),
 		wireBoundPorts: wireBoundPorts(root, layout),
 		module:         modulePath(root),
@@ -140,6 +141,7 @@ func newFlowReader(root string, opts flowOptions, b *plugin.Builder, layouts ...
 		referenced:     map[string]bool{},
 		warnedPeer:     map[string]bool{},
 	}
+	r.bindings, r.ambiguousBindings = readPortBindings(root, layout)
 	r.rpcEntries = rpcImplementationEntries(root)
 	return r
 }
@@ -388,6 +390,7 @@ type scope struct {
 	imports map[string]string
 	vars    map[string]domainRef
 	recv    string
+	locals  map[string]string
 	// recvType is what the receiver's methods hang off: UseCase for a use
 	// case, its own name for a policy.
 	recvType string
@@ -435,6 +438,16 @@ func (r *flowReader) walkBody(d *flowDraft, s *scope, fn *ast.FuncDecl, depth in
 	if fn == nil || fn.Body == nil {
 		return
 	}
+	key := s.pkg.dir + ":" + s.recvType + "." + fn.Name.Name
+	if r.walking == nil {
+		r.walking = map[string]bool{}
+	}
+	if r.walking[key] {
+		return
+	}
+	r.walking[key] = true
+	defer delete(r.walking, key)
+	s.locals = localDeclaredTypes(fn)
 	r.walkStmts(d, s, fn.Body.List, depth)
 }
 
@@ -792,6 +805,11 @@ func (r *flowReader) call(d *flowDraft, s *scope, site callSite, depth int) {
 			// left the service - but its signature says what came back.
 			bind(s, site, r.resultsOfFunc(s.imports[x.Name], method))
 
+		case r.opts.serviceStyle && s.locals[x.Name] != "":
+			local := *s
+			local.fields = map[string]string{x.Name: s.locals[x.Name]}
+			r.portCall(d, &local, x.Name, method, site, depth)
+
 		default:
 			// sess.Revoke(...): a method on something the domain handed over.
 			if ref, ok := s.vars[x.Name]; ok {
@@ -847,6 +865,14 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 	if ok {
 		r.useCaseHop(d, target, "Port `"+declared+"`, bound at assembly to the "+operationName(target)+" use case.", at(source, line), depth)
 
+		return
+	}
+
+	if candidates, ambiguous := r.ambiguousBindings[s.key+"."+declared]; ambiguous {
+		note := "ambiguous-binding: cannot choose an implementation for " + declared + "." + method + "; candidates: " + strings.Join(candidates, ", ")
+		r.b.Warn(at(source, line), note)
+		d.add(catalog.Step{From: r.opts.svcID, To: r.opts.svcID, Kind: catalog.StepCall,
+			Label: declared + "." + method, Status: catalog.StatusUnresolved, Note: note, Line: at(source, line)})
 		return
 	}
 

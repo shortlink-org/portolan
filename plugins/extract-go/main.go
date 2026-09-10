@@ -30,7 +30,7 @@ type Options struct {
 	ServiceName string `json:"serviceName,omitempty"`
 	Repo        string `json:"repo,omitempty"`
 	// Scope is the deployable name in a shared Go module. When present, the
-	// extractor owns only internal/<scope> and reads its HTTP/gRPC entrypoints;
+	// extractor owns only internal/<scope>; HTTP entrypoints otherwise span the module;
 	// imported packages are still followed so a handler can reach application
 	// code in the same feature slice.
 	Scope string `json:"scope,omitempty"`

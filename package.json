@@ -30,6 +30,7 @@
     "catalog",
     "plugin",
     "internal/gohttp",
+    "internal/gocall",
     "internal/wsdl",
     "plugins/*.wasm",
     "plugins/cmd/portolan-http-clients",
