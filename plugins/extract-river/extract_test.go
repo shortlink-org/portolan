@@ -126,6 +126,9 @@ func enqueue(client interface { Insert(context.Context, river.JobArgs, *river.In
 	if len(out.Flows) != 0 {
 		t.Fatalf("unexpected flows: %+v", out.Flows)
 	}
+	if !strings.Contains(resp.Files[0].Contents, `"flows": []`) {
+		t.Fatalf("empty flows were not encoded as an array: %s", resp.Files[0].Contents)
+	}
 	if len(resp.Warnings()) != 1 || !strings.Contains(resp.Warnings()[0].Message, "no registered Worker") {
 		t.Fatalf("warnings = %+v", resp.Warnings())
 	}

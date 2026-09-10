@@ -113,6 +113,19 @@ func Register(r *message.Router, sub message.Subscriber) {
 	}
 }
 
+func TestEmptyExtractionWritesEmptyFlowArray(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "go.mod", "module example.com/consumer\n")
+
+	out, resp := extracted(t, root)
+	if len(out.Flows) != 0 {
+		t.Fatalf("unexpected flows: %+v", out.Flows)
+	}
+	if !strings.Contains(resp.Files[0].Contents, `"flows": []`) {
+		t.Fatalf("empty flows were not encoded as an array: %s", resp.Files[0].Contents)
+	}
+}
+
 func TestExtractsGenericCQRSProcessors(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "go.mod", "module example.com/cqrsapp\n")

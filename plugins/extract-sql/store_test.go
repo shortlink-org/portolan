@@ -70,6 +70,21 @@ func TestFragmentClaimsOnlyTheLink(t *testing.T) {
 	}
 }
 
+func TestFragmentWithoutMigrationsClaimsNoStore(t *testing.T) {
+	root := writeTree(t, map[string]string{
+		"go.mod": "module example.com/empty\n",
+	})
+	resp := extract(plugin.Input{Root: root}, Options{Context: "empty", Service: "empty"})
+
+	var cat catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &cat); err != nil {
+		t.Fatal(err)
+	}
+	if len(cat.Stores) != 0 || len(cat.Contexts[0].Services[0].Stores) != 0 {
+		t.Fatalf("empty extraction linked a missing store: catalog=%+v service=%+v", cat.Stores, cat.Contexts[0].Services[0].Stores)
+	}
+}
+
 // A table brought by a dependency is real, and its DDL is not here. Silence
 // would read as "there is no such table".
 func TestSchemaAppliedFromOutsideTheTreeIsReported(t *testing.T) {

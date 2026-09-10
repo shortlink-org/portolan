@@ -179,6 +179,141 @@ function serviceOf(catalog: Catalog, id: string): Service {
 
 // ---------------------------------------------------------------------------
 
+describe("enrichCatalog: HTTP route correlation", () => {
+  function httpProvider(
+    slug: string,
+    operation: string,
+    path: string,
+  ): Service {
+    return service("shop", slug, {
+      provides: [
+        {
+          id: "api",
+          source: `${slug}/openapi.yaml`,
+          methods: [
+            {
+              name: operation,
+              doc: "",
+              request: "",
+              response: "",
+              http: { method: "POST", path },
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  function httpCaller(
+    path: string,
+    provides: Service["provides"] = [],
+  ): Service {
+    return service("shop", "oms", {
+      provides,
+      consumes: [
+        {
+          id: `http-client/POST ${path}`,
+          peer: "http-peer",
+          status: "unresolved",
+          source: "client.go:10",
+        },
+      ],
+    });
+  }
+
+  it("maps an outbound route to the unique other service that provides it", () => {
+    const callerProvides = httpProvider("oms", "POST /book", "/book").provides;
+    const caller = httpCaller("/book", callerProvides);
+    const supp = httpProvider("aviasupp", "POST /book", "/book");
+    const outbound = flow("book", [
+      step("shop.oms", "http-peer", "rpc", {
+        ref: "http-client/POST /book",
+        label: "POST /book",
+        status: "unresolved",
+      }),
+    ]);
+
+    const once = enrichCatalog(estate([outbound], [caller, supp])).catalog;
+    expect(serviceOf(once, "shop.oms").consumes).toEqual([
+      expect.objectContaining({
+        id: "api/POST /book",
+        peer: "shop.aviasupp",
+        status: "declared",
+      }),
+    ]);
+    expect(walkSteps(once.flows[0]!.steps)[0]).toEqual(
+      expect.objectContaining({
+        ref: "api/POST /book",
+        to: "shop.aviasupp",
+        status: "declared",
+      }),
+    );
+    expect(once.flows[0]!.participants).toContainEqual({
+      id: "shop.aviasupp",
+      kind: "service",
+      context: "shop",
+    });
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("maps a unique mounted route by its complete segment suffix", () => {
+    const caller = httpCaller("/get-admin-settings");
+    const admin = httpProvider(
+      "aviaadmin",
+      "settings_get_admin_settings_post",
+      "/settings/get-admin-settings",
+    );
+    const unrelatedParameterRoute = httpProvider(
+      "files",
+      "fileByID",
+      "/files/{id}",
+    );
+
+    const result = enrichCatalog(
+      estate([], [caller, admin, unrelatedParameterRoute]),
+    ).catalog;
+    expect(serviceOf(result, "shop.oms").consumes[0]).toEqual(
+      expect.objectContaining({
+        id: "api/settings_get_admin_settings_post",
+        peer: "shop.aviaadmin",
+        status: "declared",
+      }),
+    );
+  });
+
+  it("leaves ambiguous routes and possible self-calls unresolved", () => {
+    const caller = httpCaller("/book");
+    const first = httpProvider("first", "createBook", "/book");
+    const second = httpProvider("second", "book", "/book");
+
+    const ambiguous = enrichCatalog(
+      estate([], [caller, first, second]),
+    ).catalog;
+    expect(serviceOf(ambiguous, "shop.oms").consumes[0]).toEqual(
+      caller.consumes[0],
+    );
+
+    const selfOnly = enrichCatalog(
+      estate(
+        [],
+        [httpCaller("/book", httpProvider("oms", "book", "/book").provides)],
+      ),
+    ).catalog;
+    expect(serviceOf(selfOnly, "shop.oms").consumes[0]).toEqual(
+      caller.consumes[0],
+    );
+
+    const rootWithoutRootProvider = enrichCatalog(
+      estate([], [httpCaller("/"), first]),
+    ).catalog;
+    expect(serviceOf(rootWithoutRootProvider, "shop.oms").consumes[0]).toEqual(
+      httpCaller("/").consumes[0],
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("enrichCatalog: asynchronous outbound continuations", () => {
   function outbound(slug: string, entrypoint: string, path: string): Flow {
     return {

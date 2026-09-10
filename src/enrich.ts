@@ -60,7 +60,7 @@ export function enrichCatalog(input: Catalog): Enriched {
   // rather than the name.
   const catalog = resolveForeignKeys(
     resolveStoreAccesses(
-      composeExecutionContinuations(resolveWireNames(input)),
+      composeExecutionContinuations(resolveWireNames(resolveHTTPCalls(input))),
     ),
   );
 
@@ -228,6 +228,181 @@ export function enrichCatalog(input: Catalog): Enriched {
   return { catalog: { ...catalog, contexts }, derived };
 }
 
+interface HTTPProvider {
+  service: string;
+  context: string;
+  ref: string;
+  method: string;
+  path: string;
+}
+
+/**
+ * Resolves the protocol-neutral calls emitted by the HTTP client extractor
+ * against HTTP routes contributed by server-side extractors.
+ *
+ * No source fragment can do this on its own: a client repository knows the
+ * verb and path but not which of the estate's services answers it, while an
+ * OpenAPI or framework fragment knows only what its own service provides.
+ * The merged catalog is the first place both facts exist.
+ *
+ * Exact routes win. A unique suffix match is also accepted because mounted
+ * applications commonly see only their local route (`/get-admin-settings`)
+ * while the server extractor records the mount too
+ * (`/settings/get-admin-settings`). Ambiguous matches and possible self-calls
+ * deliberately remain unresolved.
+ */
+function resolveHTTPCalls(input: Catalog): Catalog {
+  const providers: HTTPProvider[] = [];
+  for (const context of input.contexts) {
+    for (const service of context.services) {
+      for (const provided of service.provides) {
+        for (const method of provided.methods) {
+          if (!method.http) continue;
+          providers.push({
+            service: service.id,
+            context: context.id,
+            ref: `${provided.id}/${method.name}`,
+            method: method.http.method.toUpperCase(),
+            path: method.http.path,
+          });
+        }
+      }
+    }
+  }
+  if (providers.length === 0) return input;
+
+  const resolvedByCaller = new Map<string, Map<string, HTTPProvider>>();
+  const resolve = (caller: string, call: RpcCall): HTTPProvider | undefined => {
+    if (call.status !== "unresolved") return undefined;
+    const route = rawHTTPRoute(call.id);
+    if (!route) return undefined;
+
+    const candidates = providers.filter(
+      (provider) =>
+        provider.service !== caller &&
+        provider.method === route.method &&
+        sameHTTPPath(provider.path, route.path),
+    );
+    const exact = uniqueHTTPProviders(
+      candidates.filter((provider) => sameHTTPShape(provider.path, route.path)),
+    );
+    const matches = exact.length > 0 ? exact : uniqueHTTPProviders(candidates);
+    return matches.length === 1 ? matches[0] : undefined;
+  };
+
+  let changed = false;
+  const contexts = input.contexts.map((context) => ({
+    ...context,
+    services: context.services.map((service) => {
+      const resolved = new Map<string, HTTPProvider>();
+      const mapped = service.consumes.map((call) => {
+        const provider = resolve(service.id, call);
+        if (!provider) return call;
+        changed = true;
+        resolved.set(call.id, provider);
+        return {
+          ...call,
+          id: provider.ref,
+          peer: provider.service,
+          status: "declared" as const,
+        };
+      });
+      const consumes = [
+        ...new Map(mapped.map((call) => [call.id, call])).values(),
+      ];
+      if (resolved.size > 0) resolvedByCaller.set(service.id, resolved);
+      return resolved.size > 0 ? { ...service, consumes } : service;
+    }),
+  }));
+
+  if (!changed) return input;
+
+  const flows = input.flows.map((flow) => {
+    let flowChanged = false;
+    const targets = new Map<string, HTTPProvider>();
+    const steps = mapSteps(flow.steps, (step) => {
+      if (step.kind !== "rpc" || !step.ref) return step;
+      const provider = resolvedByCaller.get(step.from)?.get(step.ref);
+      if (!provider) return step;
+      flowChanged = true;
+      targets.set(provider.service, provider);
+      return {
+        ...step,
+        ref: provider.ref,
+        to: provider.service,
+        status: "declared",
+      };
+    });
+    if (!flowChanged) return flow;
+
+    const participants = [...flow.participants];
+    const seen = new Set(participants.map((participant) => participant.id));
+    for (const target of targets.values()) {
+      if (seen.has(target.service)) continue;
+      seen.add(target.service);
+      participants.push({
+        id: target.service,
+        kind: "service",
+        context: target.context,
+      });
+    }
+    return { ...flow, participants, steps };
+  });
+
+  return { ...input, contexts, flows };
+}
+
+function rawHTTPRoute(
+  id: string,
+): { method: string; path: string } | undefined {
+  const match = /^http-client\/([A-Z]+)\s+(\/\S*)$/.exec(id);
+  return match ? { method: match[1]!, path: match[2]! } : undefined;
+}
+
+function uniqueHTTPProviders(providers: HTTPProvider[]): HTTPProvider[] {
+  const unique = new Map<string, HTTPProvider>();
+  for (const provider of providers) {
+    unique.set(`${provider.service}\u0000${provider.ref}`, provider);
+  }
+  return [...unique.values()];
+}
+
+function sameHTTPPath(provided: string, called: string): boolean {
+  const provider = httpSegments(provided);
+  const call = httpSegments(called);
+  if (call.length === 0) return provider.length === 0;
+  if (call.length > provider.length) return false;
+  const offset = provider.length - call.length;
+  for (let index = 0; index < call.length; index += 1) {
+    if (!sameHTTPSegment(provider[offset + index]!, call[index]!)) return false;
+  }
+  return true;
+}
+
+function sameHTTPShape(left: string, right: string): boolean {
+  const a = httpSegments(left);
+  const b = httpSegments(right);
+  return (
+    a.length === b.length &&
+    a.every((segment, index) => sameHTTPSegment(segment, b[index]!))
+  );
+}
+
+function httpSegments(path: string): string[] {
+  const withoutQuery = path.split("?", 1)[0] ?? path;
+  return withoutQuery.split("/").filter(Boolean);
+}
+
+function sameHTTPSegment(left: string, right: string): boolean {
+  return left === right || (isHTTPParameter(left) && isHTTPParameter(right));
+}
+
+function isHTTPParameter(segment: string): boolean {
+  return (
+    segment === "%s" || /^\{[^{}]+\}$/.test(segment) || /^:[^:]+$/.test(segment)
+  );
+}
+
 /**
  * Joins the use-case-side repository call emitted by extract-go to the
  * concrete Redis client call emitted independently by extract-redis. Method
@@ -273,8 +448,10 @@ function resolveStoreAccesses(input: Catalog): Catalog {
         ) {
           return node;
         }
-        const method = storeAccess.method.split(".").pop() ?? storeAccess.method;
-        const matches = byMethod.get(`${storeAccess.store}\u0000${method}`) ?? [];
+        const method =
+          storeAccess.method.split(".").pop() ?? storeAccess.method;
+        const matches =
+          byMethod.get(`${storeAccess.store}\u0000${method}`) ?? [];
         if (matches.length !== 1) return node;
         changed = true;
         return {

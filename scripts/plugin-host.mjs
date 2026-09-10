@@ -185,8 +185,28 @@ export function validateResponse(name, response) {
 }
 
 function validBase64(value) {
-  return value.length % 4 === 0
-    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value);
+  if (value.length % 4 !== 0) return false;
+
+  let payloadLength = value.length;
+  if (value.endsWith("==")) payloadLength -= 2;
+  else if (value.endsWith("=")) payloadLength -= 1;
+
+  // A repeated-group regexp over a multi-megabyte binary can exhaust V8's
+  // regexp stack. Validate the same alphabet iteratively so vendoring a large
+  // file remains bounded by its bytes rather than the JavaScript call stack.
+  for (let index = 0; index < payloadLength; index += 1) {
+    const code = value.charCodeAt(index);
+    const alphabet = code >= 65 && code <= 90
+      || code >= 97 && code <= 122
+      || code >= 48 && code <= 57
+      || code === 43
+      || code === 47;
+    if (!alphabet) return false;
+  }
+  for (let index = payloadLength; index < value.length; index += 1) {
+    if (value.charCodeAt(index) !== 61) return false;
+  }
+  return true;
 }
 
 function safeFileName(name) {

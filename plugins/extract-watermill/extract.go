@@ -871,7 +871,7 @@ func (s *scanner) catalog(serviceID, owner string) ([]catalog.Channel, []catalog
 		channels[value.address] = found
 		return found
 	}
-	var flows []catalog.Flow
+	flows := []catalog.Flow{}
 	for _, found := range s.handlers {
 		inputPayload := goscan.FirstNonEmpty(goscan.LastSegment(found.inputPayload), found.name)
 		input := ensure(found.input)

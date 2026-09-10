@@ -21,6 +21,15 @@ describe("plugin response validation", () => {
     expect(() => validateResponse("fixture", { files: [{ name: "image.png", contents: "x", encoding: "binary" }] })).toThrow("encoding is not supported");
   });
 
+  it("validates multi-megabyte base64 without overflowing the regexp stack", () => {
+    const contents = "A".repeat(13 * 1024 * 1024);
+    expect(validateResponse("fixture", { files: [{ name: "large.bin", contents, encoding: "base64" }] }).files[0]).toEqual({
+      name: "large.bin",
+      contents,
+      encoding: "base64",
+    });
+  });
+
   it.each(["../secret", "/tmp/result", "C:\\tmp\\result", "a/../../secret", "./result"])(
     "rejects unsafe output name %s",
     (name) => {

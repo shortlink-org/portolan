@@ -344,8 +344,8 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 		queueNames = append(queueNames, queue)
 	}
 	sort.Strings(queueNames)
-	var channels []catalog.Channel
-	var flows []catalog.Flow
+	channels := []catalog.Channel{}
+	flows := []catalog.Flow{}
 	for _, queue := range queueNames {
 		jobs := queues[queue]
 		keys := make([]string, 0, len(jobs))
