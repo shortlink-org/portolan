@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, removeProject, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, removeProject, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -743,5 +743,31 @@ describe("local project setup", () => {
     expect(result.warnings).toEqual([{ plugin: "openapi", message: "one route has no description" }]);
     expect(result.diagnostics).toEqual([expect.objectContaining({ rule: "plugin.openapi.other-test", suppressed: true })]);
     expect(result.generatedFiles).toBe(2);
+  });
+});
+
+describe("workspaceFingerprint", () => {
+  it("reads a repository before its first commit without complaint, and moves when a file does", () => {
+    const root = workspace();
+    execFileSync("git", ["init", "-q", "-b", "main"], { cwd: root });
+    execFileSync("git", ["add", "services/billing/go.mod"], { cwd: root });
+
+    const before = workspaceFingerprint(root);
+    expect(workspaceFingerprint(root)).toBe(before);
+
+    writeFileSync(join(root, "services/billing/go.mod"), "module example.com/billing\n\ngo 1.22\n");
+    const staged = workspaceFingerprint(root);
+    expect(staged).not.toBe(before);
+
+    writeFileSync(join(root, "services/billing/api/handlers.go"), "package api\n");
+    expect(workspaceFingerprint(root)).not.toBe(staged);
+  });
+
+  it("is the same whether or not the repository has a commit, for the same tree", () => {
+    const root = workspace();
+    execFileSync("git", ["init", "-q", "-b", "main"], { cwd: root });
+    const unborn = workspaceFingerprint(root);
+    execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "empty"], { cwd: root });
+    expect(workspaceFingerprint(root)).toBe(unborn);
   });
 });

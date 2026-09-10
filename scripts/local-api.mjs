@@ -794,11 +794,21 @@ function feed(job, stream, chunk) {
   }
 }
 
-function workspaceFingerprint(workspace) {
+// The tree with nothing in it, which every repository has. Before the first
+// commit there is no HEAD to diff against, and the index diffed against this
+// tree is exactly what has been staged.
+const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+export function workspaceFingerprint(workspace) {
   const hash = createHash("sha256");
   try {
-    const options = { cwd: workspace, encoding: "buffer", maxBuffer: 128 * 1024 * 1024 };
-    hash.update(execFileSync("git", ["diff", "--binary", "HEAD", "--", "."], options));
+    // Git speaks to nobody here: a workspace that is not a checkout, or one
+    // without a commit yet, is a case this function handles, not an error to
+    // print from the dev server.
+    const options = { cwd: workspace, encoding: "buffer", maxBuffer: 128 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] };
+    let base = EMPTY_TREE;
+    try { base = execFileSync("git", ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], options).toString().trim() || EMPTY_TREE; } catch {}
+    hash.update(execFileSync("git", ["diff", "--binary", base, "--", "."], options));
     const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z"], options)
       .toString().split("\0").filter(Boolean).sort();
     for (const name of untracked) {
