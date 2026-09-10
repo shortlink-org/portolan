@@ -425,10 +425,23 @@ the original collection layout for TypeScript, Rust, Java, or custom trees and
 may also point directly at one feature repository.
 
 `extract-river` is another independent enrichment for Go repositories. It
-joins a job argument's `Kind()` to `Client.Insert`/`InsertTx`, the selected
-queue, `Worker[Args].Work`, and `river.AddWorker`. The result is a work-queue
-channel plus a two-hop enqueue/dispatch flow, with payload fields and source
-lines. It does not need aggregates and does not treat a job as a domain event.
+joins a job argument's `Kind()` to `Client.Insert`/`InsertTx` and the
+`InsertMany*` batches, the selected queue, `Worker[Args].Work`, and
+`river.AddWorker`. The result is a work-queue channel plus a two-hop
+enqueue/dispatch flow, with payload fields and source lines. It does not need
+aggregates and does not treat a job as a domain event. The job type is
+followed through locals, constructors' results and parameters up to the
+callers, so an `Enqueue(ctx, args river.JobArgs, opts)` wrapper is read once
+per concrete job passed to it, and a worker registered as
+`river.AddWorker(workers, NewSendWorker(deps))` is registered. The queue is
+the `InsertOpts.Queue` at the call (a literal, a constant, a config `default:`
+tag, or what the callers pass), else the args type's own `InsertOpts()`, else
+`default`. What no Insert in the tree feeds is not dropped: a registered
+worker's queue is the one its type chooses or the one queue `river.Config`
+lists, and with several and no choice the worker is kept as a flow whose
+receive is unresolved. The diagnostics keep the two cases apart - an Insert
+whose job type or queue the reader could not follow is said at the call, a
+worker with no Insert in the tree is said at the worker.
 
 `extract-redis` finds runtime construction of go-redis, rueidis and redigo
 clients in non-test Go source. That source evidence adds a service-owned Redis
@@ -439,16 +452,27 @@ key patterns with their read/write/delete use, TTL, value type and source. The
 patterns remain Redis keyspaces rather than being presented as SQL tables.
 
 `extract-watermill` reads Watermill `Router.AddHandler` and
-`AddNoPublisherHandler` registrations. It resolves literal and constant topics,
-plus defaults on env-config structs, follows direct `Publisher.Publish` calls
-and one-hop publishing helpers, and traces JSON marshal/unmarshal values back to
-their Go payload structs. It carries enclosing `if`/`else` conditions and early
-returns through the handler's control flow: proven alternatives become one
-catalog `alt`; publications whose relationship cannot be proven remain separate
-possible routes. The channels merge normally with AsyncAPI declarations by address. Generic
-`NewEventHandler[T]` and `NewCommandHandler[T]` registrations on Watermill CQRS
-processors are also extracted; fixed topic generators and the standard
-event/command-name generator form are resolved from source.
+`AddNoPublisherHandler` registrations, and `Subscriber.Subscribe` calls made
+without a router. It resolves literal and constant topics - typed constants
+through `string(...)`, constants concatenated with `+`, single-return
+helpers - plus defaults on env-config structs, nested (`cfg.Kafka.Orders`) or
+not; a topic, a name or a handler that a registering function takes as a
+parameter is filled in once per caller, so a `handle(r, name, topic, fn)`
+wrapper yields one handler per call. The handler value may be a function
+literal, a function or method of the tree (`h.OnOrder`, `handlers.OnShipped`)
+or a constructor returning a literal. It follows direct `Publisher.Publish`
+calls and one-hop publishing helpers, records what the service publishes
+outside any handler as a `send` on the topic, and traces JSON marshal/unmarshal
+values back to their Go payload structs. It carries enclosing `if`/`else`
+conditions and early returns through the handler's control flow: proven
+alternatives become one catalog `alt`; publications whose relationship cannot
+be proven remain separate possible routes. A handler whose topic does not
+resolve is kept, with its receive step unresolved and no channel claimed, and
+named in a diagnostic. The channels merge normally with AsyncAPI declarations
+by address. Generic `NewEventHandler[T]` and `NewCommandHandler[T]`
+registrations on Watermill CQRS processors are also extracted; fixed topic
+generators and the standard event/command-name generator form are resolved
+from source.
 
 `extract-go-nats` reads nats.go and JetStream calls into the subjects a service
 listens on and publishes to. A call is known by the type it is made on -
