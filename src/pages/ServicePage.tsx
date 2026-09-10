@@ -10,11 +10,18 @@ import {
   technologiesOf,
 } from "../catalog";
 import { flowRoles } from "../lib/derive";
+import { bridges } from "../lib/centrality";
 import { treeHref } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
 import { adrsForService, isCurrent } from "../lib/adr";
 import { ADR_ROW_COLUMNS, AdrRow } from "../components/AdrRow";
-import { EVENT_ANCHOR, SERVICE_ANCHOR, aggregatePath, paths } from "../routes";
+import {
+  EVENT_ANCHOR,
+  OVERVIEW_ANCHOR,
+  SERVICE_ANCHOR,
+  aggregatePath,
+  paths,
+} from "../routes";
 import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
@@ -112,6 +119,10 @@ export function ServicePage() {
   const flows = flowRoles(catalog, service.id);
   const tree = treeHref(service.path, service, allRepos(catalog));
   const owners = ownersOf(service);
+  // The service as a road: the pairs of contexts it stands between, if any.
+  // Derived from the whole estate, so it is computed here and not carried
+  // on the service, which knows only its own edges.
+  const road = bridges(catalog).find((b) => b.id === service.id) ?? null;
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
   const retired = adrs.filter((a) => !isCurrent(a));
@@ -168,6 +179,17 @@ export function ServicePage() {
         right={
           <>
             <span className="chip-lg">{componentKind(service)}</span>
+            {road ? (
+              <Link
+                to={`${paths.overview()}#${OVERVIEW_ANCHOR.bridges}`}
+                className="chip-lg border-line text-muted hover:text-ink"
+                title={`${Math.round(road.betweenness * 100)}% of the shortest paths between other services run through this one — see the bridges on the overview`}
+              >
+                bridge
+                <span className="text-muted">·</span>
+                {road.between.map((pair) => `${pair.a} ↔ ${pair.b}`).join(", ")}
+              </Link>
+            ) : null}
             <ContextPill id={context.id} name={context.name} />
           </>
         }

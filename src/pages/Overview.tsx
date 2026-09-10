@@ -5,12 +5,13 @@ import { AlertTriangle } from "lucide-react";
 import { activeCatalogProfile, CATALOG_PATH, catalog, index } from "../data";
 import { contextOwners, contextStats, widestFlows } from "../lib/derive";
 import type { ContextOwner } from "../lib/derive";
+import { bridges } from "../lib/centrality";
 import { allProblems } from "../lib/all-problems";
 import { ctxStyle } from "../lib/context-color";
 import { middleTruncate, plural } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
 import { usePhone } from "../app/responsive";
-import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
+import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths, servicePath } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
 import { C4View } from "../likec4/C4View";
 import { profileContainersViewId, profileLandscapeViewId } from "../likec4/ids";
@@ -27,6 +28,9 @@ import {
 
 /** How many problems the overview lists before pointing at the page that lists them all. */
 const OVERVIEW_PROBLEMS = 4;
+
+/** How many bridges the overview lists. Past the first few the shares are small and the list is the graph. */
+const OVERVIEW_BRIDGES = 5;
 
 /**
  * A measurement that arrives rather than appears - 200ms, linear, once - and
@@ -97,6 +101,7 @@ export function Overview() {
   const phone = usePhone();
   const [level, setLevel] = useState<C4Level>(1);
   const reach = widestFlows(catalog);
+  const roads = bridges(catalog);
   const services = catalog.contexts.reduce(
     (count, context) => count + context.services.length,
     0,
@@ -280,6 +285,85 @@ export function Overview() {
           })}
         </div>
       </section>
+
+      {/* The services the estate's paths run through: the share of shortest
+          paths between every other pair of services that pass through this
+          one, and the pairs of contexts it is the main road between. Degree
+          is not shown - a hub is visible on the graph, a bridge is not: the
+          service with three neighbours that is the only way from auth into
+          payments looks like nothing there. Nothing is shown for an estate
+          with no such service; a heading over "none" is a dead end. */}
+      {roads.length > 0 ? (
+        <section id={OVERVIEW_ANCHOR.bridges} className="mt-section">
+          <SectionTitle
+            anchor={OVERVIEW_ANCHOR.bridges}
+            right={
+              <span className="flex items-center gap-2">
+                {roads.length > OVERVIEW_BRIDGES ? (
+                  <span className="section-aside">
+                    {OVERVIEW_BRIDGES} of {roads.length}
+                  </span>
+                ) : null}
+                <Link
+                  to={paths.graph()}
+                  className="rounded-control px-1 text-accent hover:underline"
+                >
+                  the graph →
+                </Link>
+              </span>
+            }
+          >
+            Bridges
+          </SectionTitle>
+          <div className="flex flex-col gap-2" data-nav-list>
+            {roads.slice(0, OVERVIEW_BRIDGES).map((road, i) => {
+              const to = servicePath(road.id);
+              const percent = Math.round(road.betweenness * 100);
+              return (
+                <Link
+                  key={road.id}
+                  to={to ?? paths.graph()}
+                  data-nav-item
+                  className="row stagger-in flex-wrap"
+                  style={staggerStyle(i)}
+                  title={`${percent}% of the shortest paths between other services run through ${road.id}`}
+                >
+                  {/* The share, as a bar the width of the number, so the
+                      list reads as a ranking before any number is read. */}
+                  <span className="flex w-16 shrink-0 items-center gap-1.5">
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                      <span
+                        className="block h-full bg-accent"
+                        style={{ width: `${Math.max(percent, 2)}%` }}
+                      />
+                    </span>
+                    <span className="mono tnum w-8 text-right text-muted">
+                      {percent}%
+                    </span>
+                  </span>
+                  <span className="font-semibold" title={road.id}>
+                    {road.id}
+                  </span>
+                  <span className="mono text-muted">between</span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {road.between.map((pair) => (
+                      <span
+                        key={`${pair.a}~${pair.b}`}
+                        className="flex items-center gap-1"
+                        title={`${Math.round(pair.share * 100)}% of the shortest paths from ${pair.a} to ${pair.b} run through ${road.id}`}
+                      >
+                        <ContextPill id={pair.a} />
+                        <span className="text-muted">↔</span>
+                        <ContextPill id={pair.b} />
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section id={OVERVIEW_ANCHOR.flows} className="mt-section">
         <SectionTitle

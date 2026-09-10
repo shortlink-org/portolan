@@ -212,6 +212,7 @@ export function relationAnchor(relationId: string): string {
 export const OVERVIEW_ANCHOR = {
   landscape: "landscape",
   contexts: "contexts",
+  bridges: "bridges",
   flows: "flows-by-reach",
   problems: "problems",
 } as const;

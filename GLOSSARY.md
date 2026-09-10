@@ -16,6 +16,12 @@ on it, and its lifecycle when the code keeps a table of one.
 declares the method rather than recorded: a reply is the far end of the same
 hop, not a second thing that happened.
 
+**Bridge.** A service that at least half of the shortest paths between two
+contexts' services run through, counted on the undirected graph of who
+exchanges anything with whom. Ranked by betweenness - the share of shortest
+paths between every other pair of services that pass through it. Derived,
+never declared: the overview lists them and the service page wears the chip.
+
 **Catalog.** One source of facts in the shape `src/catalog.ts` decides:
 contexts, defs, flows, adrs, stores, modules, terms, repos and externals. A
 reader never sees one; the estate is the merge of several.
