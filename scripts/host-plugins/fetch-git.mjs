@@ -44,6 +44,18 @@ export const LOCK_NAME = "git.lock.json";
 export const PIN_NAME = "git.repo.json";
 export const OFFLINE_ENV = "PORTOLAN_OFFLINE";
 
+const SNIFF_BYTES = 8 * 1024;
+const BINARY_SUFFIXES = [
+  ".tar.gz", ".tar.bz2", ".tar.xz",
+  ".7z", ".a", ".apk", ".avif", ".bin", ".bmp", ".bz2", ".class",
+  ".deb", ".dll", ".dmg", ".doc", ".docx", ".eot", ".exe", ".gif",
+  ".gz", ".ico", ".iso", ".jar", ".jpeg", ".jpg", ".lib", ".mmdb",
+  ".mov", ".mp3", ".mp4", ".o", ".otf", ".pdf", ".png", ".pyc",
+  ".rar", ".so", ".tar", ".tgz", ".tif", ".tiff", ".ttf", ".war",
+  ".wasm", ".webm", ".webp", ".woff", ".woff2", ".xls", ".xlsx",
+  ".xz", ".zip",
+];
+
 export function describe() {
   return {
     name: "fetch-git",
@@ -105,7 +117,7 @@ export function run(request, { env = process.env } = {}) {
       }
       continue;
     }
-    emitFetched(out, dir, want, fetched.commit, fetched.files, generatedAt);
+    emitFetched(out, dir, want, fetched.commit, fetched.files, fetched.skipped, generatedAt);
   }
 
   return out.response();
@@ -172,9 +184,11 @@ export function pin(repo, commit, generatedAt = "") {
 /** The lock, written the way every generated file here is written. */
 export function encodeLock(entry) {
   const files = [...entry.files].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  const skipped = [...(entry.skipped ?? [])].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const record = { repo: entry.repo, commit: entry.commit };
   if (entry.paths?.length) record.paths = [...entry.paths].sort();
   record.files = files.map((file) => ({ path: file.path, sha256: file.sha256, size: file.size }));
+  if (skipped.length) record.skipped = skipped.map((file) => ({ path: file.path, size: file.size, reason: file.reason }));
   return `${JSON.stringify({ repos: [record] }, null, 2)}\n`;
 }
 
@@ -191,13 +205,15 @@ function live(url, want, out, env) {
     commit = resolve(url, want.ref, env);
     out.warn(want.repo, `is not pinned; "${want.ref || "HEAD"}" resolved to ${commit}. Pin it in portolan.json or every run is a lottery.`);
   }
-  const files = download(url, commit, want.paths ?? [], env);
-  if (files.size === 0) throw new Error(`${want.repo} at ${commit} holds no files under ${(want.paths ?? []).join(", ")}`);
-  return { commit, files };
+  const fetched = download(url, commit, want.paths ?? [], env);
+  if (fetched.files.size === 0 && fetched.skipped.length === 0) {
+    throw new Error(`${want.repo} at ${commit} holds no files under ${(want.paths ?? []).join(", ")}`);
+  }
+  return { commit, ...fetched };
 }
 
-function emitFetched(out, dir, want, commit, files, generatedAt) {
-  const entry = { repo: want.repo, commit, paths: want.paths ?? [], files: [] };
+function emitFetched(out, dir, want, commit, files, skipped, generatedAt) {
+  const entry = { repo: want.repo, commit, paths: want.paths ?? [], files: [], skipped };
   for (const path of [...files.keys()].sort()) {
     const contents = files.get(path);
     out.file(posix.join(dir, path), contents);
@@ -205,6 +221,7 @@ function emitFetched(out, dir, want, commit, files, generatedAt) {
   }
   out.file(posix.join(dir, LOCK_NAME), encodeLock(entry));
   out.file(posix.join(dir, PIN_NAME), pin(want.repo, commit, generatedAt));
+  warnSkipped(out, want.repo, skipped);
 }
 
 /**
@@ -225,6 +242,13 @@ function emitCached(out, dir, at, want, why, generatedAt = "") {
   // what is actually on disk rather than what was asked for.
   out.file(posix.join(dir, PIN_NAME), pin(want.repo, held.lock.commit, generatedAt));
   out.warn(want.repo, `not fetched (${why}); the copy committed in this repository is used unchanged`);
+  warnSkipped(out, want.repo, held.lock.skipped);
+}
+
+function warnSkipped(out, repo, skipped = []) {
+  if (skipped.length === 0) return;
+  const bytes = skipped.reduce((total, file) => total + file.size, 0);
+  out.warn(repo, `skipped ${skipped.length} binary ${skipped.length === 1 ? "file" : "files"} (${bytes} bytes); metadata is recorded in ${LOCK_NAME}`);
 }
 
 /**
@@ -252,7 +276,14 @@ function replay(dir) {
   if (repos.length !== 1) throw new Error(`${lockPath} names ${repos.length} repositories; expected exactly one`);
   const entry = repos[0];
   const files = new Map();
+  const kept = [];
+  const skipped = [...(Array.isArray(entry.skipped) ? entry.skipped : [])];
   for (const want of entry.files ?? []) {
+    const known = knownBinaryReason(want.path);
+    if (known) {
+      skipped.push({ path: want.path, size: want.size, reason: known });
+      continue;
+    }
     let contents;
     try {
       contents = readFileSync(join(dir, ...String(want.path).split("/")));
@@ -261,9 +292,15 @@ function replay(dir) {
       throw cause;
     }
     if (digestOf(contents) !== want.sha256) throw new Error(`${want.path} does not match its digest; the vendored copy was edited by hand`);
+    const sniffed = sniffedBinaryReason(contents);
+    if (sniffed) {
+      skipped.push({ path: want.path, size: contents.length, reason: sniffed });
+      continue;
+    }
     files.set(want.path, contents);
+    kept.push(want);
   }
-  return { lock: { repo: entry.repo, commit: entry.commit, paths: entry.paths ?? [], files: entry.files ?? [] }, files };
+  return { lock: { repo: entry.repo, commit: entry.commit, paths: entry.paths ?? [], files: kept, skipped }, files };
 }
 
 // --- git --------------------------------------------------------------------
@@ -305,7 +342,7 @@ function resolve(url, ref, env) {
  * its branches where it does not, which is the case for a plain file://
  * remote; either way what is read is verified to be that commit.
  *
- * @returns {Map<string, Buffer>} path → contents
+ * @returns {{files: Map<string, Buffer>, skipped: {path: string, size: number, reason: string}[]}}
  */
 function download(url, commit, paths, env) {
   const tmp = mkdtempSync(join(tmpdir(), "portolan-fetch-git-"));
@@ -326,19 +363,24 @@ function download(url, commit, paths, env) {
       throw new Error(`${commit} is not a commit ${url} has, or not one reachable from a branch`);
     }
 
-    const listing = git(tmp, ["ls-tree", "-r", "-z", "--format=%(objectname) %(objecttype) %(path)", commit, "--", ...paths], env);
+    const listing = git(tmp, ["ls-tree", "-r", "-z", "--format=%(objectname) %(objecttype) %(objectsize) %(path)", commit, "--", ...paths], env);
     const blobs = [];
+    const skipped = [];
     for (const line of listing.split("\0")) {
       if (!line) continue;
-      const [sha, type, ...rest] = line.split(" ");
+      const [sha, type, rawSize, ...rest] = line.split(" ");
       if (type !== "blob") continue;
-      blobs.push({ sha, path: posix.normalize(rest.join(" ")) });
+      const path = posix.normalize(rest.join(" "));
+      const size = Number(rawSize);
+      const reason = knownBinaryReason(path);
+      if (reason) skipped.push({ path, size, reason });
+      else blobs.push({ sha, path, size });
     }
     const files = new Map();
-    if (blobs.length === 0) return files;
+    if (blobs.length === 0) return { files, skipped };
 
-    // One process for every blob: `cat-file --batch` answers each sha with a
-    // header line and the bytes.
+    // One `cat-file --batch` process answers every remaining sha with a header
+    // line and the bytes. Known binaries never enter this batch.
     const batch = execFileSync("git", ["cat-file", "--batch"], {
       cwd: tmp,
       env: { ...env, GIT_TERMINAL_PROMPT: "0" },
@@ -352,13 +394,28 @@ function download(url, commit, paths, env) {
       if (header[1] === "missing") throw new Error(`${blob.path} is missing from ${commit}`);
       const size = Number(header[2]);
       const start = newline + 1;
-      files.set(blob.path, Buffer.from(batch.subarray(start, start + size)));
+      const contents = batch.subarray(start, start + size);
+      const reason = sniffedBinaryReason(contents);
+      if (reason) skipped.push({ path: blob.path, size, reason });
+      else files.set(blob.path, Buffer.from(contents));
       offset = start + size + 1;
     }
-    return files;
+    return { files, skipped };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+function knownBinaryReason(path) {
+  const lower = String(path).toLowerCase();
+  const suffix = BINARY_SUFFIXES.find((candidate) => lower.endsWith(candidate));
+  return suffix ? `known binary extension ${suffix}` : "";
+}
+
+function sniffedBinaryReason(contents) {
+  if (contents.subarray(0, SNIFF_BYTES).includes(0)) return `NUL byte in first ${SNIFF_BYTES} bytes`;
+  const text = contents.toString("utf8");
+  return Buffer.from(text, "utf8").equals(contents) ? "" : "invalid UTF-8";
 }
 
 /** Accumulates a response the way plugin.Builder does. */
@@ -372,11 +429,10 @@ class Builder {
       return;
     }
     const text = contents.toString("utf8");
-    this.files.push(
-      Buffer.from(text, "utf8").equals(contents)
-        ? { name, contents: text }
-        : { name, contents: contents.toString("base64"), encoding: "base64" },
-    );
+    if (!Buffer.from(text, "utf8").equals(contents) || contents.subarray(0, SNIFF_BYTES).includes(0)) {
+      throw new Error(`${name} is binary and cannot be emitted by fetch-git`);
+    }
+    this.files.push({ name, contents: text });
   }
 
   warn(ref, message) {

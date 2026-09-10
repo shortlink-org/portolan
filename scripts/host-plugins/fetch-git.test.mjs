@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runPlugin } from "../plugin-host.mjs";
-import { OFFLINE_ENV, encodeLock, pin, run, splitRepo, webRepo } from "./fetch-git.mjs";
+import { LOCK_NAME, OFFLINE_ENV, encodeLock, pin, run, splitRepo, webRepo } from "./fetch-git.mjs";
 
 const created = [];
 afterEach(() => {
@@ -105,18 +106,71 @@ describe("fetch-git", () => {
     expect(inCi.warnings).toHaveLength(1);
   });
 
-  it("preserves binary blobs online and from the offline cache", () => {
+  it("skips binary blobs online and from the offline cache", () => {
     const remote = repository();
     const cacheDir = cache();
     const first = fetch(options(remote, cacheDir, ["docs/example.png"]), online);
     const name = `${remote.copyDir}/docs/example.png`;
-    const image = first.files.find((file) => file.name === name);
-    expect(image?.encoding).toBe("base64");
+    expect(first.files.find((file) => file.name === name)).toBeUndefined();
+    expect(first.files.every((file) => file.encoding === undefined)).toBe(true);
+    const lockName = `${remote.copyDir}/${LOCK_NAME}`;
+    expect(JSON.parse(contentsOf(first, lockName)).repos[0].skipped).toEqual([
+      { path: "docs/example.png", size: 10, reason: "known binary extension .png" },
+    ]);
+    expect(first.warnings[0].message).toContain("skipped 1 binary file (10 bytes)");
     write(cacheDir, first);
-    expect(readFileSync(join(cacheDir, name))).toEqual(readFileSync(join(remote.dir, "docs/example.png")));
+    expect(() => readFileSync(join(cacheDir, name))).toThrow();
 
     const replayed = fetch(options(remote, cacheDir, ["docs/example.png"]), offline);
-    expect(replayed.files.find((file) => file.name === name)).toEqual(image);
+    expect(replayed.files.find((file) => file.name === name)).toBeUndefined();
+    expect(JSON.parse(contentsOf(replayed, lockName)).repos[0].skipped).toEqual([
+      { path: "docs/example.png", size: 10, reason: "known binary extension .png" },
+    ]);
+  });
+
+  it("does not read a large known binary into the plugin response and sniffs unknown binary files", () => {
+    const remote = repository();
+    const mmdb = "tests/integration/resources/GeoLite2-Country.mmdb";
+    const unknown = "tests/integration/resources/blob.data";
+    mkdirSync(dirname(join(remote.dir, mmdb)), { recursive: true });
+    writeFileSync(join(remote.dir, mmdb), Buffer.alloc(10 * 1024 * 1024, 0xab));
+    writeFileSync(join(remote.dir, unknown), Buffer.from([1, 0, 2]));
+    remote.git(["add", "."]);
+    remote.git(["commit", "--quiet", "-m", "binary fixtures"]);
+    remote.commit = remote.git(["rev-parse", "HEAD"]);
+
+    const response = fetch(options(remote, cache(), [mmdb, unknown]), online);
+    expect(response.files.every((file) => file.encoding === undefined)).toBe(true);
+    expect(JSON.stringify(response).length).toBeLessThan(20_000);
+    const lock = JSON.parse(contentsOf(response, `${remote.copyDir}/${LOCK_NAME}`)).repos[0];
+    expect(lock.files).toEqual([]);
+    expect(lock.skipped).toEqual([
+      { path: mmdb, size: 10 * 1024 * 1024, reason: "known binary extension .mmdb" },
+      { path: unknown, size: 3, reason: "NUL byte in first 8192 bytes" },
+    ]);
+  });
+
+  it("drops binary files from a cache written by an older Portolan", () => {
+    const remote = repository();
+    const cacheDir = cache();
+    const at = join(cacheDir, remote.copyDir);
+    const path = "docs/example.png";
+    const contents = readFileSync(join(remote.dir, path));
+    mkdirSync(dirname(join(at, path)), { recursive: true });
+    writeFileSync(join(at, path), contents);
+    writeFileSync(join(at, LOCK_NAME), encodeLock({
+      repo: remote.url,
+      commit: remote.commit,
+      paths: [path],
+      files: [{ path, size: contents.length, sha256: createHash("sha256").update(contents).digest("hex") }],
+    }));
+
+    const replayed = fetch(options(remote, cacheDir, [path]), offline);
+    expect(replayed.files.some((file) => file.name.endsWith(path))).toBe(false);
+    expect(JSON.parse(contentsOf(replayed, `${remote.copyDir}/${LOCK_NAME}`)).repos[0]).toMatchObject({
+      files: [],
+      skipped: [{ path, size: contents.length, reason: "known binary extension .png" }],
+    });
   });
 
   it("names the edited file when a vendored copy no longer matches its lock", () => {
@@ -223,8 +277,8 @@ describe("names", () => {
       repos: [{ repo: "github.com/acme/shop", commit: "c1d2e3f" }],
     });
 
-    const lock = encodeLock({ repo: "github.com/acme/shop", commit: "abc", paths: ["services/oms", "proto"], files: [{ path: "b", sha256: "2", size: 1 }, { path: "a", sha256: "1", size: 1 }] });
-    expect(JSON.parse(lock)).toEqual({ repos: [{ repo: "github.com/acme/shop", commit: "abc", paths: ["proto", "services/oms"], files: [{ path: "a", sha256: "1", size: 1 }, { path: "b", sha256: "2", size: 1 }] }] });
+    const lock = encodeLock({ repo: "github.com/acme/shop", commit: "abc", paths: ["services/oms", "proto"], files: [{ path: "b", sha256: "2", size: 1 }, { path: "a", sha256: "1", size: 1 }], skipped: [{ path: "z.png", size: 2, reason: "known binary extension .png" }] });
+    expect(JSON.parse(lock)).toEqual({ repos: [{ repo: "github.com/acme/shop", commit: "abc", paths: ["proto", "services/oms"], files: [{ path: "a", sha256: "1", size: 1 }, { path: "b", sha256: "2", size: 1 }], skipped: [{ path: "z.png", size: 2, reason: "known binary extension .png" }] }] });
     expect(JSON.parse(encodeLock({ repo: "r", commit: "c", paths: [], files: [] })).repos[0]).not.toHaveProperty("paths");
   });
 });
