@@ -1,0 +1,59 @@
+# The add-ons the cluster runs for everyone, each a chart from its own
+# registry with the values kept here under platform/<name>/values.yaml.
+# Two sources: the chart, and this repository as the place the values are
+# read from. Argo CD lists these beside the shop's Applications; they are
+# not services of the estate, and portolan's Problems page says so rather
+# than guessing which service a Grafana might be.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - name: grafana
+            repo: https://grafana.github.io/helm-charts
+            chart: grafana
+            version: 8.5.1
+            namespace: monitoring
+          - name: ingress-nginx
+            repo: https://kubernetes.github.io/ingress-nginx
+            chart: ingress-nginx
+            version: 4.11.2
+            namespace: ingress-nginx
+  template:
+    metadata:
+      name: "platform-{{.name}}"
+      labels:
+        app.kubernetes.io/part-of: platform
+        app.kubernetes.io/name: "{{.name}}"
+        env: prod
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: platform
+      sources:
+        - repoURL: "{{.repo}}"
+          chart: "{{.chart}}"
+          targetRevision: "{{.version}}"
+          helm:
+            releaseName: "{{.name}}"
+            valueFiles:
+              - "$values/examples/gitops/platform/{{.name}}/values.yaml"
+        - repoURL: https://github.com/shortlink-org/portolan.git
+          targetRevision: main
+          ref: values
+      destination:
+        name: in-cluster
+        namespace: "{{.namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

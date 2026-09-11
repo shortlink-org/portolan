@@ -54,6 +54,16 @@ export const LIST_PATH = "/api/v1/applications";
 /** The label that names an environment when the manifest does not say. */
 export const DEFAULT_ENVIRONMENT_LABEL = "env";
 
+/**
+ * The labels that name the service an Application deploys, when the
+ * manifest does not say: the Kubernetes recommended ones, the same
+ * fetch-k8s reads off a workload. An ApplicationSet that stamps them on
+ * every Application it makes is what lets a GitOps repository - where the
+ * path points at an overlay, not at the service - still place each
+ * Application on its service.
+ */
+export const DEFAULT_LABELS = { context: "app.kubernetes.io/part-of", service: "app.kubernetes.io/name" };
+
 /** How Argo CD names the cluster it runs in, and how the catalog does. */
 const IN_CLUSTER_SERVER = "https://kubernetes.default.svc";
 const IN_CLUSTER_NAME = "in-cluster";
@@ -136,8 +146,9 @@ export function baseUrl(server) {
  * @param {object} app an item of the list answer
  * @param {string} base the server's base URL, for the link
  * @param {string} environmentLabel
+ * @param {{context?: string, service?: string}} serviceLabels
  */
-export function deploymentOf(app, base, environmentLabel = DEFAULT_ENVIRONMENT_LABEL) {
+export function deploymentOf(app, base, environmentLabel = DEFAULT_ENVIRONMENT_LABEL, serviceLabels = DEFAULT_LABELS) {
   const metadata = app?.metadata ?? {};
   const spec = app?.spec ?? {};
   const status = app?.status ?? {};
@@ -174,6 +185,12 @@ export function deploymentOf(app, base, environmentLabel = DEFAULT_ENVIRONMENT_L
     tool: toolOf(status.sourceType ?? status.sourceTypes?.[sourceIndex], ...sources),
     url: `${base}/applications/${encodeURIComponent(appNamespace)}/${encodeURIComponent(name)}`,
   };
+  // The service, when the labels say: `<context>.<service>`, the id a
+  // service carries in the catalog. Both labels or nothing - a name without
+  // a context is a word, and the catalog does not place words.
+  const contextSlug = String(labels[serviceLabels.context ?? DEFAULT_LABELS.context] ?? "").trim();
+  const serviceSlug = String(labels[serviceLabels.service ?? DEFAULT_LABELS.service] ?? "").trim();
+  if (contextSlug && serviceSlug) record.service = `${contextSlug}.${serviceSlug}`;
   const chart = String(source.chart ?? "").trim();
   if (chart) record.chart = chart;
   const images = [...new Set((status.summary?.images ?? []).map((image) => String(image).trim()).filter(Boolean))].sort();
@@ -241,7 +258,8 @@ async function live(server, options, env, fetchFn) {
   const items = Array.isArray(answer?.items) ? answer.items : [];
   if (items.length === 0) throw new Error(`${server} lists no applications; check the projects and selector in the manifest, and what the token may see`);
   const label = String(options.environmentLabel ?? "").trim() || DEFAULT_ENVIRONMENT_LABEL;
-  return items.map((item) => deploymentOf(item, base, label));
+  const serviceLabels = { ...DEFAULT_LABELS, ...(options.labels ?? {}) };
+  return items.map((item) => deploymentOf(item, base, label, serviceLabels));
 }
 
 /** The error body Argo CD sends, or the status when the body is not one. */

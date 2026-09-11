@@ -15,7 +15,7 @@ const REVISION = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678";
 
 /** Two applications the way the API lists them, with everything a page must not keep. */
 const CART = {
-  metadata: { name: "shop-cart", namespace: "argocd", labels: { env: "prod", team: "shop" } },
+  metadata: { name: "shop-cart", namespace: "argocd", labels: { env: "prod", team: "shop", "app.kubernetes.io/part-of": "shop", "app.kubernetes.io/name": "cart" } },
   spec: {
     project: "shop",
     source: { repoURL: "https://github.com/shortlink-org/portolan.git", path: "./examples/shop/cart/deploy/k8s/", targetRevision: "main", kustomize: { namePrefix: "prod-" } },
@@ -110,8 +110,11 @@ describe("fetch-argocd", () => {
       revision: REVISION,
       tool: "kustomize",
       url: `${server.url}/applications/argocd/shop-cart`,
+      service: "shop.cart",
       images: ["ghcr.io/shortlink-org/cart:1.4.2", "redis:7"],
     });
+    // No labels, no service: the catalog places it by repository and path.
+    expect(catalog.deployments[1].service).toBeUndefined();
     // A multi-source application follows the source that carries the
     // manifests, and its cluster names the environment when no label does.
     expect(catalog.deployments[1]).toMatchObject({
@@ -253,6 +256,14 @@ describe("one application", () => {
     expect(toolOf("", { plugin: {} })).toBe("plugin");
     expect(toolOf("", { directory: {} })).toBe("directory");
     expect(toolOf("", {})).toBe("");
+  });
+
+  it("places by the labels the manifest names, and by nothing when only one of the two is there", () => {
+    const base = "https://argocd.example.com";
+    const labelled = (labels) => ({ ...CART, metadata: { ...CART.metadata, labels } });
+    expect(deploymentOf(labelled({ team: "shop", component: "cart" }), base, "env", { context: "team", service: "component" }).service).toBe("shop.cart");
+    expect(deploymentOf(labelled({ "app.kubernetes.io/name": "cart" }), base).service).toBeUndefined();
+    expect(deploymentOf(labelled({}), base).service).toBeUndefined();
   });
 
   it("refuses an application without a name, and defaults the namespace and project", () => {

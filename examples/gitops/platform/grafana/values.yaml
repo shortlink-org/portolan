@@ -1,0 +1,27 @@
+# Values for the grafana chart (grafana.github.io/helm-charts), read by
+# appsets/platform.yaml through the $values source. No password here: the
+# admin secret is created out of band and named.
+replicas: 1
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+persistence:
+  enabled: true
+  size: 10Gi
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - grafana.example.com
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-operated.monitoring.svc:9090
+        isDefault: true
+      - name: Tempo
+        type: tempo
+        url: http://tempo.observability.svc:3200

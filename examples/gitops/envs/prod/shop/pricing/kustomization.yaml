@@ -1,0 +1,19 @@
+# pricing in prod: the base at the tag prod runs, two replicas as the base
+# says, and a longer price-list cache than the base's default.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: shop
+resources:
+  - ../../../../../shop/pricing/deploy/k8s
+labels:
+  - pairs:
+      env: prod
+images:
+  - name: ghcr.io/shortlink-org/pricing
+    newTag: 1.4.2
+configMapGenerator:
+  - name: pricing-config
+    namespace: shop
+    behavior: merge
+    literals:
+      - PRICE_LIST_TTL=1h

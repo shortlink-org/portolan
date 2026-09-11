@@ -4,10 +4,10 @@ deployment {
     cluster in_cluster 'in-cluster' {
       namespace shop 'shop' {
         shop_cart = instanceOf shop.cart {
-          description 'shop-cart at 3a0ebab'
+          description 'shop-cart-prod at 3a0ebab'
         }
         shop_pricing = instanceOf shop.pricing {
-          description 'shop-pricing at 3a0ebab'
+          description 'shop-pricing-prod at 3a0ebab'
         }
       }
     }

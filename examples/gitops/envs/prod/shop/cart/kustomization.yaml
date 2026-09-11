@@ -1,0 +1,16 @@
+# cart in prod: the base as the service ships it, at the tag prod runs,
+# three replicas. Nothing else differs, so nothing else is written.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: shop
+resources:
+  - ../../../../../shop/cart/deploy/k8s
+labels:
+  - pairs:
+      env: prod
+images:
+  - name: ghcr.io/shortlink-org/cart
+    newTag: 2.1.0
+replicas:
+  - name: cart
+    count: 3

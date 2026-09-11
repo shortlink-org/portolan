@@ -1,0 +1,14 @@
+# Values for the ingress-nginx chart (kubernetes.github.io/ingress-nginx),
+# read by appsets/platform.yaml through the $values source. The class is
+# what every Ingress in the estate names.
+controller:
+  replicaCount: 2
+  ingressClassResource:
+    name: nginx
+    default: true
+  service:
+    type: LoadBalancer
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true

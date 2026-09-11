@@ -70,9 +70,12 @@ type Deployment struct {
 	TargetRevision string `json:"targetRevision"`
 	Revision       string `json:"revision"`
 	// Tool is helm, kustomize, directory or plugin, as Argo CD says it.
-	Tool   string   `json:"tool"`
-	URL    string   `json:"url"`
-	Images []string `json:"images,omitempty"`
+	Tool string `json:"tool"`
+	URL  string `json:"url"`
+	// Service is the id of the service the Application's labels name;
+	// empty when they name none, and the path decides.
+	Service string   `json:"service,omitempty"`
+	Images  []string `json:"images,omitempty"`
 }
 
 // External is a system outside the estate with a contract: what it answers on,

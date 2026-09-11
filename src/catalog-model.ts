@@ -543,6 +543,15 @@ export interface Deployment {
   tool: string;
   /** The Application in the Argo CD UI. */
   url: string;
+  /**
+   * The service it deploys, by id, when the Application's labels say so:
+   * `app.kubernetes.io/part-of` and `app.kubernetes.io/name`, the same
+   * labels a workload carries. A GitOps repository's Application points at
+   * an overlay, not at the service's directory, so the path alone cannot
+   * place it; the labels can, and an ApplicationSet stamps them on every
+   * Application it makes. Absent when the labels are, and the path decides.
+   */
+  service?: string;
   /** The container images the deployed resources run, as the deployer summarised them, sorted. */
   images?: string[];
 }
@@ -1355,13 +1364,16 @@ export function allDeployments(catalog: Catalog): Deployment[] {
 }
 
 /**
- * Whether a deployment is of this service: the same repository, and the
- * manifests read from inside the service's directory - or from anywhere in
- * the repository when the service is the whole of it. An Application that
- * deploys a repository nobody in the estate claims matches nothing, and is
- * a fact for the Problems page rather than for a guess.
+ * Whether a deployment is of this service. The labels decide when the
+ * Application carries them: `service` is the id, and an Application
+ * labelled for one service is not another's however its path reads. Without
+ * labels, the path: the same repository, and the manifests read from inside
+ * the service's directory - or from anywhere in the repository when the
+ * service is the whole of it. An Application that matches nothing is a fact
+ * for the Problems page rather than for a guess.
  */
 export function deploys(deployment: Deployment, service: Service): boolean {
+  if (deployment.service) return deployment.service === service.id;
   if (!deployment.repo || deployment.repo !== service.repo) return false;
   const root = service.path.replace(/^\/+|\/+$/g, "");
   if (!root) return true;

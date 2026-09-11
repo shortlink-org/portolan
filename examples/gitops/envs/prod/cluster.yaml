@@ -1,0 +1,7 @@
+# Where prod is. Read by appsets/shop.yaml as one row of the matrix: the
+# keys become template parameters, so `env` names the folder and `cluster`
+# names the Argo CD cluster the Applications deploy to.
+env: prod
+cluster:
+  name: in-cluster
+  server: https://kubernetes.default.svc

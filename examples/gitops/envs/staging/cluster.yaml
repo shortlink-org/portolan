@@ -1,0 +1,8 @@
+# Where staging is: a cluster of its own, registered in Argo CD under this
+# name. Only cart is deployed here (envs/staging/shop/cart); pricing is not,
+# so a checkout in staging answers with the sum of the lines, as the cart's
+# README says it does without a pricing peer.
+env: staging
+cluster:
+  name: staging-eu
+  server: https://staging-eu.k8s.example.com

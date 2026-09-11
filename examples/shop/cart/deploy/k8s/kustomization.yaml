@@ -1,0 +1,6 @@
+# The base: what cart is, before an environment says how many and which tag.
+# The overlays in examples/gitops/envs/*/shop/cart point here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cart.yaml

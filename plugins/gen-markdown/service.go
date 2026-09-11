@@ -516,10 +516,14 @@ func (s *site) deploymentsTable(svc *catalog.Service) string {
 	return table([]string{"Environment", "Where", "Revision", "Tracks", "Tool", "Images", "Application"}, rows)
 }
 
-// deploys says whether a deployment is of this service: the same repository,
-// and the manifests read from inside the service's directory - or from
-// anywhere in it when the service is the whole repository.
+// deploys says whether a deployment is of this service, the way the site
+// decides it: the labels when the Application carries them, else the same
+// repository and the manifests read from inside the service's directory -
+// or from anywhere in it when the service is the whole repository.
 func deploys(d *catalog.Deployment, svc *catalog.Service) bool {
+	if d.Service != "" {
+		return d.Service == svc.ID
+	}
 	if d.Repo == "" || bareRepo(d.Repo) != bareRepo(svc.Repo) {
 		return false
 	}

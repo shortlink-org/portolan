@@ -1,0 +1,32 @@
+# The shop boundary: what its Applications may deploy from, and where to.
+# A project is the blast radius - an Application in it cannot reach another
+# namespace, another cluster or another repository than these.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shop
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: The shop bounded context - cart, pricing, oms, billing
+  sourceRepos:
+    - https://github.com/shortlink-org/portolan.git
+  destinations:
+    - name: in-cluster
+      namespace: shop
+    - name: staging-eu
+      namespace: shop
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+  roles:
+    - name: read-only
+      description: See the shop's Applications, change nothing
+      policies:
+        - p, proj:shop:read-only, applications, get, shop/*, allow
+      groups:
+        - shop-team

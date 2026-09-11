@@ -2338,6 +2338,23 @@
           "default": "env",
           "description": "The application label that names the environment. An application without it is placed by the cluster it deploys to."
         },
+        "labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Which application labels name the service it deploys. The defaults are the Kubernetes recommended labels, the same ones fetch-k8s reads off a workload; an estate that labels differently names its own keys here. An application without them is placed by the repository and directory it deploys from.",
+          "properties": {
+            "context": {
+              "type": "string",
+              "description": "The label whose value is the bounded context's slug.",
+              "default": "app.kubernetes.io/part-of"
+            },
+            "service": {
+              "type": "string",
+              "description": "The label whose value is the service's slug.",
+              "default": "app.kubernetes.io/name"
+            }
+          }
+        },
         "cache": {
           "type": "string",
           "description": "Where the last run's snapshot was written, repo-relative: the same path as the step's out. An offline run replays what is there and checks it against the lock beside it."

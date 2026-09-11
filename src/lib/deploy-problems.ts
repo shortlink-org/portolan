@@ -31,7 +31,11 @@ export function deployProblems(catalog: Catalog): Problem[] {
       service: "",
       id: deployment.id,
       peer: deployedFrom(deployment),
-      note: `${deployment.name} runs in ${deployment.environment || deployment.cluster || "an unnamed environment"}${deployment.namespace ? `, namespace ${deployment.namespace}` : ""}; if it is a service of the estate, its \`path\` should be a directory the Application's path is under. ${deployment.url}`,
+      note: `${deployment.name} runs in ${deployment.environment || deployment.cluster || "an unnamed environment"}${deployment.namespace ? `, namespace ${deployment.namespace}` : ""}; ${
+        deployment.service
+          ? `its labels name ${deployment.service}, which is no service of the estate`
+          : "if it is a service of the estate, its `path` should be a directory the Application's path is under, or the Application should carry app.kubernetes.io/part-of and app.kubernetes.io/name"
+      }. ${deployment.url}`,
       source: undefined,
     });
   }

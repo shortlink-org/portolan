@@ -1,10 +1,11 @@
 {
   "server": "argocd.example.com",
   "applications": [
-    "argocd/shop-cart",
+    "argocd/platform-grafana",
+    "argocd/platform-ingress-nginx",
+    "argocd/shop-cart-prod",
     "argocd/shop-cart-staging",
-    "argocd/shop-grafana",
-    "argocd/shop-pricing"
+    "argocd/shop-pricing-prod"
   ],
-  "sha256": "8806cc9d8551be4580174f84ddf2887b9ae6675c7ebff04ce4eb1995d1f22972"
+  "sha256": "27d6cbd361eafcb6f0a88de0344e17c058824dd58f45970908ccff01cb83f894"
 }

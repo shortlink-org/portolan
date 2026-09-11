@@ -5,20 +5,59 @@
   "adrs": [],
   "deployments": [
     {
-      "id": "argocd/shop-cart",
-      "name": "shop-cart",
+      "id": "argocd/platform-grafana",
+      "name": "platform-grafana",
+      "project": "platform",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "monitoring",
+      "repo": "grafana.github.io/helm-charts",
+      "path": "",
+      "targetRevision": "8.5.1",
+      "revision": "8.5.1",
+      "tool": "helm",
+      "url": "https://argocd.example.com/applications/argocd/platform-grafana",
+      "service": "platform.grafana",
+      "chart": "grafana",
+      "images": [
+        "grafana/grafana:11.2.0"
+      ]
+    },
+    {
+      "id": "argocd/platform-ingress-nginx",
+      "name": "platform-ingress-nginx",
+      "project": "platform",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "ingress-nginx",
+      "repo": "kubernetes.github.io/ingress-nginx",
+      "path": "",
+      "targetRevision": "4.11.2",
+      "revision": "4.11.2",
+      "tool": "helm",
+      "url": "https://argocd.example.com/applications/argocd/platform-ingress-nginx",
+      "service": "platform.ingress-nginx",
+      "chart": "ingress-nginx",
+      "images": [
+        "registry.k8s.io/ingress-nginx/controller:v1.11.2"
+      ]
+    },
+    {
+      "id": "argocd/shop-cart-prod",
+      "name": "shop-cart-prod",
       "project": "shop",
       "environment": "prod",
       "cluster": "in-cluster",
       "namespace": "shop",
       "repo": "github.com/shortlink-org/portolan",
-      "path": "examples/shop/cart/deploy/k8s",
+      "path": "examples/gitops/envs/prod/shop/cart",
       "targetRevision": "main",
       "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
-      "tool": "directory",
-      "url": "https://argocd.example.com/applications/argocd/shop-cart",
+      "tool": "kustomize",
+      "url": "https://argocd.example.com/applications/argocd/shop-cart-prod",
+      "service": "shop.cart",
       "images": [
-        "ghcr.io/shortlink-org/cart:1.4.2"
+        "ghcr.io/shortlink-org/cart:2.1.0"
       ]
     },
     {
@@ -29,45 +68,30 @@
       "cluster": "staging-eu",
       "namespace": "shop",
       "repo": "github.com/shortlink-org/portolan",
-      "path": "examples/shop/cart/deploy/k8s",
+      "path": "examples/gitops/envs/staging/shop/cart",
       "targetRevision": "main",
       "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
-      "tool": "directory",
+      "tool": "kustomize",
       "url": "https://argocd.example.com/applications/argocd/shop-cart-staging",
+      "service": "shop.cart",
       "images": [
-        "ghcr.io/shortlink-org/cart:1.4.2"
+        "ghcr.io/shortlink-org/cart:2.2.0-rc.1"
       ]
     },
     {
-      "id": "argocd/shop-grafana",
-      "name": "shop-grafana",
-      "project": "shop",
-      "environment": "prod",
-      "cluster": "in-cluster",
-      "namespace": "monitoring",
-      "repo": "github.com/shortlink-org/platform",
-      "path": "charts/grafana",
-      "targetRevision": "main",
-      "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
-      "tool": "helm",
-      "url": "https://argocd.example.com/applications/argocd/shop-grafana",
-      "images": [
-        "grafana/grafana:11.2.0"
-      ]
-    },
-    {
-      "id": "argocd/shop-pricing",
-      "name": "shop-pricing",
+      "id": "argocd/shop-pricing-prod",
+      "name": "shop-pricing-prod",
       "project": "shop",
       "environment": "prod",
       "cluster": "in-cluster",
       "namespace": "shop",
       "repo": "github.com/shortlink-org/portolan",
-      "path": "examples/shop/pricing/deploy/k8s",
+      "path": "examples/gitops/envs/prod/shop/pricing",
       "targetRevision": "main",
       "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
-      "tool": "directory",
-      "url": "https://argocd.example.com/applications/argocd/shop-pricing",
+      "tool": "kustomize",
+      "url": "https://argocd.example.com/applications/argocd/shop-pricing-prod",
+      "service": "shop.pricing",
       "images": [
         "ghcr.io/shortlink-org/pricing:1.4.2"
       ]

@@ -1,0 +1,25 @@
+# The cluster's own add-ons: charts from public registries, deployed into
+# namespaces of their own. Cluster-scoped resources are allowed here and
+# nowhere else - an ingress controller needs a ClusterRole, a shop service
+# does not.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: What the cluster runs for everyone - monitoring, ingress
+  sourceRepos:
+    - https://github.com/shortlink-org/portolan.git
+    - https://grafana.github.io/helm-charts
+    - https://kubernetes.github.io/ingress-nginx
+  destinations:
+    - name: in-cluster
+      namespace: monitoring
+    - name: in-cluster
+      namespace: ingress-nginx
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"

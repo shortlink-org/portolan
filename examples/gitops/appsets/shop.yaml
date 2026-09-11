@@ -1,0 +1,69 @@
+# One Application per service per environment, found rather than written.
+#
+# The first generator reads envs/*/cluster.yaml: one row per environment,
+# with the cluster it deploys to. The second walks envs/<env>/shop/* for
+# what that environment deploys. The matrix makes an Application for every
+# pair, named shop-<service>-<env>, so adding a service to staging is
+# creating a directory and nothing else.
+#
+# Every Application carries app.kubernetes.io/part-of and
+# app.kubernetes.io/name - the recommended labels, the same ones the
+# workloads themselves carry - which is how portolan's fetch-argocd places
+# an Application on a service without guessing from a path.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: shop
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/shortlink-org/portolan.git
+              revision: main
+              files:
+                - path: examples/gitops/envs/*/cluster.yaml
+          - git:
+              repoURL: https://github.com/shortlink-org/portolan.git
+              revision: main
+              directories:
+                - path: "examples/gitops/envs/{{.env}}/shop/*"
+  template:
+    metadata:
+      name: "shop-{{.path.basename}}-{{.env}}"
+      labels:
+        app.kubernetes.io/part-of: shop
+        app.kubernetes.io/name: "{{.path.basename}}"
+        env: "{{.env}}"
+      annotations:
+        # Re-render only when the overlay or its base changes, not on every
+        # commit to the monorepo.
+        argocd.argoproj.io/manifest-generate-paths: ".;../../../../../shop/{{.path.basename}}/deploy/k8s"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: shop
+      source:
+        repoURL: https://github.com/shortlink-org/portolan.git
+        targetRevision: main
+        path: "{{.path.path}}"
+      destination:
+        name: "{{.cluster.name}}"
+        namespace: shop
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

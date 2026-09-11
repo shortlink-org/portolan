@@ -1,0 +1,7 @@
+# The base: what pricing is, before an environment says how many and which
+# tag. The overlays in examples/gitops/envs/*/shop/pricing point here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - pricing.yaml
+  - secrets.yaml

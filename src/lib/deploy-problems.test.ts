@@ -83,6 +83,18 @@ describe("deployments the catalog cannot place", () => {
     expect(problem?.note).toContain("https://argocd.example.com/applications/argocd/grafana");
   });
 
+  it("places by the labels when the Application carries them, and says so when they name nobody", () => {
+    const placedByLabel = estate([
+      placed("cart-prod", "github.com/acme/other", "envs/prod/shop/cart", { service: "shop.cart" }),
+    ]);
+    expect(deployProblems(placedByLabel)).toEqual([]);
+
+    const nobody = estate([
+      placed("grafana", "github.com/acme/platform", "charts/grafana", { service: "platform.grafana" }),
+    ]);
+    expect(deployProblems(nobody)[0]?.note).toContain("its labels name platform.grafana, which is no service of the estate");
+  });
+
   it("says the chart when the Application deploys one from a registry", () => {
     const catalog = estate([
       placed("redis", "charts.bitnami.com/bitnami", "", { chart: "redis" }),

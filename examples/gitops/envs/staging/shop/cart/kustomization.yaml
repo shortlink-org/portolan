@@ -1,0 +1,32 @@
+# cart in staging: the release candidate, one replica, and NODE_ENV set to
+# what it is. The base's env list is merged by name, so only that one
+# variable is restated here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: shop
+resources:
+  - ../../../../../shop/cart/deploy/k8s
+labels:
+  - pairs:
+      env: staging
+images:
+  - name: ghcr.io/shortlink-org/cart
+    newTag: 2.2.0-rc.1
+replicas:
+  - name: cart
+    count: 1
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cart
+        namespace: shop
+      spec:
+        template:
+          spec:
+            containers:
+              - name: cart
+                env:
+                  - name: NODE_ENV
+                    value: staging
