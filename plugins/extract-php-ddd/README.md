@@ -73,6 +73,13 @@ the environment.
 `__invoke` parameter names the message and the operation is the message
 without its suffix, `create-course` for `CreateCourseCommand`. The doc is the
 handler's, or the use case's it holds (`CourseCreator`), or the message's.
+Its `fields` are the message's constructor parameters, typed as written -
+what the caller hands in, and an empty list for a query that takes nothing;
+its `source` is the handler's `__invoke`. `exposedBy` names the routes of
+the operation's own service that dispatch or ask it; a route in another
+application is a call across contexts and lives in the flow instead. A
+class named `*CommandHandler` that implements neither interface is reported:
+the bus never reaches it.
 
 **Subscriber.** A class implementing `DomainEventSubscriber`; `subscribedTo()`
 says which events, and `DomainEvent::class` there means every one. Each

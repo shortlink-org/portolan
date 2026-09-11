@@ -221,6 +221,11 @@ pub struct Operation {
     pub doc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exposed_by: Option<Vec<String>>,
+    /// The message's shape: what the caller hands in.
+    pub fields: Vec<Field>,
+    /// The handler, `path:line`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub source: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

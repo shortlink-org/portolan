@@ -101,7 +101,20 @@
                 {
                   "id": "authenticate-user",
                   "kind": "command",
-                  "doc": "Checks a username and password against the users we know."
+                  "doc": "Checks a username and password against the users we know.",
+                  "fields": [
+                    {
+                      "name": "username",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "password",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "testdata/mooc/src/Backoffice/Auth/Application/Authenticate/AuthenticateUserCommandHandler.php:16"
                 }
               ],
               "events": []
@@ -142,7 +155,12 @@
                 {
                   "id": "search-all-backoffice-courses",
                   "kind": "query",
-                  "doc": "Every course the back office knows, in no particular order."
+                  "doc": "Every course the back office knows, in no particular order.",
+                  "exposedBy": [
+                    "courses_get"
+                  ],
+                  "fields": [],
+                  "source": "testdata/mooc/src/Backoffice/Courses/Application/SearchAll/SearchAllBackofficeCoursesQueryHandler.php:15"
                 }
               ],
               "events": []
@@ -339,7 +357,28 @@
                 {
                   "id": "create-course",
                   "kind": "command",
-                  "doc": "Creates a course and tells the world."
+                  "doc": "Creates a course and tells the world.",
+                  "exposedBy": [
+                    "courses_put"
+                  ],
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "testdata/mooc/src/Mooc/Courses/Application/Create/CreateCourseCommandHandler.php:16"
                 }
               ],
               "events": [
@@ -453,7 +492,12 @@
                 {
                   "id": "find-courses-counter",
                   "kind": "query",
-                  "doc": "The current total, or nothing when no course was ever created."
+                  "doc": "The current total, or nothing when no course was ever created.",
+                  "exposedBy": [
+                    "courses_counter_get"
+                  ],
+                  "fields": [],
+                  "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Find/FindCoursesCounterQueryHandler.php:15"
                 }
               ],
               "events": [
@@ -583,7 +627,25 @@
                 {
                   "id": "create-video-step",
                   "kind": "command",
-                  "doc": "Adds a video step to a course."
+                  "doc": "Adds a video step to a course.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "url",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "testdata/mooc/src/Mooc/Steps/Application/Create/CreateVideoStepCommandHandler.php:19"
                 }
               ],
               "events": []
@@ -686,6 +748,7 @@
           "kind": "rpc",
           "label": "GET /courses",
           "status": "declared",
+          "ref": "backoffice.backend.courses/courses_get",
           "line": "testdata/mooc/apps/backoffice/backend/config/routes/courses.yaml:1"
         },
         {
@@ -732,6 +795,7 @@
           "kind": "rpc",
           "label": "GET /api/courses",
           "status": "declared",
+          "ref": "backoffice.frontend.api-courses/api_courses_get",
           "line": "testdata/mooc/apps/backoffice/frontend/config/routes/api_courses.yaml:1"
         }
       ]
@@ -769,6 +833,7 @@
           "kind": "rpc",
           "label": "GET /courses",
           "status": "declared",
+          "ref": "backoffice.frontend.courses/courses_get",
           "line": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml:1"
         },
         {
@@ -831,6 +896,7 @@
           "kind": "rpc",
           "label": "POST /courses",
           "status": "declared",
+          "ref": "backoffice.frontend.courses/courses_post",
           "line": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml:6"
         },
         {
@@ -841,6 +907,7 @@
           "kind": "call",
           "label": "dispatch CreateCourse",
           "status": "declared",
+          "ref": "mooc.backend.courses/create-course",
           "note": "In process: the application loads Mooc's code and runs the handler itself over an in-memory command bus.",
           "line": "testdata/mooc/apps/backoffice/frontend/src/Controller/Courses/CoursesPostWebController.php:15"
         },
@@ -917,6 +984,7 @@
           "kind": "rpc",
           "label": "PUT /courses/{id}",
           "status": "declared",
+          "ref": "mooc.backend.courses/courses_put",
           "line": "testdata/mooc/apps/mooc/backend/config/routes/courses.yaml:1"
         },
         {
@@ -986,6 +1054,7 @@
           "kind": "rpc",
           "label": "GET /courses-counter",
           "status": "declared",
+          "ref": "mooc.backend.courses-counter/courses_counter_get",
           "line": "testdata/mooc/apps/mooc/backend/config/routes/courses_counter.yaml:1"
         },
         {
@@ -1032,6 +1101,7 @@
           "kind": "rpc",
           "label": "GET /health-check",
           "status": "declared",
+          "ref": "mooc.backend.health-check/health_check_get",
           "line": "testdata/mooc/apps/mooc/backend/config/routes/health-check.yaml:1"
         }
       ]

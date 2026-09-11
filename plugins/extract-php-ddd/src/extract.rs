@@ -452,6 +452,10 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     let mut openapi_docs: BTreeMap<usize, (String, Vec<Op>)> = BTreeMap::new();
     let mut missing_controllers: BTreeSet<String> = BTreeSet::new();
     let mut unanswered: BTreeSet<String> = BTreeSet::new();
+    // use case → the operation ids of the routes that run it, in the service
+    // the use case is filed under; a route in another service is a call
+    // across contexts and shows in the flow instead.
+    let mut exposed: BTreeMap<usize, Vec<String>> = BTreeMap::new();
     for (si, svc) in svcs.iter().enumerate() {
         let Some(ai) = svc.app else { continue };
         let app = &layout.contexts[svc.ctx].apps[ai];
@@ -527,7 +531,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                 kind: "rpc".into(),
                 label: format!("{verb} {}", route.path),
                 status: "declared".into(),
-                reference: None,
+                reference: Some(format!("{}.{iface}/{op_id}", svc.id)),
                 note: None,
                 line: Some(format!("{}:{}", rel(&route.file), route.line)),
                 handoff: None,
@@ -549,6 +553,10 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                         Some(tc) if tc != svc.ctx => &svcs[primary[tc]],
                         _ => svc,
                     };
+                    let op_ref = placed[ui].and_then(|(c, m)| m.map(|m| format!("{}/{}", agg_ids[c][m], slug(&uc.id))));
+                    if lane_svc.id == svc.id {
+                        exposed.entry(ui).or_default().push(op_id.clone());
+                    }
                     if lane_svc.id != svc.id {
                         let p = lanes.service(lane_svc);
                         if !participants.iter().any(|x| x.id == p.id) {
@@ -561,7 +569,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                             kind: "call".into(),
                             label: format!("{how} {}", uc.id),
                             status: "declared".into(),
-                            reference: None,
+                            reference: op_ref,
                             note: Some(format!(
                                 "In process: the application loads {}'s code and runs the handler itself over an in-memory {} bus.",
                                 layout.contexts[target_ctx.unwrap_or(svc.ctx)].name,
@@ -704,11 +712,16 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                     let mut operations: Vec<Operation> = Vec::new();
                     for (ui, uc) in use_cases.iter().enumerate() {
                         if placed[ui] == Some((ci, Some(mi))) {
+                            let mut by: Vec<String> = exposed.get(&ui).cloned().unwrap_or_default();
+                            by.sort();
+                            by.dedup();
                             operations.push(Operation {
                                 id: slug(&uc.id),
                                 kind: uc.kind.clone(),
                                 doc: uc.doc.clone(),
-                                exposed_by: None,
+                                exposed_by: if by.is_empty() { None } else { Some(by) },
+                                fields: uc.fields.clone(),
+                                source: format!("{}:{}", rel(&uc.file.path), uc.line),
                             });
                         }
                     }

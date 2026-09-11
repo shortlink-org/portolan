@@ -105,10 +105,33 @@ describe("validateCatalog", () => {
     if (!step) throw new Error("fixture has no steps");
     step.ref = "shop.oms.order.NoSuchEvent";
     expect(() => validateCatalog(bad)).toThrowError(
-      /resolves to neither an Event, an RpcCall nor a method/,
+      /resolves to neither an Event, an RpcCall, a method/,
     );
     step.status = "unresolved";
     expect(() => validateCatalog(bad)).not.toThrow();
+  });
+
+  // A flow that crosses a boundary the transport does not draw - a command
+  // handed to another context over an in-process bus - names the use case
+  // it runs, and only a `call` step into that use case's service may.
+  it("accepts a call step that references an operation of the service it enters", () => {
+    const good = clone();
+    const service = good.contexts[0]?.services[0];
+    const aggregate = service?.aggregates[0];
+    const operation = aggregate?.operations[0];
+    const flow = good.flows[0] as Flow;
+    const step = walkSteps(flow.steps)[0];
+    if (!service || !aggregate || !operation || !step) throw new Error("nothing to reference");
+    if (!flow.participants.some((p) => p.id === service.id)) {
+      flow.participants.push({ id: service.id, kind: "service", context: good.contexts[0]!.id });
+    }
+    step.kind = "call";
+    step.to = service.id;
+    step.ref = `${aggregate.id}/${operation.id}`;
+    expect(() => validateCatalog(good)).not.toThrow();
+
+    step.kind = "rpc";
+    expect(() => validateCatalog(good)).toThrowError(/nor an operation of/);
   });
 
   it("rejects a field ref that is not a defs key", () => {

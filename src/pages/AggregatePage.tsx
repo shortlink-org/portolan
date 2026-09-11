@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router";
 import { catalog, index } from "../data";
-import { blockCounts, blockFields, enumsOf, rootEntity } from "../catalog";
+import { allRepos, blockCounts, blockFields, enumsOf, rootEntity } from "../catalog";
 import { isStatusEnum } from "../lib/shape";
 import type {
   Aggregate,
@@ -11,7 +11,7 @@ import type {
   Service,
   Enum,
 } from "../catalog";
-import { markdownOutline } from "../lib/derive";
+import { flowsRunning, markdownOutline } from "../lib/derive";
 import {
   redisKeyspacesPersisting,
   tablesPersisting,
@@ -33,6 +33,8 @@ import {
 } from "../routes";
 import { methodId } from "../lib/api";
 import { Markdown } from "../components/Markdown";
+import { SourcePreviewLink } from "../components/SourcePreview";
+import { sourceLocation, splitLine } from "../lib/source-link";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
@@ -265,10 +267,12 @@ function OperationList({
   kind,
   operations,
   service,
+  aggregate,
 }: {
   kind: "command" | "query";
   operations: Operation[];
   service: Service;
+  aggregate: Aggregate;
 }) {
   // Whether this service records what exposes an operation at all. A catalog
   // written before anything read a transport layer says nothing either way,
@@ -277,10 +281,14 @@ function OperationList({
     aggregate.operations.some((operation) => operation.exposedBy?.length),
   );
   const to = servicePath(service.id);
+  const pins = allRepos(catalog);
 
   return (
     <ul className="flex flex-col gap-1">
-      {operations.map((op) => (
+      {operations.map((op) => {
+        const runs = flowsRunning(catalog, service, aggregate, op);
+        const location = op.source ? sourceLocation(op.source, service, pins) : null;
+        return (
         <li
           key={op.id}
           className={`flex items-start gap-2 border-l-2 px-2 py-1.5 bg-surface ${
@@ -290,7 +298,7 @@ function OperationList({
           <span className="mt-px shrink-0">
             <KindIcon kind={kind} />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-2">
               <Ident block value={op.id} className={op.deprecated ? "line-through" : undefined} />
               {op.deprecated ? (
@@ -298,8 +306,49 @@ function OperationList({
                   deprecated
                 </span>
               ) : null}
+              {op.source ? (
+                <SourcePreviewLink location={location} className="mono ml-auto text-muted hover:text-ink">
+                  {splitLine(op.source).path.split("/").pop()}
+                  {splitLine(op.source).line ? `:${splitLine(op.source).line}` : ""}
+                </SourcePreviewLink>
+              ) : null}
             </span>
             {op.doc ? <p className="mt-0.5 text-muted">{op.doc}</p> : null}
+            {/* What the caller hands in: the message's own shape. An empty
+                list is said out loud - a query that takes nothing is a fact
+                about the query, not a gap in the reading. */}
+            {op.fields ? (
+              op.fields.length ? (
+                <dl className="mono mt-1 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 text-muted">
+                  {op.fields.map((field) => (
+                    <div key={field.name} className="contents">
+                      <dt className={field.deprecated ? "line-through" : undefined}>{field.name}</dt>
+                      <dd className="min-w-0 truncate">
+                        <span className="text-ink">{field.type}</span>
+                        {field.doc ? <span className="ml-2">{field.doc}</span> : null}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="mono mt-1 text-muted">takes nothing</p>
+              )
+            ) : null}
+            {runs.length ? (
+              <p className="mono mt-1 flex flex-wrap items-center gap-x-2 text-muted">
+                <span>runs in</span>
+                {runs.map(({ flow, stepId }) => (
+                  <Link
+                    key={flow.slug}
+                    to={paths.flowStep(flow.slug, stepId)}
+                    className="rounded-control hover:text-ink"
+                    title={flow.name}
+                  >
+                    {flow.slug}
+                  </Link>
+                ))}
+              </p>
+            ) : null}
             {op.exposedBy?.length ? (
               <p className="mono mt-1 flex flex-wrap items-center gap-x-2 text-muted">
                 <span>exposed by</span>
@@ -328,7 +377,8 @@ function OperationList({
             ) : null}
           </div>
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }
@@ -593,7 +643,7 @@ export function AggregatePage() {
               {commands.length === 0 ? (
                 <Empty>{aggregate.kind === "model-group" ? "no application commands discovered" : "nothing changes this aggregate from outside"}</Empty>
               ) : null}
-              <OperationList kind="command" operations={commands} service={service} />
+              <OperationList kind="command" operations={commands} service={service} aggregate={aggregate} />
             </div>
             <div id={AGGREGATE_ANCHOR.queries}>
               <SectionTitle
@@ -609,7 +659,7 @@ export function AggregatePage() {
               {queries.length === 0 ? (
                 <Empty>{aggregate.kind === "model-group" ? "no application queries discovered" : "nothing reads this aggregate by name"}</Empty>
               ) : null}
-              <OperationList kind="query" operations={queries} service={service} />
+              <OperationList kind="query" operations={queries} service={service} aggregate={aggregate} />
             </div>
           </div>
 

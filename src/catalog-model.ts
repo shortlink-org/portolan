@@ -660,6 +660,15 @@ export interface Operation {
    * estate can only reach from inside, which is sometimes exactly the point.
    */
   exposedBy?: string[];
+  /**
+   * What the caller hands in: the command's or query's own shape, as the
+   * message class declares it - the fields of `CreateCourseCommand`. Absent
+   * when the extractor does not read messages; empty is a message that
+   * carries nothing, `FindCoursesCounterQuery`.
+   */
+  fields?: Field[];
+  /** Where the handler is, `path:line`, for the reader who wants the code. */
+  source?: string;
 }
 
 /**

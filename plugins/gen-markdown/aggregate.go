@@ -32,7 +32,7 @@ func (s *site) renderAggregate(svc *catalog.Service, agg *catalog.Aggregate) {
 	section(&b, "Value objects", s.blocks(self, agg.ValueObjects, ""))
 	section(&b, "Enums", s.enums(agg.Enums))
 	section(&b, "Lifecycle", s.lifecycle(self, svc, agg))
-	section(&b, "Operations", s.operationsTable(agg))
+	section(&b, "Operations", s.operationsTable(self, svc, agg))
 	section(&b, "Events", s.eventsBlock(self, svc, agg))
 
 	s.b.file(self, b.String())
@@ -195,7 +195,7 @@ func (s *site) blocks(from string, blocks []catalog.Block, root string) string {
 	return b.String()
 }
 
-func (s *site) operationsTable(agg *catalog.Aggregate) string {
+func (s *site) operationsTable(from string, svc *catalog.Service, agg *catalog.Aggregate) string {
 	// Whether this service records what exposes an operation at all. A catalog
 	// written before anything read a transport layer says nothing either way,
 	// and printing "internal" from that silence would be inventing.
@@ -203,6 +203,18 @@ func (s *site) operationsTable(agg *catalog.Aggregate) string {
 	for i := range agg.Operations {
 		if len(agg.Operations[i].ExposedBy) > 0 {
 			recorded = true
+
+			break
+		}
+	}
+
+	// Whether any operation says what it takes in or where it is. The two
+	// columns appear only then, so a catalog read by an extractor that
+	// stops at the name keeps the table it had.
+	shaped := false
+	for i := range agg.Operations {
+		if agg.Operations[i].Fields != nil || agg.Operations[i].Source != "" {
+			shaped = true
 
 			break
 		}
@@ -224,10 +236,23 @@ func (s *site) operationsTable(agg *catalog.Aggregate) string {
 			exposed = "*internal*"
 		}
 
-		rows = append(rows, []string{code(op.ID), string(op.Kind), exposed, op.Doc})
+		row := []string{code(op.ID), string(op.Kind), exposed, op.Doc}
+		if shaped {
+			input := make([]string, 0, len(op.Fields))
+			for _, field := range op.Fields {
+				input = append(input, code(field.Name+": "+field.Type))
+			}
+			row = append(row, strings.Join(input, ", "), s.source(from, op.Source, svc))
+		}
+		rows = append(rows, row)
 	}
 
-	return table([]string{"Operation", "Kind", "Exposed by", "Doc"}, rows)
+	header := []string{"Operation", "Kind", "Exposed by", "Doc"}
+	if shaped {
+		header = append(header, "Input", "Source")
+	}
+
+	return table(header, rows)
 }
 
 // eventsBlock renders every version of every event, oldest first.

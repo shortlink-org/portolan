@@ -11,6 +11,8 @@
 //! `subscribedTo()` which event classes it reacts to; `DomainEvent::class`
 //! there means every one.
 
+use crate::catalog::Field;
+use crate::domain::fields_of;
 use crate::ids::short;
 use crate::source::{ClassInfo, ClassKind, SourceFile, Tree, Val, summary};
 
@@ -23,8 +25,12 @@ pub struct Operation<'a> {
     pub doc: String,
     /// The command or query class, by full name.
     pub message: String,
+    /// The message's shape: its constructor parameters, as declared.
+    pub fields: Vec<Field>,
     pub handler: &'a ClassInfo,
     pub file: &'a SourceFile,
+    /// The line of the handler's `__invoke`.
+    pub line: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -73,13 +79,16 @@ pub fn operations(tree: &Tree) -> Vec<Operation<'_>> {
         if doc.is_empty() {
             doc = tree.class(&message).map(|c| summary(&c.doc)).unwrap_or_default();
         }
+        let fields = tree.class(&message).map(fields_of).unwrap_or_default();
         out.push(Operation {
             id,
             kind: kind.into(),
             doc,
             message,
+            fields,
             handler: class,
             file,
+            line: invoke.line,
         });
     }
     out
@@ -117,7 +126,7 @@ mod tests {
     #[test]
     fn names_operations_after_their_messages_and_reads_subscriptions() {
         let tree = Tree::from_sources(&[
-            ("src/Mooc/Courses/Application/Create/CreateCourseCommand.php", "<?php\nnamespace A\\Mooc\\Courses\\Application\\Create;\nfinal class CreateCourseCommand implements Command {}\n"),
+            ("src/Mooc/Courses/Application/Create/CreateCourseCommand.php", "<?php\nnamespace A\\Mooc\\Courses\\Application\\Create;\nfinal class CreateCourseCommand implements Command { public function __construct(private string $id, private string $name) {} }\n"),
             ("src/Mooc/Courses/Application/Create/CourseCreator.php", "<?php\nnamespace A\\Mooc\\Courses\\Application\\Create;\n/** Turns a name and a duration into a course. */\nfinal class CourseCreator {}\n"),
             (
                 "src/Mooc/Courses/Application/Create/CreateCourseCommandHandler.php",
@@ -138,6 +147,8 @@ mod tests {
         ]);
         let ops = operations(&tree);
         assert_eq!(ops.iter().map(|o| format!("{} {} {}", o.kind, o.id, o.doc)).collect::<Vec<_>>(), ["command CreateCourse Turns a name and a duration into a course.", "query FindCourse One course by id."]);
+        assert_eq!(ops[0].fields.iter().map(|f| format!("{}:{}", f.name, f.type_)).collect::<Vec<_>>(), ["id:string", "name:string"]);
+        assert!(ops[0].line > 0, "the handler's __invoke line");
         let subs = subscribers(&tree);
         assert_eq!(subs.iter().map(|s| format!("{} -> {}", s.class.name, s.events.join(","))).collect::<Vec<_>>(), [
             "CreateBackofficeCourseOnCourseCreated -> A\\Mooc\\Courses\\Domain\\CourseCreatedDomainEvent",

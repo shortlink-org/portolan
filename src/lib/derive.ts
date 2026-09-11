@@ -2,12 +2,14 @@
 // so every number a Phase 2 page shows can be asserted in a test.
 
 import type {
+  Aggregate,
   Block,
   BoundedContext,
   Catalog,
   Event,
   Field,
   Flow,
+  Operation,
   Service,
   Step,
 } from "../catalog";
@@ -183,6 +185,37 @@ export interface StepRef {
   flow: Flow;
   stepId: string;
   number: number;
+}
+
+/**
+ * The flows in which an operation runs: one whose step carries the
+ * operation's own ref, `<aggregate id>/<operation id>` - a call across a
+ * boundary - or whose incoming rpc step is a method the operation says
+ * exposes it. Each flow once, at its first such step.
+ */
+export function flowsRunning(
+  catalog: Catalog,
+  service: Service,
+  aggregate: Aggregate,
+  operation: Operation,
+): StepRef[] {
+  const own = `${aggregate.id}/${operation.id}`;
+  const methods = new Set(
+    (operation.exposedBy ?? []).flatMap((method) =>
+      service.provides.map((provided) => `${provided.id}/${method}`),
+    ),
+  );
+  const out: StepRef[] = [];
+  for (const flow of catalog.flows) {
+    const steps = walkSteps(flow.steps);
+    const i = steps.findIndex(
+      (step) =>
+        step.ref !== undefined &&
+        (step.ref === own || (step.kind === "rpc" && methods.has(step.ref))),
+    );
+    if (i >= 0) out.push({ flow, stepId: steps[i].id, number: i + 1 });
+  }
+  return out;
 }
 
 /** Every step across every flow that references an event, with its 1-based number. */

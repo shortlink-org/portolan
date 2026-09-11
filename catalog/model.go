@@ -544,6 +544,12 @@ type Operation struct {
 	// appear in RpcService.Methods. Empty means nothing outside the service can
 	// reach it, which is a fact worth having rather than a gap.
 	ExposedBy []string `json:"exposedBy,omitempty"`
+	// Fields is what the caller hands in: the command's or query's own shape
+	// as the message class declares it. Nil when the extractor does not read
+	// messages; an empty list is a message that carries nothing.
+	Fields []Field `json:"fields,omitempty"`
+	// Source is where the handler is, "path:line".
+	Source string `json:"source,omitempty"`
 }
 
 // Block is an entity or a value object. The two are told apart by the list

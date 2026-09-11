@@ -166,6 +166,20 @@ export function validateCatalog(catalog: Catalog): Catalog {
     ),
   );
   const storeIds = new Set(allStores(catalog).map((store) => store.id));
+  // `<service>|<aggregate id>/<operation id>`: what a `call` step into a
+  // service may name - the use case it runs, when the flow crosses a
+  // boundary the transport does not draw (an in-process command bus).
+  const operationRefs = new Set(
+    catalog.contexts.flatMap((context) =>
+      context.services.flatMap((service) =>
+        service.aggregates.flatMap((aggregate) =>
+          aggregate.operations.map(
+            (operation) => `${service.id}|${aggregate.id}/${operation.id}`,
+          ),
+        ),
+      ),
+    ),
+  );
 
   assertUniqueSlugs(
     catalog.contexts.map((c) => c.id),
@@ -385,6 +399,14 @@ export function validateCatalog(catalog: Catalog): Catalog {
               fail(
                 `operation "${operation.id}" of aggregate "${aggregate.id}" says it is exposed by "${method}", which no interface of service "${service.id}" declares`,
                 `aggregate ${aggregate.id} / operation ${operation.id}`,
+              );
+            }
+          }
+          for (const field of operation.fields ?? []) {
+            if (field.ref !== undefined && !(field.ref in catalog.defs)) {
+              fail(
+                `field "${field.name}" of operation "${operation.id}" of aggregate "${aggregate.id}" references unknown def "${field.ref}"`,
+                `aggregate ${aggregate.id} / operation ${operation.id} / field ${field.name}`,
               );
             }
           }
@@ -644,10 +666,12 @@ export function validateCatalog(catalog: Catalog): Catalog {
           eventIds.has(step.ref) ||
           rpcIds.has(step.ref) ||
           (step.kind === "rpc" &&
-            providedRpcRefs.has(`${step.to}|${step.ref}`));
+            providedRpcRefs.has(`${step.to}|${step.ref}`)) ||
+          (step.kind === "call" &&
+            operationRefs.has(`${step.to}|${step.ref}`));
         if (!resolves) {
           fail(
-            `flow "${flow.slug}" step "${step.id}": ref "${step.ref}" resolves to neither an Event, an RpcCall nor a method provided by "${step.to}", and status is "${step.status}" rather than "unresolved"`,
+            `flow "${flow.slug}" step "${step.id}": ref "${step.ref}" resolves to neither an Event, an RpcCall, a method provided by "${step.to}" nor an operation of "${step.to}", and status is "${step.status}" rather than "unresolved"`,
             `flow ${flow.id} / step ${step.id}`,
           );
         }

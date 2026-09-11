@@ -135,7 +135,20 @@
                 {
                   "id": "authenticate-user",
                   "kind": "command",
-                  "doc": ""
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "username",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "password",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Auth/Application/Authenticate/AuthenticateUserCommandHandler.php:15"
                 }
               ],
               "events": []
@@ -176,12 +189,45 @@
                 {
                   "id": "search-all-backoffice-courses",
                   "kind": "query",
-                  "doc": ""
+                  "doc": "",
+                  "fields": [],
+                  "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/SearchAll/SearchAllBackofficeCoursesQueryHandler.php:14"
                 },
                 {
                   "id": "search-backoffice-courses-by-criteria",
                   "kind": "query",
-                  "doc": ""
+                  "doc": "",
+                  "exposedBy": [
+                    "courses_get"
+                  ],
+                  "fields": [
+                    {
+                      "name": "filters",
+                      "type": "array",
+                      "doc": ""
+                    },
+                    {
+                      "name": "orderBy",
+                      "type": "?string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order",
+                      "type": "?string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "limit",
+                      "type": "?int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "offset",
+                      "type": "?int",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/SearchByCriteria/SearchBackofficeCoursesByCriteriaQueryHandler.php:16"
                 }
               ],
               "events": []
@@ -434,7 +480,28 @@
                 {
                   "id": "create-course",
                   "kind": "command",
-                  "doc": ""
+                  "doc": "",
+                  "exposedBy": [
+                    "courses_put"
+                  ],
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Create/CreateCourseCommandHandler.php:16"
                 }
               ],
               "events": [
@@ -548,7 +615,12 @@
                 {
                   "id": "find-courses-counter",
                   "kind": "query",
-                  "doc": ""
+                  "doc": "",
+                  "exposedBy": [
+                    "courses_counter_get"
+                  ],
+                  "fields": [],
+                  "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Find/FindCoursesCounterQueryHandler.php:13"
                 }
               ],
               "events": [
@@ -842,12 +914,48 @@
                 {
                   "id": "create-video",
                   "kind": "command",
-                  "doc": ""
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "type",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "url",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "courseId",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Application/Create/CreateVideoCommandHandler.php:18"
                 },
                 {
                   "id": "find-video",
                   "kind": "query",
-                  "doc": ""
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Application/Find/FindVideoQueryHandler.php:21"
                 }
               ],
               "events": [
@@ -1025,6 +1133,7 @@
           "kind": "rpc",
           "label": "GET /courses",
           "status": "declared",
+          "ref": "backoffice.backend.courses/courses_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/courses.yaml:1"
         },
         {
@@ -1071,6 +1180,7 @@
           "kind": "rpc",
           "label": "GET /health-check",
           "status": "declared",
+          "ref": "backoffice.backend.health-check/health_check_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/health-check.yaml:1"
         }
       ]
@@ -1103,6 +1213,7 @@
           "kind": "rpc",
           "label": "GET /metrics",
           "status": "declared",
+          "ref": "backoffice.backend.metrics/metrics_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/metrics.yaml:1"
         }
       ]
@@ -1135,6 +1246,7 @@
           "kind": "rpc",
           "label": "GET /api/courses",
           "status": "declared",
+          "ref": "backoffice.frontend.api-courses/api_courses_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/api_courses.yaml:1"
         }
       ]
@@ -1177,6 +1289,7 @@
           "kind": "rpc",
           "label": "GET /courses",
           "status": "declared",
+          "ref": "backoffice.frontend.courses/courses_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml:1"
         },
         {
@@ -1187,6 +1300,7 @@
           "kind": "call",
           "label": "ask FindCoursesCounter",
           "status": "declared",
+          "ref": "mooc.backend.courses-counter/find-courses-counter",
           "note": "In process: the application loads Mooc's code and runs the handler itself over an in-memory query bus.",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/src/Controller/Courses/CoursesGetWebController.php:16"
         },
@@ -1250,6 +1364,7 @@
           "kind": "rpc",
           "label": "POST /courses",
           "status": "declared",
+          "ref": "backoffice.frontend.courses/courses_post",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml:6"
         },
         {
@@ -1260,6 +1375,7 @@
           "kind": "call",
           "label": "dispatch CreateCourse",
           "status": "declared",
+          "ref": "mooc.backend.courses/create-course",
           "note": "In process: the application loads Mooc's code and runs the handler itself over an in-memory command bus.",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/src/Controller/Courses/CoursesPostWebController.php:17"
         },
@@ -1325,6 +1441,7 @@
           "kind": "rpc",
           "label": "GET /health-check",
           "status": "declared",
+          "ref": "backoffice.frontend.health-check/health_check_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/health-check.yaml:1"
         }
       ]
@@ -1357,6 +1474,7 @@
           "kind": "rpc",
           "label": "GET /",
           "status": "declared",
+          "ref": "backoffice.frontend.home/home_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/home.yaml:1"
         }
       ]
@@ -1389,6 +1507,7 @@
           "kind": "rpc",
           "label": "GET /metrics",
           "status": "declared",
+          "ref": "backoffice.frontend.metrics/metrics_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/metrics.yaml:1"
         }
       ]
@@ -1432,6 +1551,7 @@
           "kind": "rpc",
           "label": "PUT /courses/{id}",
           "status": "declared",
+          "ref": "mooc.backend.courses/courses_put",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses.yaml:1"
         },
         {
@@ -1501,6 +1621,7 @@
           "kind": "rpc",
           "label": "GET /courses-counter",
           "status": "declared",
+          "ref": "mooc.backend.courses-counter/courses_counter_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses_counter.yaml:1"
         },
         {
@@ -1547,6 +1668,7 @@
           "kind": "rpc",
           "label": "GET /health-check",
           "status": "declared",
+          "ref": "mooc.backend.health-check/health_check_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/health-check.yaml:1"
         }
       ]
@@ -1579,6 +1701,7 @@
           "kind": "rpc",
           "label": "GET /metrics",
           "status": "declared",
+          "ref": "mooc.backend.metrics/metrics_get",
           "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/metrics.yaml:1"
         }
       ]
