@@ -38,6 +38,7 @@ import {
   hasAsyncSpec,
 } from "../components/AsyncApiReference";
 import { ChannelRows } from "../components/ChannelRows";
+import { DocsLinks } from "../components/DocsLinks";
 import { DeploymentRows } from "../components/DeploymentRows";
 import { CommandRows } from "../components/CommandRows";
 import { ModuleSpec } from "../components/SourceDoc";
@@ -214,6 +215,7 @@ export function ServicePage() {
               open ↗
             </a>
           ) : null}
+          <DocsLinks name={service.name} />
           {/* Who to ask, read out of CODEOWNERS. A handle is copied rather
               than linked: it is what a reviewer types into a request, and a
               link to a team page is a page most readers cannot open. */}

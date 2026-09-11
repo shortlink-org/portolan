@@ -9,6 +9,7 @@ import { staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, EVENT_ANCHOR, LINKS_HERE, paths } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
+import { DocsLinks } from "../components/DocsLinks";
 import { ClassificationBadge } from "../components/primitives";
 import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
@@ -94,6 +95,7 @@ export function ContextPage() {
               </a>
             </>
           ) : null}
+          <DocsLinks name={context.name} />
         </div>
         {/* Who to ask about the whole domain, folded up from what its
             services' CODEOWNERS say - the context itself names nobody. The

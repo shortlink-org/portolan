@@ -38,6 +38,7 @@ import {
   siClickhouse,
   siClojure,
   siCloudflare,
+  siConfluence,
   siCockroachlabs,
   siConsul,
   siCouchbase,
@@ -110,6 +111,7 @@ import {
   siNginx,
   siNodedotjs,
   siNomad,
+  siNotion,
   siNpm,
   siOllama,
   siOpenapiinitiative,
@@ -348,6 +350,11 @@ export const TECH_MARKS: readonly TechMark[] = [
   mark(siGitlab, "GitLab CI"),
   mark(siJenkins),
   mark(siArgo, "Argo CD", "ArgoCD"),
+
+  // Where a team writes. Not read off a manifest; the marks are for the
+  // reader-side integrations that open the wiki from a page.
+  mark(siConfluence),
+  mark(siNotion),
 
   // Observability.
   mark(siOpentelemetry, "otel"),

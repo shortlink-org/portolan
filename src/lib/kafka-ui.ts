@@ -7,24 +7,13 @@
 // installation URL remains useful and opens Kafka UI without inventing a
 // cluster name.
 
-import { create } from "zustand";
 import type { Catalog, Channel } from "../catalog";
 import { walkSteps } from "../catalog";
+import { createIntegrationStore, normalizeIntegrationUrl } from "./integration-url";
 
 export const KAFKA_UI_KEY = "portolan.integrations.kafka-ui";
 
-export function normalizeKafkaUiUrl(value: string): string | null {
-  const clean = value.trim();
-  if (!clean) return "";
-  try {
-    const url = new URL(clean);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    url.hash = "";
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return null;
-  }
-}
+export const normalizeKafkaUiUrl = normalizeIntegrationUrl;
 
 /** Build Kafbat's topic route when the configured URL names a cluster. */
 export function kafkaUiTopicUrl(
@@ -71,35 +60,4 @@ export function isKafkaChannel(
     || handoffChannels.has(channel.address);
 }
 
-function read(): string {
-  try {
-    const value = localStorage.getItem(KAFKA_UI_KEY) ?? "";
-    return normalizeKafkaUiUrl(value) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function write(value: string): void {
-  try {
-    if (value) localStorage.setItem(KAFKA_UI_KEY, value);
-    else localStorage.removeItem(KAFKA_UI_KEY);
-  } catch {
-    /* private mode: keep the value for this session */
-  }
-}
-
-interface KafkaUiState {
-  url: string;
-  setUrl: (url: string) => void;
-}
-
-export const useKafkaUi = create<KafkaUiState>()((set) => ({
-  url: read(),
-  setUrl: (url) => {
-    const normalized = normalizeKafkaUiUrl(url);
-    if (normalized === null) return;
-    write(normalized);
-    set({ url: normalized });
-  },
-}));
+export const useKafkaUi = createIntegrationStore(KAFKA_UI_KEY);
