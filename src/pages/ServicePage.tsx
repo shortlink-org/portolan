@@ -38,6 +38,7 @@ import {
   hasAsyncSpec,
 } from "../components/AsyncApiReference";
 import { ChannelRows } from "../components/ChannelRows";
+import { DeploymentRows } from "../components/DeploymentRows";
 import { CommandRows } from "../components/CommandRows";
 import { ModuleSpec } from "../components/SourceDoc";
 import { hasSchema, SchemaDocument } from "../components/SchemaDocument";
@@ -119,6 +120,7 @@ export function ServicePage() {
   const flows = flowRoles(catalog, service.id);
   const tree = treeHref(service.path, service, allRepos(catalog));
   const owners = ownersOf(service);
+  const deployments = index.deploymentsByService.get(service.id) ?? [];
   // The service as a road: the pairs of contexts it stands between, if any.
   // Derived from the whole estate, so it is computed here and not carried
   // on the service, which knows only its own edges.
@@ -327,6 +329,22 @@ export function ServicePage() {
                   commands={commandsOf(service)}
                   service={service}
                 />
+              </section>
+            ) : null}
+            {/* Where it runs, read from the deployer's snapshot. Beside the
+                commands because it answers the next question after "how do
+                I build it": which commit stands where. Absent entirely when
+                no snapshot places it - a heading over an empty list would
+                claim the service runs nowhere, and nobody made that claim. */}
+            {deployments.length > 0 ? (
+              <section
+                id={SERVICE_ANCHOR.deployments}
+                className="mt-section max-w-table"
+              >
+                <SectionTitle anchor={SERVICE_ANCHOR.deployments}>
+                  Where it runs
+                </SectionTitle>
+                <DeploymentRows deployments={deployments} />
               </section>
             ) : null}
             {showDomain ? (

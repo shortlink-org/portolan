@@ -77,12 +77,20 @@
       "source": "GLOSSARY.md:44"
     },
     {
+      "id": "portolan.deployment",
+      "slug": "deployment",
+      "context": "portolan",
+      "name": "Deployment",
+      "definition": "One place a service runs, read from what deploys it: an Argo CD Application reduced to what a deploy changes - environment, cluster, namespace, the repository and directory it deploys from, the revision that stands there, the images. A list on the catalog, joined to a service by repository and directory; never a health or a sync state, which move without a commit.",
+      "source": "GLOSSARY.md:47"
+    },
+    {
       "id": "portolan.estate",
       "slug": "estate",
       "context": "portolan",
       "name": "Estate",
       "definition": "Everything the manifest's sources find, merged and validated as one: the whole a reader browses, dated from the sources that carry a stamp.",
-      "source": "GLOSSARY.md:47"
+      "source": "GLOSSARY.md:54"
     },
     {
       "id": "portolan.event",
@@ -90,7 +98,7 @@
       "context": "portolan",
       "name": "Event",
       "definition": "A fact in the past tense that an aggregate publishes, on a channel its service declares, with the shared definition of its payload in defs.",
-      "source": "GLOSSARY.md:50"
+      "source": "GLOSSARY.md:57"
     },
     {
       "id": "portolan.external",
@@ -98,7 +106,7 @@
       "context": "portolan",
       "name": "External",
       "definition": "A system outside the estate with a contract: what it answers on, read from the copy of its document vendored beside the adapter that calls it, and nothing else. Nobody in the estate provides it, so it sits at the root beside the contexts and has no aggregates and no repository.",
-      "source": "GLOSSARY.md:53"
+      "source": "GLOSSARY.md:60"
     },
     {
       "id": "portolan.extractor",
@@ -106,15 +114,15 @@
       "context": "portolan",
       "name": "Extractor",
       "definition": "A plugin that reads a tree or a specification and answers with a fragment. It runs before there is a merged catalog and is handed none.",
-      "source": "GLOSSARY.md:58"
+      "source": "GLOSSARY.md:65"
     },
     {
       "id": "portolan.fetcher",
       "slug": "fetcher",
       "context": "portolan",
       "name": "Fetcher",
-      "definition": "A plugin that brings a tree from elsewhere, a repository or a schema registry, into a cache against a lock, so a later build reproduces it without a socket. The cache is a tree the extractors read like any other.",
-      "source": "GLOSSARY.md:61"
+      "definition": "A plugin that brings something from elsewhere - a tree from a repository or a schema registry, a snapshot from a deployer - into a cache against a lock, so a later build reproduces it without a socket. A fetched tree is one the extractors read like any other; a fetched snapshot is a fragment the merge reads like any other.",
+      "source": "GLOSSARY.md:68"
     },
     {
       "id": "portolan.flow",
@@ -122,7 +130,7 @@
       "context": "portolan",
       "name": "Flow",
       "definition": "A walkthrough of steps between participants, owned by one context: derived from the code of one component, read from a `.flow.md` file, or overlaid by a verifier from a recorded trace.",
-      "source": "GLOSSARY.md:65"
+      "source": "GLOSSARY.md:74"
     },
     {
       "id": "portolan.fragment",
@@ -130,7 +138,7 @@
       "context": "portolan",
       "name": "Fragment",
       "definition": "A catalog written beside one service by one extractor, in the `portolan/` directory the sources glob finds. A fragment naming a peer it does not own is normal: referential integrity is a property of the union.",
-      "source": "GLOSSARY.md:69"
+      "source": "GLOSSARY.md:78"
     },
     {
       "id": "portolan.generator",
@@ -138,7 +146,7 @@
       "context": "portolan",
       "name": "Generator",
       "definition": "A plugin that reads the merged catalog and answers with files: markdown, Mermaid, Backstage entities. It names files and never writes them.",
-      "source": "GLOSSARY.md:73"
+      "source": "GLOSSARY.md:82"
     },
     {
       "id": "portolan.group",
@@ -146,7 +154,7 @@
       "context": "portolan",
       "name": "Group",
       "definition": "The neutral reading of a context whose kind is system, product, team or namespace. The wire and the code say context; the README and the setup wizard say group when the kind is neutral. Decided in portolan.0004.",
-      "source": "GLOSSARY.md:76"
+      "source": "GLOSSARY.md:85"
     },
     {
       "id": "portolan.hop",
@@ -154,7 +162,7 @@
       "context": "portolan",
       "name": "Hop",
       "definition": "One thing a step records: a call made, an rpc invoked or an event published, from one participant to another. Never a reply.",
-      "source": "GLOSSARY.md:80"
+      "source": "GLOSSARY.md:89"
     },
     {
       "id": "portolan.host",
@@ -162,7 +170,7 @@
       "context": "portolan",
       "name": "Host",
       "definition": "The side that runs the plugins, merges and validates the sources, stamps and writes the fragments and pages, and refuses a file name that climbs out of its output directory: `scripts/gen.mjs` and what it calls.",
-      "source": "GLOSSARY.md:83"
+      "source": "GLOSSARY.md:92"
     },
     {
       "id": "portolan.lifecycle",
@@ -170,7 +178,7 @@
       "context": "portolan",
       "name": "Lifecycle",
       "definition": "The states an aggregate root can be in and one move per edge, the method that makes it and the event it hands back, read off a table the code keeps and never off the branches of the methods. Terminal states are derived on the page and never written down.",
-      "source": "GLOSSARY.md:87"
+      "source": "GLOSSARY.md:96"
     },
     {
       "id": "portolan.manifest",
@@ -178,7 +186,7 @@
       "context": "portolan",
       "name": "Manifest",
       "definition": "`portolan.json`: where the facts come from, what produces them, and what turns them into something to read. Its schema is composed from what every declared plugin says it can be told.",
-      "source": "GLOSSARY.md:92"
+      "source": "GLOSSARY.md:101"
     },
     {
       "id": "portolan.module",
@@ -186,7 +194,7 @@
       "context": "portolan",
       "name": "Module",
       "definition": "A schema module the estate publishes or vendors, a proto module on the Buf Schema Registry or a subject in a Confluent registry. A module names its own owner; a service listing one it does not own reads it.",
-      "source": "GLOSSARY.md:96"
+      "source": "GLOSSARY.md:105"
     },
     {
       "id": "portolan.owner",
@@ -194,7 +202,7 @@
       "context": "portolan",
       "name": "Owner",
       "definition": "Who to ask about a service, read from CODEOWNERS by a verifier.",
-      "source": "GLOSSARY.md:100"
+      "source": "GLOSSARY.md:109"
     },
     {
       "id": "portolan.participant",
@@ -202,7 +210,7 @@
       "context": "portolan",
       "name": "Participant",
       "definition": "A lane in a flow: an actor, a service, a broker, a store, an external or an unknown. The order of participants is the order of lanes.",
-      "source": "GLOSSARY.md:102"
+      "source": "GLOSSARY.md:111"
     },
     {
       "id": "portolan.peer",
@@ -210,7 +218,7 @@
       "context": "portolan",
       "name": "Peer",
       "definition": "The service that answers for what a component calls, told to the extractor by the manifest because the generated client names the package and the operation and only the manifest knows whose it is. A package with no peer line is called as unknown.",
-      "source": "GLOSSARY.md:105"
+      "source": "GLOSSARY.md:114"
     },
     {
       "id": "portolan.phase",
@@ -218,7 +226,7 @@
       "context": "portolan",
       "name": "Phase",
       "definition": "One of the three passes the host makes over the manifest: extract, verify, generate. Each phase's steps run after the previous phase's files are on disk.",
-      "source": "GLOSSARY.md:110"
+      "source": "GLOSSARY.md:119"
     },
     {
       "id": "portolan.pin",
@@ -226,7 +234,7 @@
       "context": "portolan",
       "name": "Pin",
       "definition": "A reader's own answer to where they keep coming back to: a kind and a catalog id, kept in the browser, resolved against the catalog at render time and going quiet when the build no longer has the thing.",
-      "source": "GLOSSARY.md:114"
+      "source": "GLOSSARY.md:123"
     },
     {
       "id": "portolan.plugin",
@@ -234,7 +242,7 @@
       "context": "portolan",
       "name": "Plugin",
       "definition": "A program that takes one JSON message on stdin and answers with one on stdout, run as a process or as a wasm module, in whichever language it was written. An extractor, a verifier, a generator or a fetcher.",
-      "source": "GLOSSARY.md:118"
+      "source": "GLOSSARY.md:127"
     },
     {
       "id": "portolan.problem",
@@ -242,7 +250,7 @@
       "context": "portolan",
       "name": "Problem",
       "definition": "An edge that leaves the chart: a call nobody answers, a channel with a second publisher, a column whose lineage crosses a service boundary. Listed on the Problems page, errors first.",
-      "source": "GLOSSARY.md:122"
+      "source": "GLOSSARY.md:131"
     },
     {
       "id": "portolan.project",
@@ -250,7 +258,7 @@
       "context": "portolan",
       "name": "Project",
       "definition": "A named source root in the manifest, so the pipeline inputs that belong to one repository have one name on the Settings page.",
-      "source": "GLOSSARY.md:126"
+      "source": "GLOSSARY.md:135"
     },
     {
       "id": "portolan.repository-pin",
@@ -258,7 +266,7 @@
       "context": "portolan",
       "name": "Repository pin",
       "definition": "A repository the estate was read at and the commit it was read at, so a source path in another repository is still a link. A fact about the estate, not a field on a service.",
-      "source": "GLOSSARY.md:129"
+      "source": "GLOSSARY.md:138"
     },
     {
       "id": "portolan.service",
@@ -266,7 +274,7 @@
       "context": "portolan",
       "name": "Service",
       "definition": "What a context owns: a repository path, what it provides and consumes, its aggregates, the stores and modules it touches. Its kind says what it is when it is not a service in the domain sense; see component.",
-      "source": "GLOSSARY.md:133"
+      "source": "GLOSSARY.md:142"
     },
     {
       "id": "portolan.source",
@@ -274,7 +282,7 @@
       "context": "portolan",
       "name": "Source",
       "definition": "A file the manifest's sources globs find: a fragment an extractor wrote, a hand-written file in `data/`, a fetched repository's pin.",
-      "source": "GLOSSARY.md:137"
+      "source": "GLOSSARY.md:146"
     },
     {
       "id": "portolan.stamp",
@@ -282,7 +290,7 @@
       "context": "portolan",
       "name": "Stamp",
       "definition": "The commit and date the host writes onto a fragment: the last commit that touched the input it was read from, never a clock a plugin read. Decided in portolan.0002.",
-      "source": "GLOSSARY.md:140"
+      "source": "GLOSSARY.md:149"
     },
     {
       "id": "portolan.status",
@@ -290,7 +298,7 @@
       "context": "portolan",
       "name": "Status",
       "definition": "Whether the estate stands behind a fact: verified, declared or unresolved, best first.",
-      "source": "GLOSSARY.md:144"
+      "source": "GLOSSARY.md:153"
     },
     {
       "id": "portolan.step",
@@ -298,7 +306,7 @@
       "context": "portolan",
       "name": "Step",
       "definition": "One move in a flow: from a participant to a participant, an rpc, an event or a call, carrying a status. The manifest borrows the word for one plugin run on one input, and the host keys the files it wrote by that; the two meanings never meet in one file.",
-      "source": "GLOSSARY.md:147"
+      "source": "GLOSSARY.md:156"
     },
     {
       "id": "portolan.store",
@@ -306,7 +314,7 @@
       "context": "portolan",
       "name": "Store",
       "definition": "Where a service keeps state: a database with its tables, views, keys and column lineage, naming its own owner. A service that lists a store it does not own reads it.",
-      "source": "GLOSSARY.md:152"
+      "source": "GLOSSARY.md:161"
     },
     {
       "id": "portolan.term",
@@ -314,7 +322,7 @@
       "context": "portolan",
       "name": "Term",
       "definition": "One entry of a context's glossary, read out of its `GLOSSARY.md`: the word and what it means, carried through as written.",
-      "source": "GLOSSARY.md:156"
+      "source": "GLOSSARY.md:165"
     },
     {
       "id": "portolan.trail",
@@ -322,7 +330,7 @@
       "context": "portolan",
       "name": "Trail",
       "definition": "The pages a reader has been to, most recent first, kept in the browser.",
-      "source": "GLOSSARY.md:159"
+      "source": "GLOSSARY.md:168"
     },
     {
       "id": "portolan.unknown",
@@ -330,7 +338,7 @@
       "context": "portolan",
       "name": "Unknown",
       "definition": "A participant a flow names that the catalog has no service for: drawn as unknown and its steps left unresolved, never dropped.",
-      "source": "GLOSSARY.md:162"
+      "source": "GLOSSARY.md:171"
     },
     {
       "id": "portolan.unresolved",
@@ -338,7 +346,7 @@
       "context": "portolan",
       "name": "Unresolved",
       "definition": "The status of a reference nothing in the catalog answers: a call to a method no service provides, an event nobody publishes.",
-      "source": "GLOSSARY.md:165"
+      "source": "GLOSSARY.md:174"
     },
     {
       "id": "portolan.verified",
@@ -346,7 +354,7 @@
       "context": "portolan",
       "name": "Verified",
       "definition": "The status of a fact a recorded trace showed happening.",
-      "source": "GLOSSARY.md:168"
+      "source": "GLOSSARY.md:177"
     },
     {
       "id": "portolan.verifier",
@@ -354,7 +362,7 @@
       "context": "portolan",
       "name": "Verifier",
       "definition": "A plugin that reads evidence, traces or CODEOWNERS, and overlays what it found on the merged catalog: a status, an owner.",
-      "source": "GLOSSARY.md:170"
+      "source": "GLOSSARY.md:179"
     },
     {
       "id": "portolan.wire-format",
@@ -362,7 +370,7 @@
       "context": "portolan",
       "name": "Wire format",
       "definition": "The JSON keys as a fragment spells them. `contexts` and `services` are kept as they were so an old catalog loads; a kind on either says how to read the node. Decided in portolan.0004.",
-      "source": "GLOSSARY.md:173"
+      "source": "GLOSSARY.md:182"
     }
   ]
 }

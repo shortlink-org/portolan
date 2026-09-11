@@ -1,0 +1,59 @@
+{
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "deployments": [
+    {
+      "id": "argocd/shop-cart",
+      "name": "shop-cart",
+      "project": "shop",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "shop",
+      "repo": "github.com/shortlink-org/portolan",
+      "path": "examples/shop/cart/deploy/k8s",
+      "targetRevision": "main",
+      "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
+      "tool": "directory",
+      "url": "https://argocd.example.com/applications/argocd/shop-cart",
+      "images": [
+        "ghcr.io/shortlink-org/cart:1.4.2"
+      ]
+    },
+    {
+      "id": "argocd/shop-cart-staging",
+      "name": "shop-cart-staging",
+      "project": "shop",
+      "environment": "staging",
+      "cluster": "staging-eu",
+      "namespace": "shop",
+      "repo": "github.com/shortlink-org/portolan",
+      "path": "examples/shop/cart/deploy/k8s",
+      "targetRevision": "main",
+      "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
+      "tool": "directory",
+      "url": "https://argocd.example.com/applications/argocd/shop-cart-staging",
+      "images": [
+        "ghcr.io/shortlink-org/cart:1.4.2"
+      ]
+    },
+    {
+      "id": "argocd/shop-pricing",
+      "name": "shop-pricing",
+      "project": "shop",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "shop",
+      "repo": "github.com/shortlink-org/portolan",
+      "path": "examples/shop/pricing/deploy/k8s",
+      "targetRevision": "main",
+      "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
+      "tool": "directory",
+      "url": "https://argocd.example.com/applications/argocd/shop-pricing",
+      "images": [
+        "ghcr.io/shortlink-org/pricing:1.4.2"
+      ]
+    }
+  ]
+}

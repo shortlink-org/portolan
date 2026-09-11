@@ -6,6 +6,7 @@ import type {
   BoundedContext,
   Catalog,
   Column,
+  Deployment,
   Enum,
   Event,
   External,
@@ -21,12 +22,14 @@ import type {
   View,
 } from "./catalog-model.ts";
 import {
+  allDeployments,
   allExternals,
   allModules,
   allStores,
   allTerms,
   aggregateBlocks,
   columnId,
+  deploys,
   enumsOf,
   storeViews,
   viewReads,
@@ -140,6 +143,14 @@ export interface CatalogIndex {
   lineageInto: Map<string, string[]>;
   /** service id -> stores it owns, in catalog order */
   storesOwnedBy: Map<string, Store[]>;
+  /**
+   * service id -> where it runs, in snapshot order.
+   *
+   * Joined here rather than written by the fetcher, which reads a control
+   * plane and knows no service: an Application is this service's when it
+   * deploys from the service's repository, inside the service's directory.
+   */
+  deploymentsByService: Map<string, Deployment[]>;
   /** aggregate id -> tables naming it in `persists`, in catalog order */
   tablesByAggregate: Map<string, Table[]>;
   /** aggregate id -> views naming it in `persists`, in catalog order */
@@ -323,6 +334,19 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     }
   }
 
+  // Deployments come after the services because the join runs over them: a
+  // row is placed on every service whose repository and directory it deploys
+  // from, and on none when nobody in the estate claims that repository.
+  const deploymentsByService = new Map<string, Deployment[]>();
+  for (const deployment of allDeployments(catalog)) {
+    for (const service of serviceById.values()) {
+      if (!deploys(deployment, service)) continue;
+      const placed = deploymentsByService.get(service.id) ?? [];
+      placed.push(deployment);
+      deploymentsByService.set(service.id, placed);
+    }
+  }
+
   // Stores come after the domain tree because they point into it: a table says
   // which aggregate it persists, and a column which block it maps to, so both
   // are resolved against maps that are already full.
@@ -467,6 +491,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     lineageFrom,
     lineageInto,
     storesOwnedBy,
+    deploymentsByService,
     moduleById,
     moduleBySlug,
     interfacesByModule,

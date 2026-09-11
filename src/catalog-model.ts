@@ -45,6 +45,13 @@ export interface Catalog {
    */
   repos?: RepoPin[];
   /**
+   * Where the estate's services run, read from what deploys them. Optional
+   * in the file and never optional downstream, exactly like `repos`: an
+   * estate nobody has pointed at a deployer renders as it did before there
+   * was anything to place.
+   */
+  deployments?: Deployment[];
+  /**
    * The systems outside the estate that a service calls on a contract: a
    * payment provider, a tax API, a carrier. Nobody here builds one, so it has
    * no context, no aggregates and no repository - only the interfaces it
@@ -488,6 +495,56 @@ export interface RepoPin {
   repo: string;
   /** The commit the copy was made of. Full sha: it is not resolved locally, so there is nothing to expand it against. */
   commit: string;
+}
+
+/**
+ * One place a service runs: an Argo CD Application, as the deployer listed
+ * it, reduced to what a deploy changes.
+ *
+ * A list on the catalog rather than a field on `Service`, for two reasons.
+ * The fetcher that writes it reads a control plane, not a service's tree, so
+ * it does not know which service an Application is; the join is made where
+ * the whole estate is known, by the repository and path the Application
+ * deploys from against the ones a service says it lives at. And one service
+ * stands in several places - staging, production, a second region - and
+ * each is its own row.
+ *
+ * Nothing here moves without a deploy. Health, sync state and the time of
+ * the last operation move on their own, and a page regenerated from the
+ * tree cannot follow them; they are not kept.
+ */
+export interface Deployment {
+  /** `<argocd namespace>/<application name>`: unique per control plane. */
+  id: string;
+  /** The Application's name, as `argocd app get` takes it. */
+  name: string;
+  /** The Argo CD project it belongs to. */
+  project: string;
+  /**
+   * Where a reader would say it runs: the application's environment label,
+   * else the cluster it deploys to. What the page groups by.
+   */
+  environment: string;
+  /** The destination cluster, by its Argo CD name; `in-cluster` for the one Argo CD runs in. */
+  cluster: string;
+  /** The destination namespace. */
+  namespace: string;
+  /** The repository it deploys from, spelled the way `Service.repo` spells it. Empty for a chart from a registry. */
+  repo: string;
+  /** The directory in that repository the manifests are read from, as a reader would type it. Empty for a chart. */
+  path: string;
+  /** The Helm chart name, when the source is a chart registry rather than a repository. */
+  chart?: string;
+  /** What the Application tracks: a branch, a tag, a chart version. */
+  targetRevision: string;
+  /** What is deployed now: the commit, or chart version, the last sync resolved `targetRevision` to. */
+  revision: string;
+  /** `helm`, `kustomize`, `directory` or `plugin`, as Argo CD says it; empty until it has said. */
+  tool: string;
+  /** The Application in the Argo CD UI. */
+  url: string;
+  /** The container images the deployed resources run, as the deployer summarised them, sorted. */
+  images?: string[];
 }
 export interface Aggregate {
   id: string;
@@ -1290,6 +1347,32 @@ export function allTerms(catalog: Catalog): Term[] {
 /** Every repository the estate was read at. Absent means none, exactly as with modules. */
 export function allRepos(catalog: Catalog): RepoPin[] {
   return catalog.repos ?? [];
+}
+
+/** Every place a service runs. Absent means none, exactly as with repos. */
+export function allDeployments(catalog: Catalog): Deployment[] {
+  return catalog.deployments ?? [];
+}
+
+/**
+ * Whether a deployment is of this service: the same repository, and the
+ * manifests read from inside the service's directory - or from anywhere in
+ * the repository when the service is the whole of it. An Application that
+ * deploys a repository nobody in the estate claims matches nothing, and is
+ * a fact for the Problems page rather than for a guess.
+ */
+export function deploys(deployment: Deployment, service: Service): boolean {
+  if (!deployment.repo || deployment.repo !== service.repo) return false;
+  const root = service.path.replace(/^\/+|\/+$/g, "");
+  if (!root) return true;
+  return deployment.path === root || deployment.path.startsWith(`${root}/`);
+}
+
+/** Where this service runs, in catalog order: the snapshot's, which is by id. */
+export function deploymentsOf(catalog: Catalog, service: Service): Deployment[] {
+  return allDeployments(catalog).filter((deployment) =>
+    deploys(deployment, service),
+  );
 }
 
 /** Who to ask about a service, without the caller having to know the field is optional. */

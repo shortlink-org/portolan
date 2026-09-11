@@ -27,6 +27,13 @@ func TestRoundTrip(t *testing.T) {
 	if len(files) == 0 {
 		t.Fatal("no catalogs under ../data - this test proves nothing without one")
 	}
+	// The snapshot a fetcher wrote is a catalog too, and the one place the
+	// deployments field is exercised by a real file.
+	snapshots, err := filepath.Glob("../examples/argocd/argocd.apps.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files = append(files, snapshots...)
 
 	for _, path := range files {
 		t.Run(filepath.Base(path), func(t *testing.T) {

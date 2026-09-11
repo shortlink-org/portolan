@@ -2288,6 +2288,64 @@
     }
   },
   {
+    "name": "argocd",
+    "plugin": "fetch-argocd",
+    "summary": "Reads the applications an Argo CD server manages into a snapshot of where each service runs - cluster, namespace, revision, images - with a lock beside it.",
+    "category": "sources",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "host",
+    "source": "scripts/host-plugins/fetch-argocd.mjs",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server",
+        "cache"
+      ],
+      "properties": {
+        "server": {
+          "type": "string",
+          "description": "The Argo CD API server: a host, or a URL when it is not https. The token comes from ARGOCD_AUTH_TOKEN, never from here.",
+          "examples": [
+            "argocd.example.com"
+          ]
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Argo CD projects to read applications from. Left out, every application the token can list.",
+          "examples": [
+            [
+              "shop",
+              "platform"
+            ]
+          ]
+        },
+        "selector": {
+          "type": "string",
+          "description": "A label selector narrowing the applications, as `argocd app list -l` takes one.",
+          "examples": [
+            "team=shop"
+          ]
+        },
+        "environmentLabel": {
+          "type": "string",
+          "default": "env",
+          "description": "The application label that names the environment. An application without it is placed by the cluster it deploys to."
+        },
+        "cache": {
+          "type": "string",
+          "description": "Where the last run's snapshot was written, repo-relative: the same path as the step's out. An offline run replays what is there and checks it against the lock beside it."
+        }
+      }
+    }
+  },
+  {
     "name": "csr-schemas",
     "plugin": "extract-csr",
     "summary": "Reads schemas vendored out of a Confluent Schema Registry and answers with the topics they are registered against and the shapes they declare.",

@@ -45,6 +45,7 @@ const RULES = [
   rule("store.missing-foreign-table", /\bcolumn .+ references .+ which no migration here creates\b/i, "warning", "Include the referenced table migration or correct the foreign-key target."),
   rule("schema.unresolved-type", /\bis not declared in the protos read here\b/i, "warning", "Include the imported protobuf declaration or map the type to an external schema."),
   rule("source.offline-cache", /\bnot fetched \(offline\)/i, "info", "Regenerate with network access when the vendored copy must be refreshed."),
+  rule("source.unreachable", /\bnot fetched \((?!offline\))/i, "warning", "The far end could not be reached and the committed copy was used; check the server and the credential, then regenerate."),
   rule("source.unpinned", /\bnot pinned\b/i, "warning", "Pin the source to an immutable commit or schema version."),
   rule("source.parse-failed", /\bcould not (?:be read|parse|be parsed|be encoded)\b/i, "error", "Open the referenced source and fix the parse or read error."),
   rule("extraction.no-match", /\b(?:no .+ (?:was|were) found|no .+ matched|declares no |no models in this application)\b/i, "info", "Confirm this capability is absent, or point the extractor at the source that declares it."),

@@ -273,3 +273,9 @@ Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob
 | `make gen` | Regenerate the gRPC stubs from the vendored protos | `buf generate $(GRPC)/quote/proto -o $(GRPC)/quote/gen …` | [`examples/shop/pricing/Makefile:6`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L6) |
 | `make build` | Compile every package | `go build ./...` | [`examples/shop/pricing/Makefile:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L11) |
 | `make test` | Run the unit tests | `go test ./...` | [`examples/shop/pricing/Makefile:15`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L15) |
+
+## Where it runs
+
+| Environment | Where | Revision | Tracks | Tool | Images | Application |
+| --- | --- | --- | --- | --- | --- | --- |
+| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | directory | `ghcr.io/shortlink-org/pricing:1.4.2` | [shop-pricing](https://argocd.example.com/applications/argocd/shop-pricing) |

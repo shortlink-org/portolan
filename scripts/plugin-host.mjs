@@ -90,7 +90,7 @@ export async function runPlugin(plugin, request, requestedLimits = {}, access = 
 // can be named, so a manifest cannot point the host at arbitrary code.
 // ---------------------------------------------------------------------------
 
-const HOST_PLUGINS = new Set(["fetch-git", "fetch-bsr", "fetch-csr", "fetch-k8s"]);
+const HOST_PLUGINS = new Set(["fetch-git", "fetch-bsr", "fetch-csr", "fetch-k8s", "fetch-argocd"]);
 
 async function runHost(plugin, request) {
   const name = String(plugin.host);

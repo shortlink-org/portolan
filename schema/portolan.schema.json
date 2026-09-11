@@ -102,6 +102,7 @@
               "git",
               "csr",
               "k8s-cluster",
+              "argocd",
               "csr-schemas",
               "proto"
             ],
@@ -698,6 +699,25 @@
               ],
               "properties": {
                 "plugin": {
+                  "const": "argocd"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.argocd"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
                   "const": "csr-schemas"
                 }
               }
@@ -1096,7 +1116,8 @@
             "fetch-git",
             "fetch-bsr",
             "fetch-csr",
-            "fetch-k8s"
+            "fetch-k8s",
+            "fetch-argocd"
           ],
           "description": "A plugin the host runs inside its own process, because it needs a socket or a git binary (portolan.0008). Only the ones shipped with Portolan can be named."
         },
@@ -3033,6 +3054,53 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "k8s-cluster.json"
+        }
+      }
+    },
+    "options.argocd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server",
+        "cache"
+      ],
+      "properties": {
+        "server": {
+          "type": "string",
+          "description": "The Argo CD API server: a host, or a URL when it is not https. The token comes from ARGOCD_AUTH_TOKEN, never from here.",
+          "examples": [
+            "argocd.example.com"
+          ]
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Argo CD projects to read applications from. Left out, every application the token can list.",
+          "examples": [
+            [
+              "shop",
+              "platform"
+            ]
+          ]
+        },
+        "selector": {
+          "type": "string",
+          "description": "A label selector narrowing the applications, as `argocd app list -l` takes one.",
+          "examples": [
+            "team=shop"
+          ]
+        },
+        "environmentLabel": {
+          "type": "string",
+          "default": "env",
+          "description": "The application label that names the environment. An application without it is placed by the cluster it deploys to."
+        },
+        "cache": {
+          "type": "string",
+          "description": "Where the last run's snapshot was written, repo-relative: the same path as the step's out. An offline run replays what is there and checks it against the lock beside it."
         }
       }
     },

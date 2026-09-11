@@ -78,6 +78,7 @@ export const SOURCE_GLOBS = [
   "examples/*/*/*/portolan/*.json",
   "vendor/repos/*/*/git.repo.json",
   "vendor/repos/**/portolan/*.json",
+  "examples/argocd/argocd.apps.json",
 ] as const;
 
 const modules: Record<string, unknown> = {
@@ -100,6 +101,10 @@ const modules: Record<string, unknown> = {
     import: "default",
   }),
   ...import.meta.glob("../vendor/repos/**/portolan/*.json", {
+    eager: true,
+    import: "default",
+  }),
+  ...import.meta.glob("../examples/argocd/argocd.apps.json", {
     eager: true,
     import: "default",
   }),

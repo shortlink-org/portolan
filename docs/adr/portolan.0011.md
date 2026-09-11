@@ -6,6 +6,7 @@
 - **Date:** 2026-09-11
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0011-only-names-are-read-from-what-deploys-a-service.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0011-only-names-are-read-from-what-deploys-a-service.md)
+- **Committed:** Victor Login, 2026-09-11 (`7d85c99`)
 
 ### Context and Problem Statement
 

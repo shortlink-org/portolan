@@ -19,7 +19,8 @@
         "examples/*/*/portolan/*.json",
         "examples/*/*/*/portolan/*.json",
         "vendor/repos/*/*/git.repo.json",
-        "vendor/repos/**/portolan/*.json"
+        "vendor/repos/**/portolan/*.json",
+        "examples/argocd/argocd.apps.json"
       ],
       "contexts": ["auth", "shop", "delivery", "payments", "storefront"],
       "projects": ["auth", "shop-cart", "shop-billing", "shop-pricing", "delivery-core", "payments-ledger", "shop-oms"]
@@ -90,7 +91,8 @@
     "examples/*/*/portolan/*.json",
     "examples/*/*/*/portolan/*.json",
     "vendor/repos/*/*/git.repo.json",
-    "vendor/repos/**/portolan/*.json"
+    "vendor/repos/**/portolan/*.json",
+    "examples/argocd/argocd.apps.json"
   ],
   "plugins": [
     {
@@ -302,6 +304,10 @@
     {
       "name": "k8s-cluster",
       "host": "fetch-k8s"
+    },
+    {
+      "name": "argocd",
+      "host": "fetch-argocd"
     },
     {
       "name": "csr-schemas",
@@ -863,6 +869,16 @@
             "commit": "6ae5e6ade8a547a59553b3aae02a2335"
           }
         ]
+      }
+    },
+    {
+      "plugin": "argocd",
+      "in": "examples",
+      "out": "examples/argocd",
+      "options": {
+        "server": "argocd.example.com",
+        "projects": ["shop"],
+        "cache": "examples/argocd"
       }
     },
     {

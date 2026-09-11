@@ -1,0 +1,6 @@
+{
+  "argocd": [
+    "argocd.apps.json",
+    "argocd.lock.json"
+  ]
+}

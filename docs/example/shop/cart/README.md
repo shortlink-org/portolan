@@ -221,6 +221,13 @@ Source: [`examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml`](ht
 | `npm run generate:auth` | `openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts` | [`examples/shop/cart/package.json:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L18) |
 | `npm run generate:pricing` | `buf generate` | [`examples/shop/cart/package.json:19`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L19) |
 
+## Where it runs
+
+| Environment | Where | Revision | Tracks | Tool | Images | Application |
+| --- | --- | --- | --- | --- | --- | --- |
+| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | directory | `ghcr.io/shortlink-org/cart:1.4.2` | [shop-cart](https://argocd.example.com/applications/argocd/shop-cart) |
+| staging | `staging-eu / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | directory | `ghcr.io/shortlink-org/cart:1.4.2` | [shop-cart-staging](https://argocd.example.com/applications/argocd/shop-cart-staging) |
+
 ## Decisions
 
 | ADR | Title | Status | Date |

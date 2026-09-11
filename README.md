@@ -134,6 +134,9 @@ repositories, the Buf Schema Registry and a Confluent Schema Registry, against a
 lock, so a later build can reproduce them without a socket. `fetch-k8s` reads a
 live cluster through `kubectl` into the names each service answers on and
 dials, and replays the committed fragment when there is no cluster to ask.
+`fetch-argocd` reads the applications an Argo CD server manages into a snapshot
+of where each service runs - environment, cluster, namespace, revision, images -
+against the same kind of lock; the service page shows it under "Where it runs".
 
 Each plugin describes its own options; `npm run schema` asks all of them and
 composes `schema/portolan.schema.json`, which editors complete against and `gen`

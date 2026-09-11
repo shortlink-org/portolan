@@ -315,7 +315,7 @@ function compose() {
             description: "What the steps below call this plugin. It need not be the plugin's own name.",
           },
           host: {
-            enum: ["fetch-git", "fetch-bsr", "fetch-csr", "fetch-k8s"],
+            enum: ["fetch-git", "fetch-bsr", "fetch-csr", "fetch-k8s", "fetch-argocd"],
             description:
               "A plugin the host runs inside its own process, because it needs a socket or a git binary (portolan.0008). Only the ones shipped with Portolan can be named.",
           },

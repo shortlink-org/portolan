@@ -69,6 +69,7 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	section(&b, "Schema modules", s.modulesTable(self, svc))
 	section(&b, "Stores", s.storesTable(self, svc))
 	section(&b, "Commands", s.commandsTable(self, svc))
+	section(&b, "Where it runs", s.deploymentsTable(svc))
 	section(&b, "Decisions", s.adrTable(self, s.adrsFor[svc.ID]))
 
 	s.b.file(self, b.String())
@@ -479,6 +480,71 @@ func (s *site) commandsTable(from string, svc *catalog.Service) string {
 	}
 
 	return table([]string{"Run", "Does", "Body", "Source"}, rows)
+}
+
+// deploymentsTable is where the service runs, one row per Application the
+// deployer's snapshot places on it: the same join the site makes, by the
+// repository and the directory the manifests are read from. The revision is
+// a link to the commit on the forge when it is one; a chart version is not,
+// and is shown as it is. The application link is where health and sync
+// live - they move without a commit and are not in the catalog.
+func (s *site) deploymentsTable(svc *catalog.Service) string {
+	rows := make([][]string, 0)
+	for i := range s.cat.Deployments {
+		d := &s.cat.Deployments[i]
+		if !deploys(d, svc) {
+			continue
+		}
+		where := d.Cluster
+		if d.Namespace != "" {
+			if where != "" {
+				where += " / "
+			}
+			where += d.Namespace
+		}
+		rows = append(rows, []string{
+			d.Environment,
+			code(where),
+			revisionLink(d),
+			code(d.TargetRevision),
+			d.Tool,
+			codeList(d.Images),
+			"[" + d.Name + "](" + d.URL + ")",
+		})
+	}
+
+	return table([]string{"Environment", "Where", "Revision", "Tracks", "Tool", "Images", "Application"}, rows)
+}
+
+// deploys says whether a deployment is of this service: the same repository,
+// and the manifests read from inside the service's directory - or from
+// anywhere in it when the service is the whole repository.
+func deploys(d *catalog.Deployment, svc *catalog.Service) bool {
+	if d.Repo == "" || bareRepo(d.Repo) != bareRepo(svc.Repo) {
+		return false
+	}
+	root := strings.Trim(svc.Path, "/")
+	if root == "" {
+		return true
+	}
+	return d.Path == root || strings.HasPrefix(d.Path, root+"/")
+}
+
+var fullSha = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// revisionLink is the deployed revision, linked to the commit when it is one.
+func revisionLink(d *catalog.Deployment) string {
+	if d.Revision == "" {
+		return ""
+	}
+	if d.Repo == "" || !fullSha.MatchString(d.Revision) {
+		return code(d.Revision)
+	}
+	view := "/commit/"
+	if strings.Contains(strings.ToLower(d.Repo), "gitlab") {
+		view = "/-/commit/"
+	}
+	return "[" + code(d.Revision[:7]) + "](https://" + bareRepo(d.Repo) + view + d.Revision + ")"
 }
 
 func bodyLine(s string) string {

@@ -13,9 +13,10 @@ import (
 // printed, others are structural (ids, slugs and union discriminators), but a
 // new field may not disappear from generated documentation by default.
 var catalogCoverage = map[reflect.Type]string{
-	reflect.TypeOf(catalog.Catalog{}):          "generatedAt commit contexts defs flows adrs stores modules terms repos externals",
+	reflect.TypeOf(catalog.Catalog{}):          "generatedAt commit contexts defs flows adrs stores modules terms repos deployments externals",
 	reflect.TypeOf(catalog.External{}):         "id slug name summary url provides",
 	reflect.TypeOf(catalog.RepoPin{}):          "repo commit",
+	reflect.TypeOf(catalog.Deployment{}):       "id name project environment cluster namespace repo path chart targetRevision revision tool url images",
 	reflect.TypeOf(catalog.BoundedContext{}):   "id slug name summary kind classification viewId services",
 	reflect.TypeOf(catalog.Service{}):          "id slug name repo path readme kind technologies provides consumes copies aggregates stores modules channels owners commands hosts dials",
 	reflect.TypeOf(catalog.Command{}):          "runner name run doc body source",

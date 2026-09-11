@@ -44,6 +44,13 @@ whether it is a bounded context, a system, a product, a team or a namespace.
 **Declared.** The status of a fact a fragment states and nothing has yet
 shown happening.
 
+**Deployment.** One place a service runs, read from what deploys it: an Argo
+CD Application reduced to what a deploy changes - environment, cluster,
+namespace, the repository and directory it deploys from, the revision that
+stands there, the images. A list on the catalog, joined to a service by
+repository and directory; never a health or a sync state, which move without
+a commit.
+
 **Estate.** Everything the manifest's sources find, merged and validated as
 one: the whole a reader browses, dated from the sources that carry a stamp.
 
@@ -58,9 +65,11 @@ beside the contexts and has no aggregates and no repository.
 **Extractor.** A plugin that reads a tree or a specification and answers with
 a fragment. It runs before there is a merged catalog and is handed none.
 
-**Fetcher.** A plugin that brings a tree from elsewhere, a repository or a
-schema registry, into a cache against a lock, so a later build reproduces it
-without a socket. The cache is a tree the extractors read like any other.
+**Fetcher.** A plugin that brings something from elsewhere - a tree from a
+repository or a schema registry, a snapshot from a deployer - into a cache
+against a lock, so a later build reproduces it without a socket. A fetched
+tree is one the extractors read like any other; a fetched snapshot is a
+fragment the merge reads like any other.
 
 **Flow.** A walkthrough of steps between participants, owned by one context:
 derived from the code of one component, read from a `.flow.md` file, or

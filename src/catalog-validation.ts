@@ -20,6 +20,7 @@ import {
   TABLE_ROLES,
   aggregateBlocks,
   allAggregates,
+  allDeployments,
   allExternals,
   allModules,
   allRepos,
@@ -691,8 +692,35 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateAdrs(catalog, eventIds);
   validateTerms(catalog);
   validateRepos(catalog);
+  validateDeployments(catalog);
 
   return catalog;
+}
+
+/**
+ * A deployment names an Application, and names it once.
+ *
+ * What is not checked is deliberate, and the same omission `validateRepos`
+ * makes: a deployment of a repository no service claims is NOT an error. The
+ * snapshot lists what the control plane manages, and an Application for a
+ * service nobody has read yet, or for something that is not a service at
+ * all - a monitoring stack, an ingress controller - is the ordinary case.
+ * It simply matches nothing on a service page. Nor is a row with an empty
+ * environment or repository: the snapshot says what the deployer said, and
+ * a build must not go red because one Application was written oddly.
+ */
+function validateDeployments(catalog: Catalog): void {
+  const seen = new Set<string>();
+
+  for (const deployment of allDeployments(catalog)) {
+    const where = `deployment ${deployment.id || "?"}`;
+    if (!deployment.id) fail("a deployment has no id", where);
+    if (!deployment.name) fail(`deployment "${deployment.id}" names no application`, where);
+    if (seen.has(deployment.id)) {
+      fail(`deployment "${deployment.id}" is listed twice in one catalog`, where);
+    }
+    seen.add(deployment.id);
+  }
 }
 
 /**

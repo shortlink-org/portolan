@@ -44,7 +44,35 @@ type Catalog struct {
 	Modules     []ProtoModule      `json:"modules,omitempty"`
 	Terms       []Term             `json:"terms,omitempty"`
 	Repos       []RepoPin          `json:"repos,omitempty"`
+	Deployments []Deployment       `json:"deployments,omitempty"`
 	Externals   []External         `json:"externals,omitempty"`
+}
+
+// Deployment is one place a service runs: an Argo CD Application as the
+// deployer listed it, reduced to what a deploy changes. A list on the catalog
+// rather than a field on Service: the fetcher that writes it reads a control
+// plane and does not know which service an Application is, and one service
+// stands in several places.
+type Deployment struct {
+	// ID is "<argocd namespace>/<application name>".
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Project     string `json:"project"`
+	Environment string `json:"environment"`
+	Cluster     string `json:"cluster"`
+	Namespace   string `json:"namespace"`
+	// Repo is spelled the way Service.Repo spells it; empty for a chart
+	// from a registry.
+	Repo string `json:"repo"`
+	Path string `json:"path"`
+	// Chart is the Helm chart name when the source is a registry.
+	Chart          string `json:"chart,omitempty"`
+	TargetRevision string `json:"targetRevision"`
+	Revision       string `json:"revision"`
+	// Tool is helm, kustomize, directory or plugin, as Argo CD says it.
+	Tool   string   `json:"tool"`
+	URL    string   `json:"url"`
+	Images []string `json:"images,omitempty"`
 }
 
 // External is a system outside the estate with a contract: what it answers on,

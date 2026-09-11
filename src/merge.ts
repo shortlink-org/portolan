@@ -121,6 +121,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const terms: NonNullable<Catalog["terms"]> = [];
   const repos: NonNullable<Catalog["repos"]> = [];
   const repoOrigin = new Map<string, string>();
+  const deployments: NonNullable<Catalog["deployments"]> = [];
   const externals = new Map<string, External>();
   const externalOrigin = new Map<string, string>();
   const seen = new Map<string, string>(); // flow/adr/store/module/term id -> source path
@@ -249,6 +250,13 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     for (const store of catalog.stores ?? []) {
       if (claim(seen, store.id, path, conflicts, "store")) stores.push(store);
     }
+    // Claimed by id: one snapshot of one control plane lists each
+    // Application once, and a second snapshot naming the same one is two
+    // fetch steps pointed at the same server, which is a manifest to fix.
+    for (const deployment of catalog.deployments ?? []) {
+      if (claim(seen, deployment.id, path, conflicts, "deployment"))
+        deployments.push(deployment);
+    }
     // Claimed by id like everything else at this level, and that is exactly why
     // a module's id is its registry-global name rather than one derived from an
     // owner: the producer and each consumer describe the same module from
@@ -324,6 +332,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   if (modules.length > 0) merged.modules = modules;
   if (terms.length > 0) merged.terms = terms;
   if (repos.length > 0) merged.repos = repos;
+  if (deployments.length > 0) merged.deployments = deployments;
   if (externals.size > 0) merged.externals = [...externals.values()];
 
   return { catalog: merged, sources: stamps, conflicts };

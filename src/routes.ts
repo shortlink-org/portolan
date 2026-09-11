@@ -203,6 +203,7 @@ export const SERVICE_ANCHOR = {
   aggregates: "svc-aggregates",
   events: "svc-events",
   commands: "svc-commands",
+  deployments: "svc-deployments",
 } as const;
 
 /** The section anchors on the context map. */
