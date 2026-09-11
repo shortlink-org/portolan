@@ -300,6 +300,10 @@
       "host": "fetch-csr"
     },
     {
+      "name": "k8s-cluster",
+      "host": "fetch-k8s"
+    },
+    {
       "name": "csr-schemas",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"

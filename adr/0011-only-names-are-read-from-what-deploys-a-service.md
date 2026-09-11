@@ -1,13 +1,10 @@
 # portolan.0011 — Only names are read from what deploys a service
 
-*Generated from the portolan catalog. Do not edit by hand.*
-
 - **Status:** accepted
 - **Date:** 2026-09-11
-- **Scope:** [portolan](../portolan/README.md)
-- **Source:** [`adr/0011-only-names-are-read-from-what-deploys-a-service.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0011-only-names-are-read-from-what-deploys-a-service.md)
+- **Scope:** portolan
 
-### Context and Problem Statement
+## Context and Problem Statement
 
 The catalog knows what a service provides and what it consumes, and the merge
 joins the two by route: a client's `POST /foo` meets the one service whose
@@ -28,7 +25,7 @@ Both places are also where the passwords are. A reader of either has to say
 what of what it reads may reach a fragment that is committed, rendered and
 published.
 
-### Decision Drivers
+## Decision Drivers
 
 - The join needs the one fact a route cannot carry: which of the estate's
   services answers on the name the caller is configured with.
@@ -41,7 +38,7 @@ published.
   page. The build report is committed too.
 - Internal DNS names may: a name is topology, and the catalog is a map.
 
-### Considered Options
+## Considered Options
 
 1. **Read names only, from both places.** A wasm extractor over the
    manifests in a repository, and a host plugin over `kubectl`; both reduce
@@ -54,7 +51,7 @@ published.
 4. **Manifests only.** Leave the cluster alone and require every estate to
    keep rendered manifests in git.
 
-### Decision Outcome
+## Decision Outcome
 
 Chosen option: **read names only, from both places.**
 
@@ -96,7 +93,7 @@ the cluster cannot be reached, the fragment committed in the repository is
 used unchanged with a warning; with no committed copy that is an error,
 never a short answer. Nothing but that fragment is written to disk.
 
-#### Consequences
+### Consequences
 
 The two readers agree on what a host is, so a `dials` entry from a
 repository's manifests and a `hosts` entry from the cluster meet in the

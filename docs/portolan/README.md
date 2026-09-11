@@ -33,4 +33,4 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0008](../adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 | [portolan.0009](../adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
 | [portolan.0010](../adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
-| [portolan.0011](../adr/portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 |
+| [portolan.0011](../adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |

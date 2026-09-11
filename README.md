@@ -131,7 +131,9 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 
 `fetch-git`, `fetch-bsr` and `fetch-csr` bring in sources from other
 repositories, the Buf Schema Registry and a Confluent Schema Registry, against a
-lock, so a later build can reproduce them without a socket.
+lock, so a later build can reproduce them without a socket. `fetch-k8s` reads a
+live cluster through `kubectl` into the names each service answers on and
+dials, and replays the committed fragment when there is no cluster to ask.
 
 Each plugin describes its own options; `npm run schema` asks all of them and
 composes `schema/portolan.schema.json`, which editors complete against and `gen`

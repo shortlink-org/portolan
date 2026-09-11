@@ -1,0 +1,50 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["cache"],
+  "properties": {
+    "kubeContext": {
+      "type": "string",
+      "description": "The kubeconfig context to read, passed to kubectl as --context. Left out, kubectl's current context.",
+      "examples": ["prod-eu"]
+    },
+    "namespaces": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The namespaces to read. Left out, every namespace the credential can list.",
+      "examples": [["shop", "auth", "payments"]]
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which labels place a workload into the catalog. The defaults are the Kubernetes recommended labels; an estate that labels differently names its own keys here.",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "The label whose value is the bounded context's slug.",
+          "default": "app.kubernetes.io/part-of"
+        },
+        "service": {
+          "type": "string",
+          "description": "The label whose value is the service's slug. A workload without it is named after itself.",
+          "default": "app.kubernetes.io/name"
+        }
+      }
+    },
+    "namespaceContexts": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Namespace to bounded context, for workloads that carry no context label. A workload with the label keeps it; one with neither is counted in a warning and left out.",
+      "examples": [{ "shop": "shop", "shop-jobs": "shop" }]
+    },
+    "cache": {
+      "type": "string",
+      "description": "Where the last run's fragment was written, repo-relative: the same path as the step's out. An offline run, or one that cannot reach the cluster, replays it unchanged."
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "k8s-cluster.json"
+    }
+  }
+}

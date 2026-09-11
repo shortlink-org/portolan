@@ -35,7 +35,7 @@
 | [portolan.0008](adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 | [portolan.0009](adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
 | [portolan.0010](adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
-| [portolan.0011](adr/portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 |
+| [portolan.0011](adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |
 
 <!-- portolan/README.md -->
 
@@ -74,7 +74,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0008](../adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 | [portolan.0009](../adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
 | [portolan.0010](../adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
-| [portolan.0011](../adr/portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 |
+| [portolan.0011](../adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |
 
 <!-- portolan/glossary.md -->
 
@@ -967,14 +967,16 @@ line with its description, and as entity links of type `command`, each
 leading to the line of the runner file it was read from, when `sourceBaseUrl`
 says where the repository is.
 
-### Where it answers, what it dials: the manifests, never the cluster
+### Where it answers, what it dials: the manifests, and the cluster
 
 A catalog that knows what a service provides and what it consumes still has
 holes where the two do not meet by route alone: two services answer
 `POST /foo`, and the caller's code says only that it posts to `$LEDGER_URL`.
 What that variable holds is not in the code. It is in the Deployment, the
 ConfigMap it reads, and the Service and Ingress objects that give the far end
-a name. `extract-k8s` reads those and puts two lists on the service:
+a name. Two plugins read those - `extract-k8s` from the manifests in a
+repository, `fetch-k8s` from a live cluster - and put two lists on the
+service:
 
 - **Hosts** - the names it answers on: a Kubernetes Service's name in its
   short, namespaced, `svc` and fully qualified forms, and the hosts of the
@@ -1015,7 +1017,7 @@ The fragment carries the variable's name no more than its value: the
 `environmentVariable` the HTTP client extractor records stays what it was, and
 no value is attached to it.
 
-#### What is read, and how far
+#### The manifests: extract-k8s
 
 Every `*.yaml` and `*.yml` under the root, or under the `paths` named in the
 options; anything without `apiVersion` and `kind` - a compose file, a
@@ -1035,10 +1037,55 @@ CronJob makes the service's kind `job`; a Deployment says nothing about kind,
 because a webapp and a worker both deploy that way. Several workloads and
 none named is a warning, not a guess.
 
-Nothing is read from a cluster. `kubectl get` would say what runs now, which
-is a different fact from what the repository says should run, changes without
-a commit, and needs a credential the build should not hold. portolan.0011
-records that decision and the alternatives.
+#### The cluster: fetch-k8s
+
+The manifests say what should run; the cluster says what does, and for an
+estate deployed by Helm or Argo the rendered objects are in no repository at
+all. `fetch-k8s` asks `kubectl` for the workloads, Services, Ingresses,
+Gateway API routes and ConfigMaps of the namespaces named - never for a
+Secret - and answers with one fragment for every workload it saw, placed
+into contexts and services by label. It runs in the host (portolan.0008)
+because it needs the binary, the socket and kubectl's own credential, which
+comes from the kubeconfig and is never in the manifest.
+
+```json
+{ "name": "k8s-cluster", "host": "fetch-k8s" }
+
+{
+  "plugin": "k8s-cluster",
+  "in": ".",
+  "out": "data",
+  "options": {
+    "kubeContext": "prod-eu",
+    "namespaces": ["shop", "auth", "payments"],
+    "labels": { "context": "app.kubernetes.io/part-of", "service": "app.kubernetes.io/name" },
+    "namespaceContexts": { "shop-jobs": "shop" },
+    "cache": "data",
+    "out": "k8s-cluster.json"
+  }
+}
+```
+
+The context is the value of the `app.kubernetes.io/part-of` label and the
+service the value of `app.kubernetes.io/name`; an estate that labels
+differently names its own keys under `labels`. A workload without the
+context label falls back to `namespaceContexts`; one with neither is counted
+in a warning for its namespace and left out, not guessed at. A workload
+without the service label is named after itself. Several workloads landing
+on one service - a Deployment and the CronJob beside it - fold into one; a
+service that is only jobs is a `job`, one with a Deployment beside them is
+whatever its code says.
+
+The same offline rule as fetch-git: with `PORTOLAN_OFFLINE` set, or in CI,
+the fragment committed at `cache` is used unchanged; when the cluster cannot
+be reached it is used with a warning that names the failed command and its
+exit status, not the server; with no committed copy, that is an error and
+not a short answer. What kubectl itself said on stderr goes to the terminal,
+where the person at the keyboard can read the connection error, and not into
+the build report, which is committed. Nothing but the fragment is written to
+disk: the objects live in the process for the length of one call.
+
+portolan.0011 records why both readers keep names and nothing else.
 
 ### Outside the estate: an external with a contract
 
@@ -1829,7 +1876,7 @@ sequenceDiagram
 | [portolan.0008](portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0009](portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
 | [portolan.0010](portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
-| [portolan.0011](portolan.0011.md) | The network is read from the manifests, never from the cluster | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
+| [portolan.0011](portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
@@ -2670,14 +2717,14 @@ off-by-one portolan.0002 had.
 
 <!-- adr/portolan.0011.md -->
 
-# portolan.0011 — The network is read from the manifests, never from the cluster
+# portolan.0011 — Only names are read from what deploys a service
 
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-11
 - **Scope:** [portolan](../portolan/README.md)
-- **Source:** [`adr/0011-the-network-is-read-from-the-manifests-never-from-the-cluster.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0011-the-network-is-read-from-the-manifests-never-from-the-cluster.md)
+- **Source:** [`adr/0011-only-names-are-read-from-what-deploys-a-service.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0011-only-names-are-read-from-what-deploys-a-service.md)
 
 ### Context and Problem Statement
 
@@ -2689,90 +2736,101 @@ same route, or where the client's code names its destination only as
 
 What the variable holds is not in the code. It is in what deploys the
 service: the Deployment's `env`, the ConfigMap it reads, and the Service,
-Ingress and HTTPRoute objects that give the far end a name. That is also
-where the passwords are. A reader of those files has to answer two questions
-at once: where to read the network from, and what of what it reads may reach
-a fragment that is committed, rendered and published.
+Ingress and HTTPRoute objects that give the far end a name. Those objects
+exist in two places - as manifests in a repository, and as what a cluster
+is running now - and both are wanted: the manifests because they are in git
+and reproducible, the cluster because it is the truth about what runs, and
+because for an estate deployed by Helm or Argo the rendered objects are in
+no repository at all.
+
+Both places are also where the passwords are. A reader of either has to say
+what of what it reads may reach a fragment that is committed, rendered and
+published.
 
 ### Decision Drivers
 
 - The join needs the one fact a route cannot carry: which of the estate's
   services answers on the name the caller is configured with.
-- Regenerating from the same sources must change no byte (portolan.0010); a
-  fact must change when a commit changes it, and not otherwise.
-- No plugin may need a socket, a credential or a binary (portolan.0006,
-  portolan.0008).
-- No value from a manifest - a password, a token, a DSN, a flag, a level, a
-  variable's name - may reach a fragment, a warning or a page. The build
-  report is committed too.
+- Regenerating from the same sources must change no byte (portolan.0010);
+  a run that has lost the cluster must not lose the catalog.
+- A plugin that needs a socket or a binary runs inside the host
+  (portolan.0008); everything else runs as wasm over the tree.
+- No value from a manifest or a cluster - a password, a token, a DSN, a
+  flag, a level, a variable's name - may reach a fragment, a warning or a
+  page. The build report is committed too.
 - Internal DNS names may: a name is topology, and the catalog is a map.
 
 ### Considered Options
 
-1. **Read the manifests in the repository**, as a wasm extractor over the
-   tree, and keep names only: the hosts a service answers on and the
-   in-cluster hosts its workload dials.
-2. **Ask the cluster**, through `kubectl get -o json` from a host plugin,
-   with a cached snapshot and a lock for offline replay.
-3. **Keep the configuration**: put a service's environment - variable and
+1. **Read names only, from both places.** A wasm extractor over the
+   manifests in a repository, and a host plugin over `kubectl`; both reduce
+   what they read to the names a service answers on and the in-cluster
+   names its workload dials, and write nothing else.
+2. **Keep the configuration.** Put a service's environment - variable and
    value - into the catalog, and let the merge resolve from it.
-4. **Do nothing**: leave such calls unresolved and let a flow written by
-   hand say where they go.
+3. **Snapshot the cluster raw.** Commit what `kubectl get -o json` said,
+   as fetch-git commits a tree, and read the snapshot as manifests.
+4. **Manifests only.** Leave the cluster alone and require every estate to
+   keep rendered manifests in git.
 
 ### Decision Outcome
 
-Chosen option: **read the manifests, keep names only.**
+Chosen option: **read names only, from both places.**
 
-`extract-k8s` runs as one more entry of `portolan-go.wasm` over a preopened
-tree. It puts two lists on a service. `hosts` are the names the service
+Two plugins put the same two lists on a service. `hosts` are the names it
 answers on: a Kubernetes Service's name in its short, namespaced, `svc` and
 fully qualified forms, and the hosts of the Ingress or HTTPRoute in front of
-it. `dials` are the in-cluster names the workload is configured to reach,
-read from its containers' `env` and the ConfigMaps they reference and reduced
-to the host alone. The merge resolves an ambiguous route to the one provider
-that answers on the host the call names, or on a host the caller dials, and
-the evidence says `kubernetes-host` as the basis.
+it. `dials` are the in-cluster names its workload is configured to reach,
+read from its containers' `env` and the ConfigMaps they reference and
+reduced to the host alone. `extract-k8s` reads them from the YAML under a
+repository, one service per step, as one more entry of `portolan-go.wasm`.
+`fetch-k8s` reads them from a live cluster through `kubectl`, every
+workload of the namespaces named in one fragment, placed into contexts and
+services by the recommended labels `app.kubernetes.io/part-of` and
+`app.kubernetes.io/name` - or by whichever labels the manifest names
+instead, with a namespace-to-context map for workloads that carry none.
 
-What keeps values out is a rule of shape, not a list of words. A `Secret`,
-`SealedSecret`, `ExternalSecret` or any document carrying `stringData` is
-passed over at its `kind`, before its body is decoded; a `secretKeyRef` or
-`secretRef` is not followed. Every other value is looked at once, in memory,
-for one purpose - does it name a host inside the cluster - and what survives
-is the hostname: a URL gives up its scheme, port, path, query and the user
-and password in front of the host, and a bare `host[:port]` gives up the
-port. What is left qualifies only when the cluster resolves it: a form one of
-the tree's own Services answers to, or `<name>.<namespace>.svc`, the one
-shape no name outside a cluster has. A password does not look like that, nor
-does a token, a level or a flag; a bare word from another repository is not
-taken either, because nothing tells it from a word. Warnings name files and
-directories, never values.
+The merge resolves an ambiguous route to the one provider that answers on
+the host the call names, or on a host the caller dials, and the evidence
+says `kubernetes-host` as the basis. A host only decides between providers
+of a route; it never conjures one.
 
-Nothing is read from a cluster, and no environment or config map value is
-kept.
+What keeps values out is a rule of shape, not a list of words, and it is
+the same rule in both readers, held together by one table of cases in
+their tests. A `Secret` is never asked of the cluster and never decoded
+from a file - nor a `SealedSecret`, an `ExternalSecret`, or any document
+carrying `stringData`; a `secretKeyRef` or `secretRef` is not followed.
+Every other value is looked at once, in memory, for one question - does it
+name a host inside the cluster - and what survives is the hostname: a URL
+gives up its scheme, port, path, query and the user and password in front
+of the host, and a bare `host[:port]` gives up the port. What is left
+qualifies only when the cluster resolves it: a form one of the Services
+read answers to, or `<name>.<namespace>.svc`, the one shape no name
+outside a cluster has. Warnings name namespaces, kinds, files and
+directories, never values; what `kubectl` prints on stderr reaches the
+terminal and not the build report.
+
+`fetch-k8s` follows fetch-git's rules for the far end: offline, or when
+the cluster cannot be reached, the fragment committed in the repository is
+used unchanged with a warning; with no committed copy that is an error,
+never a short answer. Nothing but that fragment is written to disk.
 
 #### Consequences
 
-The extractor is deterministic and needs nothing the tree does not hold, so
-it runs in CI, under `--check`, and offline. Helm templates are not YAML
-until rendered and are passed over with a warning per directory; a chart is
-read by rendering it into the tree, which is a build step and not this
-plugin's. Kustomize is read without running it: base and overlays fold by
-kind and name.
-
-A caller's `dials` from one repository and a provider's `hosts` from another
-meet only in the merge, which is where every cross-repository fact meets.
+The two readers agree on what a host is, so a `dials` entry from a
+repository's manifests and a `hosts` entry from the cluster meet in the
+merge like any two fragments. An estate keeps whichever source it has, or
+both: the manifests say what should run, the cluster says what does, and
+a page that shows both is the diff.
 
 The catalog gains two list fields on a service and one basis on the
-evidence, and no entity. An environment, a cluster, an Ingress as a thing of
-its own: each is a page nobody has asked for yet, and a decision to be made
-when one does.
+evidence, and no entity. An environment, a cluster, an Ingress as a thing
+of its own: each is a page nobody has asked for yet, and a decision to be
+made when one does.
 
-Option 2 answers a different question - what runs now, not what the
-repository says should run - and the answer moves without a commit, needs a
-credential in the build, and would have to be snapshotted and locked to be
-reproducible at all. Where the manifests are not in any repository, it is
-the only source; that is a case for a host plugin later, not a reason to
-make the common case need a cluster. Option 3 would put every password one
-misplaced `value` away from a published page and asks the reader to trust a
-list of forbidden words. Option 4 leaves the join blind exactly where the
-estate is most interesting.
+Option 2 would put every password one misplaced `value` away from a
+published page and ask the reader to trust a list of forbidden words.
+Option 3 puts the same values on disk under a different name; a committed
+snapshot of ConfigMaps is configuration in the repository, whatever it is
+called. Option 4 answers the estate that has no manifests in git with
+nothing, and even for one that has, what runs is a fact worth having.

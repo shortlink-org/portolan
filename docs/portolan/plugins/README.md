@@ -734,14 +734,16 @@ line with its description, and as entity links of type `command`, each
 leading to the line of the runner file it was read from, when `sourceBaseUrl`
 says where the repository is.
 
-### Where it answers, what it dials: the manifests, never the cluster
+### Where it answers, what it dials: the manifests, and the cluster
 
 A catalog that knows what a service provides and what it consumes still has
 holes where the two do not meet by route alone: two services answer
 `POST /foo`, and the caller's code says only that it posts to `$LEDGER_URL`.
 What that variable holds is not in the code. It is in the Deployment, the
 ConfigMap it reads, and the Service and Ingress objects that give the far end
-a name. `extract-k8s` reads those and puts two lists on the service:
+a name. Two plugins read those - `extract-k8s` from the manifests in a
+repository, `fetch-k8s` from a live cluster - and put two lists on the
+service:
 
 - **Hosts** - the names it answers on: a Kubernetes Service's name in its
   short, namespaced, `svc` and fully qualified forms, and the hosts of the
@@ -782,7 +784,7 @@ The fragment carries the variable's name no more than its value: the
 `environmentVariable` the HTTP client extractor records stays what it was, and
 no value is attached to it.
 
-#### What is read, and how far
+#### The manifests: extract-k8s
 
 Every `*.yaml` and `*.yml` under the root, or under the `paths` named in the
 options; anything without `apiVersion` and `kind` - a compose file, a
@@ -802,10 +804,55 @@ CronJob makes the service's kind `job`; a Deployment says nothing about kind,
 because a webapp and a worker both deploy that way. Several workloads and
 none named is a warning, not a guess.
 
-Nothing is read from a cluster. `kubectl get` would say what runs now, which
-is a different fact from what the repository says should run, changes without
-a commit, and needs a credential the build should not hold. portolan.0011
-records that decision and the alternatives.
+#### The cluster: fetch-k8s
+
+The manifests say what should run; the cluster says what does, and for an
+estate deployed by Helm or Argo the rendered objects are in no repository at
+all. `fetch-k8s` asks `kubectl` for the workloads, Services, Ingresses,
+Gateway API routes and ConfigMaps of the namespaces named - never for a
+Secret - and answers with one fragment for every workload it saw, placed
+into contexts and services by label. It runs in the host (portolan.0008)
+because it needs the binary, the socket and kubectl's own credential, which
+comes from the kubeconfig and is never in the manifest.
+
+```json
+{ "name": "k8s-cluster", "host": "fetch-k8s" }
+
+{
+  "plugin": "k8s-cluster",
+  "in": ".",
+  "out": "data",
+  "options": {
+    "kubeContext": "prod-eu",
+    "namespaces": ["shop", "auth", "payments"],
+    "labels": { "context": "app.kubernetes.io/part-of", "service": "app.kubernetes.io/name" },
+    "namespaceContexts": { "shop-jobs": "shop" },
+    "cache": "data",
+    "out": "k8s-cluster.json"
+  }
+}
+```
+
+The context is the value of the `app.kubernetes.io/part-of` label and the
+service the value of `app.kubernetes.io/name`; an estate that labels
+differently names its own keys under `labels`. A workload without the
+context label falls back to `namespaceContexts`; one with neither is counted
+in a warning for its namespace and left out, not guessed at. A workload
+without the service label is named after itself. Several workloads landing
+on one service - a Deployment and the CronJob beside it - fold into one; a
+service that is only jobs is a `job`, one with a Deployment beside them is
+whatever its code says.
+
+The same offline rule as fetch-git: with `PORTOLAN_OFFLINE` set, or in CI,
+the fragment committed at `cache` is used unchanged; when the cluster cannot
+be reached it is used with a warning that names the failed command and its
+exit status, not the server; with no committed copy, that is an error and
+not a short answer. What kubectl itself said on stderr goes to the terminal,
+where the person at the keyboard can read the connection error, and not into
+the build report, which is committed. Nothing but the fragment is written to
+disk: the objects live in the process for the length of one call.
+
+portolan.0011 records why both readers keep names and nothing else.
 
 ### Outside the estate: an external with a contract
 
