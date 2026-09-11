@@ -185,7 +185,7 @@
       "name": "http-clients",
       "process": {
         "command": "go",
-        "args": ["run", "./plugins/cmd/portolan-http-clients"]
+        "args": ["run", "-mod=mod", "./plugins/cmd/portolan-http-clients"]
       }
     },
     {

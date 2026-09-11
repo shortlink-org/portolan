@@ -58,7 +58,7 @@ function buildAndRunGo(argv) {
   const binDir = resolve(workspace, ".portolan", "bin", "go");
   const executable = resolve(binDir, process.platform === "win32" ? `${name}.exe` : name);
   mkdirSync(binDir, { recursive: true });
-  const built = spawnSync("go", ["build", "-mod=readonly", "-o", executable, argv[1]], {
+  const built = spawnSync("go", ["build", "-mod=mod", "-o", executable, argv[1]], {
     cwd: installRoot,
     env: { ...process.env, GOWORK: "off" },
     stdio: "inherit",

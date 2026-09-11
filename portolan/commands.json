@@ -49,7 +49,7 @@
               "runner": "npm",
               "name": "test:go",
               "run": "npm run test:go",
-              "body": "go test ./...",
+              "body": "GOFLAGS=-mod=mod go test ./...",
               "source": "package.json:64"
             },
             {
@@ -91,7 +91,7 @@
               "runner": "npm",
               "name": "plugins:build",
               "run": "npm run plugins:build",
-              "body": "GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags=\"-s -w\" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go \u0026\u0026 javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java",
+              "body": "GOFLAGS=-mod=mod GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags=\"-s -w\" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go \u0026\u0026 javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java",
               "source": "package.json:72"
             },
             {
