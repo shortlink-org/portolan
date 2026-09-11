@@ -48,7 +48,10 @@ describe("local API base path", () => {
   });
 });
 
-describe("local project setup", () => {
+// Each delivery-preset test spawns a dozen git processes; while the whole
+// suite is starting, one spawn takes hundreds of milliseconds, so the
+// default five seconds is a coin flip rather than a limit.
+describe("local project setup", { timeout: 30_000 }, () => {
   it("detects GitHub and GitLab remotes without treating arbitrary hosts as a forge", () => {
     expect(providerFromRemote("git@github.com:acme/shop.git")).toBe("github");
     expect(providerFromRemote("https://gitlab.example.com/acme/shop.git")).toBe("gitlab");

@@ -79,11 +79,23 @@ function repositoryName(remote, workspace) {
   return clean.split(/[/:]/).filter(Boolean).pop() || relative(dirname(workspace), workspace) || "repository";
 }
 
+// One ref listing answers three questions (where origin/HEAD points, whether
+// main or master exists) instead of one git process per question: a preview
+// spawns git while the test suite and the site build are already competing
+// for the machine, and every spawn costs seconds there.
 function defaultBranch(workspace) {
-  const remoteHead = git(workspace, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]);
-  if (remoteHead.startsWith("origin/")) return remoteHead.slice("origin/".length);
+  const refs = new Map();
+  for (const line of git(workspace, [
+    "for-each-ref", "--format=%(refname)%09%(symref)",
+    "refs/remotes/origin/HEAD", "refs/heads/main", "refs/heads/master",
+  ]).split("\n")) {
+    const [name, symref = ""] = line.split("\t");
+    if (name) refs.set(name, symref);
+  }
+  const remoteHead = refs.get("refs/remotes/origin/HEAD") ?? "";
+  if (remoteHead.startsWith("refs/remotes/origin/")) return remoteHead.slice("refs/remotes/origin/".length);
   for (const candidate of ["main", "master"]) {
-    if (git(workspace, ["rev-parse", "--verify", `refs/heads/${candidate}`])) return candidate;
+    if (refs.has(`refs/heads/${candidate}`)) return candidate;
   }
   return git(workspace, ["branch", "--show-current"]) || "main";
 }
@@ -316,8 +328,29 @@ function mergeGitlab(existing, features) {
   return { content: block ? `${existing.trimEnd()}${existing.trim() ? "\n\n" : ""}${block}` : existing };
 }
 
+// A file that is entirely new or entirely gone needs no diff algorithm: every
+// line is added or removed. Writing that hunk here saves a git process per
+// file, and a GitHub preset is mostly such files.
+function wholeFileDiff(path, content, sign) {
+  const body = content.endsWith("\n") ? content.slice(0, -1) : content;
+  const lines = body.split("\n");
+  const count = lines.length === 1 ? "1" : `1,${lines.length}`;
+  const range = sign === "+" ? `-0,0 +${count}` : `-${count} +0,0`;
+  return [
+    `diff --git a/${path} b/${path}`,
+    `--- a/${path}`,
+    `+++ b/${path}`,
+    `@@ ${range} @@`,
+    ...lines.map((line) => `${sign}${line}`),
+    ...(content.endsWith("\n") ? [] : ["\\ No newline at end of file"]),
+    "",
+  ].join("\n");
+}
+
 function textDiff(path, before, after) {
   if (before === after) return "";
+  if (before === "") return wholeFileDiff(path, after, "+");
+  if (after === "") return wholeFileDiff(path, before, "-");
   const holder = mkdtempSync(join(tmpdir(), "portolan-preset-diff-"));
   const left = join(holder, "before");
   const right = join(holder, "after");

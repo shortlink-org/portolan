@@ -213,7 +213,8 @@ export function flowsRunning(
         step.ref !== undefined &&
         (step.ref === own || (step.kind === "rpc" && methods.has(step.ref))),
     );
-    if (i >= 0) out.push({ flow, stepId: steps[i].id, number: i + 1 });
+    const hit = steps[i];
+    if (hit) out.push({ flow, stepId: hit.id, number: i + 1 });
   }
   return out;
 }
