@@ -75,13 +75,13 @@ and validates the union. Nothing here draws anything.
 | `npm run build` | `node cli/portolan.mjs build` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
 | `npm run preview` | `vite preview` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
 | `npm test` | `vitest run` | [`package.json:63`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L63) |
-| `npm run test:go` | `go test ./...` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
+| `npm run test:go` | `GOFLAGS=-mod=mod go test ./...` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
 | `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
 | `npm run test:watch` | `vitest` | [`package.json:67`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L67) |
 | `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:68`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L68) |
 | `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot` | [`package.json:69`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L69) |
 | `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:70`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L70) |
-| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
+| `npm run plugins:build` | `GOFLAGS=-mod=mod GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
 | `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:73`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L73) |
 | `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:74`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L74) |
 | `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:75`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L75) |

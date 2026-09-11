@@ -146,13 +146,13 @@ const RULES: RuleDefinition[] = [
   },
   {
     id: "source.offline-cache",
-    matches: /\bnot fetched \(offline\)/i,
+    matches: /\bnot (?:fetched|read) \(offline\)/i,
     severity: "info",
     action: "Regenerate with network access when the vendored copy must be refreshed.",
   },
   {
     id: "source.unreachable",
-    matches: /\bnot fetched \((?!offline\))/i,
+    matches: /\bnot (?:fetched|read) \((?!offline\))/i,
     severity: "warning",
     action: "The far end could not be reached and the committed copy was used; check the server and the credential, then regenerate.",
   },

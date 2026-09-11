@@ -3920,8 +3920,8 @@ Source: [`examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml`](ht
 
 | Environment | Where | Revision | Tracks | Tool | Images | Application |
 | --- | --- | --- | --- | --- | --- | --- |
-| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | directory | `ghcr.io/shortlink-org/cart:1.4.2` | [shop-cart](https://argocd.example.com/applications/argocd/shop-cart) |
-| staging | `staging-eu / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | directory | `ghcr.io/shortlink-org/cart:1.4.2` | [shop-cart-staging](https://argocd.example.com/applications/argocd/shop-cart-staging) |
+| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | kustomize | `ghcr.io/shortlink-org/cart:2.1.0` | [shop-cart-prod](https://argocd.example.com/applications/argocd/shop-cart-prod) |
+| staging | `staging-eu / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | kustomize | `ghcr.io/shortlink-org/cart:2.2.0-rc.1` | [shop-cart-staging](https://argocd.example.com/applications/argocd/shop-cart-staging) |
 
 ## Decisions
 
@@ -4870,7 +4870,7 @@ Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob
 
 | Environment | Where | Revision | Tracks | Tool | Images | Application |
 | --- | --- | --- | --- | --- | --- | --- |
-| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | directory | `ghcr.io/shortlink-org/pricing:1.4.2` | [shop-pricing](https://argocd.example.com/applications/argocd/shop-pricing) |
+| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | kustomize | `ghcr.io/shortlink-org/pricing:1.4.2` | [shop-pricing-prod](https://argocd.example.com/applications/argocd/shop-pricing-prod) |
 
 <!-- shop/pricing/aggregates/price-list.md -->
 

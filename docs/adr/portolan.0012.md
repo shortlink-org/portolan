@@ -7,6 +7,7 @@
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0012-where-a-service-runs-is-read-from-the-deployer-as-a-snapshot.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0012-where-a-service-runs-is-read-from-the-deployer-as-a-snapshot.md)
 - **Committed:** Victor Login, 2026-09-11 (`4f09c61`)
+- **Revised:** Victor Login, 2026-09-11 (`cec4f20`)
 
 ### Context and Problem Statement
 
@@ -81,10 +82,18 @@ live. No parameter and no value is read at all; the source's `helm` and
 `plugin` blocks are not looked into.
 
 `Deployment` is a list on the catalog, beside `repos`, and the join is made
-in the index: an Application is a service's when it deploys from the
-service's repository, inside the service's directory. An Application of a
-repository nobody in the estate claims matches nothing and is not an error;
-a control plane manages more than the estate's services.
+in the index, two ways. When the Application carries the recommended
+labels - `app.kubernetes.io/part-of` and `app.kubernetes.io/name`, the same
+ones fetch-k8s reads off a workload, or whichever the manifest names under
+`labels` - they decide: the fetcher writes `<context>.<service>` as
+`Deployment.service` and nothing else is looked at. A GitOps repository's
+Application points at an overlay in that repository, not at the service's
+directory, so the path alone cannot place it, and an ApplicationSet stamps
+the labels on every Application it makes (`examples/gitops`). Without the
+labels, the path: an Application is a service's when it deploys from the
+service's repository, inside the service's directory. An Application that
+matches neither way is not an error; a control plane manages more than the
+estate's services, and the Problems page lists it.
 
 #### Consequences
 

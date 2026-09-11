@@ -278,4 +278,4 @@ Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob
 
 | Environment | Where | Revision | Tracks | Tool | Images | Application |
 | --- | --- | --- | --- | --- | --- | --- |
-| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | directory | `ghcr.io/shortlink-org/pricing:1.4.2` | [shop-pricing](https://argocd.example.com/applications/argocd/shop-pricing) |
+| prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | kustomize | `ghcr.io/shortlink-org/pricing:1.4.2` | [shop-pricing-prod](https://argocd.example.com/applications/argocd/shop-pricing-prod) |

@@ -218,13 +218,13 @@ and validates the union. Nothing here draws anything.
 | `npm run build` | `node cli/portolan.mjs build` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
 | `npm run preview` | `vite preview` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
 | `npm test` | `vitest run` | [`package.json:63`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L63) |
-| `npm run test:go` | `go test ./...` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
+| `npm run test:go` | `GOFLAGS=-mod=mod go test ./...` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
 | `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
 | `npm run test:watch` | `vitest` | [`package.json:67`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L67) |
 | `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:68`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L68) |
 | `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot` | [`package.json:69`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L69) |
 | `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:70`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L70) |
-| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
+| `npm run plugins:build` | `GOFLAGS=-mod=mod GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
 | `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:73`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L73) |
 | `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:74`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L74) |
 | `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:75`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L75) |
@@ -2851,6 +2851,7 @@ nothing, and even for one that has, what runs is a fact worth having.
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0012-where-a-service-runs-is-read-from-the-deployer-as-a-snapshot.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0012-where-a-service-runs-is-read-from-the-deployer-as-a-snapshot.md)
 - **Committed:** Victor Login, 2026-09-11 (`4f09c61`)
+- **Revised:** Victor Login, 2026-09-11 (`cec4f20`)
 
 ### Context and Problem Statement
 
@@ -2925,10 +2926,18 @@ live. No parameter and no value is read at all; the source's `helm` and
 `plugin` blocks are not looked into.
 
 `Deployment` is a list on the catalog, beside `repos`, and the join is made
-in the index: an Application is a service's when it deploys from the
-service's repository, inside the service's directory. An Application of a
-repository nobody in the estate claims matches nothing and is not an error;
-a control plane manages more than the estate's services.
+in the index, two ways. When the Application carries the recommended
+labels - `app.kubernetes.io/part-of` and `app.kubernetes.io/name`, the same
+ones fetch-k8s reads off a workload, or whichever the manifest names under
+`labels` - they decide: the fetcher writes `<context>.<service>` as
+`Deployment.service` and nothing else is looked at. A GitOps repository's
+Application points at an overlay in that repository, not at the service's
+directory, so the path alone cannot place it, and an ApplicationSet stamps
+the labels on every Application it makes (`examples/gitops`). Without the
+labels, the path: an Application is a service's when it deploys from the
+service's repository, inside the service's directory. An Application that
+matches neither way is not an error; a control plane manages more than the
+estate's services, and the Problems page lists it.
 
 #### Consequences
 

@@ -4,5 +4,8 @@
   ],
   "codeowners": [
     "owners.json"
+  ],
+  "k8s-cluster": [
+    "k8s-cluster.json"
   ]
 }
