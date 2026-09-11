@@ -34,6 +34,7 @@ const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   "message-encoding": "service",
   "subscription-unresolved": "service",
   "deployment-unclaimed": "service",
+  "deployment-drift": "service",
 };
 
 const KIND_NOTE: Record<Problem["kind"], string> = {
@@ -57,6 +58,8 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
     "nothing in the catalog publishes what this service listens for",
   "deployment-unclaimed":
     "the deployer runs this from a repository and directory no service in the catalog lives at",
+  "deployment-drift":
+    "the GitOps tree and the deployer disagree about this Application",
 };
 
 /** Where the near end of a problem lives, by what kind of edge it is. */
@@ -100,6 +103,10 @@ function nearPath(problem: Problem): string | null {
     // page for it here, and the deployer's own page is in the note.
     case "deployment-unclaimed":
       return null;
+    // The near end is the service the Application deploys, when the
+    // catalog has one; its page is where the row with the drift chip is.
+    case "deployment-drift":
+      return problem.service ? servicePath(problem.service) : null;
   }
 }
 

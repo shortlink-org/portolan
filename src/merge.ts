@@ -15,8 +15,12 @@
 //    context's name is a fact about the estate that belongs on the Problems
 //    page, next to the other things that are true and unfortunate.
 
+import { deploymentBasis } from "./catalog-model.ts";
 import type {
   Aggregate,
+  Deployment,
+  DeploymentBasis,
+  DeploymentDrift,
   Alt,
   AltBranch,
   Block,
@@ -122,6 +126,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const repos: NonNullable<Catalog["repos"]> = [];
   const repoOrigin = new Map<string, string>();
   const deployments: NonNullable<Catalog["deployments"]> = [];
+  const deploymentOrigin = new Map<string, Map<DeploymentBasis, string>>(); // id -> basis -> source path
   const externals = new Map<string, External>();
   const externalOrigin = new Map<string, string>();
   const seen = new Map<string, string>(); // flow/adr/store/module/term id -> source path
@@ -250,12 +255,14 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     for (const store of catalog.stores ?? []) {
       if (claim(seen, store.id, path, conflicts, "store")) stores.push(store);
     }
-    // Claimed by id: one snapshot of one control plane lists each
-    // Application once, and a second snapshot naming the same one is two
-    // fetch steps pointed at the same server, which is a manifest to fix.
+    // Two sources may speak about one Application, and are meant to: the
+    // GitOps tree says what should run, the deployer says what does, and
+    // the row a reader sees is the two laid over each other with the
+    // difference kept as drift (portolan.0013). Two rows of the SAME basis
+    // for one id is the collision - two snapshots of one server, two trees
+    // declaring one name - and is reported like any other.
     for (const deployment of catalog.deployments ?? []) {
-      if (claim(seen, deployment.id, path, conflicts, "deployment"))
-        deployments.push(deployment);
+      foldDeployment(deployments, deploymentOrigin, deployment, path, conflicts);
     }
     // Claimed by id like everything else at this level, and that is exactly why
     // a module's id is its registry-global name rather than one derived from an
@@ -1036,6 +1043,79 @@ function overlayNodes(
  * Records who owns an id. Returns false when somebody already did, which is
  * how a duplicate is skipped rather than appended twice.
  */
+/**
+ * Lays one deployment over what is already held for its id.
+ *
+ * A manifest row and an api row fold into one: the api row's shape - it is
+ * what runs, and carries the revision, the images and the link - with the
+ * manifest filling what the deployer did not say (a service the labels
+ * name, images the overlay pins when nothing runs yet), and the fields the
+ * two disagree on kept as the tree's word under `drift`. Whichever arrives
+ * first is held; the second folds onto it. Two rows of one basis are a
+ * collision and the first is kept, said out loud.
+ */
+function foldDeployment(
+  held: Deployment[],
+  origins: Map<string, Map<DeploymentBasis, string>>,
+  incoming: Deployment,
+  path: string,
+  conflicts: MergeConflict[],
+): void {
+  const basis = deploymentBasis(incoming);
+  const bases = origins.get(incoming.id) ?? new Map<DeploymentBasis, string>();
+  origins.set(incoming.id, bases);
+  const index = held.findIndex((d) => d.id === incoming.id);
+  if (index < 0) {
+    bases.set(basis, path);
+    held.push(incoming);
+    return;
+  }
+  const already = bases.get(basis);
+  if (already !== undefined || basis === "both") {
+    conflicts.push({
+      path,
+      where: incoming.id,
+      message: `deployment "${incoming.id}" is ${basis === "manifest" ? "declared" : "listed"} here and in ${already ?? "another source"}; the first one is used`,
+    });
+    return;
+  }
+  bases.set(basis, path);
+  const current = held[index]!;
+  const [manifest, api] = basis === "manifest" ? [incoming, current] : [current, incoming];
+  held[index] = laidOver(manifest, api);
+}
+
+/** The api row with the manifest laid under it, and their differences as drift. */
+function laidOver(manifest: Deployment, api: Deployment): Deployment {
+  const drift: DeploymentDrift = {};
+  if (manifest.project && manifest.project !== api.project) drift.project = manifest.project;
+  if (manifest.cluster && manifest.cluster !== api.cluster) drift.cluster = manifest.cluster;
+  if (manifest.namespace && manifest.namespace !== api.namespace) drift.namespace = manifest.namespace;
+  if (manifest.path && manifest.path !== api.path) drift.path = manifest.path;
+  if (manifest.targetRevision && manifest.targetRevision !== api.targetRevision) {
+    drift.targetRevision = manifest.targetRevision;
+  }
+  // The overlay pins some images; the cluster runs those and the base's.
+  // Drift is a pinned image that is not running, not a running image the
+  // overlay never mentioned.
+  const running = new Set(api.images ?? []);
+  const pinnedElsewhere = (manifest.images ?? []).filter((image) => !running.has(image));
+  if (pinnedElsewhere.length > 0 && (api.images?.length ?? 0) > 0) drift.images = pinnedElsewhere;
+
+  const folded: Deployment = {
+    ...api,
+    service: api.service ?? manifest.service,
+    tool: api.tool || manifest.tool,
+    images: api.images?.length ? api.images : manifest.images,
+    basis: "both",
+  };
+  if (folded.service === undefined) delete folded.service;
+  if (!folded.images?.length) delete folded.images;
+  if (Object.keys(drift).length > 0) folded.drift = drift;
+  else delete folded.drift;
+  return folded;
+}
+
 function claim(
   owners: Map<string, string>,
   id: string,

@@ -554,6 +554,45 @@ export interface Deployment {
   service?: string;
   /** The container images the deployed resources run, as the deployer summarised them, sorted. */
   images?: string[];
+  /**
+   * Who said so. `manifest` is a row an extractor read out of a GitOps
+   * tree: what should run. `api` is a row a fetcher read off the deployer:
+   * what does. `both` is one the merge folded from the two, which is the
+   * ordinary case for an estate that keeps both, and the only one that can
+   * carry drift. Absent reads as `api`, which is what every row was before
+   * there were trees to read.
+   */
+  basis?: DeploymentBasis;
+  /**
+   * What the tree says where it and the deployer disagree, set by the merge
+   * when both spoke (portolan.0013). A field is present only when the two
+   * differ; a row with no drift has no field at all.
+   */
+  drift?: DeploymentDrift;
+}
+
+export type DeploymentBasis = "manifest" | "api" | "both";
+
+export const DEPLOYMENT_BASES: readonly DeploymentBasis[] = [
+  "manifest",
+  "api",
+  "both",
+] as const;
+
+/** The GitOps tree's word on the fields where the deployer says otherwise. */
+export interface DeploymentDrift {
+  project?: string;
+  cluster?: string;
+  namespace?: string;
+  path?: string;
+  targetRevision?: string;
+  /** The images the overlay pins, when they are not the ones running. */
+  images?: string[];
+}
+
+/** The basis a row carries, `api` when it carries none. */
+export function deploymentBasis(deployment: Deployment): DeploymentBasis {
+  return deployment.basis ?? "api";
 }
 export interface Aggregate {
   id: string;

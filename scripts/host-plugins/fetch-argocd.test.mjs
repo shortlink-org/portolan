@@ -110,6 +110,7 @@ describe("fetch-argocd", () => {
       revision: REVISION,
       tool: "kustomize",
       url: `${server.url}/applications/argocd/shop-cart`,
+      basis: "api",
       service: "shop.cart",
       images: ["ghcr.io/shortlink-org/cart:1.4.2", "redis:7"],
     });

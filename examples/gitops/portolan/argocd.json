@@ -1,0 +1,114 @@
+{
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "deployments": [
+    {
+      "id": "argocd/platform-grafana",
+      "name": "platform-grafana",
+      "project": "platform",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "monitoring",
+      "repo": "grafana.github.io/helm-charts",
+      "path": "",
+      "chart": "grafana",
+      "targetRevision": "8.5.1",
+      "revision": "",
+      "tool": "helm",
+      "url": "",
+      "service": "platform.grafana",
+      "basis": "manifest"
+    },
+    {
+      "id": "argocd/platform-ingress-nginx",
+      "name": "platform-ingress-nginx",
+      "project": "platform",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "ingress-nginx",
+      "repo": "kubernetes.github.io/ingress-nginx",
+      "path": "",
+      "chart": "ingress-nginx",
+      "targetRevision": "4.11.2",
+      "revision": "",
+      "tool": "helm",
+      "url": "",
+      "service": "platform.ingress-nginx",
+      "basis": "manifest"
+    },
+    {
+      "id": "argocd/root",
+      "name": "root",
+      "project": "default",
+      "environment": "in-cluster",
+      "cluster": "in-cluster",
+      "namespace": "argocd",
+      "repo": "github.com/shortlink-org/portolan",
+      "path": "examples/gitops/bootstrap/projects",
+      "targetRevision": "main",
+      "revision": "",
+      "tool": "",
+      "url": "",
+      "basis": "manifest"
+    },
+    {
+      "id": "argocd/shop-cart-prod",
+      "name": "shop-cart-prod",
+      "project": "shop",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "shop",
+      "repo": "github.com/shortlink-org/portolan",
+      "path": "examples/gitops/envs/prod/shop/cart",
+      "targetRevision": "main",
+      "revision": "",
+      "tool": "kustomize",
+      "url": "",
+      "service": "shop.cart",
+      "images": [
+        "ghcr.io/shortlink-org/cart:2.1.0"
+      ],
+      "basis": "manifest"
+    },
+    {
+      "id": "argocd/shop-cart-staging",
+      "name": "shop-cart-staging",
+      "project": "shop",
+      "environment": "staging",
+      "cluster": "staging-eu",
+      "namespace": "shop",
+      "repo": "github.com/shortlink-org/portolan",
+      "path": "examples/gitops/envs/staging/shop/cart",
+      "targetRevision": "main",
+      "revision": "",
+      "tool": "kustomize",
+      "url": "",
+      "service": "shop.cart",
+      "images": [
+        "ghcr.io/shortlink-org/cart:2.2.0-rc.1"
+      ],
+      "basis": "manifest"
+    },
+    {
+      "id": "argocd/shop-pricing-prod",
+      "name": "shop-pricing-prod",
+      "project": "shop",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "shop",
+      "repo": "github.com/shortlink-org/portolan",
+      "path": "examples/gitops/envs/prod/shop/pricing",
+      "targetRevision": "main",
+      "revision": "",
+      "tool": "kustomize",
+      "url": "",
+      "service": "shop.pricing",
+      "images": [
+        "ghcr.io/shortlink-org/pricing:1.4.2"
+      ],
+      "basis": "manifest"
+    }
+  ]
+}

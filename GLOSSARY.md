@@ -44,12 +44,21 @@ whether it is a bounded context, a system, a product, a team or a namespace.
 **Declared.** The status of a fact a fragment states and nothing has yet
 shown happening.
 
-**Deployment.** One place a service runs, read from what deploys it: an Argo
-CD Application reduced to what a deploy changes - environment, cluster,
-namespace, the repository and directory it deploys from, the revision that
-stands there, the images. A list on the catalog, joined to a service by
-repository and directory; never a health or a sync state, which move without
-a commit.
+**Deployment.** One place a service runs: an Argo CD Application reduced to
+what a deploy changes - environment, cluster, namespace, the repository and
+directory it deploys from, the revision that stands there, the images. Two
+readers say it: an extractor over the GitOps tree says what should run
+(basis `manifest`), a fetcher over the deployer says what does (basis
+`api`), and the merge lays the two over each other (basis `both`). A list on
+the catalog, joined to a service by the labels the Application carries, else
+by repository and directory; never a health or a sync state, which move
+without a commit.
+
+**Drift.** Where the GitOps tree and the deployer disagree about one
+deployment: the tree's word on the project, cluster, namespace, path,
+tracked revision or pinned images that the deployer says otherwise about.
+Kept on the merged row, worn as a chip on the service page, listed on the
+Problems page. Set only where the two differ; agreement leaves no mark.
 
 **Estate.** Everything the manifest's sources find, merged and validated as
 one: the whole a reader browses, dated from the sources that carry a stamp.

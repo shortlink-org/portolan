@@ -76,6 +76,25 @@ type Deployment struct {
 	// empty when they name none, and the path decides.
 	Service string   `json:"service,omitempty"`
 	Images  []string `json:"images,omitempty"`
+	// Basis says who said so: "manifest" for a row read out of a GitOps
+	// tree, "api" for one read off the deployer, "both" for one the merge
+	// folded from the two. Empty reads as "api", which is what every row
+	// was before there were trees to read.
+	Basis string `json:"basis,omitempty"`
+	// Drift is what the tree says where it and the deployer disagree, set
+	// by the merge when both spoke (portolan.0013).
+	Drift *DeploymentDrift `json:"drift,omitempty"`
+}
+
+// DeploymentDrift is the GitOps tree's word on the fields where the
+// deployer says otherwise. A field is set only when the two differ.
+type DeploymentDrift struct {
+	Project        string   `json:"project,omitempty"`
+	Cluster        string   `json:"cluster,omitempty"`
+	Namespace      string   `json:"namespace,omitempty"`
+	Path           string   `json:"path,omitempty"`
+	TargetRevision string   `json:"targetRevision,omitempty"`
+	Images         []string `json:"images,omitempty"`
 }
 
 // External is a system outside the estate with a contract: what it answers on,

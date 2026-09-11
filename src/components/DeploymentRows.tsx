@@ -9,6 +9,8 @@
 
 import { ExternalLink } from "lucide-react";
 import type { Deployment } from "../catalog";
+import { deploymentBasis } from "../catalog";
+import { driftLines } from "../lib/deploy-problems";
 import { Ident } from "./Ident";
 import { RowActions } from "./RowActions";
 
@@ -68,6 +70,27 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
           ) : null}
           {deployment.tool ? (
             <span className="chip mono">{deployment.tool}</span>
+          ) : null}
+          {/* Who said so, when only the tree has: what should run, with
+              nothing yet saying it does. A row both spoke for says nothing
+              here - agreement is the ordinary case and needs no chip. */}
+          {deploymentBasis(deployment) === "manifest" ? (
+            <span
+              className="chip status-declared"
+              title="declared in the GitOps tree; the deployer has not been read for it"
+            >
+              declared
+            </span>
+          ) : null}
+          {/* The tree and the deployer disagree. The chip carries the
+              difference in words, so a reader does not have to open both. */}
+          {driftLines(deployment).length > 0 ? (
+            <span
+              className="chip status-unresolved"
+              title={driftLines(deployment).join("\n")}
+            >
+              drift
+            </span>
           ) : null}
         </span>
         {deployment.images?.length ? (

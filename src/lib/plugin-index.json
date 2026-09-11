@@ -1528,6 +1528,70 @@
     }
   },
   {
+    "name": "argocd-gitops",
+    "plugin": "extract-argocd",
+    "summary": "Reads the Argo CD Applications and ApplicationSets in a GitOps tree into the deployments they declare - which service, from where, into which cluster and namespace - expanding list, git and matrix generators against the tree.",
+    "category": "infrastructure",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-argocd",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "The repository this tree is, spelled the way `Service.repo` spells it. A git generator pointing at another repository cannot be walked and is passed over with a warning; left out, every git generator is taken to mean this tree.",
+          "examples": [
+            "github.com/acme/gitops"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Directories under the input root that hold the Applications and ApplicationSets, so overlays and charts beside them are not read for Argo CD objects. Left out, the whole root is walked.",
+          "examples": [
+            [
+              "bootstrap",
+              "appsets"
+            ]
+          ]
+        },
+        "environmentLabel": {
+          "type": "string",
+          "default": "env",
+          "description": "The Application label that names the environment. An Application without it is placed by the cluster it deploys to."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Which Application labels name the service it deploys. The defaults are the Kubernetes recommended labels, the same ones fetch-argocd and fetch-k8s read.",
+          "properties": {
+            "context": {
+              "type": "string",
+              "description": "The label whose value is the bounded context's slug.",
+              "default": "app.kubernetes.io/part-of"
+            },
+            "service": {
+              "type": "string",
+              "description": "The label whose value is the service's slug.",
+              "default": "app.kubernetes.io/name"
+            }
+          }
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "argocd.json"
+        }
+      }
+    }
+  },
+  {
     "name": "asyncapi",
     "plugin": "extract-asyncapi",
     "summary": "Reads an AsyncAPI document and answers with the channels a service publishes on and listens to.",

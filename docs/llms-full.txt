@@ -37,6 +37,7 @@
 | [portolan.0010](adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
 | [portolan.0011](adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |
 | [portolan.0012](adr/portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 |
+| [portolan.0013](adr/portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 |
 
 <!-- portolan/README.md -->
 
@@ -59,7 +60,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 
 ## Language
 
-- [Glossary](glossary.md) — 46 terms this context spells one way
+- [Glossary](glossary.md) — 47 terms this context spells one way
 
 ## Decisions
 
@@ -77,6 +78,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0010](../adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
 | [portolan.0011](../adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |
 | [portolan.0012](../adr/portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 |
+| [portolan.0013](../adr/portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 |
 
 <!-- portolan/glossary.md -->
 
@@ -85,7 +87,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
-- **Terms:** 46
+- **Terms:** 47
 - **Read from:** [`GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -101,7 +103,8 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Component** — The neutral reading of a service, for a repository that was not laid out for a domain model: an application, a webapp, a worker, a job, a function, a CLI, a library or a data pipeline, said by its kind. The wire and the code say service; the README and the setup wizard say component when the kind is neutral. Decided in portolan.0004.
 - **Context** — The estate's top grouping level and nothing more: it owns services and states no relationship to its neighbours, because the map of who talks to whom is drawn from the calls and events themselves. Its kind says whether it is a bounded context, a system, a product, a team or a namespace.
 - **Declared** — The status of a fact a fragment states and nothing has yet shown happening.
-- **Deployment** — One place a service runs, read from what deploys it: an Argo CD Application reduced to what a deploy changes - environment, cluster, namespace, the repository and directory it deploys from, the revision that stands there, the images. A list on the catalog, joined to a service by repository and directory; never a health or a sync state, which move without a commit.
+- **Deployment** — One place a service runs: an Argo CD Application reduced to what a deploy changes - environment, cluster, namespace, the repository and directory it deploys from, the revision that stands there, the images. Two readers say it: an extractor over the GitOps tree says what should run (basis `manifest`), a fetcher over the deployer says what does (basis `api`), and the merge lays the two over each other (basis `both`). A list on the catalog, joined to a service by the labels the Application carries, else by repository and directory; never a health or a sync state, which move without a commit.
+- **Drift** — Where the GitOps tree and the deployer disagree about one deployment: the tree's word on the project, cluster, namespace, path, tracked revision or pinned images that the deployer says otherwise about. Kept on the merged row, worn as a chip on the service page, listed on the Problems page. Set only where the two differ; agreement leaves no mark.
 - **Estate** — Everything the manifest's sources find, merged and validated as one: the whole a reader browses, dated from the sources that carry a stamp.
 - **Event** — A fact in the past tense that an aggregate publishes, on a channel its service declares, with the shared definition of its payload in defs.
 - **External** — A system outside the estate with a contract: what it answers on, read from the copy of its document vendored beside the adapter that calls it, and nothing else. Nobody in the estate provides it, so it sits at the root beside the contexts and has no aggregates and no repository.
@@ -1090,6 +1093,58 @@ disk: the objects live in the process for the length of one call.
 
 portolan.0011 records why both readers keep names and nothing else.
 
+### Where it runs: the GitOps tree, and the deployer
+
+A service's manifests say what it is; what deploys them says where it
+stands - which environment, cluster and namespace, from which directory of
+which repository, tracking which revision. Two plugins read that, and the
+merge lays one under the other (portolan.0012, portolan.0013):
+
+- **extract-argocd** reads the Argo CD `Application` and `ApplicationSet`
+  objects in a GitOps tree, as wasm over the workspace, and answers with
+  what *should* run: one deployment per Application, basis `manifest`. An
+  ApplicationSet is expanded as far as a tree allows - `list` generators
+  whole, `git` directories and files by walking this repository, `matrix`
+  over those, the template rendered as Go `text/template` or fasttemplate
+  as it declared. A `clusters`, `pullRequest`, `scmProvider`, `merge` or
+  `plugin` generator, or a `git` one pointing at another repository, is a
+  warning naming the ApplicationSet and no rows. When the source path holds
+  a `kustomization.yaml`, the tool is kustomize and the images the overlay
+  pins are the declared images.
+- **fetch-argocd** asks the Argo CD API for what *does* run - the revision
+  synced, the images running, the link - and commits it as a snapshot
+  beside a lock, basis `api` (see the fetchers above).
+
+```json
+{ "name": "argocd-gitops", "wasm": { "url": "file://plugins/portolan-go.wasm" } }
+
+{
+  "plugin": "argocd-gitops",
+  "in": "examples/gitops",
+  "out": "examples/gitops/portolan",
+  "options": {
+    "repo": "github.com/shortlink-org/portolan",
+    "paths": ["bootstrap", "appsets"],
+    "labels": { "context": "app.kubernetes.io/part-of", "service": "app.kubernetes.io/name" },
+    "out": "argocd.json"
+  }
+}
+```
+
+An Application is placed on a service by the labels it carries -
+`app.kubernetes.io/part-of` and `app.kubernetes.io/name`, the same pair
+fetch-k8s reads off a workload, or whichever the manifest names under
+`labels` - and, without them, by deploying from the service's repository
+inside the service's directory. One that matches neither way is listed on
+the Problems page as unclaimed rather than guessed at.
+
+Where both plugins spoke for one Application the merge folds the two into
+one row, basis `both`: the deployer's shape, the tree filling what the
+deployer did not say, and the fields the two disagree on kept as the tree's
+word under `drift` - a `deployment-drift` problem, and a chip on the
+service page that says the difference in words. A row only the tree spoke
+for wears `declared`.
+
 ### Outside the estate: an external with a contract
 
 A service calls things nobody here builds - a card network, a tax API, a
@@ -1881,6 +1936,7 @@ sequenceDiagram
 | [portolan.0010](portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
 | [portolan.0011](portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
 | [portolan.0012](portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
+| [portolan.0013](portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
@@ -2964,3 +3020,111 @@ cluster. It remains open for an estate whose Argo CD nobody may call.
 Option 3 would put a fact that changes every hour into a file regenerated
 once a day. Option 4 would have the fetcher guess a service from a name,
 in the one place the estate is not known.
+
+<!-- adr/portolan.0013.md -->
+
+# portolan.0013 — What should run is read from the GitOps tree, and laid under what does
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-11
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0013-what-should-run-is-read-from-the-gitops-tree-and-laid-under-what-does.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0013-what-should-run-is-read-from-the-gitops-tree-and-laid-under-what-does.md)
+
+### Context and Problem Statement
+
+portolan.0012 reads where a service runs off the deployer, as a snapshot,
+and left the other source open: the GitOps tree that tells the deployer
+what to run. The two answer different questions. The tree says what should
+be deployed - which directory, tracking which revision, into which cluster
+and namespace, pinning which image - and says it in a commit, reproducibly,
+with no token. The deployer says what is - the revision synced, the images
+running - and says it over a socket. An estate that keeps both wants both,
+and wants the difference most of all: a tag bumped in the tree that the
+cluster does not run yet is the fact a reader opens the page for.
+
+Reading the tree is not reading a list of Applications. Since
+ApplicationSets, the Applications are made from generators, and what a
+tree holds is the recipe: a matrix of the environments under `envs/*` and
+the services under each. Some generators can be expanded from the tree
+alone; some ask a cluster, a forge or a plugin.
+
+### Decision Drivers
+
+- The tree is a tree: reading it is an extractor's, as wasm over the
+  workspace (portolan.0006), and needs no token.
+- Regenerating from the same sources must change no byte (portolan.0010).
+- One Application must be one row a reader sees, however many sources
+  spoke for it; the difference between them must not be lost in the fold.
+- A generator a tree cannot expand must be a warning naming it, never a
+  guess at what the controller would have made.
+- The join of a deployment to a service must be the one portolan.0012
+  settled on: the labels when the Application carries them, the path
+  otherwise.
+
+### Considered Options
+
+1. **An extractor over the tree, and a fold in the merge**: `extract-argocd`
+   expands what it can and writes rows with basis `manifest`; `fetch-argocd`
+   writes rows with basis `api`; the merge lays a manifest row under the
+   api row of the same id and keeps their differences as drift.
+2. **Two rows per Application**, one from each source, shown side by side.
+3. **The extractor only**, dropping the fetcher: the tree is enough.
+4. **Expand every generator** by asking Argo CD to render the
+   ApplicationSet, as the fetcher already talks to it.
+
+### Decision Outcome
+
+Chosen option: **an extractor over the tree, and a fold in the merge.**
+
+`extract-argocd` runs as one more entry of `portolan-go.wasm` over a
+GitOps tree. It reads every Application and ApplicationSet under the paths
+named and expands the generators a tree can answer: `list` whole; `git`
+directories and files by walking the same repository - repository-relative
+paths from the workspace root, a `**` walked as one level and said so; and
+`matrix` over those, the second generator rendered with each row of the
+first, which is what lets `envs/{{.env}}/shop/*` follow `envs/*/cluster.yaml`.
+The template is rendered the way the ApplicationSet declared it: Go
+`text/template` under `goTemplate`, else `{{a.b}}` over the flattened row.
+A `clusters`, `pullRequest`, `scmProvider`, `merge` or `plugin` generator,
+and a `git` generator pointing at another repository, is a warning naming
+the ApplicationSet and no rows.
+
+Each Application, declared or rendered, is reduced the way the fetcher
+reduces the API's answer, minus what a tree cannot know - no revision, no
+running image, no link - plus what a tree can know first: when the source
+path holds a `kustomization.yaml`, the tool is kustomize and the images the
+overlay pins are the declared images. The row carries basis `manifest`.
+
+`fetch-argocd` now marks its rows basis `api`. The merge holds one row per
+id. A manifest row and an api row fold into one: the api row's shape, since
+it is what runs; the manifest filling a service the labels name or an image
+the overlay pins when nothing runs yet; and the fields the two disagree on -
+project, cluster, namespace, path, tracked revision, pinned images not
+running - kept as the tree's word under `drift`, with basis `both`. Two
+rows of one basis for one id are a collision and are reported as one. A
+row with drift is a `deployment-drift` problem on the service's row, and
+the service page wears a `drift` chip that says the difference in words; a
+row only the tree spoke for wears `declared`.
+
+#### Consequences
+
+An estate that keeps a GitOps tree reads its deployments in CI, offline,
+with no token, and gains the snapshot's revisions and images whenever a run
+with a token refreshes it. The service page shows one row per environment
+either way. The Problems page shows where the tree and the deployer have
+parted, which is the one place a reader would otherwise open two tools to
+find.
+
+The catalog gains two fields on a deployment, one type and one problem
+kind. The Go mirror follows. Nothing is added to a service.
+
+Option 2 shows the same Application twice on every page for the ordinary
+case, agreement, to make the rare case, disagreement, visible; a fold with
+drift makes disagreement visible and agreement quiet. Option 3 loses what
+runs, which is the question portolan.0012 was answering. Option 4 needs
+the token and the socket for the part of the work that needs neither, and
+answers nothing the tree cannot for the generators a tree can expand; for
+the ones it cannot, it is the case for a later need, not for making the
+common case need a control plane.

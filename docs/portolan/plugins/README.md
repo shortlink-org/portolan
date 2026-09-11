@@ -854,6 +854,58 @@ disk: the objects live in the process for the length of one call.
 
 portolan.0011 records why both readers keep names and nothing else.
 
+### Where it runs: the GitOps tree, and the deployer
+
+A service's manifests say what it is; what deploys them says where it
+stands - which environment, cluster and namespace, from which directory of
+which repository, tracking which revision. Two plugins read that, and the
+merge lays one under the other (portolan.0012, portolan.0013):
+
+- **extract-argocd** reads the Argo CD `Application` and `ApplicationSet`
+  objects in a GitOps tree, as wasm over the workspace, and answers with
+  what *should* run: one deployment per Application, basis `manifest`. An
+  ApplicationSet is expanded as far as a tree allows - `list` generators
+  whole, `git` directories and files by walking this repository, `matrix`
+  over those, the template rendered as Go `text/template` or fasttemplate
+  as it declared. A `clusters`, `pullRequest`, `scmProvider`, `merge` or
+  `plugin` generator, or a `git` one pointing at another repository, is a
+  warning naming the ApplicationSet and no rows. When the source path holds
+  a `kustomization.yaml`, the tool is kustomize and the images the overlay
+  pins are the declared images.
+- **fetch-argocd** asks the Argo CD API for what *does* run - the revision
+  synced, the images running, the link - and commits it as a snapshot
+  beside a lock, basis `api` (see the fetchers above).
+
+```json
+{ "name": "argocd-gitops", "wasm": { "url": "file://plugins/portolan-go.wasm" } }
+
+{
+  "plugin": "argocd-gitops",
+  "in": "examples/gitops",
+  "out": "examples/gitops/portolan",
+  "options": {
+    "repo": "github.com/shortlink-org/portolan",
+    "paths": ["bootstrap", "appsets"],
+    "labels": { "context": "app.kubernetes.io/part-of", "service": "app.kubernetes.io/name" },
+    "out": "argocd.json"
+  }
+}
+```
+
+An Application is placed on a service by the labels it carries -
+`app.kubernetes.io/part-of` and `app.kubernetes.io/name`, the same pair
+fetch-k8s reads off a workload, or whichever the manifest names under
+`labels` - and, without them, by deploying from the service's repository
+inside the service's directory. One that matches neither way is listed on
+the Problems page as unclaimed rather than guessed at.
+
+Where both plugins spoke for one Application the merge folds the two into
+one row, basis `both`: the deployer's shape, the tree filling what the
+deployer did not say, and the fields the two disagree on kept as the tree's
+word under `drift` - a `deployment-drift` problem, and a chip on the
+service page that says the difference in words. A row only the tree spoke
+for wears `declared`.
+
 ### Outside the estate: an external with a contract
 
 A service calls things nobody here builds - a card network, a tax API, a

@@ -184,6 +184,10 @@ export function deploymentOf(app, base, environmentLabel = DEFAULT_ENVIRONMENT_L
     revision,
     tool: toolOf(status.sourceType ?? status.sourceTypes?.[sourceIndex], ...sources),
     url: `${base}/applications/${encodeURIComponent(appNamespace)}/${encodeURIComponent(name)}`,
+    // Who said so: the deployer. A row extract-argocd reads out of the
+    // GitOps tree says "manifest", and the merge lays the two over each
+    // other (portolan.0013).
+    basis: "api",
   };
   // The service, when the labels say: `<context>.<service>`, the id a
   // service carries in the catalog. Both labels or nothing - a name without

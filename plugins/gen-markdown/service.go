@@ -502,6 +502,10 @@ func (s *site) deploymentsTable(svc *catalog.Service) string {
 			}
 			where += d.Namespace
 		}
+		application := d.Name
+		if d.URL != "" {
+			application = "[" + d.Name + "](" + d.URL + ")"
+		}
 		rows = append(rows, []string{
 			d.Environment,
 			code(where),
@@ -509,11 +513,44 @@ func (s *site) deploymentsTable(svc *catalog.Service) string {
 			code(d.TargetRevision),
 			d.Tool,
 			codeList(d.Images),
-			"[" + d.Name + "](" + d.URL + ")",
+			application,
+			driftCell(d),
 		})
 	}
 
-	return table([]string{"Environment", "Where", "Revision", "Tracks", "Tool", "Images", "Application"}, rows)
+	return table([]string{"Environment", "Where", "Revision", "Tracks", "Tool", "Images", "Application", "Drift"}, rows)
+}
+
+// driftCell is what the GitOps tree says where the deployer says otherwise
+// (portolan.0013), one clause per field; "declared" for a row only the
+// tree spoke for; empty when the two agree, which the table then drops.
+func driftCell(d *catalog.Deployment) string {
+	if d.Basis == "manifest" {
+		return "declared, not yet read from the deployer"
+	}
+	if d.Drift == nil {
+		return ""
+	}
+	var parts []string
+	if d.Drift.Project != "" {
+		parts = append(parts, "project "+code(d.Drift.Project))
+	}
+	if d.Drift.Cluster != "" {
+		parts = append(parts, "cluster "+code(d.Drift.Cluster))
+	}
+	if d.Drift.Namespace != "" {
+		parts = append(parts, "namespace "+code(d.Drift.Namespace))
+	}
+	if d.Drift.Path != "" {
+		parts = append(parts, "path "+code(d.Drift.Path))
+	}
+	if d.Drift.TargetRevision != "" {
+		parts = append(parts, "tracks "+code(d.Drift.TargetRevision))
+	}
+	if len(d.Drift.Images) > 0 {
+		parts = append(parts, "pins "+codeList(d.Drift.Images))
+	}
+	return "the tree says " + strings.Join(parts, ", ")
 }
 
 // deploys says whether a deployment is of this service, the way the site

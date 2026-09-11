@@ -194,6 +194,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   git: { label: "Git", icon: { brand: "Git" } },
   csr: { label: "Confluent Schema Registry", icon: { lucide: "package" } },
   argocd: { label: "Argo CD", icon: { lucide: "cloud" } },
+  "argocd-gitops": { label: "Argo CD manifests", icon: { lucide: "cloud" } },
   "csr-schemas": { label: "Registry schemas", icon: { lucide: "file-code" } },
   proto: { label: "Protobuf", icon: { lucide: "file-code" } },
 };

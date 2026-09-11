@@ -95,6 +95,25 @@ describe("deployments the catalog cannot place", () => {
     expect(deployProblems(nobody)[0]?.note).toContain("its labels name platform.grafana, which is no service of the estate");
   });
 
+  it("reports drift on the service's row, in words, and stays quiet when the tree and the deployer agree", () => {
+    const agreed = estate([placed("cart-prod", "github.com/acme/shop", "services/cart/deploy", { basis: "both" })]);
+    expect(deployProblems(agreed)).toEqual([]);
+
+    const drifted = estate([
+      placed("cart-prod", "github.com/acme/shop", "services/cart/deploy", {
+        basis: "both",
+        images: ["ghcr.io/acme/cart:2.0.9"],
+        drift: { targetRevision: "release-2.1", images: ["ghcr.io/acme/cart:2.1.0"] },
+      }),
+    ]);
+    const [problem, ...rest] = deployProblems(drifted);
+    expect(rest).toEqual([]);
+    expect(problem).toMatchObject({ kind: "deployment-drift", severity: "warning", context: "shop", service: "shop.cart", id: "argocd/cart-prod", peer: "prod" });
+    expect(problem?.note).toBe(
+      "tracks release-2.1 in the tree, main deployed; pins ghcr.io/acme/cart:2.1.0 in the tree; running ghcr.io/acme/cart:2.0.9. https://argocd.example.com/applications/argocd/cart-prod",
+    );
+  });
+
   it("says the chart when the Application deploys one from a registry", () => {
     const catalog = estate([
       placed("redis", "charts.bitnami.com/bitnami", "", { chart: "redis" }),

@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	extractadr "github.com/shortlink-org/portolan/plugins/extract-adr"
+	extractargocd "github.com/shortlink-org/portolan/plugins/extract-argocd"
 	extractasyncapi "github.com/shortlink-org/portolan/plugins/extract-asyncapi"
 	extractcommands "github.com/shortlink-org/portolan/plugins/extract-commands"
 	extractcsr "github.com/shortlink-org/portolan/plugins/extract-csr"
@@ -46,31 +47,32 @@ import (
 // Plugins maps a manifest plugin name to what answers it. The names are the
 // ones portolan.json declares as built-ins; a test holds the two in step.
 var Plugins = map[string]func(io.Reader, io.Writer) error{
-	"project":     extractproject.Serve,
-	"commands":    extractcommands.Serve,
-	"go-domain":   extractgo.Serve,
-	"openapi":     extractopenapi.Serve,
-	"wsdl":        extractwsdl.Serve,
-	"redis":       extractredis.Serve,
-	"river":       extractriver.Serve,
-	"watermill":   extractwatermill.Serve,
-	"go-nats":     extractgonats.Serve,
-	"go-sqs":      extractgosqs.Serve,
-	"terraform":   extractterraform.Serve,
-	"k8s":         extractk8s.Serve,
-	"asyncapi":    extractasyncapi.Serve,
-	"graphql":     extractgraphql.Serve,
-	"sql":         extractsql.Serve,
-	"proto":       extractproto.Serve,
-	"csr-schemas": extractcsr.Serve,
-	"adr":         extractadr.Serve,
-	"glossary":    extractglossary.Serve,
-	"flows":       extractflows.Serve,
-	"otel":        verifyotel.Serve,
-	"codeowners":  verifycodeowners.Serve,
-	"markdown":    genmarkdown.Serve,
-	"mermaid":     genmermaid.Serve,
-	"backstage":   genbackstage.Serve,
+	"project":       extractproject.Serve,
+	"commands":      extractcommands.Serve,
+	"go-domain":     extractgo.Serve,
+	"openapi":       extractopenapi.Serve,
+	"wsdl":          extractwsdl.Serve,
+	"redis":         extractredis.Serve,
+	"river":         extractriver.Serve,
+	"watermill":     extractwatermill.Serve,
+	"go-nats":       extractgonats.Serve,
+	"go-sqs":        extractgosqs.Serve,
+	"terraform":     extractterraform.Serve,
+	"k8s":           extractk8s.Serve,
+	"argocd-gitops": extractargocd.Serve,
+	"asyncapi":      extractasyncapi.Serve,
+	"graphql":       extractgraphql.Serve,
+	"sql":           extractsql.Serve,
+	"proto":         extractproto.Serve,
+	"csr-schemas":   extractcsr.Serve,
+	"adr":           extractadr.Serve,
+	"glossary":      extractglossary.Serve,
+	"flows":         extractflows.Serve,
+	"otel":          verifyotel.Serve,
+	"codeowners":    verifycodeowners.Serve,
+	"markdown":      genmarkdown.Serve,
+	"mermaid":       genmermaid.Serve,
+	"backstage":     genbackstage.Serve,
 }
 
 func main() {

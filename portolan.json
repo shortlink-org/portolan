@@ -231,6 +231,12 @@
       }
     },
     {
+      "name": "argocd-gitops",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "asyncapi",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
@@ -879,12 +885,22 @@
       }
     },
     {
+      "plugin": "argocd-gitops",
+      "in": "examples/gitops",
+      "out": "examples/gitops/portolan",
+      "options": {
+        "repo": "github.com/shortlink-org/portolan",
+        "paths": ["bootstrap", "appsets"],
+        "out": "argocd.json"
+      }
+    },
+    {
       "plugin": "argocd",
       "in": "examples",
       "out": "examples/argocd",
       "options": {
         "server": "argocd.example.com",
-        "projects": ["shop"],
+        "projects": ["shop", "platform"],
         "cache": "examples/argocd"
       }
     },

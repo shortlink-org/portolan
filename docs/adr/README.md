@@ -16,3 +16,4 @@
 | [portolan.0010](portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
 | [portolan.0011](portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
 | [portolan.0012](portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
+| [portolan.0013](portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
