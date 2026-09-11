@@ -13,7 +13,7 @@ path = "src/lib.rs"
 # maintained PHP parser in this language that keeps up with the language, and
 # the arena it parses into is dropped once a file has been read into the
 # extractor's own shapes.
-mago-syntax = "1.48"
-mago-database = "1.48"
-mago-allocator = "1.48"
-mago-span = "1.48"
+mago-syntax = "1.48.1"
+mago-database = "1.48.1"
+mago-allocator = "1.48.1"
+mago-span = "1.48.1"
