@@ -3031,6 +3031,7 @@ in the one place the estate is not known.
 - **Date:** 2026-09-11
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0013-what-should-run-is-read-from-the-gitops-tree-and-laid-under-what-does.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0013-what-should-run-is-read-from-the-gitops-tree-and-laid-under-what-does.md)
+- **Committed:** Victor Login, 2026-09-11 (`26ef3fe`)
 
 ### Context and Problem Statement
 
