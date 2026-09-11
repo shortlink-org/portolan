@@ -6,16 +6,18 @@
 pub mod catalog;
 pub mod events;
 pub mod extract;
-pub mod ids;
 pub mod jobs;
 pub mod layout;
 pub mod models;
 pub mod openapi;
 pub mod protocol;
 pub mod routes;
-pub mod source;
 pub mod stores;
 pub mod yaml;
+
+// The tree as syntax and the id rules come from phpscan; the paths the rest
+// of this crate uses are kept.
+pub use phpscan::{ids, source};
 
 use protocol::{Descriptor, Options, Request, Response};
 

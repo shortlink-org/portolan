@@ -1,0 +1,12 @@
+{
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "repos": [
+    {
+      "repo": "github.com/CodelyTV/php-ddd-example",
+      "commit": "9271c467943f835ab3b6e5ba30bdbd710aca9d73"
+    }
+  ]
+}

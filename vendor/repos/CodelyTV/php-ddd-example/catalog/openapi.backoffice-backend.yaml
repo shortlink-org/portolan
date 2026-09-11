@@ -1,0 +1,48 @@
+openapi: 3.1.0
+info:
+  title: Backoffice backend HTTP API
+  version: inferred
+  description: Generated statically from Symfony route files and controller declarations. Unknown details are left unspecified.
+tags:
+  - name: courses
+  - name: health-check
+  - name: metrics
+paths:
+  /courses:
+    get:
+      operationId: courses_get
+      summary: Courses get
+      tags:
+        - courses
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/courses.yaml:1"
+      x-portolan-route: courses_get
+  /health-check:
+    get:
+      operationId: health_check_get
+      summary: Health check get
+      tags:
+        - health-check
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/health-check.yaml:1"
+      x-portolan-route: health-check_get
+  /metrics:
+    get:
+      operationId: metrics_get
+      summary: Metrics get
+      tags:
+        - metrics
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/metrics.yaml:1"
+      x-portolan-route: metrics_get
+x-portolan-inferred: true
+x-portolan-generator: extract-php-ddd

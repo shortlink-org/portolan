@@ -1,0 +1,304 @@
+{
+  "contexts": [
+    {
+      "id": "backoffice",
+      "slug": "backoffice",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "backoffice.backend",
+          "slug": "backend",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "backoffice.backend.db",
+            "backoffice.backend.search"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mooc",
+      "slug": "mooc",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "mooc.backend",
+          "slug": "backend",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "mooc.backend.db"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "backoffice.backend.db",
+      "slug": "db",
+      "name": "Backoffice database",
+      "kind": "mysql",
+      "owner": "backoffice.backend",
+      "tables": [
+        {
+          "id": "backoffice.backend.db.backoffice_courses",
+          "name": "backoffice_courses",
+          "doc": "A course as the back office lists it: flat, searchable, read-only.",
+          "columns": [
+            {
+              "name": "id",
+              "type": "string(36)",
+              "nullable": false,
+              "pk": true,
+              "maps": "BackofficeCourse.id"
+            },
+            {
+              "name": "name",
+              "type": "string(255)",
+              "nullable": false,
+              "maps": "BackofficeCourse.name"
+            },
+            {
+              "name": "duration",
+              "type": "string(255)",
+              "nullable": false,
+              "maps": "BackofficeCourse.duration"
+            }
+          ],
+          "persists": {
+            "aggregate": "backoffice.backend.courses",
+            "block": "backoffice.backend.courses.backoffice-course"
+          }
+        }
+      ],
+      "source": "testdata/mooc/src/Backoffice"
+    },
+    {
+      "id": "backoffice.backend.search",
+      "slug": "search",
+      "name": "Backoffice Elasticsearch",
+      "kind": "other",
+      "owner": "backoffice.backend",
+      "tables": [
+        {
+          "id": "backoffice.backend.search.courses",
+          "name": "courses",
+          "doc": "A course as the back office lists it: flat, searchable, read-only.",
+          "columns": [
+            {
+              "name": "id",
+              "type": "string",
+              "nullable": false,
+              "pk": true,
+              "maps": "BackofficeCourse.id"
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "nullable": false,
+              "maps": "BackofficeCourse.name"
+            },
+            {
+              "name": "duration",
+              "type": "string",
+              "nullable": false,
+              "maps": "BackofficeCourse.duration"
+            }
+          ],
+          "persists": {
+            "aggregate": "backoffice.backend.courses",
+            "block": "backoffice.backend.courses.backoffice-course"
+          },
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "BackofficeCourseRepository.save",
+              "source": "testdata/mooc/src/Backoffice/Courses/Application/Create/BackofficeCourseCreator.php:17"
+            },
+            {
+              "operation": "read",
+              "method": "BackofficeCourseRepository.searchAll",
+              "source": "testdata/mooc/src/Backoffice/Courses/Application/SearchAll/SearchAllBackofficeCoursesQueryHandler.php:17"
+            }
+          ]
+        }
+      ],
+      "source": "testdata/mooc/src/Backoffice"
+    },
+    {
+      "id": "mooc.backend.db",
+      "slug": "db",
+      "name": "Mooc database",
+      "kind": "mysql",
+      "owner": "mooc.backend",
+      "tables": [
+        {
+          "id": "mooc.backend.db.courses",
+          "name": "courses",
+          "doc": "A course a student can enrol in: a name and how long it takes.",
+          "columns": [
+            {
+              "name": "id",
+              "type": "course_id",
+              "nullable": false,
+              "pk": true,
+              "maps": "Course.id"
+            },
+            {
+              "name": "name",
+              "type": "string(255)",
+              "nullable": false,
+              "maps": "Course.name"
+            },
+            {
+              "name": "duration",
+              "type": "string",
+              "nullable": false,
+              "maps": "Course.duration"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.courses",
+            "block": "mooc.backend.courses.course"
+          },
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "CourseRepository.save",
+              "source": "testdata/mooc/src/Mooc/Courses/Application/Create/CourseCreator.php:23"
+            }
+          ]
+        },
+        {
+          "id": "mooc.backend.db.courses_counter",
+          "name": "courses_counter",
+          "doc": "How many courses there are, kept as a number so nobody counts rows.",
+          "columns": [
+            {
+              "name": "id",
+              "type": "course_counter_id",
+              "nullable": false,
+              "pk": true,
+              "maps": "CoursesCounter.id"
+            },
+            {
+              "name": "existing_courses",
+              "type": "course_ids",
+              "nullable": false,
+              "maps": "CoursesCounter.existingCourses"
+            },
+            {
+              "name": "total",
+              "type": "integer",
+              "nullable": false,
+              "maps": "CoursesCounter.total"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.courses-counter",
+            "block": "mooc.backend.courses-counter.courses-counter"
+          },
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "CoursesCounterRepository.search",
+              "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Find/FindCoursesCounterQueryHandler.php:17"
+            },
+            {
+              "operation": "read",
+              "method": "CoursesCounterRepository.search",
+              "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:20"
+            },
+            {
+              "operation": "write",
+              "method": "CoursesCounterRepository.save",
+              "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:25"
+            }
+          ]
+        },
+        {
+          "id": "mooc.backend.db.steps",
+          "name": "steps",
+          "doc": "One thing a student does in a course: watch, answer, solve.",
+          "columns": [
+            {
+              "name": "type",
+              "type": "string",
+              "nullable": false
+            },
+            {
+              "name": "id",
+              "type": "step_id",
+              "nullable": false,
+              "pk": true,
+              "maps": "Step.id"
+            },
+            {
+              "name": "title",
+              "type": "string",
+              "nullable": false,
+              "maps": "Step.title"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.steps",
+            "block": "mooc.backend.steps.step"
+          },
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "StepRepository.save",
+              "source": "testdata/mooc/src/Mooc/Steps/Application/Create/CreateVideoStepCommandHandler.php:23"
+            }
+          ]
+        },
+        {
+          "id": "mooc.backend.db.steps_video",
+          "name": "steps_video",
+          "doc": "A step that is a video to watch.",
+          "columns": [
+            {
+              "name": "id",
+              "type": "step_id",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "mooc.backend.db.steps",
+                "column": "id"
+              },
+              "maps": "VideoStep.id"
+            },
+            {
+              "name": "url",
+              "type": "string",
+              "nullable": false,
+              "maps": "VideoStep.url"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.steps",
+            "block": "mooc.backend.steps.video-step"
+          }
+        }
+      ],
+      "source": "testdata/mooc/src/Mooc"
+    }
+  ]
+}

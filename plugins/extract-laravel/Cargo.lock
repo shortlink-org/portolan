@@ -498,6 +498,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "phpscan"
+version = "0.1.0"
+dependencies = [
+ "mago-allocator",
+ "mago-database",
+ "mago-span",
+ "mago-syntax",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -507,10 +517,7 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 name = "portolan-extract-laravel"
 version = "0.1.0"
 dependencies = [
- "mago-allocator",
- "mago-database",
- "mago-span",
- "mago-syntax",
+ "phpscan",
  "serde",
  "serde_json",
 ]

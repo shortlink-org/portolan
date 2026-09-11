@@ -168,7 +168,9 @@ variant. In Java it is a top-level enum in the aggregate's package. In PHP it
 is a backed `enum` anywhere in the module, and on an Eloquent model the
 constants that share a prefix - `STATUS_PENDING = 'pending'` beside
 `STATUS_CLOSED = 'closed'` - with `@deprecated` in a constant's docblock
-marking the value; see `extract-laravel/README.md`. In proto,
+marking the value; see `extract-laravel/README.md`. In a PHP tree laid out
+by bounded context (`extract-php-ddd`) it is a backed `enum` under a module's
+`Domain/`. In proto,
 the enums the messages reach through their fields sit on the interface as
 `enums`, with the numbers the wire uses.
 

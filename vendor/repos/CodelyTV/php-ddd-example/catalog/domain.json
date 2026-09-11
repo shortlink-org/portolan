@@ -1,0 +1,1774 @@
+{
+  "contexts": [
+    {
+      "id": "analytics",
+      "slug": "analytics",
+      "name": "Analytics",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "analytics.analytics",
+          "slug": "analytics",
+          "name": "Analytics",
+          "repo": "github.com/CodelyTV/php-ddd-example",
+          "path": "vendor/repos/CodelyTV/php-ddd-example/src/Analytics",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "analytics.analytics.domain-events",
+              "slug": "domain-events",
+              "name": "Domain Events",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [],
+              "events": []
+            }
+          ],
+          "channels": [
+            {
+              "address": "codelytv.analytics.domain_events.store_domain_event_on_occurred",
+              "kind": "event",
+              "title": "Queue · store_domain_event_on_occurred",
+              "doc": "StoreDomainEventOnOccurred's own queue, bound to the `domain_events` exchange for what it subscribes to; the consumer command works it.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "",
+                  "direction": "receive"
+                },
+                {
+                  "name": "courses_counter.incremented",
+                  "title": "CoursesCounterIncremented",
+                  "doc": "",
+                  "direction": "receive"
+                },
+                {
+                  "name": "video.created",
+                  "title": "VideoCreated",
+                  "doc": "",
+                  "direction": "receive"
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:14"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backoffice",
+      "slug": "backoffice",
+      "name": "Backoffice",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "backoffice.backend",
+          "slug": "backend",
+          "name": "Backoffice backend",
+          "repo": "github.com/CodelyTV/php-ddd-example",
+          "path": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend",
+          "readme": "",
+          "provides": [
+            {
+              "id": "backoffice.backend.courses",
+              "methods": [
+                {
+                  "name": "courses_get",
+                  "doc": "Courses get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/courses"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-backend.yaml"
+            },
+            {
+              "id": "backoffice.backend.health-check",
+              "methods": [
+                {
+                  "name": "health_check_get",
+                  "doc": "Health check get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/health-check"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-backend.yaml"
+            },
+            {
+              "id": "backoffice.backend.metrics",
+              "methods": [
+                {
+                  "name": "metrics_get",
+                  "doc": "Metrics get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/metrics"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-backend.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "backoffice.backend.auth",
+              "slug": "auth",
+              "name": "Auth",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "authenticate-user",
+                  "kind": "command",
+                  "doc": ""
+                }
+              ],
+              "events": []
+            },
+            {
+              "id": "backoffice.backend.courses",
+              "slug": "courses",
+              "name": "BackofficeCourse",
+              "readme": "",
+              "root": "BackofficeCourse",
+              "entities": [
+                {
+                  "id": "backoffice.backend.courses.backoffice-course",
+                  "slug": "backoffice-course",
+                  "name": "BackofficeCourse",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "search-all-backoffice-courses",
+                  "kind": "query",
+                  "doc": ""
+                },
+                {
+                  "id": "search-backoffice-courses-by-criteria",
+                  "kind": "query",
+                  "doc": ""
+                }
+              ],
+              "events": []
+            }
+          ],
+          "channels": [
+            {
+              "address": "codelytv.backoffice.courses.create_backoffice_course_on_course_created",
+              "kind": "event",
+              "title": "Queue · create_backoffice_course_on_course_created",
+              "doc": "CreateBackofficeCourseOnCourseCreated's own queue, bound to the `domain_events` exchange for what it subscribes to; the consumer command works it.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "",
+                  "direction": "receive"
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:10"
+            }
+          ]
+        },
+        {
+          "id": "backoffice.frontend",
+          "slug": "frontend",
+          "name": "Backoffice frontend",
+          "repo": "github.com/CodelyTV/php-ddd-example",
+          "path": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend",
+          "readme": "",
+          "provides": [
+            {
+              "id": "backoffice.frontend.api-courses",
+              "methods": [
+                {
+                  "name": "api_courses_get",
+                  "doc": "Api courses get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/api/courses"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
+            },
+            {
+              "id": "backoffice.frontend.courses",
+              "methods": [
+                {
+                  "name": "courses_get",
+                  "doc": "Courses get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/courses"
+                  }
+                },
+                {
+                  "name": "courses_post",
+                  "doc": "Courses post",
+                  "http": {
+                    "method": "POST",
+                    "path": "/courses"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
+            },
+            {
+              "id": "backoffice.frontend.health-check",
+              "methods": [
+                {
+                  "name": "health_check_get",
+                  "doc": "Health check get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/health-check"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
+            },
+            {
+              "id": "backoffice.frontend.home",
+              "methods": [
+                {
+                  "name": "home_get",
+                  "doc": "Home get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
+            },
+            {
+              "id": "backoffice.frontend.metrics",
+              "methods": [
+                {
+                  "name": "metrics_get",
+                  "doc": "Metrics get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/metrics"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    },
+    {
+      "id": "mooc",
+      "slug": "mooc",
+      "name": "Mooc",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "mooc.backend",
+          "slug": "backend",
+          "name": "Mooc backend",
+          "repo": "github.com/CodelyTV/php-ddd-example",
+          "path": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend",
+          "readme": "",
+          "provides": [
+            {
+              "id": "mooc.backend.courses",
+              "methods": [
+                {
+                  "name": "courses_put",
+                  "doc": "Courses put",
+                  "http": {
+                    "method": "PUT",
+                    "path": "/courses/{id}"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
+            },
+            {
+              "id": "mooc.backend.courses-counter",
+              "methods": [
+                {
+                  "name": "courses_counter_get",
+                  "doc": "Courses counter get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/courses-counter"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
+            },
+            {
+              "id": "mooc.backend.health-check",
+              "methods": [
+                {
+                  "name": "health_check_get",
+                  "doc": "Health check get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/health-check"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
+            },
+            {
+              "id": "mooc.backend.metrics",
+              "methods": [
+                {
+                  "name": "metrics_get",
+                  "doc": "Metrics get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/metrics"
+                  }
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "mooc.backend.courses",
+              "slug": "courses",
+              "name": "Course",
+              "readme": "",
+              "root": "Course",
+              "entities": [
+                {
+                  "id": "mooc.backend.courses.course",
+                  "slug": "course",
+                  "name": "Course",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "CourseId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "CourseName",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "CourseDuration",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "mooc.backend.courses.course-duration",
+                  "slug": "course-duration",
+                  "name": "CourseDuration",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.courses.course-name",
+                  "slug": "course-name",
+                  "name": "CourseName",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "create-course",
+                  "kind": "command",
+                  "doc": ""
+                }
+              ],
+              "events": [
+                {
+                  "id": "mooc.backend.courses.CourseCreated",
+                  "slug": "course-created",
+                  "name": "CourseCreated",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Domain/CourseCreatedDomainEvent.php",
+                      "fields": [
+                        {
+                          "name": "name",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "duration",
+                          "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "analytics.analytics",
+                      "status": "declared",
+                      "note": "StoreDomainEventOnOccurred"
+                    },
+                    {
+                      "service": "backoffice.backend",
+                      "status": "declared",
+                      "note": "CreateBackofficeCourseOnCourseCreated"
+                    },
+                    {
+                      "service": "mooc.backend",
+                      "status": "declared",
+                      "note": "IncrementCoursesCounterOnCourseCreated"
+                    }
+                  ],
+                  "wire": {
+                    "name": "course.created",
+                    "channel": "domain_events"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "mooc.backend.courses-counter",
+              "slug": "courses-counter",
+              "name": "CoursesCounter",
+              "readme": "",
+              "root": "CoursesCounter",
+              "entities": [
+                {
+                  "id": "mooc.backend.courses-counter.courses-counter",
+                  "slug": "courses-counter",
+                  "name": "CoursesCounter",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "CoursesCounterId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "CoursesCounterTotal",
+                      "doc": ""
+                    },
+                    {
+                      "name": "existingCourses",
+                      "type": "CourseId",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "mooc.backend.courses-counter.courses-counter-id",
+                  "slug": "courses-counter-id",
+                  "name": "CoursesCounterId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.courses-counter.courses-counter-total",
+                  "slug": "courses-counter-total",
+                  "name": "CoursesCounterTotal",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "int",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "find-courses-counter",
+                  "kind": "query",
+                  "doc": ""
+                }
+              ],
+              "events": [
+                {
+                  "id": "mooc.backend.courses-counter.CoursesCounterIncremented",
+                  "slug": "courses-counter-incremented",
+                  "name": "CoursesCounterIncremented",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Domain/CoursesCounterIncrementedDomainEvent.php",
+                      "fields": [
+                        {
+                          "name": "total",
+                          "type": "int",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "analytics.analytics",
+                      "status": "declared",
+                      "note": "StoreDomainEventOnOccurred"
+                    }
+                  ],
+                  "wire": {
+                    "name": "courses_counter.incremented",
+                    "channel": "domain_events"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "mooc.backend.steps",
+              "slug": "steps",
+              "name": "Step",
+              "readme": "",
+              "root": "Step",
+              "entities": [
+                {
+                  "id": "mooc.backend.steps.step",
+                  "slug": "step",
+                  "name": "Step",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "StepId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "StepTitle",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "StepDuration",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.exercise-step",
+                  "slug": "exercise-step",
+                  "name": "ExerciseStep",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "StepId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "StepTitle",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "StepDuration",
+                      "doc": ""
+                    },
+                    {
+                      "name": "content",
+                      "type": "ExerciseStepContent",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.quiz-step",
+                  "slug": "quiz-step",
+                  "name": "QuizStep",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "StepId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "StepTitle",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "StepDuration",
+                      "doc": ""
+                    },
+                    {
+                      "name": "questions",
+                      "type": "QuizStepQuestion",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.video-step",
+                  "slug": "video-step",
+                  "name": "VideoStep",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "StepId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "StepTitle",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "StepDuration",
+                      "doc": ""
+                    },
+                    {
+                      "name": "url",
+                      "type": "VideoStepUrl",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "mooc.backend.steps.exercise-step-content",
+                  "slug": "exercise-step-content",
+                  "name": "ExerciseStepContent",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.step-duration",
+                  "slug": "step-duration",
+                  "name": "StepDuration",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "int",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.step-id",
+                  "slug": "step-id",
+                  "name": "StepId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.step-title",
+                  "slug": "step-title",
+                  "name": "StepTitle",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.video-step-url",
+                  "slug": "video-step-url",
+                  "name": "VideoStepUrl",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [],
+              "events": []
+            },
+            {
+              "id": "mooc.backend.videos",
+              "slug": "videos",
+              "name": "Video",
+              "readme": "",
+              "root": "Video",
+              "entities": [
+                {
+                  "id": "mooc.backend.videos.video",
+                  "slug": "video",
+                  "name": "Video",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "VideoId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "type",
+                      "type": "VideoType",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "VideoTitle",
+                      "doc": ""
+                    },
+                    {
+                      "name": "url",
+                      "type": "VideoUrl",
+                      "doc": ""
+                    },
+                    {
+                      "name": "courseId",
+                      "type": "CourseId",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "mooc.backend.videos.video-id",
+                  "slug": "video-id",
+                  "name": "VideoId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.videos.video-title",
+                  "slug": "video-title",
+                  "name": "VideoTitle",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "create-video",
+                  "kind": "command",
+                  "doc": ""
+                },
+                {
+                  "id": "find-video",
+                  "kind": "query",
+                  "doc": ""
+                }
+              ],
+              "events": [
+                {
+                  "id": "mooc.backend.videos.VideoCreated",
+                  "slug": "video-created",
+                  "name": "VideoCreated",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Domain/VideoCreatedDomainEvent.php",
+                      "fields": [
+                        {
+                          "name": "type",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "title",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "url",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "course_id",
+                          "type": "mixed",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "analytics.analytics",
+                      "status": "declared",
+                      "note": "StoreDomainEventOnOccurred"
+                    }
+                  ],
+                  "wire": {
+                    "name": "video.created",
+                    "channel": "domain_events"
+                  }
+                }
+              ],
+              "enums": [
+                {
+                  "id": "mooc.backend.videos.video-type",
+                  "slug": "video-type",
+                  "name": "VideoType",
+                  "doc": "",
+                  "values": [
+                    {
+                      "name": "screencast",
+                      "doc": ""
+                    },
+                    {
+                      "name": "interview",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "channels": [
+            {
+              "address": "domain_events",
+              "kind": "event",
+              "title": "Exchange · domain_events",
+              "doc": "Domain events, published to the RabbitMQ exchange under their wire names once the aggregate that recorded them is saved.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "",
+                  "direction": "send"
+                },
+                {
+                  "name": "courses_counter.incremented",
+                  "title": "CoursesCounterIncremented",
+                  "doc": "",
+                  "direction": "send"
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Domain/Course.php:18"
+            },
+            {
+              "address": "codelytv.mooc.courses_counter.increment_courses_counter_on_course_created",
+              "kind": "event",
+              "title": "Queue · increment_courses_counter_on_course_created",
+              "doc": "IncrementCoursesCounterOnCourseCreated's own queue, bound to the `domain_events` exchange for what it subscribes to; the consumer command works it.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "",
+                  "direction": "receive"
+                }
+              ],
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:13"
+            }
+          ]
+        },
+        {
+          "id": "mooc.frontend",
+          "slug": "frontend",
+          "name": "Mooc frontend",
+          "repo": "github.com/CodelyTV/php-ddd-example",
+          "path": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/frontend",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    },
+    {
+      "id": "retention",
+      "slug": "retention",
+      "name": "Retention",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "retention.retention",
+          "slug": "retention",
+          "name": "Retention",
+          "repo": "github.com/CodelyTV/php-ddd-example",
+          "path": "vendor/repos/CodelyTV/php-ddd-example/src/Retention",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.backoffice-backend-courses-get",
+      "slug": "backoffice-backend-courses-get",
+      "name": "Courses get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.backend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "backoffice-backend-search",
+          "kind": "store",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.backend",
+          "kind": "rpc",
+          "label": "GET /courses",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/courses.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.backend",
+          "to": "backoffice-backend-search",
+          "kind": "call",
+          "label": "BackofficeCourseRepository.matching",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/SearchByCriteria/BackofficeCoursesByCriteriaSearcher.php:25",
+          "storeAccess": {
+            "store": "backoffice.backend.search",
+            "method": "BackofficeCourseRepository.matching"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-backend-health-check-get",
+      "slug": "backoffice-backend-health-check-get",
+      "name": "Health check get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/health-check.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.backend",
+          "kind": "service",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.backend",
+          "kind": "rpc",
+          "label": "GET /health-check",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/health-check.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-backend-metrics-get",
+      "slug": "backoffice-backend-metrics-get",
+      "name": "Metrics get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/metrics.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.backend",
+          "kind": "service",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.backend",
+          "kind": "rpc",
+          "label": "GET /metrics",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/backend/config/routes/metrics.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-api-courses-get",
+      "slug": "backoffice-frontend-api-courses-get",
+      "name": "Api courses get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/api_courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "GET /api/courses",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/api_courses.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-courses-get",
+      "slug": "backoffice-frontend-courses-get",
+      "name": "Courses get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "GET /courses",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.frontend",
+          "to": "mooc.backend",
+          "kind": "call",
+          "label": "ask FindCoursesCounter",
+          "status": "declared",
+          "note": "In process: the application loads Mooc's code and runs the handler itself over an in-memory query bus.",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/src/Controller/Courses/CoursesGetWebController.php:16"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CoursesCounterRepository.search",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Find/CoursesCounterFinder.php:16",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CoursesCounterRepository.search"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-courses-post",
+      "slug": "backoffice-frontend-courses-post",
+      "name": "Courses post",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "POST /courses",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml:6"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.frontend",
+          "to": "mooc.backend",
+          "kind": "call",
+          "label": "dispatch CreateCourse",
+          "status": "declared",
+          "note": "In process: the application loads Mooc's code and runs the handler itself over an in-memory command bus.",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/src/Controller/Courses/CoursesPostWebController.php:17"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "mooc.backend",
+          "to": "bus",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Domain/Course.php:18",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "domain_events",
+            "message": "course.created",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CourseRepository.save",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Create/CourseCreator.php:22",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CourseRepository.save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-health-check-get",
+      "slug": "backoffice-frontend-health-check-get",
+      "name": "Health check get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/health-check.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "GET /health-check",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/health-check.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-home-get",
+      "slug": "backoffice-frontend-home-get",
+      "name": "Home get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/home.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "GET /",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/home.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-metrics-get",
+      "slug": "backoffice-frontend-metrics-get",
+      "name": "Metrics get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/metrics.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "GET /metrics",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/metrics.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-backend-courses-put",
+      "slug": "mooc-backend-courses-put",
+      "name": "Courses put",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses.yaml",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "mooc.backend",
+          "kind": "rpc",
+          "label": "PUT /courses/{id}",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "mooc.backend",
+          "to": "bus",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Domain/Course.php:18",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "domain_events",
+            "message": "course.created",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CourseRepository.save",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Create/CourseCreator.php:22",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CourseRepository.save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-backend-courses-counter-get",
+      "slug": "mooc-backend-courses-counter-get",
+      "name": "Courses counter get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses_counter.yaml",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "mooc.backend",
+          "kind": "rpc",
+          "label": "GET /courses-counter",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses_counter.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CoursesCounterRepository.search",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Find/CoursesCounterFinder.php:16",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CoursesCounterRepository.search"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-backend-health-check-get",
+      "slug": "mooc-backend-health-check-get",
+      "name": "Health check get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/health-check.yaml",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "mooc.backend",
+          "kind": "rpc",
+          "label": "GET /health-check",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/health-check.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-backend-metrics-get",
+      "slug": "mooc-backend-metrics-get",
+      "name": "Metrics get",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/metrics.yaml",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "mooc.backend",
+          "kind": "rpc",
+          "label": "GET /metrics",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/metrics.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.analytics-store-domain-event-on-occurred",
+      "slug": "analytics-store-domain-event-on-occurred",
+      "name": "Store domain event on occurred",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php",
+      "owner": "analytics",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "analytics.analytics",
+          "kind": "service",
+          "context": "analytics"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "analytics.analytics",
+          "kind": "event",
+          "label": "every domain event",
+          "status": "declared",
+          "note": "Subscribed to `DomainEvent::class`: the queue is bound to every event the exchange carries.",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:23"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-create-backoffice-course-on-course-created",
+      "slug": "backoffice-create-backoffice-course-on-course-created",
+      "name": "Create backoffice course on course created",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "backoffice.backend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "backoffice-backend-search",
+          "kind": "store",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "backoffice.backend",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:19",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "codelytv.backoffice.courses.create_backoffice_course_on_course_created",
+            "message": "course.created",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.backend",
+          "to": "backoffice-backend-search",
+          "kind": "call",
+          "label": "BackofficeCourseRepository.save",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/Create/BackofficeCourseCreator.php:16",
+          "storeAccess": {
+            "store": "backoffice.backend.search",
+            "method": "BackofficeCourseRepository.save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-increment-courses-counter-on-course-created",
+      "slug": "mooc-increment-courses-counter-on-course-created",
+      "name": "Increment courses counter on course created",
+      "summary": "",
+      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "mooc.backend",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:22",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "codelytv.mooc.courses_counter.increment_courses_counter_on_course_created",
+            "message": "course.created",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CoursesCounterRepository.search",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:24",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CoursesCounterRepository.search"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "mooc.backend",
+          "to": "bus",
+          "kind": "event",
+          "label": "CoursesCounterIncremented",
+          "status": "declared",
+          "ref": "mooc.backend.courses-counter.CoursesCounterIncremented",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Domain/CoursesCounter.php:49",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "domain_events",
+            "message": "courses_counter.incremented",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CoursesCounterRepository.save",
+          "status": "declared",
+          "line": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:29",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CoursesCounterRepository.save"
+          }
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

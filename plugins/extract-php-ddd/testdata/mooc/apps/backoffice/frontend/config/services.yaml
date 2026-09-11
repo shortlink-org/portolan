@@ -1,0 +1,21 @@
+services:
+  _defaults:
+    autoconfigure: true
+    autowire: true
+
+  Acme\Apps\Backoffice\Frontend\Controller\:
+    resource: '../src/Controller'
+    tags: ['controller.service_arguments']
+
+  # Wire
+  Acme\Shared\:
+    resource: '../../../../src/Shared'
+
+  Acme\Backoffice\:
+    resource: '../../../../src/Backoffice'
+
+  Acme\Mooc\:
+    resource: '../../../../src/Mooc'
+
+  # -- IMPLEMENTATIONS SELECTOR --
+  Acme\Backoffice\Courses\Domain\BackofficeCourseRepository: '@Acme\Backoffice\Courses\Infrastructure\Persistence\ElasticsearchBackofficeCourseRepository'

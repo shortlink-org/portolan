@@ -1,0 +1,1227 @@
+{
+  "contexts": [
+    {
+      "id": "analytics",
+      "slug": "analytics",
+      "name": "Analytics",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "analytics.analytics",
+          "slug": "analytics",
+          "name": "Analytics",
+          "repo": "github.com/acme/mooc",
+          "path": "testdata/mooc/src/Analytics",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "analytics.analytics.domain-events",
+              "slug": "domain-events",
+              "name": "Domain Events",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [],
+              "events": []
+            }
+          ],
+          "channels": [
+            {
+              "address": "acme.analytics.domain_events.store_domain_event_on_occurred",
+              "kind": "event",
+              "title": "Queue · store_domain_event_on_occurred",
+              "doc": "StoreDomainEventOnOccurred's own queue, bound to the `domain_events` exchange for what it subscribes to; the consumer command works it.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "A course exists and can be counted, listed and enrolled in.",
+                  "direction": "receive"
+                },
+                {
+                  "name": "courses_counter.incremented",
+                  "title": "CoursesCounterIncremented",
+                  "doc": "",
+                  "direction": "receive"
+                }
+              ],
+              "source": "testdata/mooc/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:11"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backoffice",
+      "slug": "backoffice",
+      "name": "Backoffice",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "backoffice.backend",
+          "slug": "backend",
+          "name": "Backoffice backend",
+          "repo": "github.com/acme/mooc",
+          "path": "testdata/mooc/apps/backoffice/backend",
+          "readme": "",
+          "provides": [
+            {
+              "id": "backoffice.backend.courses",
+              "methods": [
+                {
+                  "name": "courses_get",
+                  "doc": "Lists every course for the back office UI.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/courses"
+                  }
+                }
+              ],
+              "source": "testdata/mooc/portolan/openapi.backoffice-backend.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "backoffice.backend.auth",
+              "slug": "auth",
+              "name": "Auth",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "authenticate-user",
+                  "kind": "command",
+                  "doc": "Checks a username and password against the users we know."
+                }
+              ],
+              "events": []
+            },
+            {
+              "id": "backoffice.backend.courses",
+              "slug": "courses",
+              "name": "BackofficeCourse",
+              "readme": "A course as the back office lists it: flat, searchable, read-only.",
+              "root": "BackofficeCourse",
+              "entities": [
+                {
+                  "id": "backoffice.backend.courses.backoffice-course",
+                  "slug": "backoffice-course",
+                  "name": "BackofficeCourse",
+                  "doc": "A course as the back office lists it: flat, searchable, read-only.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "search-all-backoffice-courses",
+                  "kind": "query",
+                  "doc": "Every course the back office knows, in no particular order."
+                }
+              ],
+              "events": []
+            }
+          ],
+          "channels": [
+            {
+              "address": "acme.backoffice.courses.create_backoffice_course_on_course_created",
+              "kind": "event",
+              "title": "Queue · create_backoffice_course_on_course_created",
+              "doc": "CreateBackofficeCourseOnCourseCreated's own queue, bound to the `domain_events` exchange for what it subscribes to; the consumer command works it.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "A course exists and can be counted, listed and enrolled in.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "testdata/mooc/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:10"
+            }
+          ]
+        },
+        {
+          "id": "backoffice.frontend",
+          "slug": "frontend",
+          "name": "Backoffice frontend",
+          "repo": "github.com/acme/mooc",
+          "path": "testdata/mooc/apps/backoffice/frontend",
+          "readme": "",
+          "provides": [
+            {
+              "id": "backoffice.frontend.api-courses",
+              "methods": [
+                {
+                  "name": "api_courses_get",
+                  "doc": "Api courses get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/api/courses"
+                  }
+                }
+              ],
+              "source": "testdata/mooc/portolan/openapi.backoffice-frontend.yaml"
+            },
+            {
+              "id": "backoffice.frontend.courses",
+              "methods": [
+                {
+                  "name": "courses_get",
+                  "doc": "The courses page.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/courses"
+                  }
+                },
+                {
+                  "name": "courses_post",
+                  "doc": "The new-course form, submitted.",
+                  "http": {
+                    "method": "POST",
+                    "path": "/courses"
+                  }
+                }
+              ],
+              "source": "testdata/mooc/portolan/openapi.backoffice-frontend.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    },
+    {
+      "id": "mooc",
+      "slug": "mooc",
+      "name": "Mooc",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "mooc.backend",
+          "slug": "backend",
+          "name": "Mooc backend",
+          "repo": "github.com/acme/mooc",
+          "path": "testdata/mooc/apps/mooc/backend",
+          "readme": "",
+          "provides": [
+            {
+              "id": "mooc.backend.courses",
+              "methods": [
+                {
+                  "name": "courses_put",
+                  "doc": "Creates the course with the given id.",
+                  "http": {
+                    "method": "PUT",
+                    "path": "/courses/{id}"
+                  }
+                }
+              ],
+              "source": "testdata/mooc/portolan/openapi.mooc-backend.yaml"
+            },
+            {
+              "id": "mooc.backend.courses-counter",
+              "methods": [
+                {
+                  "name": "courses_counter_get",
+                  "doc": "Courses counter get",
+                  "http": {
+                    "method": "GET",
+                    "path": "/courses-counter"
+                  }
+                }
+              ],
+              "source": "testdata/mooc/portolan/openapi.mooc-backend.yaml"
+            },
+            {
+              "id": "mooc.backend.health-check",
+              "methods": [
+                {
+                  "name": "health_check_get",
+                  "doc": "Answers that the application is up.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/health-check"
+                  }
+                }
+              ],
+              "source": "testdata/mooc/portolan/openapi.mooc-backend.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "mooc.backend.courses",
+              "slug": "courses",
+              "name": "Course",
+              "readme": "A course a student can enrol in: a name and how long it takes.",
+              "root": "Course",
+              "entities": [
+                {
+                  "id": "mooc.backend.courses.course",
+                  "slug": "course",
+                  "name": "Course",
+                  "doc": "A course a student can enrol in: a name and how long it takes.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "CourseId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "CourseName",
+                      "doc": ""
+                    },
+                    {
+                      "name": "duration",
+                      "type": "CourseDuration",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "mooc.backend.courses.course-duration",
+                  "slug": "course-duration",
+                  "name": "CourseDuration",
+                  "doc": "How long the course takes, as the author wrote it: `5 hours`.",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.courses.course-name",
+                  "slug": "course-name",
+                  "name": "CourseName",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "create-course",
+                  "kind": "command",
+                  "doc": "Creates a course and tells the world."
+                }
+              ],
+              "events": [
+                {
+                  "id": "mooc.backend.courses.CourseCreated",
+                  "slug": "course-created",
+                  "name": "CourseCreated",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A course exists and can be counted, listed and enrolled in.",
+                      "source": "testdata/mooc/src/Mooc/Courses/Domain/CourseCreatedDomainEvent.php",
+                      "fields": [
+                        {
+                          "name": "name",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "duration",
+                          "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "analytics.analytics",
+                      "status": "declared",
+                      "note": "StoreDomainEventOnOccurred"
+                    },
+                    {
+                      "service": "backoffice.backend",
+                      "status": "declared",
+                      "note": "CreateBackofficeCourseOnCourseCreated"
+                    },
+                    {
+                      "service": "mooc.backend",
+                      "status": "declared",
+                      "note": "IncrementCoursesCounterOnCourseCreated"
+                    }
+                  ],
+                  "wire": {
+                    "name": "course.created",
+                    "channel": "domain_events"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "mooc.backend.courses-counter",
+              "slug": "courses-counter",
+              "name": "CoursesCounter",
+              "readme": "How many courses there are, kept as a number so nobody counts rows.",
+              "root": "CoursesCounter",
+              "entities": [
+                {
+                  "id": "mooc.backend.courses-counter.courses-counter",
+                  "slug": "courses-counter",
+                  "name": "CoursesCounter",
+                  "doc": "How many courses there are, kept as a number so nobody counts rows.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "CoursesCounterId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "CoursesCounterTotal",
+                      "doc": ""
+                    },
+                    {
+                      "name": "existingCourses",
+                      "type": "CourseId",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "mooc.backend.courses-counter.courses-counter-id",
+                  "slug": "courses-counter-id",
+                  "name": "CoursesCounterId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.courses-counter.courses-counter-total",
+                  "slug": "courses-counter-total",
+                  "name": "CoursesCounterTotal",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "int",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "find-courses-counter",
+                  "kind": "query",
+                  "doc": "The current total, or nothing when no course was ever created."
+                }
+              ],
+              "events": [
+                {
+                  "id": "mooc.backend.courses-counter.CoursesCounterIncremented",
+                  "slug": "courses-counter-incremented",
+                  "name": "CoursesCounterIncremented",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "testdata/mooc/src/Mooc/CoursesCounter/Domain/CoursesCounterIncrementedDomainEvent.php",
+                      "fields": [
+                        {
+                          "name": "total",
+                          "type": "int",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "analytics.analytics",
+                      "status": "declared",
+                      "note": "StoreDomainEventOnOccurred"
+                    }
+                  ],
+                  "wire": {
+                    "name": "courses_counter.incremented",
+                    "channel": "domain_events"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "mooc.backend.steps",
+              "slug": "steps",
+              "name": "Step",
+              "readme": "One thing a student does in a course: watch, answer, solve.",
+              "root": "Step",
+              "entities": [
+                {
+                  "id": "mooc.backend.steps.step",
+                  "slug": "step",
+                  "name": "Step",
+                  "doc": "One thing a student does in a course: watch, answer, solve.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "StepId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "StepTitle",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.video-step",
+                  "slug": "video-step",
+                  "name": "VideoStep",
+                  "doc": "A step that is a video to watch.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "StepId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "StepTitle",
+                      "doc": ""
+                    },
+                    {
+                      "name": "url",
+                      "type": "VideoStepUrl",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "mooc.backend.steps.step-id",
+                  "slug": "step-id",
+                  "name": "StepId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.step-title",
+                  "slug": "step-title",
+                  "name": "StepTitle",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "mooc.backend.steps.video-step-url",
+                  "slug": "video-step-url",
+                  "name": "VideoStepUrl",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "create-video-step",
+                  "kind": "command",
+                  "doc": "Adds a video step to a course."
+                }
+              ],
+              "events": []
+            }
+          ],
+          "channels": [
+            {
+              "address": "domain_events",
+              "kind": "event",
+              "title": "Exchange · domain_events",
+              "doc": "Domain events, published to the RabbitMQ exchange under their wire names once the aggregate that recorded them is saved.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "A course exists and can be counted, listed and enrolled in.",
+                  "direction": "send"
+                },
+                {
+                  "name": "courses_counter.incremented",
+                  "title": "CoursesCounterIncremented",
+                  "doc": "",
+                  "direction": "send"
+                }
+              ],
+              "source": "testdata/mooc/src/Mooc/Courses/Domain/Course.php:21"
+            },
+            {
+              "address": "acme.mooc.courses_counter.increment_courses_counter_on_course_created",
+              "kind": "event",
+              "title": "Queue · increment_courses_counter_on_course_created",
+              "doc": "IncrementCoursesCounterOnCourseCreated's own queue, bound to the `domain_events` exchange for what it subscribes to; the consumer command works it.",
+              "messages": [
+                {
+                  "name": "course.created",
+                  "title": "CourseCreated",
+                  "doc": "A course exists and can be counted, listed and enrolled in.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:13"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "retention",
+      "slug": "retention",
+      "name": "Retention",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "retention.retention",
+          "slug": "retention",
+          "name": "Retention",
+          "repo": "github.com/acme/mooc",
+          "path": "testdata/mooc/src/Retention",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.backoffice-backend-courses-get",
+      "slug": "backoffice-backend-courses-get",
+      "name": "Courses get",
+      "summary": "Lists every course for the back office UI.",
+      "source": "testdata/mooc/apps/backoffice/backend/config/routes/courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.backend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "backoffice-backend-search",
+          "kind": "store",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.backend",
+          "kind": "rpc",
+          "label": "GET /courses",
+          "status": "declared",
+          "line": "testdata/mooc/apps/backoffice/backend/config/routes/courses.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.backend",
+          "to": "backoffice-backend-search",
+          "kind": "call",
+          "label": "BackofficeCourseRepository.searchAll",
+          "status": "declared",
+          "line": "testdata/mooc/src/Backoffice/Courses/Application/SearchAll/SearchAllBackofficeCoursesQueryHandler.php:17",
+          "storeAccess": {
+            "store": "backoffice.backend.search",
+            "method": "BackofficeCourseRepository.searchAll"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-api-courses-get",
+      "slug": "backoffice-frontend-api-courses-get",
+      "name": "Api courses get",
+      "summary": "",
+      "source": "testdata/mooc/apps/backoffice/frontend/config/routes/api_courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "GET /api/courses",
+          "status": "declared",
+          "line": "testdata/mooc/apps/backoffice/frontend/config/routes/api_courses.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-courses-get",
+      "slug": "backoffice-frontend-courses-get",
+      "name": "Courses get",
+      "summary": "The courses page.",
+      "source": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "backoffice-backend-search",
+          "kind": "store",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "GET /courses",
+          "status": "declared",
+          "line": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.frontend",
+          "to": "backoffice-backend-search",
+          "kind": "call",
+          "label": "BackofficeCourseRepository.searchAll",
+          "status": "declared",
+          "line": "testdata/mooc/src/Backoffice/Courses/Application/SearchAll/SearchAllBackofficeCoursesQueryHandler.php:17",
+          "storeAccess": {
+            "store": "backoffice.backend.search",
+            "method": "BackofficeCourseRepository.searchAll"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-frontend-courses-post",
+      "slug": "backoffice-frontend-courses-post",
+      "name": "Courses post",
+      "summary": "The new-course form, submitted.",
+      "source": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "backoffice.frontend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "backoffice.frontend",
+          "kind": "rpc",
+          "label": "POST /courses",
+          "status": "declared",
+          "line": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml:6"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.frontend",
+          "to": "mooc.backend",
+          "kind": "call",
+          "label": "dispatch CreateCourse",
+          "status": "declared",
+          "note": "In process: the application loads Mooc's code and runs the handler itself over an in-memory command bus.",
+          "line": "testdata/mooc/apps/backoffice/frontend/src/Controller/Courses/CoursesPostWebController.php:15"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "mooc.backend",
+          "to": "bus",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "testdata/mooc/src/Mooc/Courses/Domain/Course.php:21",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "domain_events",
+            "message": "course.created",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CourseRepository.save",
+          "status": "declared",
+          "line": "testdata/mooc/src/Mooc/Courses/Application/Create/CourseCreator.php:23",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CourseRepository.save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-backend-courses-put",
+      "slug": "mooc-backend-courses-put",
+      "name": "Courses put",
+      "summary": "Creates the course with the given id.",
+      "source": "testdata/mooc/apps/mooc/backend/config/routes/courses.yaml",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "mooc.backend",
+          "kind": "rpc",
+          "label": "PUT /courses/{id}",
+          "status": "declared",
+          "line": "testdata/mooc/apps/mooc/backend/config/routes/courses.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "mooc.backend",
+          "to": "bus",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "testdata/mooc/src/Mooc/Courses/Domain/Course.php:21",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "domain_events",
+            "message": "course.created",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CourseRepository.save",
+          "status": "declared",
+          "line": "testdata/mooc/src/Mooc/Courses/Application/Create/CourseCreator.php:23",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CourseRepository.save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-backend-courses-counter-get",
+      "slug": "mooc-backend-courses-counter-get",
+      "name": "Courses counter get",
+      "summary": "",
+      "source": "testdata/mooc/apps/mooc/backend/config/routes/courses_counter.yaml",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "mooc.backend",
+          "kind": "rpc",
+          "label": "GET /courses-counter",
+          "status": "declared",
+          "line": "testdata/mooc/apps/mooc/backend/config/routes/courses_counter.yaml:1"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CoursesCounterRepository.search",
+          "status": "declared",
+          "line": "testdata/mooc/src/Mooc/CoursesCounter/Application/Find/FindCoursesCounterQueryHandler.php:17",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CoursesCounterRepository.search"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-backend-health-check-get",
+      "slug": "mooc-backend-health-check-get",
+      "name": "Health check get",
+      "summary": "Answers that the application is up.",
+      "source": "testdata/mooc/apps/mooc/backend/config/routes/health-check.yaml",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "mooc.backend",
+          "kind": "rpc",
+          "label": "GET /health-check",
+          "status": "declared",
+          "line": "testdata/mooc/apps/mooc/backend/config/routes/health-check.yaml:1"
+        }
+      ]
+    },
+    {
+      "id": "flow.analytics-store-domain-event-on-occurred",
+      "slug": "analytics-store-domain-event-on-occurred",
+      "name": "Store domain event on occurred",
+      "summary": "Keeps a copy of every event that ever happened.",
+      "source": "testdata/mooc/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php",
+      "owner": "analytics",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "analytics.analytics",
+          "kind": "service",
+          "context": "analytics"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "analytics.analytics",
+          "kind": "event",
+          "label": "every domain event",
+          "status": "declared",
+          "note": "Subscribed to `DomainEvent::class`: the queue is bound to every event the exchange carries.",
+          "line": "testdata/mooc/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:20"
+        }
+      ]
+    },
+    {
+      "id": "flow.backoffice-create-backoffice-course-on-course-created",
+      "slug": "backoffice-create-backoffice-course-on-course-created",
+      "name": "Create backoffice course on course created",
+      "summary": "",
+      "source": "testdata/mooc/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php",
+      "owner": "backoffice",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "backoffice.backend",
+          "kind": "service",
+          "context": "backoffice"
+        },
+        {
+          "id": "backoffice-backend-search",
+          "kind": "store",
+          "context": "backoffice"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "backoffice.backend",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "testdata/mooc/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:19",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "acme.backoffice.courses.create_backoffice_course_on_course_created",
+            "message": "course.created",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "backoffice.backend",
+          "to": "backoffice-backend-search",
+          "kind": "call",
+          "label": "BackofficeCourseRepository.save",
+          "status": "declared",
+          "line": "testdata/mooc/src/Backoffice/Courses/Application/Create/BackofficeCourseCreator.php:17",
+          "storeAccess": {
+            "store": "backoffice.backend.search",
+            "method": "BackofficeCourseRepository.save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.mooc-increment-courses-counter-on-course-created",
+      "slug": "mooc-increment-courses-counter-on-course-created",
+      "name": "Increment courses counter on course created",
+      "summary": "",
+      "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php",
+      "owner": "mooc",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null,
+          "label": "RabbitMQ · domain_events"
+        },
+        {
+          "id": "mooc.backend",
+          "kind": "service",
+          "context": "mooc"
+        },
+        {
+          "id": "mooc-backend-db",
+          "kind": "store",
+          "context": "mooc"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "mooc.backend",
+          "kind": "event",
+          "label": "CourseCreated",
+          "status": "declared",
+          "ref": "mooc.backend.courses.CourseCreated",
+          "line": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:22",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "acme.mooc.courses_counter.increment_courses_counter_on_course_created",
+            "message": "course.created",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CoursesCounterRepository.search",
+          "status": "declared",
+          "line": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:20",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CoursesCounterRepository.search"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "mooc.backend",
+          "to": "bus",
+          "kind": "event",
+          "label": "CoursesCounterIncremented",
+          "status": "declared",
+          "ref": "mooc.backend.courses-counter.CoursesCounterIncremented",
+          "line": "testdata/mooc/src/Mooc/CoursesCounter/Domain/CoursesCounter.php:38",
+          "handoff": {
+            "kind": "message",
+            "transport": "rabbitmq",
+            "channel": "domain_events",
+            "message": "courses_counter.incremented",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "mooc.backend",
+          "to": "mooc-backend-db",
+          "kind": "call",
+          "label": "CoursesCounterRepository.save",
+          "status": "declared",
+          "line": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:25",
+          "storeAccess": {
+            "store": "mooc.backend.db",
+            "method": "CoursesCounterRepository.save"
+          }
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

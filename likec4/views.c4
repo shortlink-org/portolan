@@ -73,6 +73,18 @@ views {
     include *
   }
 
+  view landscape_codely {
+    title 'CodelyTV php-ddd-example'
+    description 'The groups and outside systems selected by this catalog profile.'
+    include *
+  }
+
+  view containers_codely {
+    title 'CodelyTV php-ddd-example containers'
+    description 'The services, stores and transports selected by this catalog profile.'
+    include *
+  }
+
   view ctx_auth of auth {
     title 'Authentication'
     include *, auth.auth.pg

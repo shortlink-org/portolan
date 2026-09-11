@@ -1,0 +1,435 @@
+{
+  "contexts": [
+    {
+      "id": "backoffice",
+      "slug": "backoffice",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "backoffice.backend",
+          "slug": "backend",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "backoffice.backend.db",
+            "backoffice.backend.search"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mooc",
+      "slug": "mooc",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "mooc.backend",
+          "slug": "backend",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "mooc.backend.db"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "backoffice.backend.db",
+      "slug": "db",
+      "name": "Backoffice database",
+      "kind": "mysql",
+      "owner": "backoffice.backend",
+      "tables": [
+        {
+          "id": "backoffice.backend.db.backoffice_courses",
+          "name": "backoffice_courses",
+          "columns": [
+            {
+              "name": "id",
+              "type": "string(36)",
+              "nullable": false,
+              "pk": true,
+              "maps": "BackofficeCourse.id"
+            },
+            {
+              "name": "name",
+              "type": "string(255)",
+              "nullable": false,
+              "pk": true,
+              "maps": "BackofficeCourse.name"
+            },
+            {
+              "name": "duration",
+              "type": "string(255)",
+              "nullable": false,
+              "pk": true,
+              "maps": "BackofficeCourse.duration"
+            }
+          ],
+          "persists": {
+            "aggregate": "backoffice.backend.courses",
+            "block": "backoffice.backend.courses.backoffice-course"
+          }
+        }
+      ],
+      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice"
+    },
+    {
+      "id": "backoffice.backend.search",
+      "slug": "search",
+      "name": "Backoffice Elasticsearch",
+      "kind": "other",
+      "owner": "backoffice.backend",
+      "tables": [
+        {
+          "id": "backoffice.backend.search.courses",
+          "name": "courses",
+          "columns": [
+            {
+              "name": "id",
+              "type": "string",
+              "nullable": false,
+              "pk": true,
+              "maps": "BackofficeCourse.id"
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "nullable": false,
+              "maps": "BackofficeCourse.name"
+            },
+            {
+              "name": "duration",
+              "type": "string",
+              "nullable": false,
+              "maps": "BackofficeCourse.duration"
+            }
+          ],
+          "persists": {
+            "aggregate": "backoffice.backend.courses",
+            "block": "backoffice.backend.courses.backoffice-course"
+          },
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "BackofficeCourseRepository.save",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/Create/BackofficeCourseCreator.php:16"
+            },
+            {
+              "operation": "read",
+              "method": "BackofficeCourseRepository.searchAll",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/SearchAll/AllBackofficeCoursesSearcher.php:20"
+            },
+            {
+              "operation": "read",
+              "method": "BackofficeCourseRepository.matching",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/SearchByCriteria/BackofficeCoursesByCriteriaSearcher.php:25"
+            },
+            {
+              "operation": "write",
+              "method": "BackofficeCourseRepository.save",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:22"
+            },
+            {
+              "operation": "read",
+              "method": "BackofficeCourseRepository.searchAll",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:37"
+            },
+            {
+              "operation": "read",
+              "method": "BackofficeCourseRepository.matching",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:42"
+            }
+          ]
+        }
+      ],
+      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice"
+    },
+    {
+      "id": "mooc.backend.db",
+      "slug": "db",
+      "name": "Mooc database",
+      "kind": "mysql",
+      "owner": "mooc.backend",
+      "tables": [
+        {
+          "id": "mooc.backend.db.courses",
+          "name": "courses",
+          "columns": [
+            {
+              "name": "id",
+              "type": "course_id",
+              "nullable": false,
+              "pk": true,
+              "maps": "Course.id"
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "nullable": false,
+              "maps": "Course.name"
+            },
+            {
+              "name": "duration",
+              "type": "string",
+              "nullable": false,
+              "maps": "Course.duration"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.courses",
+            "block": "mooc.backend.courses.course"
+          },
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "CourseRepository.save",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Create/CourseCreator.php:22"
+            },
+            {
+              "operation": "read",
+              "method": "CourseRepository.search",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Find/CourseFinder.php:18"
+            },
+            {
+              "operation": "write",
+              "method": "CourseRepository.save",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Update/CourseRenamer.php:28"
+            }
+          ]
+        },
+        {
+          "id": "mooc.backend.db.courses_counter",
+          "name": "courses_counter",
+          "columns": [
+            {
+              "name": "id",
+              "type": "course_counter_id",
+              "nullable": false,
+              "pk": true,
+              "maps": "CoursesCounter.id"
+            },
+            {
+              "name": "existing_courses",
+              "type": "course_ids",
+              "nullable": false,
+              "maps": "CoursesCounter.existingCourses"
+            },
+            {
+              "name": "total",
+              "type": "integer",
+              "nullable": false,
+              "maps": "CoursesCounter.total"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.courses-counter",
+            "block": "mooc.backend.courses-counter.courses-counter"
+          },
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "CoursesCounterRepository.search",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Find/CoursesCounterFinder.php:16"
+            },
+            {
+              "operation": "read",
+              "method": "CoursesCounterRepository.search",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:24"
+            },
+            {
+              "operation": "write",
+              "method": "CoursesCounterRepository.save",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:29"
+            }
+          ]
+        },
+        {
+          "id": "mooc.backend.db.steps_exercise",
+          "name": "steps_exercise",
+          "columns": [
+            {
+              "name": "id",
+              "type": "step_id",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "mooc.backend.db.steps",
+                "column": "id"
+              },
+              "maps": "ExerciseStep.id"
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "nullable": false,
+              "maps": "ExerciseStep.content"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.steps",
+            "block": "mooc.backend.steps.exercise-step"
+          }
+        },
+        {
+          "id": "mooc.backend.db.steps_quiz",
+          "name": "steps_quiz",
+          "columns": [
+            {
+              "name": "id",
+              "type": "step_id",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "mooc.backend.db.steps",
+                "column": "id"
+              },
+              "maps": "QuizStep.id"
+            },
+            {
+              "name": "questions",
+              "type": "quiz_step_questions",
+              "nullable": false,
+              "maps": "QuizStep.questions"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.steps",
+            "block": "mooc.backend.steps.quiz-step"
+          }
+        },
+        {
+          "id": "mooc.backend.db.steps",
+          "name": "steps",
+          "columns": [
+            {
+              "name": "type",
+              "type": "string",
+              "nullable": false
+            },
+            {
+              "name": "id",
+              "type": "step_id",
+              "nullable": false,
+              "pk": true,
+              "maps": "Step.id"
+            },
+            {
+              "name": "title",
+              "type": "string",
+              "nullable": false,
+              "maps": "Step.title"
+            },
+            {
+              "name": "duration",
+              "type": "integer",
+              "nullable": false,
+              "maps": "Step.duration"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.steps",
+            "block": "mooc.backend.steps.step"
+          }
+        },
+        {
+          "id": "mooc.backend.db.steps_video",
+          "name": "steps_video",
+          "columns": [
+            {
+              "name": "id",
+              "type": "step_id",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "mooc.backend.db.steps",
+                "column": "id"
+              },
+              "maps": "VideoStep.id"
+            },
+            {
+              "name": "url",
+              "type": "string",
+              "nullable": false,
+              "maps": "VideoStep.url"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.steps",
+            "block": "mooc.backend.steps.video-step"
+          }
+        },
+        {
+          "id": "mooc.backend.db.videos",
+          "name": "videos",
+          "columns": [
+            {
+              "name": "id",
+              "type": "video_id",
+              "nullable": false,
+              "pk": true,
+              "maps": "Video.id"
+            },
+            {
+              "name": "course_id",
+              "type": "course_id",
+              "nullable": false,
+              "maps": "Video.courseId"
+            },
+            {
+              "name": "type",
+              "type": "string",
+              "nullable": false,
+              "maps": "Video.type"
+            },
+            {
+              "name": "title",
+              "type": "string",
+              "nullable": false,
+              "maps": "Video.title"
+            }
+          ],
+          "persists": {
+            "aggregate": "mooc.backend.videos",
+            "block": "mooc.backend.videos.video"
+          },
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "VideoRepository.save",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Application/Create/VideoCreator.php:24"
+            },
+            {
+              "operation": "write",
+              "method": "VideoRepository.save",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Application/Update/VideoTitleUpdater.php:27"
+            },
+            {
+              "operation": "read",
+              "method": "VideoRepository.search",
+              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Domain/VideoFinder.php:13"
+            }
+          ]
+        }
+      ],
+      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc"
+    }
+  ]
+}

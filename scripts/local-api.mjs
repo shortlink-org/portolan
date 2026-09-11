@@ -311,6 +311,15 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
       out: "project.json",
     };
   }
+  if (plugin === "php-ddd") {
+    // The tree names its own contexts and services; the manifest only says
+    // where the code lives and how core it is.
+    return {
+      ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}),
+      ...(detectedOptions?.classification ? { classification: detectedOptions.classification } : {}),
+      out: "domain.json",
+    };
+  }
   if (["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain"].includes(plugin)) {
     return { ...common, ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}), ...detectedOptions, serviceName: project.name, out: "domain.json" };
   }
@@ -431,7 +440,7 @@ export function planProject(workspace, manifest, request) {
   };
   const out = posix.join(finalRoot, "portolan");
   const detectionByPlugin = new Map(discovery.detections.map((item) => [item.plugin, item]));
-  const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain"].includes(plugin));
+  const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain", "php-ddd"].includes(plugin));
   const projectDetectionOptions = {
     groupKind: splitDeployables ? "system" : hasDomainModel ? "bounded-context" : "system",
     ...(hasDomainModel ? { componentKind: "service" } : {}),
@@ -456,7 +465,7 @@ export function planProject(workspace, manifest, request) {
     if (!splitDeployables) {
       const options = plugin === "project"
         ? projectDetectionOptions
-        : ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain"].includes(plugin)
+        : ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain", "php-ddd"].includes(plugin)
           ? domainDetectionOptions(plugin)
           : detectionByPlugin.get(plugin)?.options;
       return [{ plugin, in: finalRoot, out, options: pluginOptions(plugin, project, options) }];

@@ -590,6 +590,79 @@
     }
   },
   {
+    "name": "php-ddd",
+    "plugin": "extract-php-ddd",
+    "summary": "Reads a PHP tree laid out by bounded context, module and hexagonal layer - aggregates, value objects, domain events, commands, queries, subscribers, routes, Doctrine mappings - into a catalog fragment and an inferred HTTP contract.",
+    "category": "code",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "process",
+    "toolchain": "cargo",
+    "source": "plugins/extract-php-ddd",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The directory the bounded contexts are in, relative to the input root: one directory per context, one per module under it, `Domain`, `Application` and `Infrastructure` under that. A `Shared` directory at either level is the shared kernel and is not a context or a module.",
+          "default": "src"
+        },
+        "apps": {
+          "type": "string",
+          "description": "The directory the deployable applications are in, relative to the input root: `<apps>/<context>/<app>`, each with `config/routes/*.yaml` and `src/Controller/`. Each application is a service of its context; a context with none gets one service named after itself.",
+          "default": "apps"
+        },
+        "repo": {
+          "type": "string",
+          "description": "Where the source lives. Defaults to composer.json's support.source or homepage when either names a repository.",
+          "examples": [
+            "github.com/CodelyTV/php-ddd-example"
+          ]
+        },
+        "exchange": {
+          "type": "string",
+          "description": "The RabbitMQ exchange domain events are published to. The code reads it from the environment, so the manifest says.",
+          "default": "domain_events"
+        },
+        "storeKind": {
+          "enum": [
+            "postgres",
+            "mysql",
+            "sqlite",
+            "other"
+          ],
+          "description": "What the Doctrine-mapped tables live in.",
+          "default": "mysql"
+        },
+        "classification": {
+          "enum": [
+            "core",
+            "supporting",
+            "generic"
+          ],
+          "description": "Whether the contexts are core to the business, support it, or are generic and could be bought. One value for every context the tree declares."
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "domain.json"
+        },
+        "openapiOut": {
+          "type": "string",
+          "description": "Name of the inferred OpenAPI 3.1 document, inside the step's output directory. Written when the route files expose HTTP operations.",
+          "default": "openapi.inferred.yaml"
+        },
+        "storesOut": {
+          "type": "string",
+          "description": "Name of the store fragment, inside the step's output directory. Written when a Doctrine mapping or a repository adapter names a store.",
+          "default": "stores.json"
+        }
+      }
+    }
+  },
+  {
     "name": "java-domain",
     "plugin": "extract-java",
     "summary": "Reads a Java service by what it declares - jMolecules aggregates, events and ports, Spring's listeners and handlers - into a catalog fragment.",

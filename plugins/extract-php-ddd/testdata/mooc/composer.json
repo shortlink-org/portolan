@@ -1,0 +1,12 @@
+{
+  "name": "acme/mooc",
+  "description": "A MOOC platform, laid out by bounded context",
+  "type": "project",
+  "homepage": "https://github.com/acme/mooc",
+  "autoload": {
+    "psr-4": {
+      "Acme\\": "src/",
+      "Acme\\Apps\\": "apps/"
+    }
+  }
+}

@@ -31,6 +31,13 @@
       "sources": ["vendor/repos/bagisto/bagisto/git.repo.json", "vendor/repos/bagisto/bagisto/catalog/*.json"],
       "contexts": ["commerce"],
       "projects": []
+    },
+    {
+      "id": "codely",
+      "title": "CodelyTV php-ddd-example",
+      "sources": ["vendor/repos/CodelyTV/php-ddd-example/git.repo.json", "vendor/repos/CodelyTV/php-ddd-example/catalog/*.json"],
+      "contexts": ["mooc", "backoffice", "analytics", "retention"],
+      "projects": []
     }
   ],
   "projects": [
@@ -139,6 +146,13 @@
       "process": {
         "command": "cargo",
         "args": ["run", "--quiet", "--manifest-path", "plugins/extract-laravel/Cargo.toml"]
+      }
+    },
+    {
+      "name": "php-ddd",
+      "process": {
+        "command": "cargo",
+        "args": ["run", "--quiet", "--manifest-path", "plugins/extract-php-ddd/Cargo.toml"]
       }
     },
     {

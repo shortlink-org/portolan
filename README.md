@@ -125,7 +125,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 
 | phase | plugins |
 | --- | --- |
-| extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-laravel`, `extract-celery`, `extract-python-kafka`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-redis`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-go-nats`, `extract-go-sqs`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary`, `extract-commands`, `extract-k8s`, `extract-argocd` |
+| extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-laravel`, `extract-php-ddd`, `extract-celery`, `extract-python-kafka`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-redis`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-go-nats`, `extract-go-sqs`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary`, `extract-commands`, `extract-k8s`, `extract-argocd` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified`; `verify-codeowners` — reads CODEOWNERS, says who to ask about each service |
 | generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities |
 
@@ -302,6 +302,34 @@ dispatches, and one for the repository events of a vendored package. How the
 fragments were made, and how to refresh them, is in
 `vendor/repos/bagisto/bagisto/README.md`; the reading rules are in
 `plugins/extract-laravel/README.md`.
+
+### The small one, by the book: CodelyTV php-ddd-example
+
+The fourth profile, **CodelyTV php-ddd-example**, is the opposite kind of
+real: [php-ddd-example](https://github.com/CodelyTV/php-ddd-example) is
+CodelyTV's reference for DDD, hexagonal architecture and CQRS in PHP, a
+Symfony monorepository laid out as `src/<Context>/<Module>/{Domain,Application,Infrastructure}`
+with the deployables under `apps/`, read by `extract-php-ddd` alone - the
+layout is the claim, and nothing is annotated. What comes out, pinned in
+`vendor/repos/CodelyTV/php-ddd-example`: four contexts (Mooc, Backoffice,
+Analytics, Retention), six services, five aggregates with their value
+objects and three domain events on one RabbitMQ exchange, one queue per
+subscriber, the MySQL tables from the Doctrine mappings including a JOINED
+`steps` family, and sixteen flows. The one to read is
+`backoffice-frontend-courses-post`: the back office's form dispatches
+Mooc's `CreateCourseCommand` over an in-memory bus, so the flow crosses to
+`mooc.backend` with a `call` step, records `CourseCreated`, saves the
+course, and the subscribers in Mooc, Backoffice and Analytics pick the event
+up from their own queues.
+
+The warnings are findings about the project: Analytics and Retention have no
+application under `apps/`, so their code deploys nowhere and Analytics'
+subscriber to every event runs nowhere; `TrimVideoCommandHandler` is named
+like a handler and implements neither bus interface; Retention's four modules
+and Mooc's Notifications are empty scaffolding; the front end routes
+`/api/courses` to a controller that does not exist. How the fragments were
+made is in `vendor/repos/CodelyTV/php-ddd-example/README.md`; the reading
+rules are in `plugins/extract-php-ddd/README.md`.
 
 ## Develop Portolan itself
 

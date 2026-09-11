@@ -1,0 +1,15 @@
+services:
+  _defaults:
+    autoconfigure: true
+    autowire: true
+
+  Acme\Apps\Mooc\Backend\Controller\:
+    resource: '../src/Controller'
+    tags: ['controller.service_arguments']
+
+  # Wire
+  Acme\Shared\:
+    resource: '../../../../src/Shared'
+
+  Acme\Mooc\:
+    resource: '../../../../src/Mooc'

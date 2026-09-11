@@ -1,0 +1,22 @@
+openapi: 3.1.0
+info:
+  title: Backoffice backend HTTP API
+  version: inferred
+  description: Generated statically from Symfony route files and controller declarations. Unknown details are left unspecified.
+tags:
+  - name: courses
+paths:
+  /courses:
+    get:
+      operationId: courses_get
+      summary: Lists every course for the back office UI.
+      tags:
+        - courses
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/mooc/apps/backoffice/backend/config/routes/courses.yaml:1"
+      x-portolan-route: courses_get
+x-portolan-inferred: true
+x-portolan-generator: extract-php-ddd

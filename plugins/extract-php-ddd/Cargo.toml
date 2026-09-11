@@ -1,0 +1,22 @@
+[package]
+name = "portolan-extract-php-ddd"
+version = "0.1.0"
+edition = "2024"
+description = "A PHP service laid out by bounded context, module and hexagonal layer in, a catalog fragment out: the PHP twin of extract-go and extract-rust, on the same protocol."
+publish = false
+
+[lib]
+name = "portolan_extract_php_ddd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "portolan-extract-php-ddd"
+path = "src/main.rs"
+
+[dependencies]
+# The PHP tree as syntax, shared with extract-laravel.
+phpscan = { path = "../phpscan" }
+# Doctrine mappings are XML; roxmltree reads them without a build step.
+roxmltree = "0.20"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }

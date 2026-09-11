@@ -651,6 +651,7 @@ const CAPABILITIES: Record<string, { title: string; summary: string }> = {
   "java-domain": { title: "Java domain model", summary: "Aggregates, entities, value objects and domain events." },
   "django-domain": { title: "Django data model", summary: "Models and their relationships." },
   "laravel-domain": { title: "Laravel data model", summary: "Eloquent models, events and listeners, routes and controllers." },
+  "php-ddd": { title: "PHP DDD model", summary: "Bounded contexts laid out by module and hexagonal layer: aggregates, value objects, domain events, commands, queries, subscribers, Doctrine mappings." },
   openapi: { title: "HTTP API contract", summary: "Operations and messages declared by OpenAPI or Swagger." },
   wsdl: { title: "SOAP contract", summary: "Services, operations and messages declared by WSDL." },
   "http-clients": { title: "Outbound integrations", summary: "HTTP and SOAP calls, provider branches and code flows." },
@@ -782,7 +783,7 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
   function configure(found: Discovery, commit: string, selectedSourcePath: string, projectId?: string) {
     setDiscovery(found);
     const plugins = found.detections.filter((item) => item.selected).map((item) => item.plugin);
-    const domainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain"].includes(plugin));
+    const domainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain", "laravel-domain", "php-ddd"].includes(plugin));
     setDraft({ source, root: found.root, repository, ref, commit, sourcePath: selectedSourcePath, ...found.defaults, ...(projectId ? { id: projectId } : {}), contextName: found.defaults.group ? found.defaults.group.replace(/(^|-)([a-z])/g, (_, gap, letter) => `${gap ? " " : ""}${letter.toUpperCase()}`) : "", contextSummary: "", classification: "supporting", groupKind: domainModel ? "bounded-context" : "system", componentKind: domainModel ? "service" : "application", replaceStarter: Boolean(starter), plugins });
     setStage("configure");
   }

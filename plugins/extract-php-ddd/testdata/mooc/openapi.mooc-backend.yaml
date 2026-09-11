@@ -1,0 +1,54 @@
+openapi: 3.1.0
+info:
+  title: Mooc backend HTTP API
+  version: inferred
+  description: Generated statically from Symfony route files and controller declarations. Unknown details are left unspecified.
+tags:
+  - name: courses
+  - name: courses-counter
+  - name: health-check
+paths:
+  /courses-counter:
+    get:
+      operationId: courses_counter_get
+      summary: Courses counter get
+      tags:
+        - courses-counter
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/mooc/apps/mooc/backend/config/routes/courses_counter.yaml:1"
+      x-portolan-route: courses_counter_get
+  /courses/{id}:
+    put:
+      operationId: courses_put
+      summary: Creates the course with the given id.
+      tags:
+        - courses
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/mooc/apps/mooc/backend/config/routes/courses.yaml:1"
+      x-portolan-route: courses_put
+  /health-check:
+    get:
+      operationId: health_check_get
+      summary: Answers that the application is up.
+      tags:
+        - health-check
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/mooc/apps/mooc/backend/config/routes/health-check.yaml:1"
+      x-portolan-route: health_check_get
+x-portolan-inferred: true
+x-portolan-generator: extract-php-ddd

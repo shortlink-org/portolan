@@ -1,0 +1,4 @@
+api_courses_get:
+  path: /api/courses
+  controller: Acme\Apps\Backoffice\Frontend\Controller\Courses\ApiCoursesGetController
+  methods:  [GET]

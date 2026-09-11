@@ -1,0 +1,19 @@
+[package]
+name = "phpscan"
+version = "0.1.0"
+edition = "2024"
+description = "A PHP tree as syntax, for every PHP extractor: files parsed once with Mago, classes and the call chains their code makes, names resolved by namespace and use line."
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Mago is the PHP toolchain written in Rust; its syntax crate is the one
+# maintained PHP parser in this language that keeps up with the language, and
+# the arena it parses into is dropped once a file has been read into the
+# extractor's own shapes.
+mago-syntax = "1.48"
+mago-database = "1.48"
+mago-allocator = "1.48"
+mago-span = "1.48"

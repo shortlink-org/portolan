@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: Backoffice frontend HTTP API
+  version: inferred
+  description: Generated statically from Symfony route files and controller declarations. Unknown details are left unspecified.
+tags:
+  - name: api-courses
+  - name: courses
+paths:
+  /api/courses:
+    get:
+      operationId: api_courses_get
+      summary: Api courses get
+      tags:
+        - api-courses
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/mooc/apps/backoffice/frontend/config/routes/api_courses.yaml:1"
+      x-portolan-route: api_courses_get
+  /courses:
+    get:
+      operationId: courses_get
+      summary: The courses page.
+      tags:
+        - courses
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml:1"
+      x-portolan-route: courses_get
+    post:
+      operationId: courses_post
+      summary: "The new-course form, submitted."
+      tags:
+        - courses
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml:6"
+      x-portolan-route: courses_post
+x-portolan-inferred: true
+x-portolan-generator: extract-php-ddd

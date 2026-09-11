@@ -1,0 +1,67 @@
+openapi: 3.1.0
+info:
+  title: Mooc backend HTTP API
+  version: inferred
+  description: Generated statically from Symfony route files and controller declarations. Unknown details are left unspecified.
+tags:
+  - name: courses
+  - name: courses-counter
+  - name: health-check
+  - name: metrics
+paths:
+  /courses-counter:
+    get:
+      operationId: courses_counter_get
+      summary: Courses counter get
+      tags:
+        - courses-counter
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses_counter.yaml:1"
+      x-portolan-route: courses_counter_get
+  /courses/{id}:
+    put:
+      operationId: courses_put
+      summary: Courses put
+      tags:
+        - courses
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses.yaml:1"
+      x-portolan-route: courses_put
+  /health-check:
+    get:
+      operationId: health_check_get
+      summary: Health check get
+      tags:
+        - health-check
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/health-check.yaml:1"
+      x-portolan-route: health-check_get
+  /metrics:
+    get:
+      operationId: metrics_get
+      summary: Metrics get
+      tags:
+        - metrics
+      responses:
+        default:
+          description: Response schema and status are not available from static route analysis.
+      x-portolan-inferred: true
+      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/metrics.yaml:1"
+      x-portolan-route: metrics_get
+x-portolan-inferred: true
+x-portolan-generator: extract-php-ddd

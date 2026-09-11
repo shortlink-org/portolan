@@ -390,6 +390,9 @@ function detectionsFor(root, files) {
   // A Laravel application keeps its Eloquent models under app/Models, or
   // under each package's src/Models when it is built from packages.
   const laravelDomain = files.has("composer.json") ? matches(files, /^(?:app|packages\/[^/]+\/[^/]+\/src)\/Models\/[^/]+\.php$/)[0] ?? "" : "";
+  // A PHP tree laid out by bounded context keeps each module's model under
+  // src/<Context>/<Module>/Domain, with Shared beside the contexts.
+  const phpDdd = files.has("composer.json") ? matches(files, /^src\/(?!Shared\/)[^/]+\/(?!Shared\/)[^/]+\/Domain\/[^/]+\.php$/)[0] ?? "" : "";
   return [
     detected("project", projectEvidence, {}, projectEvidence.join(", ")),
     detected("go-domain", goDomain ? [goDomain] : [], {}, goDomain),
@@ -398,6 +401,7 @@ function detectionsFor(root, files) {
     detected("java-domain", javaDomain ? [javaDomain] : [], {}, javaDomain),
     detected("django-domain", files.has("manage.py") && matches(files, /(^|\/)models(?:\/[^/]+)?\.py$/i).length ? ["manage.py"] : []),
     detected("laravel-domain", laravelDomain ? [laravelDomain] : [], {}, laravelDomain),
+    detected("php-ddd", phpDdd ? [phpDdd] : [], {}, phpDdd),
     detected("celery", celery, {}, celery[0]),
     detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
     detected(
