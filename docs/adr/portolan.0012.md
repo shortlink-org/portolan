@@ -6,6 +6,7 @@
 - **Date:** 2026-09-11
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0012-where-a-service-runs-is-read-from-the-deployer-as-a-snapshot.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0012-where-a-service-runs-is-read-from-the-deployer-as-a-snapshot.md)
+- **Committed:** Victor Login, 2026-09-11 (`4f09c61`)
 
 ### Context and Problem Statement
 
