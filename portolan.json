@@ -1024,6 +1024,15 @@
         "context": "storefront",
         "out": "glossary.json"
       }
+    },
+    {
+      "plugin": "k8s-cluster",
+      "in": ".",
+      "out": "data",
+      "options": {
+        "cache": "data",
+        "out": "k8s-cluster.json"
+      }
     }
   ],
   "verify": [
