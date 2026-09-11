@@ -11,6 +11,8 @@ import {
   filterEventGraph,
 } from "../lib/event-graph";
 import { contextVar } from "../lib/context-color";
+import { narrowToEnvironments } from "../lib/environments";
+import { environmentsOf } from "../likec4/ids";
 import { statusColor, statusDash } from "../graph/theme";
 import { DependencyGraphPane } from "../graph/DependencyGraph";
 import type { GraphMode } from "../graph/dependency-layout";
@@ -28,8 +30,16 @@ export function GraphPage() {
   const [contexts, setContexts] = useState<Set<string>>(new Set());
   const [statuses, setStatuses] = useState<Set<Status>>(new Set());
   const [mode, setMode] = useState<GraphMode>("bipartite");
+  // Where the estate runs, when a snapshot says. Narrowing the catalog
+  // rather than the graph: a service not deployed in staging is not a node
+  // to fade but a service that is not there, and every count follows.
+  const environmentChips = useMemo(() => environmentsOf(catalog), []);
+  const [environments, setEnvironments] = useState<Set<string>>(new Set());
 
-  const whole = useMemo(() => eventGraph(catalog), []);
+  const whole = useMemo(
+    () => eventGraph(narrowToEnvironments(catalog, environments)),
+    [environments],
+  );
   const graph = useMemo(
     () => filterEventGraph(whole, { contexts, statuses }),
     [whole, contexts, statuses],
@@ -61,7 +71,8 @@ export function GraphPage() {
   // pills with no line between them reads as a rendering failure rather than
   // as an answer. Either the filters left no event - the common case, and the
   // reader wants the way back - or the catalog has none yet.
-  const filtered = contexts.size > 0 || statuses.size > 0;
+  const filtered =
+    contexts.size > 0 || statuses.size > 0 || environments.size > 0;
   const nothing = graph.events.length === 0;
 
   const toggle = <T,>(set: Set<T>, value: T): Set<T> => {
@@ -74,7 +85,7 @@ export function GraphPage() {
   // Filters and mode both replace the layout wholesale, so both refit. Nothing
   // else does: a selection or a focus leaves the viewport where the reader put
   // it.
-  const fitKey = `${[...contexts].sort().join(",")}|${[...statuses].sort().join(",")}|${mode}`;
+  const fitKey = `${[...contexts].sort().join(",")}|${[...statuses].sort().join(",")}|${[...environments].sort().join(",")}|${mode}`;
 
   return (
     <div className="flex h-full flex-col">
@@ -122,6 +133,32 @@ export function GraphPage() {
             );
           })}
         </div>
+
+        {environmentChips.length > 0 ? (
+          <div className="seg" role="group" aria-label="Filter by environment">
+            {environmentChips.map((env) => {
+              const on = environments.has(env);
+              return (
+                <button
+                  key={env}
+                  type="button"
+                  onClick={() => setEnvironments((prev) => toggle(prev, env))}
+                  aria-pressed={on}
+                  title={`only the services the deployer places in ${env}`}
+                  className="flex items-center gap-1.5"
+                  style={{
+                    color: on ? "var(--accent)" : "var(--fg-muted)",
+                    background: on
+                      ? "color-mix(in srgb, var(--accent) 12%, transparent)"
+                      : undefined,
+                  }}
+                >
+                  {env}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div className="mono ml-auto flex flex-wrap items-center gap-3">
           {/* The legend IS the filter. Three swatches that explain the three

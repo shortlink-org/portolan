@@ -12,7 +12,7 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { loadCatalog } from "./catalog-sources.mjs";
 import reserved from "../src/likec4/reserved.json" with { type: "json" };
 import { catalogProfiles } from "../src/catalog-profile.ts";
-import { allDeployments, deploys } from "../src/catalog-model.ts";
+import { allDeployments, deploys, environmentOf } from "../src/catalog-model.ts";
 
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
@@ -1082,7 +1082,7 @@ const framesOfEnvironment = new Map(); // environment -> Set(fqn of every node u
 for (const placed of allDeployments(catalog)) {
   for (const service of allServices) {
     if (!deploys(placed, service)) continue;
-    const env = placed.environment || placed.cluster || "unplaced";
+    const env = environmentOf(placed);
     const clusters = deployTree.get(env) ?? new Map();
     deployTree.set(env, clusters);
     const namespaces = clusters.get(placed.cluster) ?? new Map();

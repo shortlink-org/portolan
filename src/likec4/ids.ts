@@ -9,7 +9,7 @@ import type {
   Participant,
   Service,
 } from "../catalog";
-import { allDeployments, deploys } from "../catalog";
+import { allDeployments, deploys, environmentOf } from "../catalog";
 import reserved from "./reserved.json";
 
 /**
@@ -121,7 +121,7 @@ export function environmentsOf(catalog: Catalog): string[] {
   const found = new Set<string>();
   for (const deployment of allDeployments(catalog)) {
     if (!services.some((service) => deploys(deployment, service))) continue;
-    found.add(deployment.environment || deployment.cluster || "unplaced");
+    found.add(environmentOf(deployment));
   }
   return [...found].sort();
 }

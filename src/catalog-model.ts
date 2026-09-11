@@ -1368,6 +1368,15 @@ export function deploys(deployment: Deployment, service: Service): boolean {
   return deployment.path === root || deployment.path.startsWith(`${root}/`);
 }
 
+/**
+ * The environment a reader would say a deployment stands in: the one the
+ * deployer named, else the cluster, else the one word that says neither was
+ * said. Every picture and filter groups by this, so it is decided once.
+ */
+export function environmentOf(deployment: Deployment): string {
+  return deployment.environment || deployment.cluster || "unplaced";
+}
+
 /** Where this service runs, in catalog order: the snapshot's, which is by id. */
 export function deploymentsOf(catalog: Catalog, service: Service): Deployment[] {
   return allDeployments(catalog).filter((deployment) =>

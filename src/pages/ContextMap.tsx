@@ -17,6 +17,8 @@ import { Link, useSearchParams } from "react-router";
 import { ArrowRight, ArrowLeftRight, Boxes, Minus } from "lucide-react";
 import { catalog } from "../data";
 import { plural } from "../lib/format";
+import { narrowToEnvironments } from "../lib/environments";
+import { environmentsOf } from "../likec4/ids";
 import { PATTERN_LABEL, PATTERN_MEANING, contextMap } from "../lib/context-map";
 import type {
   ContextDependency,
@@ -439,7 +441,22 @@ export function ContextMap() {
   useDocumentTitle("Context map");
   const [search, setSearch] = useSearchParams();
   const [tour, setTour] = useState(() => search.get("tour") === "1");
-  const relations = useMemo(() => contextMap(catalog), []);
+  // The map of one environment is the same map over the services deployed
+  // there: a pair joined only through a service that is not in staging is
+  // not joined in staging. Empty means the whole estate, as every filter here.
+  const environmentChips = useMemo(() => environmentsOf(catalog), []);
+  const [environments, setEnvironments] = useState<Set<string>>(new Set());
+  const narrowed = useMemo(
+    () => narrowToEnvironments(catalog, environments),
+    [environments],
+  );
+  const relations = useMemo(() => contextMap(narrowed), [narrowed]);
+  const toggleEnvironment = (env: string) =>
+    setEnvironments((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(env)) next.add(env);
+      return next;
+    });
   const joined = relations.filter(
     (r) => r.dependencies.length > 0 || r.shared.length > 0,
   );
@@ -457,9 +474,34 @@ export function ContextMap() {
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-gutter py-3 border-line">
         <h1 className="text-lg font-semibold">Context map</h1>
         <span className="mono text-muted">
-          {catalog.contexts.length} {plural(catalog.contexts.length, "domain")} ·{" "}
+          {narrowed.contexts.length} {plural(narrowed.contexts.length, "domain")} ·{" "}
           {wired} of {relations.length} {plural(relations.length, "pair")} joined
         </span>
+        {environmentChips.length > 0 ? (
+          <div className="seg" role="group" aria-label="Filter by environment">
+            {environmentChips.map((env) => {
+              const on = environments.has(env);
+              return (
+                <button
+                  key={env}
+                  type="button"
+                  onClick={() => toggleEnvironment(env)}
+                  aria-pressed={on}
+                  title={`only the services the deployer places in ${env}`}
+                  className="flex items-center gap-1.5"
+                  style={{
+                    color: on ? "var(--accent)" : "var(--fg-muted)",
+                    background: on
+                      ? "color-mix(in srgb, var(--accent) 12%, transparent)"
+                      : undefined,
+                  }}
+                >
+                  {env}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         {/* Two legends, and they answer different questions: what the arrow
             means, and how far a word on a chip can be trusted. */}
@@ -505,7 +547,7 @@ export function ContextMap() {
             </SectionTitle>
             <div className="h-[340px] overflow-hidden rounded-card border border-line">
               <ContextMapPane
-                catalog={catalog}
+                catalog={narrowed}
                 relations={relations}
                 zoomOnScroll={false}
               />

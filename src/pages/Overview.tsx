@@ -15,13 +15,12 @@ import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths, servicePath } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
 import { C4View } from "../likec4/C4View";
 import {
-  deployedServices,
   deploymentViewId,
   environmentsOf,
   profileContainersViewId,
   profileLandscapeViewId,
 } from "../likec4/ids";
-import { deploys } from "../catalog";
+import { servicesDeployedIn } from "../lib/environments";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
 import { CatalogStamp } from "../components/CatalogStamp";
@@ -116,13 +115,7 @@ export function Overview() {
       environments.find((e) => /^prod/i.test(e)) ?? environments[0] ?? "",
   );
   const deployedCount = (env: string) =>
-    deployedServices(catalog).filter((service) =>
-      (catalog.deployments ?? []).some(
-        (d) =>
-          (d.environment || d.cluster || "unplaced") === env &&
-          deploys(d, service),
-      ),
-    ).length;
+    servicesDeployedIn(catalog, new Set([env])).size;
   const reach = widestFlows(catalog);
   const roads = bridges(catalog);
   const services = catalog.contexts.reduce(
