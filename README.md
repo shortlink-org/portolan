@@ -264,6 +264,45 @@ live in a dedicated architecture repository: `fetch-git` pins the service
 repositories at immutable commits and the normal merge, check, diff, and build
 commands operate on the combined estate.
 
+### A real one: Bagisto
+
+The services under `examples/` are small on purpose. For what the catalog
+looks like on a real application, the site ships a third profile: pick
+**Bagisto** in the catalog selector. [Bagisto](https://github.com/bagisto/bagisto)
+is an open-source e-commerce platform on Laravel - 41 packages, one per
+module, talking to each other through named events - read by
+`extract-laravel` alone, with nothing annotated for the catalog.
+
+What comes out of Bagisto 2.4, pinned in `vendor/repos/bagisto/bagisto`:
+
+| | |
+| --- | --- |
+| model groups | 28, one per package with models, 125 Eloquent models and 22 enums between them |
+| events | 309, most of them named - `Event::dispatch('sales.order.cancel.after', …)` - owned by the package their name says, 50 with a listener |
+| HTTP | 520 operations in 10 interfaces, one per route file, with an inferred OpenAPI document |
+| database | 138 tables and 1300 columns replayed from 189 migrations, 185 foreign keys, 120 places the code reads or writes them |
+| queues | 17 jobs on one queue, each a hop in the flow that dispatches it and a worker flow of its own |
+| flows | 610 |
+
+Go to the service and read it the way the tabs are ordered: **bus** for the
+queue, **data** for the schema laid out by model group - the picker beside
+the arrangement toggle switches groups off, the search brings a table up
+close - and **flows** for `shop-checkout-onepage-orders-store`, the checkout
+followed from the controller through the repository it holds to the events
+and the job it ends in. Every "view source" link opens the file on GitHub at
+the pinned commit.
+
+The warnings the extractor left are findings about Bagisto, not about the
+tool: 218 events under the admin package are dispatched by name and declare
+no payload; `Settings\CurrencyController` answers admin routes and does not
+exist; the sitemap job reads a `pages` table no migration creates; a
+foreign key points at a `theme_customizations` table no migration creates;
+one listener waits for `bagisto.shop.products.price.after`, which nothing
+dispatches, and one for the repository events of a vendored package. How the
+fragments were made, and how to refresh them, is in
+`vendor/repos/bagisto/bagisto/README.md`; the reading rules are in
+`plugins/extract-laravel/README.md`.
+
 ## Develop Portolan itself
 
 ```bash

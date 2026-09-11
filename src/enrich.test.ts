@@ -1763,6 +1763,41 @@ describe("enrichCatalog: a foreign key into another service's table", () => {
     expect(keyOf(enrichCatalog(catalog).catalog)).toBe("orders");
   });
 
+  it("tells two tables of one name apart by who the referencing service talks to", () => {
+    // The delivery service calls the order service; an unrelated shop in
+    // the same estate has an `orders` table too.
+    const catalog = estateWithStores();
+    catalog.contexts.push(
+      context("delivery", [
+        service("delivery", "core", {
+          consumes: [{ id: "oms.v1.Orders/GetOrder", peer: "shop.oms", status: "declared", source: "x" }],
+        }),
+      ]),
+      context("commerce", [service("commerce", "bagisto")]),
+    );
+    catalog.stores!.push({
+      id: "commerce.bagisto.db",
+      slug: "db",
+      name: "Bagisto database",
+      kind: "mysql",
+      owner: "commerce.bagisto",
+      tables: [{ id: "commerce.bagisto.db.orders", name: "orders", columns: [] }],
+    });
+
+    expect(keyOf(enrichCatalog(catalog).catalog)).toBe("shop.oms.pg.orders");
+  });
+
+  it("prefers a table of the store's own before looking across the estate", () => {
+    const catalog = estateWithStores();
+    catalog.stores![0]!.tables.push({
+      id: "delivery.core.pg.orders",
+      name: "orders",
+      columns: [{ name: "id", type: "text", nullable: false, pk: true }],
+    });
+
+    expect(keyOf(enrichCatalog(catalog).catalog)).toBe("delivery.core.pg.orders");
+  });
+
   it("leaves a key that already resolves untouched, and enriching twice changes nothing", () => {
     const once = enrichCatalog(estateWithStores()).catalog;
     const twice = enrichCatalog(once).catalog;

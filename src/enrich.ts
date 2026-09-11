@@ -1129,20 +1129,58 @@ function resolveWireNames(catalog: Catalog): Catalog {
  * keeps the raw name, because no extractor sees two schemas. The merge sees
  * all of them, and a name exactly one table in the estate answers to is that
  * table - which is what turns a dangling key into the crossing it is, on the
- * page and on Problems. Two tables of that name resolve to neither.
+ * page and on Problems.
+ *
+ * Two tables of that name are told apart by who the referencing service
+ * talks to: its own store first, then the stores of the services it shares a
+ * context with or calls, or that call it. A shop's delivery service keying
+ * on `orders` means the order service it fetches orders from, not the
+ * `orders` of an unrelated shop that happens to be in the same estate. A
+ * name that is still ambiguous after that resolves to neither.
  */
 function resolveForeignKeys(catalog: Catalog): Catalog {
   const stores = catalog.stores ?? [];
   if (stores.length === 0) return catalog;
 
   const known = new Set<string>();
-  const byName = new Map<string, string | null>();
+  // name → every table id answering to it, in store order.
+  const byName = new Map<string, string[]>();
+  const ownerOfTable = new Map<string, string>();
   for (const store of stores) {
     for (const table of store.tables) {
       known.add(table.id);
-      byName.set(table.name, byName.has(table.name) ? null : table.id);
+      byName.set(table.name, [...(byName.get(table.name) ?? []), table.id]);
+      ownerOfTable.set(table.id, store.owner);
     }
   }
+
+  // Who a service is close to: the services of its context, the ones it
+  // calls, and the ones that call it.
+  const peers = new Map<string, Set<string>>();
+  const near = (a: string, b: string) => {
+    if (!peers.has(a)) peers.set(a, new Set());
+    peers.get(a)!.add(b);
+  };
+  for (const ctx of catalog.contexts) {
+    for (const svc of ctx.services) {
+      for (const other of ctx.services) near(svc.id, other.id);
+      for (const call of svc.consumes) {
+        near(svc.id, call.peer);
+        near(call.peer, svc.id);
+      }
+    }
+  }
+
+  const resolveName = (name: string, from: string, owner: string): string | null => {
+    const candidates = byName.get(name) ?? [];
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0]!;
+    const own = candidates.filter((id) => id.startsWith(`${from}.`));
+    if (own.length === 1) return own[0]!;
+    const close = peers.get(owner) ?? new Set<string>();
+    const nearby = candidates.filter((id) => close.has(ownerOfTable.get(id) ?? ""));
+    return nearby.length === 1 ? nearby[0]! : null;
+  };
 
   let any = false;
   const resolved = stores.map((store) => {
@@ -1151,7 +1189,7 @@ function resolveForeignKeys(catalog: Catalog): Catalog {
       let changed = false;
       const columns = table.columns.map((column) => {
         if (!column.fk || known.has(column.fk.table)) return column;
-        const found = byName.get(column.fk.table);
+        const found = resolveName(column.fk.table, store.id, store.owner);
         if (!found) return column;
         changed = true;
 

@@ -24,6 +24,13 @@
       ],
       "contexts": ["auth", "shop", "delivery", "payments", "storefront"],
       "projects": ["auth", "shop-cart", "shop-billing", "shop-pricing", "delivery-core", "payments-ledger", "shop-oms"]
+    },
+    {
+      "id": "bagisto",
+      "title": "Bagisto",
+      "sources": ["vendor/repos/bagisto/bagisto/git.repo.json", "vendor/repos/bagisto/bagisto/catalog/*.json"],
+      "contexts": ["commerce"],
+      "projects": []
     }
   ],
   "projects": [
