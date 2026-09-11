@@ -1,0 +1,24 @@
+// GENERATED — do not edit.
+deployment {
+  environment prod 'prod' {
+    cluster in_cluster 'in-cluster' {
+      namespace shop 'shop' {
+        shop_cart = instanceOf shop.cart {
+          description 'shop-cart at 3a0ebab'
+        }
+        shop_pricing = instanceOf shop.pricing {
+          description 'shop-pricing at 3a0ebab'
+        }
+      }
+    }
+  }
+  environment staging 'staging' {
+    cluster staging_eu 'staging-eu' {
+      namespace shop 'shop' {
+        shop_cart = instanceOf shop.cart {
+          description 'shop-cart-staging at 3a0ebab'
+        }
+      }
+    }
+  }
+}

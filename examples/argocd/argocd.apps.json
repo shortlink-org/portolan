@@ -39,6 +39,23 @@
       ]
     },
     {
+      "id": "argocd/shop-grafana",
+      "name": "shop-grafana",
+      "project": "shop",
+      "environment": "prod",
+      "cluster": "in-cluster",
+      "namespace": "monitoring",
+      "repo": "github.com/shortlink-org/platform",
+      "path": "charts/grafana",
+      "targetRevision": "main",
+      "revision": "3a0ebab1f0a622dded389f09a8eba5671fd8fd93",
+      "tool": "helm",
+      "url": "https://argocd.example.com/applications/argocd/shop-grafana",
+      "images": [
+        "grafana/grafana:11.2.0"
+      ]
+    },
+    {
       "id": "argocd/shop-pricing",
       "name": "shop-pricing",
       "project": "shop",

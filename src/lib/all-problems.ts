@@ -9,6 +9,7 @@
 
 import type { Catalog, CatalogIndex } from "../catalog";
 import { dataProblems } from "./data-problems";
+import { deployProblems } from "./deploy-problems";
 import { problems } from "./derive";
 import type { Problem } from "./derive";
 import { protoProblems } from "./proto-problems";
@@ -20,6 +21,7 @@ export function allProblems(catalog: Catalog, index: CatalogIndex): Problem[] {
     ...protoProblems(catalog, index),
     ...dataProblems(catalog, index),
     ...wireProblems(catalog, index),
+    ...deployProblems(catalog),
   ];
   return [
     ...found.filter((p) => p.severity === "error"),

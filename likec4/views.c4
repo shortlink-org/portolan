@@ -2527,4 +2527,21 @@ In `--check` mode the same run writes nothing and fails on the first file that d
     developer -> developer 'no cross-context step'
   }
 
+
+  deployment view deploy_prod {
+    title 'prod — deployed'
+    include prod.in_cluster, prod.in_cluster.shop, prod.in_cluster.shop.shop_cart, prod.in_cluster.shop.shop_pricing
+  }
+  deployment view deploy_staging {
+    title 'staging — deployed'
+    include staging.staging_eu, staging.staging_eu.shop, staging.staging_eu.shop.shop_cart
+  }
+  deployment view deploy_svc_shop_cart {
+    title 'Shopping Cart — where it runs'
+    include prod, prod.in_cluster, prod.in_cluster.shop, prod.in_cluster.shop.shop_cart, staging, staging.staging_eu, staging.staging_eu.shop, staging.staging_eu.shop.shop_cart
+  }
+  deployment view deploy_svc_shop_pricing {
+    title 'Pricing — where it runs'
+    include prod, prod.in_cluster, prod.in_cluster.shop, prod.in_cluster.shop.shop_pricing
+  }
 }

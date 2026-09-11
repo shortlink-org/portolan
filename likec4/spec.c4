@@ -39,6 +39,16 @@ specification {
     style { shape rectangle  color unresolved  border dashed }
   }
 
+  deploymentNode environment {
+    style { shape rectangle  opacity 5%  border dashed }
+  }
+  deploymentNode cluster {
+    style { shape rectangle  opacity 10%  border dashed  color muted }
+  }
+  deploymentNode namespace {
+    style { shape rectangle  opacity 15%  color muted }
+  }
+
   relationship consumes
   relationship calls
   relationship bus

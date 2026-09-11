@@ -220,6 +220,7 @@ export function relationAnchor(relationId: string): string {
 /** The section anchors on the overview, so "g d" has somewhere to land. */
 export const OVERVIEW_ANCHOR = {
   landscape: "landscape",
+  deployed: "deployed",
   contexts: "contexts",
   bridges: "bridges",
   flows: "flows-by-reach",

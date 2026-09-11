@@ -3,7 +3,8 @@
   "applications": [
     "argocd/shop-cart",
     "argocd/shop-cart-staging",
+    "argocd/shop-grafana",
     "argocd/shop-pricing"
   ],
-  "sha256": "4902183fbe9771c2e582bd3e15bba343283f5a80cb6b7e80765dbc3032ddafbc"
+  "sha256": "8806cc9d8551be4580174f84ddf2887b9ae6675c7ebff04ce4eb1995d1f22972"
 }

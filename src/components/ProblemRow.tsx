@@ -33,6 +33,7 @@ const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   "channel-unpublished": "service",
   "message-encoding": "service",
   "subscription-unresolved": "service",
+  "deployment-unclaimed": "service",
 };
 
 const KIND_NOTE: Record<Problem["kind"], string> = {
@@ -54,6 +55,8 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
   "message-encoding": "publisher and subscriber use different payload encodings",
   "subscription-unresolved":
     "nothing in the catalog publishes what this service listens for",
+  "deployment-unclaimed":
+    "the deployer runs this from a repository and directory no service in the catalog lives at",
 };
 
 /** Where the near end of a problem lives, by what kind of edge it is. */
@@ -93,6 +96,10 @@ function nearPath(problem: Problem): string | null {
         relationPath(problem.id) ??
         relationPath(problem.id.split(".").slice(0, -1).join("."))
       );
+    // The near end is an Application nobody in the catalog is: there is no
+    // page for it here, and the deployer's own page is in the note.
+    case "deployment-unclaimed":
+      return null;
   }
 }
 
@@ -169,10 +176,14 @@ export function ProblemRow({ problem, index }: { problem: Problem; index: number
           title={`${problem.peer} — ${KIND_NOTE[problem.kind]}. Click to copy.`}
         />
       )}
-      <span className="chip ctx" style={ctxStyle(problem.context)}>
-        <span aria-hidden className="dot" />
-        {problem.context}
-      </span>
+      {/* A problem with no near end in the estate has no context to wear:
+          a chip with nothing in it would be a claim about a context named "". */}
+      {problem.context ? (
+        <span className="chip ctx" style={ctxStyle(problem.context)}>
+          <span aria-hidden className="dot" />
+          {problem.context}
+        </span>
+      ) : null}
       <span className="mono ml-auto text-muted">{KIND_NOTE[problem.kind]}</span>
       {problem.note ? (
         <p className="w-full border-l-2 pl-2 border-line-strong text-muted">

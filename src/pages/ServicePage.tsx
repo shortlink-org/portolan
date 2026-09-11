@@ -53,7 +53,11 @@ import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
-import { serviceInsideViewId, serviceViewId } from "../likec4/ids";
+import {
+  serviceDeployViewId,
+  serviceInsideViewId,
+  serviceViewId,
+} from "../likec4/ids";
 import { index } from "../data";
 import { storesOfService } from "../lib/data-model";
 import { ErCanvas } from "../er/ErCanvas";
@@ -345,6 +349,16 @@ export function ServicePage() {
                   Where it runs
                 </SectionTitle>
                 <DeploymentRows deployments={deployments} />
+                {/* The same rows as a picture: the service's instances with
+                    the environment, cluster and namespace drawn as the
+                    frames they are. Under the rows, because the rows carry
+                    the commit and the images and the picture carries where. */}
+                <div className="mt-3">
+                  <C4View
+                    viewId={serviceDeployViewId(service)}
+                    height={220}
+                  />
+                </div>
               </section>
             ) : null}
             {showDomain ? (

@@ -9,6 +9,7 @@ import type {
   Participant,
   Service,
 } from "../catalog";
+import { allDeployments, deploys } from "../catalog";
 import reserved from "./reserved.json";
 
 /**
@@ -97,6 +98,42 @@ export const flowViewId = (flow: Flow | string): string =>
 export const flowCrossViewId = (flow: Flow | string): string =>
   `${flowViewId(flow)}_cross`;
 
+/**
+ * Where the services run, one environment at a time: the clusters and
+ * namespaces of the environment as frames, an instance of every service the
+ * snapshot places there, and between the instances what the model declares
+ * between their services (portolan.0012).
+ */
+export const deploymentViewId = (environment: string): string =>
+  `deploy_${safeId(environment)}`;
+
+/** One service, every place it runs: its instances, with the frames around each. */
+export const serviceDeployViewId = (service: Service | string): string =>
+  `deploy_svc_${safeId(typeof service === "string" ? service : service.id)}`;
+
+/**
+ * The environments the snapshot places services in, sorted. A deployment of
+ * a repository no service claims places nothing and names no environment
+ * here: an environment with nothing of the estate in it is not a picture.
+ */
+export function environmentsOf(catalog: Catalog): string[] {
+  const services = catalog.contexts.flatMap((context) => context.services);
+  const found = new Set<string>();
+  for (const deployment of allDeployments(catalog)) {
+    if (!services.some((service) => deploys(deployment, service))) continue;
+    found.add(deployment.environment || deployment.cluster || "unplaced");
+  }
+  return [...found].sort();
+}
+
+/** The services the snapshot places somewhere, in catalog order. */
+export function deployedServices(catalog: Catalog): Service[] {
+  const deployments = allDeployments(catalog);
+  return catalog.contexts
+    .flatMap((context) => context.services)
+    .filter((service) => deployments.some((d) => deploys(d, service)));
+}
+
 /** Every view id the generator is expected to emit, in a stable order. */
 export function allViewIds(catalog: Catalog): string[] {
   const out: string[] = [LANDSCAPE_VIEW, CONTAINERS_VIEW];
@@ -110,6 +147,12 @@ export function allViewIds(catalog: Catalog): string[] {
   for (const flow of catalog.flows) {
     out.push(flowViewId(flow));
     out.push(flowCrossViewId(flow));
+  }
+  for (const environment of environmentsOf(catalog)) {
+    out.push(deploymentViewId(environment));
+  }
+  for (const service of deployedServices(catalog)) {
+    out.push(serviceDeployViewId(service));
   }
   return out;
 }

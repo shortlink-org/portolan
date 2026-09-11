@@ -9,6 +9,8 @@ import {
   CONTAINERS_VIEW,
   LANDSCAPE_VIEW,
   allViewIds,
+  deployedServices,
+  environmentsOf,
   contextViewId,
   eventFqn,
   flowCrossViewId,
@@ -100,14 +102,16 @@ describe("view ids", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("covers the landscape, the containers, every context, both views of every service and both of every flow", () => {
+  it("covers the landscape, the containers, every context, both views of every service, both of every flow, every environment and every deployed service", () => {
     const ids = allViewIds(catalog);
     const services = catalog.contexts.flatMap((c) => c.services);
     expect(ids).toHaveLength(
       2 +
         catalog.contexts.length +
         services.length * 2 +
-        catalog.flows.length * 2,
+        catalog.flows.length * 2 +
+        environmentsOf(catalog).length +
+        deployedServices(catalog).length,
     );
     // The three C4 levels: the estate, its containers, a context, and a
     // service opened up.

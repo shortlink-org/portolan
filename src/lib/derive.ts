@@ -425,7 +425,8 @@ export type ProblemKind =
   | "channel-undeclared"
   | "channel-unpublished"
   | "message-encoding"
-  | "subscription-unresolved";
+  | "subscription-unresolved"
+  | "deployment-unclaimed";
 
 /**
  * How wrong a problem is. Two values, not five: an edge either lands somewhere

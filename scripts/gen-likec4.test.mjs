@@ -38,6 +38,7 @@ function generate(catalog) {
     spec: readFileSync(join(root, "likec4", "spec.c4"), "utf8"),
     model: readFileSync(join(root, "likec4", "model.c4"), "utf8"),
     views: readFileSync(join(root, "likec4", "views.c4"), "utf8"),
+    deployment: readFileSync(join(root, "likec4", "deployment.c4"), "utf8"),
   };
 }
 
@@ -431,5 +432,86 @@ describe("the LikeC4 generator", () => {
     expect(views).toMatch(
       /view svc_shop_oms of shop\.oms \{\n    title[^\n]*\n    include \*, -> \*, \* ->\n  \}/,
     );
+  });
+
+  it("places every deployed service in its environment, cluster and namespace, and draws the frames by name", () => {
+    const service = (slug, path) => ({
+      id: `shop.${slug}`,
+      slug,
+      name: slug,
+      repo: "github.com/acme/shop",
+      path,
+      readme: "",
+      provides: [],
+      consumes: [],
+      aggregates: [],
+    });
+    const placed = (name, environment, cluster, namespace, path) => ({
+      id: `argocd/${name}`,
+      name,
+      project: "shop",
+      environment,
+      cluster,
+      namespace,
+      repo: "github.com/acme/shop",
+      path,
+      targetRevision: "main",
+      revision: "a".repeat(40),
+      tool: "kustomize",
+      url: `https://argocd.example.com/applications/argocd/${name}`,
+    });
+    const { spec, deployment, views } = generate({
+      contexts: [
+        {
+          id: "shop",
+          slug: "shop",
+          name: "Shop",
+          summary: "",
+          services: [service("cart", "services/cart"), service("oms", "services/oms")],
+        },
+      ],
+      flows: [],
+      deployments: [
+        placed("cart", "prod", "in-cluster", "shop", "services/cart/deploy"),
+        placed("cart-staging", "staging", "staging-eu", "shop", "services/cart/deploy"),
+        placed("oms", "prod", "in-cluster", "shop", "services/oms/deploy"),
+        // Deploys a repository nobody in the estate claims: placed nowhere.
+        placed("grafana", "prod", "in-cluster", "monitoring", "charts/grafana"),
+      ],
+    });
+    expect(spec).toContain("deploymentNode environment");
+    expect(deployment).toContain(
+      "  environment prod 'prod' {\n" +
+        "    cluster in_cluster 'in-cluster' {\n" +
+        "      namespace shop 'shop' {\n" +
+        "        shop_cart = instanceOf shop.cart {\n" +
+        "          description 'cart at aaaaaaa'\n" +
+        "        }\n" +
+        "        shop_oms = instanceOf shop.oms {",
+    );
+    expect(deployment).toContain("environment staging 'staging'");
+    expect(deployment).not.toContain("grafana");
+    expect(deployment).not.toContain("monitoring");
+    // The environment view names every frame under it; a descendant wildcard
+    // would fold the cluster and the namespace away.
+    expect(views).toContain(
+      "  deployment view deploy_prod {\n" +
+        "    title 'prod — deployed'\n" +
+        "    include prod.in_cluster, prod.in_cluster.shop, prod.in_cluster.shop.shop_cart, prod.in_cluster.shop.shop_oms\n" +
+        "  }",
+    );
+    expect(views).toContain(
+      "  deployment view deploy_svc_shop_cart {\n" +
+        "    title 'cart — where it runs'\n" +
+        "    include prod, prod.in_cluster, prod.in_cluster.shop, prod.in_cluster.shop.shop_cart, staging, staging.staging_eu, staging.staging_eu.shop, staging.staging_eu.shop.shop_cart\n" +
+        "  }",
+    );
+    expect(views).not.toContain("deploy_svc_shop_grafana");
+  });
+
+  it("writes an empty deployment file and no deployment view when nothing is placed", () => {
+    const { deployment, views } = generate({ contexts: [], flows: [] });
+    expect(deployment.trim()).toBe("// GENERATED — do not edit.");
+    expect(views).not.toContain("deployment view");
   });
 });

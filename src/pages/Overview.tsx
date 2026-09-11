@@ -14,7 +14,14 @@ import { usePhone } from "../app/responsive";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths, servicePath } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
 import { C4View } from "../likec4/C4View";
-import { profileContainersViewId, profileLandscapeViewId } from "../likec4/ids";
+import {
+  deployedServices,
+  deploymentViewId,
+  environmentsOf,
+  profileContainersViewId,
+  profileLandscapeViewId,
+} from "../likec4/ids";
+import { deploys } from "../catalog";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
 import { CatalogStamp } from "../components/CatalogStamp";
@@ -100,6 +107,22 @@ export function Overview() {
   useDocumentTitle("Overview");
   const phone = usePhone();
   const [level, setLevel] = useState<C4Level>(1);
+  // Where the estate runs, one environment at a time. Production first when
+  // there is one by that name: it is the environment a reader means by
+  // "deployed" until they say otherwise.
+  const environments = environmentsOf(catalog);
+  const [environment, setEnvironment] = useState<string>(
+    () =>
+      environments.find((e) => /^prod/i.test(e)) ?? environments[0] ?? "",
+  );
+  const deployedCount = (env: string) =>
+    deployedServices(catalog).filter((service) =>
+      (catalog.deployments ?? []).some(
+        (d) =>
+          (d.environment || d.cluster || "unplaced") === env &&
+          deploys(d, service),
+      ),
+    ).length;
   const reach = widestFlows(catalog);
   const roads = bridges(catalog);
   const services = catalog.contexts.reduce(
@@ -193,6 +216,44 @@ export function Overview() {
           fitViewPadding={{ x: 8, y: 8 }}
         />
       </section>
+
+      {/* Where the estate runs, from the deployer's snapshot: the services
+          standing in one environment, in their clusters and namespaces, and
+          between them what the model declares. Absent entirely when no
+          snapshot places anything - a heading over an empty canvas would
+          claim the estate runs nowhere, and nobody made that claim. */}
+      {environments.length > 0 ? (
+        <section id={OVERVIEW_ANCHOR.deployed} className="mt-section">
+          <SectionTitle
+            anchor={OVERVIEW_ANCHOR.deployed}
+            right={
+              <div className="seg" role="group" aria-label="Environment">
+                {environments.map((env) => (
+                  <button
+                    key={env}
+                    type="button"
+                    onClick={() => setEnvironment(env)}
+                    aria-pressed={env === environment}
+                    className="flex items-center gap-1.5"
+                    title={`${plural(deployedCount(env), "service")} of the estate in ${env}`}
+                  >
+                    {env}
+                    <span className="tnum">{deployedCount(env)}</span>
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            Deployed
+          </SectionTitle>
+          <C4View
+            viewId={deploymentViewId(environment)}
+            height={phone ? 320 : 480}
+            controls={phone}
+            fitViewPadding={{ x: 8, y: 8 }}
+          />
+        </section>
+      ) : null}
 
       <section id={OVERVIEW_ANCHOR.contexts} className="mt-section">
         <SectionTitle anchor={OVERVIEW_ANCHOR.contexts}>Contexts</SectionTitle>
