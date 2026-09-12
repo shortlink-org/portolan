@@ -537,6 +537,10 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
     }
+    auth.auth -> bus 'SessionEnded' {
+      color verified  line solid  head onormal
+      notes 'Seen in 1 recording; the code does not declare this hop.'
+    }
   }
 
   dynamic view flow_auth_revoke_sessions_on_password_change_cross {
@@ -544,6 +548,10 @@ views {
     bus -> auth.auth 'PasswordChanged' {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
+    }
+    auth.auth -> bus 'SessionEnded' {
+      color verified  line solid  head onormal
+      notes 'Seen in 1 recording; the code does not declare this hop.'
     }
   }
 
