@@ -6,6 +6,7 @@
 - **Date:** 2026-09-12
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0017-every-problem-rule-is-cel-over-a-row-that-already-carries-its-joins.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0017-every-problem-rule-is-cel-over-a-row-that-already-carries-its-joins.md)
+- **Committed:** Victor Login, 2026-09-12 (`855fbb7`)
 
 ### Context and Problem Statement
 
