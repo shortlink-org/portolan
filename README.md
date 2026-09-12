@@ -116,7 +116,38 @@ first:
   with a second writer, a table that no longer holds the aggregate it claims,
   a column whose type has drifted from its field's, an outbox with no payload;
 - a channel with a second publisher, an event on a channel its service does not
-  declare, a declared channel no event names, a subscription nothing publishes.
+  declare, a declared channel no event names, a subscription nothing publishes;
+- what the deployer runs from a place no service lives at, and where the GitOps
+  tree and the deployer disagree.
+
+Each check is a rule with a passport in `rules/builtin.json` - id, subject,
+severity, what it looks for and what to do about a row - and **Settings →
+Rules** lists them with the rows each produces now. A rule can be switched off
+or re-graded in `portolan.json`, with a reason, and a rule of your own is
+written there in CEL over one subject - a service, an event, a channel, a
+table, a deployment or a call - and runs in the page the moment it is saved:
+
+```json
+{
+  "problemRules": [
+    { "id": "shared-store", "enabled": false, "reason": "the estate shares one database by design" },
+    {
+      "id": "team.quiet-event",
+      "over": "event",
+      "severity": "warning",
+      "title": "Event nobody consumes",
+      "when": "size(event.consumers) == 0 && !event.name.endsWith('Audit')",
+      "message": "'nothing consumes ' + event.id",
+      "peer": "event.service"
+    }
+  ]
+}
+```
+
+Expressions are type-checked against the subject's fields when the manifest is
+read - `event.nme` is refused, not shown as an empty page - and again in the
+page, by the same module. The Rules page writes the entry after a preview of
+the rows it would add (portolan.0016).
 
 ## Where the facts come from
 

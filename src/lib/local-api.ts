@@ -1,5 +1,6 @@
 import type { SetupDiagnostic, SetupInfo, SetupPhase, SetupProject, SetupRunStepStatus } from "./setup-info";
 import type { DjangoAggregateCandidates } from "./django-aggregates";
+import type { ProblemRuleEntry } from "./problem-rules";
 
 const ROOT = `${import.meta.env.BASE_URL}__portolan`;
 const LOCAL_HEADER = { "Content-Type": "application/json", "X-Portolan-Local": "1" };
@@ -241,6 +242,21 @@ export async function djangoAggregateProposals(): Promise<DjangoAggregateProposa
 
 export async function saveDjangoAggregates(revision: string, selections: Array<{ id: string; model: string }>): Promise<{ saved: number }> {
   return json("/django-aggregates", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ revision, selections }) });
+}
+
+/** The manifest's `problemRules`, with a revision a save must quote. */
+export interface ProblemRulesState {
+  revision: string;
+  rules: ProblemRuleEntry[];
+}
+
+export async function problemRules(): Promise<ProblemRulesState> {
+  return json("/rules");
+}
+
+/** Replaces `problemRules` in portolan.json, once the server has type-checked every expression. */
+export async function saveProblemRules(revision: string, rules: ProblemRuleEntry[]): Promise<ProblemRulesState> {
+  return json("/rules", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ revision, rules }) });
 }
 
 export async function previewDeliveryPreset(provider?: DeliveryProvider, features?: DeliveryFeatureId[]): Promise<DeliveryPreset> {

@@ -13,6 +13,12 @@ import { normalize } from "node:path";
 
 import Ajv from "ajv/dist/2020.js";
 import { warningPolicyProblems } from "./warning-policy.mjs";
+import { problemRuleProblems } from "../src/lib/problem-rules-cel.mjs";
+
+// The rules that have a reader, by id, so that an entry naming one is read as
+// a switch and any other as a rule of its own. Read once, like the schema:
+// the file is part of the package, and a manifest cannot add to it.
+const builtinRuleIds = () => JSON.parse(readFileSync(new URL("../rules/builtin.json", import.meta.url), "utf8")).map((rule) => rule.id);
 
 // Read when asked, not when loaded: the CLI sets PORTOLAN_SCHEMA after its imports.
 const schemaFile = () => process.env.PORTOLAN_SCHEMA || "schema/portolan.schema.json";
@@ -39,7 +45,10 @@ export function loadManifest(path = "portolan.json") {
  */
 export function parseManifest(text, path = "portolan.json") {
   const manifest = JSON.parse(text);
-  const policyProblems = warningPolicyProblems(manifest.warningPolicies, path);
+  const policyProblems = [
+    ...warningPolicyProblems(manifest.warningPolicies, path),
+    ...problemRuleProblems(manifest.problemRules, builtinRuleIds(), path),
+  ];
 
   let schema;
   try {

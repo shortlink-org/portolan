@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, removeProject, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeManifest, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, problemRulesState, readLocalSource, removeProject, saveProblemRules, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeManifest, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -820,5 +820,40 @@ describe("writing the manifest", () => {
     const before = readFileSync(path, "utf8");
     expect(() => writeManifest(path, { ...JSON.parse(before), verify: [{ plugin: "nope", in: "x", out: "y" }] })).toThrow();
     expect(readFileSync(path, "utf8")).toBe(before);
+  });
+});
+
+describe("problem rules", () => {
+  it("reads the manifest's rules with a revision, and writes them back through the schema", () => {
+    const root = workspace();
+    const before = problemRulesState(root);
+    expect(before.rules).toEqual([]);
+    expect(before.revision).toMatch(/^[0-9a-f]{64}$/);
+
+    const rules = [
+      { id: "shared-store", enabled: false, reason: "one database by design" },
+      { id: "team.quiet-event", over: "event", severity: "warning", title: "Quiet event", when: "size(event.consumers) == 0", message: "'nothing consumes ' + event.id" },
+    ];
+    const after = saveProblemRules(root, { revision: before.revision, rules });
+    expect(after.rules).toEqual(rules);
+    expect(after.revision).not.toBe(before.revision);
+    expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8")).problemRules).toEqual(rules);
+
+    // Emptying the list removes the key, so a manifest that never had one
+    // does not gain an empty array.
+    const emptied = saveProblemRules(root, { revision: after.revision, rules: [] });
+    expect(emptied.rules).toEqual([]);
+    expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"))).not.toHaveProperty("problemRules");
+  });
+
+  it("refuses a stale revision and a rule the type check rejects, and leaves the file alone", () => {
+    const root = workspace();
+    const { revision } = problemRulesState(root);
+    const text = readFileSync(join(root, "portolan.json"), "utf8");
+    expect(() => saveProblemRules(root, { revision: "0".repeat(64), rules: [] })).toThrow(/changed since/);
+    expect(() => saveProblemRules(root, { revision, rules: [{ id: "team.a", over: "event", title: "A", when: "event.nme == 'x'", message: "'m'" }] })).toThrow(/nme/);
+    expect(() => saveProblemRules(root, { revision, rules: [{ id: "rpc", when: "true" }] })).toThrow(/built-in/);
+    expect(() => saveProblemRules(root, { revision, rules: [{ id: "team.b", over: "event", title: "B", when: "true", message: "'m'", extra: 1 }] })).toThrow();
+    expect(readFileSync(join(root, "portolan.json"), "utf8")).toBe(text);
   });
 });

@@ -2,11 +2,11 @@ import { useDocumentTitle } from "../app/title";
 import { useState } from "react";
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
-import { activeCatalogProfile, CATALOG_PATH, catalog, index } from "../data";
+import { activeCatalogProfile, CATALOG_PATH, catalog } from "../data";
 import { contextOwners, contextStats, widestFlows } from "../lib/derive";
 import type { ContextOwner } from "../lib/derive";
 import { bridges } from "../lib/centrality";
-import { allProblems } from "../lib/all-problems";
+import { useProblems } from "../lib/use-problems";
 import { ctxStyle } from "../lib/context-color";
 import { middleTruncate, plural } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
@@ -122,7 +122,7 @@ export function Overview() {
     (count, context) => count + context.services.length,
     0,
   );
-  const issues = allProblems(catalog, index);
+  const issues = useProblems();
   const issueCount = issues.length;
   const errorCount = issues.filter((p) => p.severity === "error").length;
 

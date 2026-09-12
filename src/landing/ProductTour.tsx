@@ -2,7 +2,7 @@
 // product's own canvases in a smaller box; the other two are read straight
 // out of the same catalog. Nothing on this page is drawn from a mock-up.
 
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router";
 import {
   AlertTriangle,
@@ -14,10 +14,10 @@ import {
   Network,
   Radio,
 } from "lucide-react";
-import { catalog, index } from "../data";
+import { index } from "../data";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { contextVar } from "../lib/context-color";
-import { allProblems } from "../lib/all-problems";
+import { useProblems } from "../lib/use-problems";
 import {
   AnimatePresence,
   LayoutGroup,
@@ -194,7 +194,7 @@ function ContractDemo() {
 const SHOWN_PROBLEMS = 4;
 
 function ProblemsDemo() {
-  const all = useMemo(() => allProblems(catalog, index), []);
+  const all = useProblems();
   const errors = all.filter((p) => p.severity === "error").length;
   const shown = all.slice(0, SHOWN_PROBLEMS);
 

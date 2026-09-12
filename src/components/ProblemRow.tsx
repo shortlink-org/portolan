@@ -1,13 +1,22 @@
 // One problem, as a row: what the near end is, where both ends live, and
 // the words for what is wrong with the edge between them. The problems page
 // lists every one of these; the overview shows the first few.
+//
+// The words and the icon come from the rule that made the row - its passport
+// in rules/builtin.json, or the manifest's entry for a CEL rule - so a rule
+// added to the manifest gets a row that reads like the built-in ones, and
+// the built-in ones can be read about on the Settings page the note links to.
 
 import { Link } from "react-router";
 import type { Problem } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
+import type { Kind } from "../lib/kinds";
 import { staggerStyle } from "../lib/motion";
+import { useProblemRules } from "../lib/problem-rules";
+import type { ProblemRule, RuleSubject } from "../lib/problem-rules";
 import {
   eventPath,
+  paths,
   servicePath,
   storePath,
   tablePath,
@@ -17,53 +26,17 @@ import { KindIcon } from "./kind";
 import { Ident } from "./Ident";
 
 /** The icon a problem row carries: what the near end of the edge IS. */
-const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
-  rpc: "service",
-  consumer: "event",
-  "cross-service-fk": "table",
-  "cross-service-lineage": "table",
-  "shared-store": "table",
-  "persistence-drift": "table",
-  "column-type": "table",
-  "outbox-payload": "table",
-  "proto-missing": "service",
-  "proto-drift": "service",
-  "shared-channel": "event",
-  "channel-undeclared": "event",
-  "channel-unpublished": "service",
-  "message-encoding": "service",
-  "subscription-unresolved": "service",
-  "deployment-unclaimed": "service",
-  "deployment-drift": "service",
-};
-
-const KIND_NOTE: Record<Problem["kind"], string> = {
-  rpc: "the provider of this call is not in the catalog",
-  consumer: "this consumer of the event is not in the catalog",
-  "cross-service-fk": "foreign key across a service boundary",
-  "cross-service-lineage": "a value copied from another service's schema",
-  "shared-store": "a second service writes this database",
-  "persistence-drift": "this table no longer carries the aggregate it claims",
-  "column-type": "column type and domain type disagree",
-  "outbox-payload": "an outbox with no payload column",
-  "proto-missing":
-    "the provider is in the catalog but answers on no such method",
-  "proto-drift": "the vendored proto and provider schema disagree",
-  "shared-channel": "a second service publishes on this channel",
-  "channel-undeclared":
-    "this event goes out on a channel the service does not declare",
-  "channel-unpublished": "a declared channel no event of this service names",
-  "message-encoding": "publisher and subscriber use different payload encodings",
-  "subscription-unresolved":
-    "nothing in the catalog publishes what this service listens for",
-  "deployment-unclaimed":
-    "the deployer runs this from a repository and directory no service in the catalog lives at",
-  "deployment-drift":
-    "the GitOps tree and the deployer disagree about this Application",
+const ICON_OF: Record<RuleSubject, Kind> = {
+  service: "service",
+  call: "service",
+  event: "event",
+  channel: "event",
+  table: "table",
+  deployment: "service",
 };
 
 /** Where the near end of a problem lives, by what kind of edge it is. */
-function nearPath(problem: Problem): string | null {
+function nearPath(problem: Problem, rule: ProblemRule | undefined): string | null {
   switch (problem.kind) {
     case "rpc":
     // The near end is the CALLING service either way. `rpc` is a call whose
@@ -107,6 +80,25 @@ function nearPath(problem: Problem): string | null {
     // catalog has one; its page is where the row with the drift chip is.
     case "deployment-drift":
       return problem.service ? servicePath(problem.service) : null;
+    // A CEL rule's row is about one subject, and the subject says where it
+    // lives: an event has a page, a table has a canvas, a channel, a call and
+    // a deployment are shown on their service's page.
+    case "rule":
+      return subjectPath(rule?.over ?? "service", problem);
+  }
+}
+
+function subjectPath(over: RuleSubject, problem: Problem): string | null {
+  switch (over) {
+    case "event":
+      return eventPath(problem.id);
+    case "table":
+      return relationPath(problem.id);
+    case "service":
+    case "call":
+    case "channel":
+    case "deployment":
+      return problem.service ? servicePath(problem.service) : null;
   }
 }
 
@@ -131,14 +123,23 @@ function peerPath(problem: Problem): string | null {
       return servicePath(problem.peer);
     case "outbox-payload":
       return storePath(problem.peer);
+    // A CEL rule's peer is whatever its expression said; when that is the id
+    // of something the catalog has, the row leads there.
+    case "rule":
+      return problem.peer
+        ? servicePath(problem.peer) ?? eventPath(problem.peer) ?? relationPath(problem.peer)
+        : null;
     default:
       return null;
   }
 }
 
 export function ProblemRow({ problem, index }: { problem: Problem; index: number }) {
-  const near = nearPath(problem);
+  const rules = useProblemRules();
+  const rule = rules.find((candidate) => candidate.id === problem.rule);
+  const near = nearPath(problem, rule);
   const peerTo = peerPath(problem);
+  const note = rule?.note ?? problem.rule;
   const tone =
     problem.severity === "error"
       ? "var(--status-unresolved)"
@@ -148,8 +149,9 @@ export function ProblemRow({ problem, index }: { problem: Problem; index: number
     <div
       className="stagger-in flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-control border px-3 py-2"
       style={{ ...staggerStyle(index), borderColor: tone }}
+      data-rule={problem.rule}
     >
-      <KindIcon kind={KIND_OF[problem.kind]} />
+      <KindIcon kind={ICON_OF[rule?.over ?? "service"]} />
       {near ? (
         <Link
           to={near}
@@ -162,27 +164,32 @@ export function ProblemRow({ problem, index }: { problem: Problem; index: number
       ) : (
         <Ident value={problem.id} />
       )}
-      <span aria-hidden className="text-muted">
-        →
-      </span>
-      {peerTo ? (
-        <Link
-          to={peerTo}
-          className="mono rounded-control hover:underline"
-          style={{ color: tone }}
-          title={problem.peer}
-        >
-          {problem.peer}
-        </Link>
-      ) : (
-        <Ident
-          value={problem.peer}
-          className={
-            problem.severity === "error" ? "text-unresolved" : "text-declared"
-          }
-          title={`${problem.peer} — ${KIND_NOTE[problem.kind]}. Click to copy.`}
-        />
-      )}
+      {/* A CEL rule may name no far end; then there is no arrow to draw. */}
+      {problem.peer ? (
+        <>
+          <span aria-hidden className="text-muted">
+            →
+          </span>
+          {peerTo ? (
+            <Link
+              to={peerTo}
+              className="mono rounded-control hover:underline"
+              style={{ color: tone }}
+              title={problem.peer}
+            >
+              {problem.peer}
+            </Link>
+          ) : (
+            <Ident
+              value={problem.peer}
+              className={
+                problem.severity === "error" ? "text-unresolved" : "text-declared"
+              }
+              title={`${problem.peer} — ${note}. Click to copy.`}
+            />
+          )}
+        </>
+      ) : null}
       {/* A problem with no near end in the estate has no context to wear:
           a chip with nothing in it would be a claim about a context named "". */}
       {problem.context ? (
@@ -191,7 +198,15 @@ export function ProblemRow({ problem, index }: { problem: Problem; index: number
           {problem.context}
         </span>
       ) : null}
-      <span className="mono ml-auto text-muted">{KIND_NOTE[problem.kind]}</span>
+      {/* The rule's words, leading to the rule: what it checks, what to do,
+          and the switch that turns it off. */}
+      <Link
+        to={`${paths.settingsRules()}#rule-${problem.rule}`}
+        className="mono ml-auto rounded-control text-muted hover:text-ink hover:underline"
+        title={`rule ${problem.rule}${rule?.action ? ` — ${rule.action}` : ""}`}
+      >
+        {note}
+      </Link>
       {problem.note ? (
         <p className="w-full border-l-2 pl-2 border-line-strong text-muted">
           {problem.note}

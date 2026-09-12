@@ -38,3 +38,4 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0013](../adr/portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 |
 | [portolan.0014](../adr/portolan.0014.md) | A recording is kept beside the code, and lays what it showed over the flow | accepted | 2026-09-12 |
 | [portolan.0015](../adr/portolan.0015.md) | A rule on a field is read into the catalog, in one vocabulary | accepted | 2026-09-12 |
+| [portolan.0016](../adr/portolan.0016.md) | A problem is a rule with a passport, and a new one is written in CEL over one subject | accepted | 2026-09-12 |

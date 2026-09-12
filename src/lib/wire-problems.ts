@@ -20,7 +20,7 @@
 // one repository and cannot know what another declares.
 
 import type { Catalog, CatalogIndex, ChannelMessage, Event, Service } from "../catalog";
-import type { Problem } from "./derive";
+import type { Finding } from "./derive";
 
 interface Publisher {
   service: Service;
@@ -34,7 +34,7 @@ interface Publisher {
 export function wireProblems(
   catalog: Catalog,
   index: CatalogIndex,
-): Problem[] {
+): Finding[] {
   return [
     ...sharedChannels(catalog),
     ...documentAgainstCode(catalog),
@@ -52,7 +52,7 @@ interface MessageEndpoint {
 }
 
 /** Producer and subscriber have both named a format, and those formats differ. */
-function messageEncodingMismatches(catalog: Catalog): Problem[] {
+function messageEncodingMismatches(catalog: Catalog): Finding[] {
   const sends = new Map<string, MessageEndpoint[]>();
   const receives: MessageEndpoint[] = [];
   for (const context of catalog.contexts) {
@@ -73,7 +73,7 @@ function messageEncodingMismatches(catalog: Catalog): Problem[] {
     }
   }
 
-  const out: Problem[] = [];
+  const out: Finding[] = [];
   for (const receiver of receives) {
     const expected = wireFormat(receiver.message);
     if (!expected) continue;
@@ -116,7 +116,7 @@ function wireFormat(message: ChannelMessage): string {
  * is still one service's. An event without a wire is skipped, because a
  * channel nobody named cannot be shared.
  */
-function sharedChannels(catalog: Catalog): Problem[] {
+function sharedChannels(catalog: Catalog): Finding[] {
   const byChannel = new Map<string, Map<string, Publisher>>();
 
   const publisher = (
@@ -155,7 +155,7 @@ function sharedChannels(catalog: Catalog): Problem[] {
     }
   }
 
-  const out: Problem[] = [];
+  const out: Finding[] = [];
   for (const [channel, publishers] of byChannel) {
     if (publishers.size < 2) continue;
     for (const mine of publishers.values()) {
@@ -216,8 +216,8 @@ function claim(publisher: Publisher, channel: string): string {
  * and a rule that fired on every service without an AsyncAPI file would be a
  * page of rows about work nobody has started.
  */
-function documentAgainstCode(catalog: Catalog): Problem[] {
-  const out: Problem[] = [];
+function documentAgainstCode(catalog: Catalog): Finding[] {
+  const out: Finding[] = [];
 
   for (const context of catalog.contexts) {
     for (const service of context.services) {
@@ -291,7 +291,7 @@ function documentAgainstCode(catalog: Catalog): Problem[] {
 function unresolvedSubscriptions(
   catalog: Catalog,
   index: CatalogIndex,
-): Problem[] {
+): Finding[] {
   // Every name anything in the estate puts on the wire. The index knows the
   // events; a document declaring a send is the other half, and it counts for
   // the same reason it counts as publishing above - the code may simply not
@@ -307,7 +307,7 @@ function unresolvedSubscriptions(
     }
   }
 
-  const out: Problem[] = [];
+  const out: Finding[] = [];
   for (const context of catalog.contexts) {
     for (const service of context.services) {
       for (const channel of service.channels ?? []) {

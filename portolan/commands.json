@@ -22,119 +22,119 @@
               "name": "dev",
               "run": "npm run dev",
               "body": "node cli/portolan.mjs dev",
-              "source": "package.json:60"
+              "source": "package.json:61"
             },
             {
               "runner": "npm",
               "name": "build",
               "run": "npm run build",
               "body": "node cli/portolan.mjs build",
-              "source": "package.json:61"
+              "source": "package.json:62"
             },
             {
               "runner": "npm",
               "name": "preview",
               "run": "npm run preview",
               "body": "vite preview",
-              "source": "package.json:62"
+              "source": "package.json:63"
             },
             {
               "runner": "npm",
               "name": "test",
               "run": "npm test",
               "body": "vitest run",
-              "source": "package.json:63"
+              "source": "package.json:64"
             },
             {
               "runner": "npm",
               "name": "test:go",
               "run": "npm run test:go",
               "body": "GOFLAGS=-mod=mod go test ./...",
-              "source": "package.json:64"
+              "source": "package.json:65"
             },
             {
               "runner": "npm",
               "name": "test:package",
               "run": "npm run test:package",
               "body": "node scripts/package-smoke.mjs",
-              "source": "package.json:66"
+              "source": "package.json:67"
             },
             {
               "runner": "npm",
               "name": "test:watch",
               "run": "npm run test:watch",
               "body": "vitest",
-              "source": "package.json:67"
+              "source": "package.json:68"
             },
             {
               "runner": "npm",
               "name": "typecheck",
               "run": "npm run typecheck",
               "body": "tsc --noEmit \u0026\u0026 tsc -p plugins/extract-ts",
-              "source": "package.json:68"
+              "source": "package.json:69"
             },
             {
               "runner": "npm",
               "name": "likec4:gen",
               "run": "npm run likec4:gen",
               "body": "node scripts/gen-likec4.mjs \u0026\u0026 likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot",
-              "source": "package.json:69"
+              "source": "package.json:70"
             },
             {
               "runner": "npm",
               "name": "likec4:validate",
               "run": "npm run likec4:validate",
               "body": "likec4 validate likec4",
-              "source": "package.json:70"
+              "source": "package.json:71"
             },
             {
               "runner": "npm",
               "name": "plugins:build",
               "run": "npm run plugins:build",
               "body": "GOFLAGS=-mod=mod GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags=\"-s -w\" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go \u0026\u0026 javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java \u0026\u0026 dotnet build plugins/extract-csharp-ddd -c Release --nologo -v q",
-              "source": "package.json:72"
+              "source": "package.json:73"
             },
             {
               "runner": "npm",
               "name": "schema",
               "run": "npm run schema",
               "body": "npm run plugins:build \u0026\u0026 node scripts/schema.mjs",
-              "source": "package.json:73"
+              "source": "package.json:74"
             },
             {
               "runner": "npm",
               "name": "schema:check",
               "run": "npm run schema:check",
               "body": "npm run plugins:build \u0026\u0026 node scripts/schema.mjs --check",
-              "source": "package.json:74"
+              "source": "package.json:75"
             },
             {
               "runner": "npm",
               "name": "gen",
               "run": "npm run gen",
               "body": "npm run plugins:build \u0026\u0026 node scripts/gen.mjs",
-              "source": "package.json:75"
+              "source": "package.json:76"
             },
             {
               "runner": "npm",
               "name": "gen:check",
               "run": "npm run gen:check",
               "body": "npm run plugins:build \u0026\u0026 node scripts/gen.mjs --check",
-              "source": "package.json:76"
+              "source": "package.json:77"
             },
             {
               "runner": "npm",
               "name": "diff",
               "run": "npm run diff",
               "body": "node scripts/diff.mjs",
-              "source": "package.json:77"
+              "source": "package.json:78"
             },
             {
               "runner": "npm",
               "name": "prepack",
               "run": "npm run prepack",
               "body": "npm run plugins:build",
-              "source": "package.json:78"
+              "source": "package.json:79"
             }
           ]
         }

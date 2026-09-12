@@ -20,6 +20,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { describePlugin } from "./plugin-host.mjs";
+import { RULE_ID, SEVERITIES, SUBJECT_NAMES, SUBJECTS } from "../src/lib/problem-rules-cel.mjs";
+
+// The built-in problem rules, so the schema can say which ids are switches
+// and which must carry a whole rule.
+const BUILTIN_RULES = JSON.parse(readFileSync("rules/builtin.json", "utf8"));
 
 const OUT = "schema/portolan.schema.json";
 const INDEX = "src/lib/plugin-index.json";
@@ -165,6 +170,13 @@ function compose() {
         description:
           "CEL policies for reviewed extraction limitations. Expressions are type-checked when the manifest is read and suppression always requires a reason.",
       },
+      problemRules: {
+        type: "array",
+        maxItems: 200,
+        items: { $ref: "#/$defs/problemRule" },
+        description:
+          "The rules the Problems page applies. An entry naming a built-in rule (rules/builtin.json) switches it off or re-grades it, with a reason; any other id is a rule of its own, written in CEL over one subject. Expressions are type-checked when the manifest is read and run in the page over the merged catalog.",
+      },
       plugins: {
         type: "array",
         items: { $ref: "#/$defs/plugin" },
@@ -188,6 +200,7 @@ function compose() {
       },
     },
     $defs: {
+      problemRule: problemRuleSchema(),
       warningPolicy: {
         type: "object",
         additionalProperties: false,
@@ -441,4 +454,68 @@ function pointer(key) {
 function fail(message) {
   console.error(`portolan schema: ${message}`);
   process.exit(1);
+}
+
+/**
+ * One entry of `problemRules`. Two shapes under one id field: a built-in id
+ * may only be switched, re-graded and explained; any other id is a whole
+ * rule, over one subject, with the expressions the page runs.
+ */
+function problemRuleSchema() {
+  const builtinIds = BUILTIN_RULES.map((rule) => rule.id);
+  const subjectFields = SUBJECT_NAMES.map(
+    (name) => `${name}: ${Object.keys(SUBJECTS[name].schema).join(", ")}`,
+  ).join("; ");
+  const expression = (returns, what) => ({
+    type: "string",
+    minLength: 1,
+    maxLength: 2000,
+    description: `${what} CEL returning ${returns}, over the subject named by \`over\` and \`estate\` (services, contexts, stores, channels, externals). Fields by subject: ${subjectFields}.`,
+  });
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id"],
+    properties: {
+      id: {
+        type: "string",
+        pattern: RULE_ID.source,
+        description: `The rule. One of the built-in ids - ${builtinIds.join(", ")} - to switch or re-grade that rule; any other id declares a rule of its own.`,
+      },
+      enabled: {
+        type: "boolean",
+        default: true,
+        description: "Whether the rule produces rows. A disabled rule needs a reason and stays listed on the Settings page.",
+      },
+      severity: {
+        enum: SEVERITIES,
+        description: "How wrong a row of this rule is. For a built-in rule this replaces the severity its passport was written with.",
+      },
+      reason: {
+        type: "string",
+        minLength: 1,
+        description: "Why the rule is off or re-graded, or, for a rule of your own, why the estate holds it.",
+      },
+      over: {
+        enum: SUBJECT_NAMES,
+        description: "What one row of the rule is about, and what `when` and `message` read.",
+      },
+      when: expression("bool", "The condition: a row exists for every subject where it holds."),
+      message: expression("string", "The note on the row."),
+      peer: expression("string", "The row's far end, when it has one; a service, event or table id links to its page."),
+      title: { type: "string", minLength: 1, description: "The rule's name on the Settings page." },
+      note: { type: "string", minLength: 1, description: "The short words on every row of the rule; the title when absent." },
+      description: { type: "string", description: "What the rule checks and why it matters." },
+      action: { type: "string", description: "What a reader does about a row." },
+    },
+    if: { properties: { id: { enum: builtinIds } } },
+    then: {
+      not: {
+        anyOf: ["over", "when", "message", "peer", "title", "note", "description", "action"].map((key) => ({
+          required: [key],
+        })),
+      },
+    },
+    else: { required: ["over", "when", "message", "title"] },
+  };
 }

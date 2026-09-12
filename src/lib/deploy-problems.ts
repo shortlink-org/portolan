@@ -11,7 +11,7 @@
 
 import type { Catalog, Deployment } from "../catalog";
 import { allDeployments, deploys } from "../catalog";
-import type { Problem } from "./derive";
+import type { Finding } from "./derive";
 
 /** Where the Application deploys from, as the row's far end: the thing nobody claims. */
 function deployedFrom(deployment: Deployment): string {
@@ -37,9 +37,9 @@ export function driftLines(deployment: Deployment): string[] {
   return lines;
 }
 
-export function deployProblems(catalog: Catalog): Problem[] {
+export function deployProblems(catalog: Catalog): Finding[] {
   const services = catalog.contexts.flatMap((context) => context.services);
-  const out: Problem[] = [];
+  const out: Finding[] = [];
   for (const deployment of allDeployments(catalog)) {
     // The tree and the deployer disagree: what should run and what does
     // are two facts, and their difference is the one a reader came for.

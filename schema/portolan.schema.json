@@ -52,6 +52,14 @@
       },
       "description": "CEL policies for reviewed extraction limitations. Expressions are type-checked when the manifest is read and suppression always requires a reason."
     },
+    "problemRules": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/problemRule"
+      },
+      "description": "The rules the Problems page applies. An entry naming a built-in rule (rules/builtin.json) switches it off or re-grades it, with a reason; any other id is a rule of its own, written in CEL over one subject. Expressions are type-checked when the manifest is read and run in the page over the merged catalog."
+    },
     "plugins": {
       "type": "array",
       "items": {
@@ -983,6 +991,163 @@
     }
   },
   "$defs": {
+    "problemRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)*$",
+          "description": "The rule. One of the built-in ids - rpc, consumer, cross-service-fk, cross-service-lineage, shared-store, persistence-drift, column-type, outbox-payload, proto-missing, proto-drift, shared-channel, channel-undeclared, channel-unpublished, message-encoding, subscription-unresolved, deployment-unclaimed, deployment-drift - to switch or re-grade that rule; any other id declares a rule of its own."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the rule produces rows. A disabled rule needs a reason and stays listed on the Settings page."
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "description": "How wrong a row of this rule is. For a built-in rule this replaces the severity its passport was written with."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why the rule is off or re-graded, or, for a rule of your own, why the estate holds it."
+        },
+        "over": {
+          "enum": [
+            "service",
+            "event",
+            "channel",
+            "table",
+            "deployment",
+            "call"
+          ],
+          "description": "What one row of the rule is about, and what `when` and `message` read."
+        },
+        "when": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "The condition: a row exists for every subject where it holds. CEL returning bool, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, fields; channel: address, kind, title, service, context, sends, receives, source; table: id, name, store, storeKind, owner, context, role, aggregate, block, columns, primaryKey, foreignKeys, indexes, reads, writes, deletes; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, targetRevision, revision, tool, service, context, images, basis, drifted; call: id, interface, method, peer, status, resolved, service, context, source, module."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "The note on the row. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, fields; channel: address, kind, title, service, context, sends, receives, source; table: id, name, store, storeKind, owner, context, role, aggregate, block, columns, primaryKey, foreignKeys, indexes, reads, writes, deletes; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, targetRevision, revision, tool, service, context, images, basis, drifted; call: id, interface, method, peer, status, resolved, service, context, source, module."
+        },
+        "peer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "The row's far end, when it has one; a service, event or table id links to its page. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, fields; channel: address, kind, title, service, context, sends, receives, source; table: id, name, store, storeKind, owner, context, role, aggregate, block, columns, primaryKey, foreignKeys, indexes, reads, writes, deletes; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, targetRevision, revision, tool, service, context, images, basis, drifted; call: id, interface, method, peer, status, resolved, service, context, source, module."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The rule's name on the Settings page."
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The short words on every row of the rule; the title when absent."
+        },
+        "description": {
+          "type": "string",
+          "description": "What the rule checks and why it matters."
+        },
+        "action": {
+          "type": "string",
+          "description": "What a reader does about a row."
+        }
+      },
+      "if": {
+        "properties": {
+          "id": {
+            "enum": [
+              "rpc",
+              "consumer",
+              "cross-service-fk",
+              "cross-service-lineage",
+              "shared-store",
+              "persistence-drift",
+              "column-type",
+              "outbox-payload",
+              "proto-missing",
+              "proto-drift",
+              "shared-channel",
+              "channel-undeclared",
+              "channel-unpublished",
+              "message-encoding",
+              "subscription-unresolved",
+              "deployment-unclaimed",
+              "deployment-drift"
+            ]
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "over"
+              ]
+            },
+            {
+              "required": [
+                "when"
+              ]
+            },
+            {
+              "required": [
+                "message"
+              ]
+            },
+            {
+              "required": [
+                "peer"
+              ]
+            },
+            {
+              "required": [
+                "title"
+              ]
+            },
+            {
+              "required": [
+                "note"
+              ]
+            },
+            {
+              "required": [
+                "description"
+              ]
+            },
+            {
+              "required": [
+                "action"
+              ]
+            }
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "over",
+          "when",
+          "message",
+          "title"
+        ]
+      }
+    },
     "warningPolicy": {
       "type": "object",
       "additionalProperties": false,

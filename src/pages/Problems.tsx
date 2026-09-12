@@ -6,22 +6,27 @@
 
 import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
-import { catalog, index } from "../data";
+import { Link, useSearchParams } from "react-router";
+import { catalog } from "../data";
 import { edgeCount } from "../lib/derive";
-import { allProblems } from "../lib/all-problems";
 import { contextVar } from "../lib/context-color";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
+import { useProblemRules } from "../lib/problem-rules";
+import { useProblemEvaluation } from "../lib/use-problems";
+import { paths } from "../routes";
 import { SectionTitle } from "../components/PageHeader";
 import { ProblemRow } from "../components/ProblemRow";
 import { CatEmptyState } from "../components/CatIllustration";
+
+const FIELD = "mono rounded-control border border-line bg-canvas px-2.5 py-1 text-ink outline-none focus:border-accent";
 
 export function Problems() {
   useDocumentTitle("Problems");
   // `?context=` is how the sidebar's unresolved-edge count arrives here: the
   // reader clicked a number against one context, so that context is what the
   // page opens filtered to. It seeds the chips rather than replacing them -
-  // once here, the filter is theirs to widen.
+  // once here, the filter is theirs to widen. `?rule=` arrives the same way
+  // from the rules table on the Settings page.
   const [params] = useSearchParams();
   const [active, setActive] = useState<Set<string>>(
     () =>
@@ -31,19 +36,33 @@ export function Problems() {
           .filter((id) => catalog.contexts.some((c) => c.id === id)),
       ),
   );
+  const [rule, setRule] = useState<string>(() => params.get("rule") ?? "all");
   // Unresolved edges first, then everything the schema disagrees with. Within
   // each, errors before warnings: a boundary leak is not the same kind of news
   // as a column whose type has drifted, and mixing them buries the first.
-  const all = useMemo(() => allProblems(catalog, index), []);
+  const { problems: all, failures } = useProblemEvaluation();
+  const rules = useProblemRules();
   // How many edges there were to resolve at all. Zero problems out of zero
   // edges is not a clean bill of health - nothing crossed a boundary, so
   // nothing was checked, and saying "every edge resolved" there is a green
   // tick the catalog has not earned.
   const edges = useMemo(() => edgeCount(catalog), []);
+  // The rules with a row on this page, for the filter: a rule that produced
+  // nothing is not a choice worth offering here, and is on the Settings page.
+  const rulesShown = useMemo(() => {
+    const ids = new Set(all.map((p) => p.rule));
+    return rules.filter((candidate) => ids.has(candidate.id));
+  }, [all, rules]);
   const rows = useMemo(
-    () => (active.size === 0 ? all : all.filter((p) => active.has(p.context))),
-    [all, active],
+    () =>
+      all.filter(
+        (p) =>
+          (active.size === 0 || active.has(p.context)) &&
+          (rule === "all" || p.rule === rule),
+      ),
+    [all, active, rule],
   );
+  const disabled = rules.filter((candidate) => !candidate.enabled).length;
 
   const toggle = (id: string) =>
     setActive((prev) => {
@@ -92,52 +111,97 @@ export function Problems() {
           </span>
         ) : null}
 
-        {all.length > 0 ? (
-          <div
-            className="seg ml-auto"
-            role="group"
-            aria-label="Filter by context"
-          >
-            {catalog.contexts
-              .filter((c) => countIn(c.id) > 0)
-              .map((c) => {
-                const on = active.has(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => toggle(c.id)}
-                    aria-pressed={on}
-                    className="flex items-center gap-1.5"
-                    style={{
-                      color: on ? contextVar(c.id) : "var(--fg-muted)",
-                      background: on
-                        ? `color-mix(in srgb, ${contextVar(c.id)} 12%, transparent)`
-                        : undefined,
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className="size-1.5 rounded-[1px]"
-                      style={{ background: contextVar(c.id) }}
-                    />
-                    {c.id}
-                    <span className="tnum">{countIn(c.id)}</span>
-                  </button>
-                );
-              })}
-          </div>
-        ) : null}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {rulesShown.length > 1 ? (
+            <select
+              aria-label="Filter by rule"
+              className={FIELD}
+              value={rulesShown.some((candidate) => candidate.id === rule) ? rule : "all"}
+              onChange={(event) => setRule(event.target.value)}
+            >
+              <option value="all">all rules</option>
+              {rulesShown.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.id}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {all.length > 0 ? (
+            <div
+              className="seg"
+              role="group"
+              aria-label="Filter by context"
+            >
+              {catalog.contexts
+                .filter((c) => countIn(c.id) > 0)
+                .map((c) => {
+                  const on = active.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggle(c.id)}
+                      aria-pressed={on}
+                      className="flex items-center gap-1.5"
+                      style={{
+                        color: on ? contextVar(c.id) : "var(--fg-muted)",
+                        background: on
+                          ? `color-mix(in srgb, ${contextVar(c.id)} 12%, transparent)`
+                          : undefined,
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="size-1.5 rounded-[1px]"
+                        style={{ background: contextVar(c.id) }}
+                      />
+                      {c.id}
+                      <span className="tnum">{countIn(c.id)}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          ) : null}
+        </div>
       </div>
 
+      {/* A rule that could not run is not a clean page: the rows it would
+          have produced are missing, and the reader should know before they
+          trust the count above. */}
+      {failures.length > 0 ? (
+        <div className="mt-3 max-w-table rounded-control border border-unresolved px-3 py-2">
+          <div className="text-ink">
+            {failures.length} {plural(failures.length, "rule")} could not run
+          </div>
+          <ul className="mono mt-1 space-y-0.5 text-muted">
+            {failures.map((failure) => (
+              <li key={failure.rule}>
+                <Link to={`${paths.settingsRules()}#rule-${failure.rule}`} className="text-accent hover:underline">
+                  {failure.rule}
+                </Link>{" "}
+                — {failure.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {all.length === 0 ? (
-        <ClearSkies checked={edges} />
+        <ClearSkies checked={edges} disabled={disabled} />
       ) : (
         <div className="mt-section max-w-table">
           <SectionTitle
             right={
-              <span title={absoluteTime(catalog.generatedAt)}>
-                last checked {relativeTime(catalog.generatedAt)}
+              <span className="flex items-center gap-3">
+                {disabled > 0 ? (
+                  <Link to={paths.settingsRules()} className="hover:underline" title="Rules switched off in portolan.json">
+                    {disabled} {plural(disabled, "rule")} off
+                  </Link>
+                ) : null}
+                <span title={absoluteTime(catalog.generatedAt)}>
+                  last checked {relativeTime(catalog.generatedAt)}
+                </span>
               </span>
             }
           >
@@ -146,7 +210,7 @@ export function Problems() {
           <div className="flex flex-col gap-1" data-nav-list>
             {rows.map((problem, i) => (
               <ProblemRow
-                key={`${problem.kind}:${problem.id}:${problem.peer}`}
+                key={`${problem.rule}:${problem.id}:${problem.peer}`}
                 problem={problem}
                 index={i}
               />
@@ -159,13 +223,22 @@ export function Problems() {
 }
 
 /** The one line the reader wants to see. Nothing else earns the space. */
-function ClearSkies({ checked }: { checked: number }) {
+function ClearSkies({ checked, disabled }: { checked: number; disabled: number }) {
   return (
     <CatEmptyState
       scene="clear"
       title={checked === 0 ? "Nothing to resolve yet" : "Clear skies"}
       className="mt-section max-w-prose"
-      meta={<span title={absoluteTime(catalog.generatedAt)}>last checked {relativeTime(catalog.generatedAt)}</span>}
+      meta={
+        <span className="flex items-center gap-3">
+          {disabled > 0 ? (
+            <Link to={paths.settingsRules()} className="hover:underline">
+              {disabled} {plural(disabled, "rule")} off
+            </Link>
+          ) : null}
+          <span title={absoluteTime(catalog.generatedAt)}>last checked {relativeTime(catalog.generatedAt)}</span>
+        </span>
+      }
     >
       {checked === 0
         ? "No service calls another, and no event has a consumer."

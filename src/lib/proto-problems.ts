@@ -26,7 +26,7 @@ import type {
   RpcService,
   Service,
 } from "../catalog";
-import type { Problem } from "./derive";
+import type { Finding } from "./derive";
 
 /**
  * Every missing method and every retained consumer descriptor that disagrees
@@ -39,8 +39,8 @@ import type { Problem } from "./derive";
 export function protoProblems(
   catalog: Catalog,
   index: CatalogIndex,
-): Problem[] {
-  const out: Problem[] = [];
+): Finding[] {
+  const out: Finding[] = [];
 
   for (const context of catalog.contexts) {
     for (const service of context.services) {
@@ -84,7 +84,7 @@ function driftAgainstProvider(
   consumer: Service,
   copy: RpcService,
   index: CatalogIndex,
-): Problem | undefined {
+): Finding | undefined {
   const calls = new Map(
     consumer.consumes
       .filter((call) => call.id.startsWith(`${copy.id}/`))

@@ -1,0 +1,259 @@
+// The rules behind the Problems page: the passports match the readers, the
+// manifest's switches and re-grades take effect, and a CEL rule sees what the
+// schema says it sees - proved on the frozen estate.
+
+import { describe, expect, it } from "vitest";
+import { rawCatalog } from "../test-catalog";
+import { buildIndex, validateCatalog } from "../catalog";
+import type { Catalog } from "../catalog";
+import { allFindings, allProblems, evaluateProblems } from "./all-problems";
+import { PROBLEM_KINDS } from "./derive";
+import {
+  BUILTIN_RULES,
+  estateOf,
+  evaluateRules,
+  resolveRules,
+  runCustomRule,
+  subjectsOf,
+  SUBJECTS,
+} from "./problem-rules";
+import type { ProblemRule, ProblemRuleEntry, RuleSubject } from "./problem-rules";
+import { problemRuleProblems, SUBJECT_NAMES } from "./problem-rules-cel.mjs";
+
+const catalog = validateCatalog(JSON.parse(JSON.stringify(rawCatalog)) as unknown as Catalog);
+const index = buildIndex(catalog);
+const builtinIds = BUILTIN_RULES.map((rule) => rule.id);
+
+const custom = (entry: Partial<ProblemRuleEntry> & { id: string }): ProblemRule => ({
+  over: "event",
+  severity: "warning",
+  defaultSeverity: "warning",
+  title: entry.id,
+  note: entry.id,
+  description: "",
+  action: "",
+  builtin: false,
+  enabled: true,
+  ...entry,
+});
+
+describe("rules/builtin.json", () => {
+  it("names exactly the kinds the readers produce", () => {
+    expect([...builtinIds].sort()).toEqual([...PROBLEM_KINDS].sort());
+  });
+
+  it("gives every rule a subject, a severity and words", () => {
+    for (const rule of BUILTIN_RULES) {
+      expect(SUBJECT_NAMES, rule.id).toContain(rule.over);
+      expect(["error", "warning"], rule.id).toContain(rule.severity);
+      for (const field of ["title", "note", "description", "action"] as const) {
+        expect(rule[field].trim().length, `${rule.id}.${field}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("covers every finding the readers make of the sample estate", () => {
+    const kinds = new Set(allFindings(catalog, index).map((finding) => finding.kind));
+    expect(kinds.size).toBeGreaterThan(0);
+    for (const kind of kinds) expect(builtinIds).toContain(kind);
+  });
+});
+
+describe("resolveRules", () => {
+  it("is every built-in rule, on, without a manifest entry", () => {
+    const rules = resolveRules([]);
+    expect(rules.map((rule) => rule.id)).toEqual(builtinIds);
+    expect(rules.every((rule) => rule.enabled && rule.builtin)).toBe(true);
+  });
+
+  it("switches and re-grades a built-in rule, and keeps the passport's own severity", () => {
+    const rules = resolveRules([
+      { id: "shared-store", enabled: false, reason: "one database by design" },
+      { id: "cross-service-lineage", severity: "error" },
+    ]);
+    const shared = rules.find((rule) => rule.id === "shared-store")!;
+    expect(shared.enabled).toBe(false);
+    expect(shared.reason).toBe("one database by design");
+    const lineage = rules.find((rule) => rule.id === "cross-service-lineage")!;
+    expect(lineage.severity).toBe("error");
+    expect(lineage.defaultSeverity).toBe("warning");
+  });
+
+  it("appends the manifest's own rules after the built-in ones", () => {
+    const rules = resolveRules([{ id: "team.quiet-event", over: "event", when: "true", message: "'x'", title: "Quiet event" }]);
+    const last = rules[rules.length - 1]!;
+    expect(last.id).toBe("team.quiet-event");
+    expect(last.builtin).toBe(false);
+    expect(last.note).toBe("Quiet event");
+    expect(last.severity).toBe("warning");
+  });
+});
+
+describe("evaluateRules", () => {
+  const findings = allFindings(catalog, index);
+
+  it("stamps each finding with its rule and leaves the list as it was", () => {
+    const { problems } = evaluateRules(findings, catalog, index, resolveRules([]));
+    expect(problems.length).toBe(findings.length);
+    expect(problems.every((problem) => problem.rule === problem.kind)).toBe(true);
+  });
+
+  it("drops a switched-off rule's rows and still counts them", () => {
+    const shared = findings.filter((finding) => finding.kind === "shared-store");
+    expect(shared.length).toBeGreaterThan(0);
+    const { problems, matches } = evaluateRules(findings, catalog, index, resolveRules([{ id: "shared-store", enabled: false, reason: "by design" }]));
+    expect(problems.some((problem) => problem.rule === "shared-store")).toBe(false);
+    expect(problems.length).toBe(findings.length - shared.length);
+    expect(matches.get("shared-store")).toBe(shared.length);
+  });
+
+  it("re-grades a rule's rows", () => {
+    const { problems } = evaluateRules(findings, catalog, index, resolveRules([{ id: "cross-service-fk", severity: "warning" }]));
+    const fk = problems.filter((problem) => problem.rule === "cross-service-fk");
+    expect(fk.length).toBeGreaterThan(0);
+    expect(fk.every((problem) => problem.severity === "warning")).toBe(true);
+  });
+
+  it("sorts errors first after the rules have spoken", () => {
+    const { problems } = evaluateProblems(catalog, index, resolveRules([{ id: "cross-service-fk", severity: "warning" }]));
+    const firstWarning = problems.findIndex((problem) => problem.severity === "warning");
+    expect(problems.slice(firstWarning).every((problem) => problem.severity === "warning")).toBe(true);
+    expect(allProblems(catalog, index, resolveRules([])).length).toBe(findings.length);
+  });
+});
+
+describe("a CEL rule", () => {
+  it("runs over every event and says which it matched", () => {
+    const rule = custom({
+      id: "team.quiet-event",
+      when: "size(event.consumers) == 0",
+      message: "'nothing consumes ' + event.name",
+      peer: "event.service",
+    });
+    const { problems, failure } = runCustomRule(rule, catalog, index);
+    expect(failure).toBeUndefined();
+    const quiet = subjectsOf(catalog, index, "event").filter((subject) => (subject.row.consumers as string[]).length === 0);
+    expect(problems.length).toBe(quiet.length);
+    expect(problems.length).toBeGreaterThan(0);
+    const first = problems[0]!;
+    expect(first.kind).toBe("rule");
+    expect(first.rule).toBe("team.quiet-event");
+    expect(first.id).toBe(quiet[0]!.id);
+    expect(first.note).toBe(`nothing consumes ${quiet[0]!.row.name}`);
+    expect(first.peer).toBe(quiet[0]!.service);
+    expect(first.context).toBe(quiet[0]!.context);
+  });
+
+  it("sees the estate beside its subject", () => {
+    const inside = runCustomRule(custom({ id: "a", over: "call", when: "call.peer in estate.services", message: "'in'" }), catalog, index);
+    const outside = runCustomRule(custom({ id: "b", over: "call", when: "!(call.peer in estate.services)", message: "'out'" }), catalog, index);
+    expect(inside.failure).toBeUndefined();
+    expect(outside.failure).toBeUndefined();
+    expect(inside.problems.length + outside.problems.length).toBe(subjectsOf(catalog, index, "call").length);
+    expect(estateOf(catalog).services).toContain("shop.cart");
+  });
+
+  it("refuses a field the subject does not have, before any row", () => {
+    const { problems, failure } = runCustomRule(custom({ id: "a", when: "event.nme == 'x'", message: "'m'" }), catalog, index);
+    expect(problems).toEqual([]);
+    expect(failure?.message).toMatch(/nme/);
+  });
+
+  it("refuses a condition that is not a bool and a message that is not a string", () => {
+    expect(runCustomRule(custom({ id: "a", when: "event.id", message: "'m'" }), catalog, index).failure?.message).toMatch(/bool/);
+    expect(runCustomRule(custom({ id: "b", when: "true", message: "event.versions" }), catalog, index).failure?.message).toMatch(/string/);
+  });
+
+  it("is counted but not shown while switched off", () => {
+    const rule = custom({ id: "team.off", when: "true", message: "'m'", enabled: false });
+    const { problems, matches, failures } = evaluateRules([], catalog, index, [rule]);
+    expect(problems).toEqual([]);
+    expect(failures).toEqual([]);
+    expect(matches.get("team.off")).toBe(subjectsOf(catalog, index, "event").length);
+  });
+});
+
+describe("subjects", () => {
+  const shapes: Record<string, (value: unknown) => boolean> = {
+    string: (value) => typeof value === "string",
+    int: (value) => typeof value === "bigint",
+    bool: (value) => typeof value === "boolean",
+    "list<string>": (value) => Array.isArray(value) && value.every((item) => typeof item === "string"),
+  };
+
+  // The frozen estate declares no AsyncAPI channel and no deployment; one of
+  // each is added so the two subjects are proved on a row, not on an absence.
+  const furnished: Catalog = JSON.parse(JSON.stringify(rawCatalog)) as unknown as Catalog;
+  furnished.contexts[0]!.services[0]!.channels = [
+    { address: "shop.cart.basket", kind: "event", messages: [{ name: "cart.BasketCreated", direction: "send" }], source: "asyncapi.yaml" },
+  ];
+  furnished.deployments = [
+    { id: "argocd/cart", name: "cart", project: "shop", environment: "prod", cluster: "in-cluster", namespace: "shop", repo: furnished.contexts[0]!.services[0]!.repo, path: furnished.contexts[0]!.services[0]!.path, targetRevision: "main", revision: "abc", tool: "kustomize", url: "https://argocd/cart" },
+  ];
+  const furnishedCatalog = validateCatalog(furnished);
+  const furnishedIndex = buildIndex(furnishedCatalog);
+
+  for (const over of SUBJECT_NAMES as RuleSubject[]) {
+    it(`${over}: every row has exactly the schema's fields, typed as it says`, () => {
+      const rows = subjectsOf(furnishedCatalog, furnishedIndex, over);
+      expect(rows.length, over).toBeGreaterThan(0);
+      const schema = SUBJECTS[over].schema;
+      for (const subject of rows) {
+        expect(Object.keys(subject.row).sort(), subject.id).toEqual(Object.keys(schema).sort());
+        for (const [field, type] of Object.entries(schema)) {
+          expect(shapes[type]!(subject.row[field]), `${over} ${subject.id}.${field} as ${type}`).toBe(true);
+        }
+        expect(subject.id.length).toBeGreaterThan(0);
+      }
+    });
+  }
+});
+
+describe("problemRuleProblems", () => {
+  it("accepts a switch, a re-grade and a whole rule", () => {
+    expect(
+      problemRuleProblems(
+        [
+          { id: "shared-store", enabled: false, reason: "by design" },
+          { id: "cross-service-fk", severity: "warning" },
+          { id: "team.quiet-event", over: "event", when: "size(event.consumers) == 0", message: "'quiet ' + event.id", title: "Quiet event" },
+        ],
+        builtinIds,
+      ),
+    ).toEqual([]);
+  });
+
+  it("names what is wrong, by entry and field", () => {
+    const problems = problemRuleProblems(
+      [
+        { id: "shared-store", enabled: false },
+        { id: "rpc", when: "true" },
+        { id: "team.a", over: "event", when: "event.nme == 'x'", message: "'m'", title: "A" },
+        { id: "team.b", over: "event", when: "true", message: "event.versions", title: "B" },
+        { id: "team.c", over: "nowhere", when: "true", message: "'m'", title: "C" },
+        { id: "team.d", over: "event", when: "true", message: "'m'" },
+        { id: "Bad Id", over: "event", when: "true", message: "'m'", title: "D" },
+        { id: "team.a", over: "event", when: "true", message: "'m'", title: "again" },
+      ],
+      builtinIds,
+      "x.json",
+    );
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^x\.json problemRules\/0\/reason: /),
+        expect.stringMatching(/^x\.json problemRules\/1\/when: "rpc" is a built-in rule/),
+        expect.stringMatching(/^x\.json problemRules\/2\/when: .*nme/),
+        expect.stringMatching(/^x\.json problemRules\/3\/message: CEL expression must return string/),
+        expect.stringMatching(/^x\.json problemRules\/4\/over: /),
+        expect.stringMatching(/^x\.json problemRules\/5\/title: required/),
+        expect.stringMatching(/^x\.json problemRules\/6\/id: /),
+        expect.stringMatching(/^x\.json problemRules\/7\/id: "team\.a" appears twice/),
+      ]),
+    );
+    expect(problems.length).toBe(8);
+  });
+
+  it("is nothing to say about a manifest without the key", () => {
+    expect(problemRuleProblems(undefined, builtinIds)).toEqual([]);
+  });
+});

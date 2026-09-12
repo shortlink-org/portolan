@@ -21,6 +21,7 @@
   },
   "files": [
     "cli",
+    "rules",
     "scripts",
     "src",
     "public",

@@ -683,6 +683,40 @@ export function saveDjangoAggregates(workspace, request) {
   return { saved: request.selections.length };
 }
 
+/**
+ * The manifest's `problemRules` as written, with a revision of the whole file:
+ * a save quotes it, so two pages editing the rules cannot overwrite each
+ * other, and neither can a hand edit made while the page was open.
+ */
+export function problemRulesState(workspace) {
+  const path = join(workspace, "portolan.json");
+  const text = readFileSync(path, "utf8");
+  const manifest = readManifestText(text, path);
+  return {
+    revision: createHash("sha256").update(text).digest("hex"),
+    rules: Array.isArray(manifest.problemRules) ? manifest.problemRules : [],
+  };
+}
+
+/**
+ * Replaces `problemRules`. The expressions are type-checked and the shape is
+ * checked against the schema by writeManifest, through the same loader gen
+ * uses, so a rule the page accepts is a rule gen accepts.
+ */
+export function saveProblemRules(workspace, request) {
+  const current = problemRulesState(workspace);
+  if (request?.revision !== current.revision) {
+    throw new Error("portolan.json has changed since the rules were read. Reload the page and try again.");
+  }
+  if (!Array.isArray(request.rules)) throw new Error("rules must be an array.");
+  const path = join(workspace, "portolan.json");
+  const manifest = readManifest(path);
+  if (request.rules.length) manifest.problemRules = request.rules;
+  else delete manifest.problemRules;
+  writeManifest(path, manifest);
+  return problemRulesState(workspace);
+}
+
 export function writeProject(workspace, request) {
   const manifestPath = join(workspace, "portolan.json");
   const before = readFileSync(manifestPath, "utf8");
@@ -1237,6 +1271,9 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/django-aggregates`) {
             return send(res, 200, djangoAggregateProposals(workspace));
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/rules`) {
+            return send(res, 200, problemRulesState(workspace));
+          }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
             const features = url.searchParams.has("features")
               ? url.searchParams.get("features").split(",").filter(Boolean)
@@ -1276,6 +1313,10 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (url.pathname === `${LOCAL_API_PREFIX}/django-aggregates`) {
             if ([...jobs.values()].some((job) => job.status === "running")) throw new Error("Wait for the current generation to finish before saving aggregate roots.");
             return send(res, 200, saveDjangoAggregates(workspace, input));
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/rules`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) throw new Error("Wait for the current generation to finish before saving rules.");
+            return send(res, 200, saveProblemRules(workspace, input));
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/delivery-presets/install`) {
             return send(res, 201, installDeliveryPreset(workspace, input));

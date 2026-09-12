@@ -439,29 +439,39 @@ export function usesOfDef(catalog: Catalog, defId: string): DefUse {
 // ---------------------------------------------------------------------------
 
 /**
- * One edge in the estate that does not land. Two things can be wrong, and they
- * are wrong in the same way: a service calls an rpc whose provider is not in
- * the catalog, or an event names a consumer that is not either. Both mean the
- * chart draws an arrow into open water.
+ * The built-in readings the catalog makes of itself. Each is a reader in
+ * TypeScript - a walk over the merged catalog that one row cannot make on its
+ * own - with a passport in `rules/builtin.json`: title, severity, what to do.
+ * The two lists are held equal by a test; a kind without a passport has no
+ * row on the Settings page and no switch, and a passport without a reader
+ * promises a check nothing performs.
+ *
+ * `rule` is the one kind that is not a reader: a row a CEL rule from the
+ * manifest produced, over one subject, whose id is in `Problem.rule`.
  */
-export type ProblemKind =
-  | "rpc"
-  | "consumer"
-  | "cross-service-fk"
-  | "cross-service-lineage"
-  | "shared-store"
-  | "persistence-drift"
-  | "column-type"
-  | "outbox-payload"
-  | "proto-missing"
-  | "proto-drift"
-  | "shared-channel"
-  | "channel-undeclared"
-  | "channel-unpublished"
-  | "message-encoding"
-  | "subscription-unresolved"
-  | "deployment-unclaimed"
-  | "deployment-drift";
+export const PROBLEM_KINDS = [
+  "rpc",
+  "consumer",
+  "cross-service-fk",
+  "cross-service-lineage",
+  "shared-store",
+  "persistence-drift",
+  "column-type",
+  "outbox-payload",
+  "proto-missing",
+  "proto-drift",
+  "shared-channel",
+  "channel-undeclared",
+  "channel-unpublished",
+  "message-encoding",
+  "subscription-unresolved",
+  "deployment-unclaimed",
+  "deployment-drift",
+] as const;
+
+export type BuiltinProblemKind = (typeof PROBLEM_KINDS)[number];
+
+export type ProblemKind = BuiltinProblemKind | "rule";
 
 /**
  * How wrong a problem is. Two values, not five: an edge either lands somewhere
@@ -471,7 +481,13 @@ export type ProblemKind =
  */
 export type Severity = "error" | "warning";
 
-export interface Problem {
+/**
+ * What a reader finds: one edge that does not land, or two claims that do not
+ * agree. A reader knows its kind and what it saw; it does not know whether the
+ * estate has switched the rule off or re-graded it, which is the registry's
+ * to say when it turns a finding into a problem.
+ */
+export interface Finding {
   kind: ProblemKind;
   severity: Severity;
   /** The context that owns the end we can see. */
@@ -484,6 +500,15 @@ export interface Problem {
   peer: string;
   note: string | undefined;
   source: string | undefined;
+}
+
+/**
+ * A finding the rules let through: the rule that made it, by id, and the
+ * severity that rule has now. For a built-in reader the rule id is its kind;
+ * for a CEL rule the kind is `rule` and the id is the manifest's.
+ */
+export interface Problem extends Finding {
+  rule: string;
 }
 
 /**
@@ -513,8 +538,8 @@ export function edgeCount(catalog: Catalog): number {
   return n;
 }
 
-export function problems(catalog: Catalog): Problem[] {
-  const out: Problem[] = [];
+export function problems(catalog: Catalog): Finding[] {
+  const out: Finding[] = [];
   for (const context of catalog.contexts) {
     for (const service of context.services) {
       for (const call of service.consumes) {

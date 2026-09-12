@@ -30,7 +30,7 @@ import {
   storeViews,
   viewReads,
 } from "../catalog";
-import type { Problem } from "./derive";
+import type { Finding } from "./derive";
 import { payloadColumn, typesDisagree } from "./data-model";
 
 /** The context a store sits in, via the service that owns it. */
@@ -46,9 +46,9 @@ function contextOf(index: CatalogIndex, serviceId: string): string {
 export function dataProblems(
   catalog: Catalog,
   index: CatalogIndex,
-): Problem[] {
-  const errors: Problem[] = [];
-  const warnings: Problem[] = [];
+): Finding[] {
+  const errors: Finding[] = [];
+  const warnings: Finding[] = [];
 
   for (const store of catalog.stores ?? []) {
     for (const table of store.tables) {
@@ -95,8 +95,8 @@ function crossServiceKeys(
   index: CatalogIndex,
   store: Store,
   table: Table,
-): Problem[] {
-  const out: Problem[] = [];
+): Finding[] {
+  const out: Finding[] = [];
   for (const column of table.columns) {
     if (!column.fk) continue;
     const target = index.tableById.get(column.fk.table);
@@ -129,8 +129,8 @@ function crossServiceLineage(
   store: Store,
   relationId: string,
   columns: Column[],
-): Problem[] {
-  const out: Problem[] = [];
+): Finding[] {
+  const out: Finding[] = [];
   const seen = new Set<string>();
   for (const column of columns) {
     for (const ref of column.from ?? []) {
@@ -165,7 +165,7 @@ function sharedStore(
   index: CatalogIndex,
   store: Store,
   table: Table,
-): Problem[] {
+): Finding[] {
   const aggregateId = table.persists?.aggregate;
   if (!aggregateId) return [];
   // A projection is a COPY of someone else's aggregate, maintained locally
@@ -197,7 +197,7 @@ function outboxWithoutPayload(
   index: CatalogIndex,
   store: Store,
   table: Table,
-): Problem[] {
+): Finding[] {
   if (table.role !== "outbox" || payloadColumn(table)) return [];
   return [
     {
@@ -223,7 +223,7 @@ function drift(
   index: CatalogIndex,
   store: Store,
   table: Table,
-): Problem[] {
+): Finding[] {
   const aggregateId = table.persists?.aggregate;
   if (!aggregateId) return [];
   // A derived table holds a copy shaped for reading, not the aggregate's own
@@ -276,8 +276,8 @@ function typeDrift(
   index: CatalogIndex,
   store: Store,
   table: Table,
-): Problem[] {
-  const out: Problem[] = [];
+): Finding[] {
+  const out: Finding[] = [];
   const aggregateId = table.persists?.aggregate;
   const aggregate = aggregateId
     ? index.aggregateById.get(aggregateId)

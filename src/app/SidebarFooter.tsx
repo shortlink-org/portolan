@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { NavLink } from "react-router";
 import {
   Check,
@@ -9,10 +8,10 @@ import {
 } from "lucide-react";
 
 import { allModules } from "../catalog";
+import { catalog } from "../data";
 import { KindIcon } from "../components/kind";
 import { CompassRose } from "../components/logo";
-import { catalog, index } from "../data";
-import { allProblems } from "../lib/all-problems";
+import { useProblems } from "../lib/use-problems";
 import type { Kind } from "../lib/kinds";
 import { paths } from "../routes";
 
@@ -29,7 +28,7 @@ export function SidebarBottomGroup() {
   // opens. The badge is red while anything on it is an error and amber when
   // only the schema disagrees with itself - a page of warnings is not a clean
   // estate, and a green tick over it would be the one lie the row can tell.
-  const found = useMemo(() => allProblems(catalog, index), []);
+  const found = useProblems();
   const errors = found.filter((p) => p.severity === "error").length;
   const colour =
     errors > 0 ? "var(--status-unresolved)" : "var(--status-declared)";
