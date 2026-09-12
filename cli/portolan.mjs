@@ -213,7 +213,9 @@ export async function prepareSite(workspace) {
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(stage, { recursive: true });
 
-  for (const directory of ["src", "public", "scripts"]) {
+  // rules/ rides along: scripts/manifest.mjs and src/lib/problem-rules.ts read
+  // ../rules/builtin.json beside themselves.
+  for (const directory of ["src", "public", "scripts", "rules"]) {
     cpSync(resolve(installRoot, directory), resolve(stage, directory), { recursive: true });
   }
   for (const file of ["index.html", "vite.config.ts", "tsconfig.json"]) {
@@ -382,6 +384,9 @@ function prepareHost(workspace) {
   mkdirSync(host, { recursive: true });
   cpSync(resolve(installRoot, "scripts"), resolve(host, "scripts"), { recursive: true });
   cpSync(resolve(installRoot, "src"), resolve(host, "src"), { recursive: true });
+  // scripts/manifest.mjs and src/lib/problem-rules.ts read ../rules/builtin.json
+  // beside themselves; the host is the package with the same shape.
+  cpSync(resolve(installRoot, "rules"), resolve(host, "rules"), { recursive: true });
   writeFileSync(resolve(host, "package.json"), `${JSON.stringify({ private: true, type: "module", version: VERSION })}\n`);
   symlinkSync(dependencyRoot(), resolve(host, "node_modules"), process.platform === "win32" ? "junction" : "dir");
   return host;

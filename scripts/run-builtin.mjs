@@ -50,7 +50,14 @@ if (prebuilt) {
 // describe/extract calls cheap; rebuilding also prevents a stale sidecar after
 // an npm upgrade with the same workspace cache.
 function buildAndRunGo(argv) {
-  if (argv[0] !== "run" || typeof argv[1] !== "string" || !argv[1] || argv[1].startsWith("-")) {
+  // `go run [build flags] <package> [args]`: the build flags (-mod=mod, -tags)
+  // belong to the build, the package is what is built, the rest is the
+  // sidecar's own command line.
+  const flags = [];
+  let at = 1;
+  while (argv[0] === "run" && typeof argv[at] === "string" && argv[at].startsWith("-")) flags.push(argv[at++]);
+  const pkg = argv[at];
+  if (argv[0] !== "run" || typeof pkg !== "string" || !pkg) {
     console.error(`portolan: built-in ${name} has an unsupported Go command`);
     process.exitCode = 2;
     return;
@@ -58,7 +65,7 @@ function buildAndRunGo(argv) {
   const binDir = resolve(workspace, ".portolan", "bin", "go");
   const executable = resolve(binDir, process.platform === "win32" ? `${name}.exe` : name);
   mkdirSync(binDir, { recursive: true });
-  const built = spawnSync("go", ["build", "-mod=mod", "-o", executable, argv[1]], {
+  const built = spawnSync("go", ["build", "-mod=mod", ...flags.filter((flag) => flag !== "-mod=mod"), "-o", executable, pkg], {
     cwd: installRoot,
     env: { ...process.env, GOWORK: "off" },
     stdio: "inherit",
@@ -72,7 +79,7 @@ function buildAndRunGo(argv) {
     process.exitCode = built.status ?? 1;
     return;
   }
-  run(executable, argv.slice(2));
+  run(executable, argv.slice(at + 1));
 }
 
 // A Rust plugin already built in release mode under its own crate directory,
