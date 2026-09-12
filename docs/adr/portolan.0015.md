@@ -6,6 +6,7 @@
 - **Date:** 2026-09-12
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0015-a-rule-on-a-field-is-read-into-the-catalog-in-one-vocabulary.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0015-a-rule-on-a-field-is-read-into-the-catalog-in-one-vocabulary.md)
+- **Committed:** Victor Login, 2026-09-12 (`58731ce`)
 
 ### Context and Problem Statement
 
