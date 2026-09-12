@@ -17,6 +17,6 @@ path = "src/main.rs"
 # The PHP tree as syntax, shared with extract-laravel.
 phpscan = { path = "../phpscan" }
 # Doctrine mappings are XML; roxmltree reads them without a build step.
-roxmltree = "0.20"
+roxmltree = "0.21"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
