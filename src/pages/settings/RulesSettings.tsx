@@ -31,6 +31,7 @@ import {
   useRuleEntries,
 } from "../../lib/problem-rules";
 import type { ProblemRule, ProblemRuleEntry, RuleSeverity, RuleSubject } from "../../lib/problem-rules";
+import { sourceHref } from "../../lib/source-link";
 import { useProblemEvaluation } from "../../lib/use-problems";
 import { paths } from "../../routes";
 
@@ -354,6 +355,11 @@ function regraded(entries: ProblemRuleEntry[], rule: ProblemRule, severity: Rule
 // ---------------------------------------------------------------------------
 // One rule.
 
+/**
+ * The switch. A track with a knob that travels, and the word beside it, so
+ * that at a glance it is a switch and not a blue bar: the knob is white on
+ * an accent track when on, and grey on an empty track when off.
+ */
 function Switch({ on, label, disabled, onClick }: { on: boolean; label: string; disabled: boolean; onClick: () => void }) {
   return (
     <button
@@ -361,12 +367,20 @@ function Switch({ on, label, disabled, onClick }: { on: boolean; label: string; 
       role="switch"
       aria-checked={on}
       aria-label={label}
-      title={disabled ? "local mode required" : label}
+      title={disabled ? `${on ? "on" : "off"} · local mode required to change` : `${on ? "on" : "off"} · click to switch ${on ? "off" : "on"}`}
       disabled={disabled}
       onClick={onClick}
-      className={`relative h-4 w-7 shrink-0 rounded-full border transition-colors disabled:cursor-default ${on ? "border-accent bg-accent" : "border-line-strong bg-canvas"}`}
+      className="group/switch mono flex shrink-0 items-center gap-1.5 rounded-control text-muted disabled:cursor-default"
     >
-      <span aria-hidden className={`absolute top-0.5 size-2.5 rounded-full transition-transform ${on ? "translate-x-3.5 bg-canvas" : "translate-x-0.5 bg-line-strong"}`} />
+      <span
+        aria-hidden
+        className={`relative block h-[18px] w-8 rounded-full border transition-colors ${on ? "border-accent bg-accent" : "border-line-strong bg-canvas group-hover/switch:border-muted"}`}
+      >
+        <span
+          className={`absolute top-[2px] block size-3 rounded-full shadow-xs transition-transform ${on ? "translate-x-[15px] bg-white" : "translate-x-[2px] bg-line-strong"}`}
+        />
+      </span>
+      <span className={`w-5 text-left ${on ? "text-ink" : "text-faint"}`}>{on ? "on" : "off"}</span>
     </button>
   );
 }
@@ -421,6 +435,17 @@ function RuleRow({
           <span className="mono block truncate text-muted">
             {rule.id}
             <span className="text-faint"> · {rule.over}</span>
+            {/* A rule of the estate's own is its condition; the row shows
+                it, so the CEL is read without opening anything. A built-in
+                rule has no expression to show - it is a reader in code. */}
+            {rule.when ? (
+              <span className="text-faint">
+                {" · "}
+                <span className="text-muted" title={rule.when}>
+                  {rule.when}
+                </span>
+              </span>
+            ) : null}
             {!rule.enabled ? <span className="text-faint"> · off{rule.reason ? ` — ${rule.reason}` : ""}</span> : null}
             {rule.enabled && regradedFrom ? <span className="text-faint"> · was {regradedFrom}</span> : null}
           </span>
@@ -532,8 +557,16 @@ function RuleRow({
                   <dd className="font-sans text-ink">{rule.reason}</dd>
                 </>
               ) : null}
-              <dt>kind</dt>
-              <dd className="text-ink">{rule.builtin ? "built in, a reader in code" : "yours, in portolan.json"}</dd>
+              <dt>written in</dt>
+              <dd className="text-ink">
+                {rule.builtin ? (
+                  <>
+                    code, not CEL{rule.source ? <>: <ReaderLink path={rule.source} /></> : null}
+                  </>
+                ) : (
+                  "CEL, in portolan.json → problemRules"
+                )}
+              </dd>
               {onEdit || onRemove ? (
                 <>
                   <dt />
@@ -556,6 +589,18 @@ function RuleRow({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** The reader's file, as a link to it in the repository when the build knows where that is. */
+function ReaderLink({ path }: { path: string }) {
+  const href = sourceHref(path, null);
+  return href ? (
+    <a href={href} target="_blank" rel="noreferrer" className="rounded-control text-accent hover:underline">
+      {path} ↗
+    </a>
+  ) : (
+    <span>{path}</span>
   );
 }
 

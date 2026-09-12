@@ -2,6 +2,7 @@
 // manifest's switches and re-grades take effect, and a CEL rule sees what the
 // schema says it sees - proved on the frozen estate.
 
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { rawCatalog } from "../test-catalog";
 import { buildIndex, validateCatalog } from "../catalog";
@@ -49,6 +50,13 @@ describe("rules/builtin.json", () => {
       for (const field of ["title", "note", "description", "action"] as const) {
         expect(rule[field].trim().length, `${rule.id}.${field}`).toBeGreaterThan(0);
       }
+    }
+  });
+
+  it("names the file each reader lives in, and the file exists", () => {
+    for (const rule of BUILTIN_RULES) {
+      expect(rule.source, rule.id).toMatch(/^src\/lib\/[a-z-]+\.ts$/);
+      expect(existsSync(rule.source!), `${rule.id}: ${rule.source}`).toBe(true);
     }
   });
 

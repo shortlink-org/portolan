@@ -6,7 +6,8 @@
     "title": "Call resolves to nothing",
     "note": "the provider of this call is not in the catalog",
     "description": "A service calls a method, by interface and name, and no service in the catalog declares that interface. The chart draws an arrow into open water.",
-    "action": "Add the provider's contract to the catalog, or map the peer under externals, then regenerate."
+    "action": "Add the provider's contract to the catalog, or map the peer under externals, then regenerate.",
+    "source": "src/lib/derive.ts"
   },
   {
     "id": "consumer",
@@ -15,7 +16,8 @@
     "title": "Consumer is not in the catalog",
     "note": "this consumer of the event is not in the catalog",
     "description": "An event names a consuming service that no source in the catalog declares. Either the consumer's repository has not been read, or the name is spelled differently on the two sides.",
-    "action": "Point an extractor at the consuming service, or correct the consumer's name where the event declares it."
+    "action": "Point an extractor at the consuming service, or correct the consumer's name where the event declares it.",
+    "source": "src/lib/derive.ts"
   },
   {
     "id": "cross-service-fk",
@@ -24,7 +26,8 @@
     "title": "Foreign key across a service boundary",
     "note": "foreign key across a service boundary",
     "description": "A column references a table another service owns. The database enforces a relation the services' contracts do not know about, and one migration can break the other service.",
-    "action": "Carry the reference as a plain id and resolve it through the owning service's contract, or move the two tables under one owner."
+    "action": "Carry the reference as a plain id and resolve it through the owning service's contract, or move the two tables under one owner.",
+    "source": "src/lib/data-problems.ts"
   },
   {
     "id": "cross-service-lineage",
@@ -33,7 +36,8 @@
     "title": "Value copied from another service's schema",
     "note": "a value copied from another service's schema",
     "description": "A column or a view is computed from a column in a store another service owns. The copy follows the source's schema without a contract saying so.",
-    "action": "Feed the projection from the owning service's events, or document the read as an accepted coupling."
+    "action": "Feed the projection from the owning service's events, or document the read as an accepted coupling.",
+    "source": "src/lib/data-problems.ts"
   },
   {
     "id": "shared-store",
@@ -42,7 +46,8 @@
     "title": "Second writer on a database",
     "note": "a second service writes this database",
     "description": "A service writes a table in a store it does not own. Two services now share one schema, and neither can change it alone.",
-    "action": "Move the write behind the owner's API or events, or give the table to the service that writes it."
+    "action": "Move the write behind the owner's API or events, or give the table to the service that writes it.",
+    "source": "src/lib/data-problems.ts"
   },
   {
     "id": "persistence-drift",
@@ -51,7 +56,8 @@
     "title": "Table no longer holds the aggregate it claims",
     "note": "this table no longer carries the aggregate it claims",
     "description": "A table says it persists an aggregate or a block, and nothing in the domain model by that id exists any more. The claim in the migrations is stale.",
-    "action": "Point the table at the aggregate that replaced it, or drop the persists annotation."
+    "action": "Point the table at the aggregate that replaced it, or drop the persists annotation.",
+    "source": "src/lib/data-problems.ts"
   },
   {
     "id": "column-type",
@@ -60,7 +66,8 @@
     "title": "Column type and domain type disagree",
     "note": "column type and domain type disagree",
     "description": "A column is mapped to a domain field, and the database type is not one the field's type is stored as. One side has changed without the other.",
-    "action": "Align the migration with the field's type, or correct the mapping if the column holds something else."
+    "action": "Align the migration with the field's type, or correct the mapping if the column holds something else.",
+    "source": "src/lib/data-problems.ts"
   },
   {
     "id": "outbox-payload",
@@ -69,7 +76,8 @@
     "title": "Outbox without a payload column",
     "note": "an outbox with no payload column",
     "description": "A table plays the outbox role and has no column that could carry a message body. Whatever the relay reads, it is not an event.",
-    "action": "Add a payload column to the outbox table, or clear its role if it is not an outbox."
+    "action": "Add a payload column to the outbox table, or clear its role if it is not an outbox.",
+    "source": "src/lib/data-problems.ts"
   },
   {
     "id": "proto-missing",
@@ -78,7 +86,8 @@
     "title": "Provider answers on no such method",
     "note": "the provider is in the catalog but answers on no such method",
     "description": "A call names a service the catalog knows and a method that service's interfaces do not declare. The caller's vendored copy is ahead of, or behind, the provider.",
-    "action": "Regenerate the caller's vendored proto from the provider's module, or add the method on the provider."
+    "action": "Regenerate the caller's vendored proto from the provider's module, or add the method on the provider.",
+    "source": "src/lib/proto-problems.ts"
   },
   {
     "id": "proto-drift",
@@ -87,7 +96,8 @@
     "title": "Vendored proto and provider schema disagree",
     "note": "the vendored proto and provider schema disagree",
     "description": "The copy of an interface a caller compiled against differs from the interface the provider publishes: a message, a field or a type is not the same on both sides.",
-    "action": "Pin the caller to the provider's published module version and regenerate the copy."
+    "action": "Pin the caller to the provider's published module version and regenerate the copy.",
+    "source": "src/lib/proto-problems.ts"
   },
   {
     "id": "shared-channel",
@@ -96,7 +106,8 @@
     "title": "Second publisher on a channel",
     "note": "a second service publishes on this channel",
     "description": "Two services publish on one channel. A subscriber dispatches on the event's name and cannot tell whose message arrived, until one it cannot parse does.",
-    "action": "Give each publisher its own channel, named after the aggregate whose events travel on it."
+    "action": "Give each publisher its own channel, named after the aggregate whose events travel on it.",
+    "source": "src/lib/wire-problems.ts"
   },
   {
     "id": "channel-undeclared",
@@ -105,7 +116,8 @@
     "title": "Event leaves on an undeclared channel",
     "note": "this event goes out on a channel the service does not declare",
     "description": "The code publishes an event on a channel the service's AsyncAPI document does not list. The document is behind the code.",
-    "action": "Declare the channel and its messages in the service's AsyncAPI document."
+    "action": "Declare the channel and its messages in the service's AsyncAPI document.",
+    "source": "src/lib/wire-problems.ts"
   },
   {
     "id": "channel-unpublished",
@@ -114,7 +126,8 @@
     "title": "Declared channel nothing publishes on",
     "note": "a declared channel no event of this service names",
     "description": "The service's document declares it sends on a channel, and no event of the service names that channel as its wire. The code is behind the document, or the channel is dead.",
-    "action": "Remove the channel from the document, or wire the event that should leave on it."
+    "action": "Remove the channel from the document, or wire the event that should leave on it.",
+    "source": "src/lib/wire-problems.ts"
   },
   {
     "id": "message-encoding",
@@ -123,7 +136,8 @@
     "title": "Publisher and subscriber encode differently",
     "note": "publisher and subscriber use different payload encodings",
     "description": "Both sides of a message have named a payload encoding, and the two names differ. The subscriber will not read what the publisher writes.",
-    "action": "Agree one encoding in both AsyncAPI documents."
+    "action": "Agree one encoding in both AsyncAPI documents.",
+    "source": "src/lib/wire-problems.ts"
   },
   {
     "id": "subscription-unresolved",
@@ -132,7 +146,8 @@
     "title": "Subscription nothing publishes",
     "note": "nothing in the catalog publishes what this service listens for",
     "description": "A service declares it receives a message on a channel, and no service in the catalog publishes that message there. The publisher has not been read, or the subscription is stale.",
-    "action": "Read the publisher's repository into the catalog, or remove the subscription."
+    "action": "Read the publisher's repository into the catalog, or remove the subscription.",
+    "source": "src/lib/wire-problems.ts"
   },
   {
     "id": "deployment-unclaimed",
@@ -141,7 +156,8 @@
     "title": "Deployed from nowhere the catalog knows",
     "note": "the deployer runs this from a repository and directory no service in the catalog lives at",
     "description": "The deployer runs an Application from a repository and path, or with labels, that match no service. It is a service nobody has read yet, a path spelled differently, or infrastructure that is not a service at all.",
-    "action": "Read the service into the catalog, align its path with where its manifests live, or disable this rule for infrastructure with a reason."
+    "action": "Read the service into the catalog, align its path with where its manifests live, or disable this rule for infrastructure with a reason.",
+    "source": "src/lib/deploy-problems.ts"
   },
   {
     "id": "deployment-drift",
@@ -150,6 +166,7 @@
     "title": "GitOps tree and deployer disagree",
     "note": "the GitOps tree and the deployer disagree about this Application",
     "description": "What the GitOps tree says should run and what the deployer reports is running differ on a project, cluster, namespace, path, revision or image.",
-    "action": "Sync the Application, or commit to the tree what was changed on the cluster."
+    "action": "Sync the Application, or commit to the tree what was changed on the cluster.",
+    "source": "src/lib/deploy-problems.ts"
   }
 ]

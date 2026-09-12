@@ -42,6 +42,8 @@ export interface RulePassport {
   description: string;
   /** What a reader does about a row. */
   action: string;
+  /** Where the reader is, for a built-in rule: the file in this repository. */
+  source?: string;
 }
 
 /** One entry of `problemRules` in the manifest, as written. */
