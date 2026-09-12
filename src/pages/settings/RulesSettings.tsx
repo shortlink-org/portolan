@@ -416,22 +416,12 @@ function RuleRow({
           onClick={() => setOpen((v) => !v)}
         >
           <span className={`block truncate ${rule.enabled ? "text-ink" : "text-muted"}`}>{rule.title}</span>
-          <span className="mono block truncate text-muted">
-            {rule.id}
-            <span className="text-faint"> · {rule.over}</span>
-            {/* A rule of the estate's own is its condition; the row shows
-                it, so the CEL is read without opening anything. A built-in
-                rule has no expression to show - it is a reader in code. */}
-            {rule.when ? (
-              <span className="text-faint">
-                {" · "}
-                <span className="text-muted" title={rule.when}>
-                  {rule.when}
-                </span>
-              </span>
-            ) : null}
-            {!rule.enabled ? <span className="text-faint"> · off{rule.reason ? ` — ${rule.reason}` : ""}</span> : null}
-            {rule.enabled && regradedFrom ? <span className="text-faint"> · was {regradedFrom}</span> : null}
+          {/* One line of what the rule checks. The id, the subject and the
+              CEL are read in the panel; a closed row is for scanning. */}
+          <span className="block truncate text-muted" title={rule.description}>
+            {!rule.enabled ? <span className="text-faint">off{rule.reason ? ` — ${rule.reason}` : ""} · </span> : null}
+            {rule.enabled && regradedFrom ? <span className="text-faint">was {regradedFrom} · </span> : null}
+            {rule.description || rule.note}
           </span>
         </button>
         <span className={SEVERITY_CHIP[rule.severity]} title={regradedFrom ? `re-graded from ${regradedFrom}` : undefined}>
@@ -507,6 +497,8 @@ function RuleRow({
               ) : null}
             </div>
             <dl className="mono grid h-fit grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 text-muted">
+              <dt>id</dt>
+              <dd className="text-ink">{rule.id}</dd>
               <dt>subject</dt>
               <dd className="flex items-center gap-1.5 text-ink">
                 <KindIcon kind={ICON_OF[rule.over]} size={12} /> {rule.over}
