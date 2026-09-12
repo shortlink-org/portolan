@@ -356,32 +356,20 @@ function regraded(entries: ProblemRuleEntry[], rule: ProblemRule, severity: Rule
 // One rule.
 
 /**
- * The switch. A track with a knob that travels, and the word beside it, so
- * that at a glance it is a switch and not a blue bar: the knob is white on
- * an accent track when on, and grey on an empty track when off.
+ * The app's own switch: the segmented control Preferences uses for the theme
+ * and the row density, with the two states as two members and `is-on` on
+ * the one in force. Off on a rule in local mode asks for a reason first.
  */
-function Switch({ on, label, disabled, onClick }: { on: boolean; label: string; disabled: boolean; onClick: () => void }) {
+function Switch({ on, id, disabled, onOn, onOff }: { on: boolean; id: string; disabled: boolean; onOn: () => void; onOff: () => void }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      title={disabled ? `${on ? "on" : "off"} · local mode required to change` : `${on ? "on" : "off"} · click to switch ${on ? "off" : "on"}`}
-      disabled={disabled}
-      onClick={onClick}
-      className="group/switch mono flex shrink-0 items-center gap-1.5 rounded-control text-muted disabled:cursor-default"
-    >
-      <span
-        aria-hidden
-        className={`relative block h-[18px] w-8 rounded-full border transition-colors ${on ? "border-accent bg-accent" : "border-line-strong bg-canvas group-hover/switch:border-muted"}`}
-      >
-        <span
-          className={`absolute top-[2px] block size-3 rounded-full shadow-xs transition-transform ${on ? "translate-x-[15px] bg-white" : "translate-x-[2px] bg-line-strong"}`}
-        />
-      </span>
-      <span className={`w-5 text-left ${on ? "text-ink" : "text-faint"}`}>{on ? "on" : "off"}</span>
-    </button>
+    <div className="seg inline-flex shrink-0" role="group" aria-label={`${id} on or off`}>
+      <button type="button" aria-pressed={on} aria-label={`Switch on ${id}`} className={on ? "is-on" : ""} disabled={disabled} onClick={() => !on && onOn()}>
+        on
+      </button>
+      <button type="button" aria-pressed={!on} aria-label={`Switch off ${id}`} className={!on ? "is-on" : ""} disabled={disabled} onClick={() => on && onOff()}>
+        off
+      </button>
+    </div>
   );
 }
 
@@ -422,7 +410,7 @@ function RuleRow({
   return (
     <div id={`rule-${rule.id}`} className="scroll-mt-4 border-t border-line">
       <div className={`grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto_5.5rem_auto] ${open ? "bg-surface/60" : "hover:bg-surface/60"}`}>
-        <Switch on={rule.enabled} label={`${rule.enabled ? "Switch off" : "Switch on"} ${rule.id}`} disabled={!canWrite} onClick={toggle} />
+        <Switch on={rule.enabled} id={rule.id} disabled={!canWrite} onOn={toggle} onOff={toggle} />
         <KindIcon kind={ICON_OF[rule.over]} className={rule.enabled ? "" : "opacity-50"} />
         <button
           type="button"
