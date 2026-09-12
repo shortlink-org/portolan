@@ -2,7 +2,7 @@ import { RelationEvidencePanel } from "../components/RelationEvidence";
 import { stepRelationEvidence } from "./evidence";
 import { exampleRowsFor, formatMs } from "./examples";
 import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { AlertTriangle, FileCode2 } from "lucide-react";
 import { allRepos, stepFrames } from "../catalog";
@@ -747,12 +747,16 @@ function StepExamples({ step, flow }: { step: Step; flow: Flow }) {
                 </div>
                 {shown.label && shown.label !== step.label ? <div className="mono mt-0.5 text-muted">{shown.label}</div> : null}
                 {attrs.length ? (
-                  <dl className="mono mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                  /* One attribute per line, the key above its value, both
+                     allowed to wrap: the panel is narrow and a route or a
+                     destination is long, and a value cut off with an
+                     ellipsis is a value the reader has to hover for. */
+                  <dl className="mono mt-1 flex flex-col gap-y-1">
                     {attrs.map(([key, value]) => (
-                      <Fragment key={key}>
+                      <div key={key} className="min-w-0">
                         <dt className="text-faint">{key}</dt>
-                        <dd className="truncate text-ink" title={value}>{value}</dd>
-                      </Fragment>
+                        <dd className="break-all whitespace-normal text-ink">{value}</dd>
+                      </div>
                     ))}
                   </dl>
                 ) : null}

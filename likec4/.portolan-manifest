@@ -1,0 +1,8 @@
+{
+  "likec4": [
+    "deployment.c4",
+    "model.c4",
+    "spec.c4",
+    "views.c4"
+  ]
+}

@@ -7,7 +7,9 @@
 //
 //   node scripts/gen-likec4.mjs
 
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, realpathSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { loadCatalog } from "./catalog-sources.mjs";
 import reserved from "../src/likec4/reserved.json" with { type: "json" };
@@ -17,7 +19,12 @@ import { allDeployments, deploys, environmentOf } from "../src/catalog-model.ts"
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
 // of the pictures while the rest of the app knows about it.
-const { catalog, manifest } = await loadCatalog();
+//
+// The sources come back as files rather than being written here, so that
+// `gen` can settle them the way it settles every generated page - written,
+// or in check mode compared and reported as drift - and `likec4:gen` can
+// still write them on its own before the dev server starts.
+export async function likec4Sources({ catalog, manifest }) {
 const profiles = catalogProfiles(manifest);
 
 // --- ids (mirrors src/likec4/ids.ts; kept in step by src/likec4/ids.test.ts) ---
@@ -1173,22 +1180,23 @@ if (environments.length > 0) {
 }
 views.push("}");
 
-mkdirSync("likec4", { recursive: true });
-writeFileSync(
-  "likec4/deployment.c4",
-  `// GENERATED — do not edit.\n${deployment.join("\n")}\n`,
-);
-writeFileSync("likec4/spec.c4", `${spec.join("\n")}\n`);
-writeFileSync(
-  "likec4/model.c4",
-  `// GENERATED — do not edit.\n${model.join("\n")}\n`,
-);
-writeFileSync(
-  "likec4/views.c4",
-  `// GENERATED — do not edit.\n${views.join("\n")}\n`,
-);
+return [
+  { name: "deployment.c4", contents: `// GENERATED — do not edit.\n${deployment.join("\n")}\n` },
+  { name: "spec.c4", contents: `${spec.join("\n")}\n` },
+  { name: "model.c4", contents: `// GENERATED — do not edit.\n${model.join("\n")}\n` },
+  { name: "views.c4", contents: `// GENERATED — do not edit.\n${views.join("\n")}\n` },
+];
+}
 
-console.log(
-  `wrote likec4/spec.c4, likec4/model.c4, likec4/views.c4 ` +
-    `(${catalog.flows.length * 2} dynamic views, ${relations.length} relations)`,
-);
+// Run as a script - `npm run likec4:gen`, before the dev server starts - the
+// sources are written under likec4/ here and now.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const bundle = await loadCatalog();
+  const files = await likec4Sources(bundle);
+  mkdirSync("likec4", { recursive: true });
+  for (const file of files) writeFileSync(join("likec4", file.name), file.contents);
+  console.log(
+    `wrote ${files.map((file) => `likec4/${file.name}`).join(", ")} ` +
+      `(${bundle.catalog.flows.length * 2} dynamic views)`,
+  );
+}

@@ -6302,7 +6302,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — changePassword → 204
-   [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · Seen running in telemetry/traces.jsonl (2 traces).
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
@@ -6314,21 +6314,30 @@ sequenceDiagram
    status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
 <a id="step-s5"></a>
 5. **auth.auth** → **bus** — PasswordChanged
-   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · Seen running in telemetry/traces.jsonl (2 traces).
 
 ## Recordings
 
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `fc0d47a555b03d7af44a85259857c04e`
-- **Recorded:** 2026-09-05T20:47:00.207552Z
-- **Duration:** 41.39 ms
+- **Trace:** `c101e38bee6bdba8a160e8eb5fe5543d`
+- **Recorded:** 2026-09-12T10:21:50.40362Z
+- **Duration:** 39.81 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-change-password.md#step-s1) | `POST /v1/users/me/password` | 41.39 ms | `http.request.method=POST` `http.response.status_code=204` `http.route=/v1/users/me/password` `server.address=localhost` `server.port=8080` |
+| [s1](auth-change-password.md#step-s1) | `POST /v1/users/me/password` | 39.81 ms | `http.request.method=POST` `http.response.status_code=204` `http.route=/v1/users/me/password` `server.address=localhost` `server.port=8080` |
 | [s5](auth-change-password.md#step-s5) | `publish auth.PasswordChanged` | 0.002 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `1d60db11c6985c62345fb483a01a815b`
+- **Recorded:** 2026-09-12T10:21:56.581603Z
+- **Duration:** 18.879 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-change-password.md#step-s1) | `POST /v1/users/me/password` | 18.879 ms | `http.request.method=POST` `http.response.status_code=401` `http.route=/v1/users/me/password` `server.address=localhost` `server.port=8080` |
 
 <!-- flows/auth-get-user.md -->
 
@@ -6376,31 +6385,31 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `11892613b4650af0870b876205a89fe5`
-- **Recorded:** 2026-09-05T20:47:00.06401Z
-- **Duration:** 1.845 ms
+- **Trace:** `4477bdad7f7f3e31d841dbc63e7749e5`
+- **Recorded:** 2026-09-12T10:21:50.267679Z
+- **Duration:** 1.591 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 1.845 ms | `http.request.method=GET` `http.response.status_code=404` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
+| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 1.591 ms | `http.request.method=GET` `http.response.status_code=404` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `81bc03dd8efa5caad98d84087bf15f84`
-- **Recorded:** 2026-09-05T20:47:00.077493Z
-- **Duration:** 0.729 ms
+- **Trace:** `0ee6ade54fd1f9a3dc2a787ebacca326`
+- **Recorded:** 2026-09-12T10:21:50.280286Z
+- **Duration:** 0.732 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 0.729 ms | `http.request.method=GET` `http.response.status_code=404` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
+| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 0.732 ms | `http.request.method=GET` `http.response.status_code=404` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `233c6f00d7a0373ee63a2e9c7bbc1f2e`
-- **Recorded:** 2026-09-05T20:47:06.335468Z
-- **Duration:** 0.992 ms
+- **Trace:** `96e6f014ae5ac6d5edcb50dddb9b20e6`
+- **Recorded:** 2026-09-12T10:21:56.538913Z
+- **Duration:** 1.109 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 0.992 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
+| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 1.109 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
 
 <!-- flows/auth-login.md -->
 
@@ -6466,7 +6475,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — login → Session
-   [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11) · Seen running in telemetry/traces.jsonl (10 traces).
 <a id="step-s2"></a>
 2. **auth.auth** ↺ **auth.auth** — CheckCredentials
    status: declared · [`examples/auth/internal/session/application/login/usecase.go:57`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L57) · Port `Authenticator`, bound at assembly to the CheckCredentials use case.
@@ -6495,7 +6504,7 @@ sequenceDiagram
 >    status: declared · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`.
 > <a id="step-s9"></a>
 > 9. **auth.auth** → **bus** — AccountLocked
->    [`auth.auth.lockout.AccountLocked`](../auth/auth/aggregates/lockout.md#event-auth-auth-lockout-accountlocked) · status: declared · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`.
+>    [`auth.auth.lockout.AccountLocked`](../auth/auth/aggregates/lockout.md#event-auth-auth-lockout-accountlocked) · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`.
 >
 > *otherwise*
 
@@ -6533,31 +6542,60 @@ sequenceDiagram
    status: declared · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77)
 <a id="step-s20"></a>
 18. **auth.auth** → **bus** — SessionStarted
-   [`auth.auth.session.SessionStarted`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionstarted) · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`auth.auth.session.SessionStarted`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionstarted) · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · Seen running in telemetry/traces.jsonl (10 traces).
 
 ## Recordings
 
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `4ad5c108c2cddcec5041e0563c9b79ca`
-- **Recorded:** 2026-09-05T20:47:00.132546Z
-- **Duration:** 26.738 ms
+- **Trace:** `02e8453ebeca90ad2136d3a8592d6f52`
+- **Recorded:** 2026-09-12T10:21:50.334643Z
+- **Duration:** 23.495 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 26.738 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
-| [s20](auth-login.md#step-s20) | `publish auth.SessionStarted` | 0.003 ms | `event.name=auth.SessionStarted` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 23.495 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
+| [s20](auth-login.md#step-s20) | `publish auth.SessionStarted` | 0.001 ms | `event.name=auth.SessionStarted` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `ec6f863cfcaa33835afdde517f205f1b`
-- **Recorded:** 2026-09-05T20:47:00.167488Z
-- **Duration:** 23.918 ms
+- **Trace:** `b6aff747917df310640719e5289f396e`
+- **Recorded:** 2026-09-12T10:21:50.366269Z
+- **Duration:** 22.089 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 23.918 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
+| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 22.089 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
+| [s20](auth-login.md#step-s20) | `publish auth.SessionStarted` | 0.001 ms | `event.name=auth.SessionStarted` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `8d0b412eb458897f7d3ff6b39ac9138a`
+- **Recorded:** 2026-09-12T10:21:56.548049Z
+- **Duration:** 25.225 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 25.225 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
 | [s20](auth-login.md#step-s20) | `publish auth.SessionStarted` | 0.002 ms | `event.name=auth.SessionStarted` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `636904aecb41829a8bc232b5003dd918`
+- **Recorded:** 2026-09-12T10:21:56.722975Z
+- **Duration:** 21.457 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 21.457 ms | `http.request.method=POST` `http.response.status_code=401` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
+| [s9](auth-login.md#step-s9) | `publish auth.AccountLocked` | 0.001 ms | `event.name=auth.AccountLocked` `messaging.destination.name=auth_lockout` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `e49d5adf2fb5ecc3ed0fa041fb66b7b1`
+- **Recorded:** 2026-09-12T10:21:56.607654Z
+- **Duration:** 22.53 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 22.53 ms | `http.request.method=POST` `http.response.status_code=401` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
 
 <!-- flows/auth-logout.md -->
 
@@ -6615,14 +6653,14 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `81580abd0bc8ab1c73813a0cab33f499`
-- **Recorded:** 2026-09-05T20:47:06.282783Z
-- **Duration:** 4.452 ms
+- **Trace:** `68ff2d8dd5a0d19ece14c983ae2b752d`
+- **Recorded:** 2026-09-12T10:21:56.486357Z
+- **Duration:** 4.367 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-logout.md#step-s1) | `DELETE /v1/sessions/current` | 4.452 ms | `http.request.method=DELETE` `http.response.status_code=204` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
-| [s4](auth-logout.md#step-s4) | `publish auth.SessionEnded` | 0.003 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s1](auth-logout.md#step-s1) | `DELETE /v1/sessions/current` | 4.367 ms | `http.request.method=DELETE` `http.response.status_code=204` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s4](auth-logout.md#step-s4) | `publish auth.SessionEnded` | 0.002 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/auth-register-user.md -->
 
@@ -6680,24 +6718,24 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `2b90c7968845189e6fe599f929f78d3e`
-- **Recorded:** 2026-09-05T20:47:00.094859Z
-- **Duration:** 29.607 ms
+- **Trace:** `f58792258285dd6de741a740b7a36c53`
+- **Recorded:** 2026-09-12T10:21:50.29868Z
+- **Duration:** 27.649 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-register-user.md#step-s1) | `POST /v1/users` | 29.607 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/users` `server.address=localhost` `server.port=8080` |
-| [s4](auth-register-user.md#step-s4) | `publish auth.UserRegistered` | 0.001 ms | `event.name=auth.UserRegistered` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s1](auth-register-user.md#step-s1) | `POST /v1/users` | 27.649 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/users` `server.address=localhost` `server.port=8080` |
+| [s4](auth-register-user.md#step-s4) | `publish auth.UserRegistered` | 0.002 ms | `event.name=auth.UserRegistered` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `3b9423e32e2b098574b290b3efc43687`
-- **Recorded:** 2026-09-05T20:47:06.298264Z
-- **Duration:** 28.56 ms
+- **Trace:** `c83196c29bd40d0d34caa9cbeb251255`
+- **Recorded:** 2026-09-12T10:21:56.502278Z
+- **Duration:** 28.106 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-register-user.md#step-s1) | `POST /v1/users` | 28.56 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/users` `server.address=localhost` `server.port=8080` |
-| [s4](auth-register-user.md#step-s4) | `publish auth.UserRegistered` | 0.002 ms | `event.name=auth.UserRegistered` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s1](auth-register-user.md#step-s1) | `POST /v1/users` | 28.106 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/users` `server.address=localhost` `server.port=8080` |
+| [s4](auth-register-user.md#step-s4) | `publish auth.UserRegistered` | 0.003 ms | `event.name=auth.UserRegistered` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/auth-revoke-sessions-on-password-change.md -->
 
@@ -6743,14 +6781,14 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `fc0d47a555b03d7af44a85259857c04e`
-- **Recorded:** 2026-09-05T20:47:00.381452Z
-- **Duration:** 5.252 ms
+- **Trace:** `c101e38bee6bdba8a160e8eb5fe5543d`
+- **Recorded:** 2026-09-12T10:21:50.698425Z
+- **Duration:** 6.924 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-revoke-sessions-on-password-change.md#step-s1) | `consume auth.PasswordChanged` | 5.252 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=process` `messaging.system=inproc` |
-| [seen1](auth-revoke-sessions-on-password-change.md#step-seen1) | `publish auth.SessionEnded` | 0.009 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s1](auth-revoke-sessions-on-password-change.md#step-s1) | `consume auth.PasswordChanged` | 6.924 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=process` `messaging.system=inproc` |
+| [seen1](auth-revoke-sessions-on-password-change.md#step-seen1) | `publish auth.SessionEnded` | 0.02 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/auth-validate-session.md -->
 
@@ -6798,22 +6836,22 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `37f66f3381772c818c4de1df0b16c00f`
-- **Recorded:** 2026-09-05T20:47:00.198653Z
-- **Duration:** 1.724 ms
+- **Trace:** `91e3527a68d293f93c652a3a7e9d3aac`
+- **Recorded:** 2026-09-12T10:21:50.395457Z
+- **Duration:** 1.238 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 1.724 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 1.238 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `9007e50cfd5638f2516100d48d14e46c`
-- **Recorded:** 2026-09-05T20:47:06.269111Z
-- **Duration:** 2.133 ms
+- **Trace:** `79ad5ecd711bcf51887ed1db916169ea`
+- **Recorded:** 2026-09-12T10:21:56.469172Z
+- **Duration:** 2.666 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 2.133 ms | `http.request.method=GET` `http.response.status_code=401` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 2.666 ms | `http.request.method=GET` `http.response.status_code=401` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
 
 <!-- flows/bff-mutation-add-item.md -->
 

@@ -422,7 +422,7 @@ func (v *verifier) hop(s *span, parentDB bool, publishing string) (*hop, bool) {
 		label := operation
 		if !known {
 			label = method + " " + route
-			v.warnOnce("route:"+svc.ID+method+route, svc.ID, "answers on "+method+" "+route+", which no interface it provides declares; the flow opens on the route rather than an operation")
+			v.warnOnce("route:"+svc.ID+method+route, svc.ID, "answers on "+method+" "+route+", which no interface it provides declares; name it under `routes` to say which operation it is, or the flow opens on the route rather than an operation")
 		}
 
 		return &hop{

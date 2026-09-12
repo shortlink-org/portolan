@@ -115,6 +115,19 @@ func (l *lookup) service(name string) *catalog.Service {
 // interface declares on it, by the verb and path template the OpenAPI
 // extractor recorded.
 func (l *lookup) operation(svc *catalog.Service, method, route string) (string, bool) {
+	// The manifest's word first: a route the estate spells differently from
+	// its document is named to the operation by hand, and the name has to
+	// be one the service declares, or the mapping is a typo the trace would
+	// otherwise quietly verify.
+	if name, ok := l.opts.Routes[method+" "+route]; ok {
+		for _, provided := range svc.Provides {
+			for _, m := range provided.Methods {
+				if m.Name == name {
+					return name, true
+				}
+			}
+		}
+	}
 	for _, provided := range svc.Provides {
 		for _, m := range provided.Methods {
 			if m.HTTP != nil && m.HTTP.Method == method && samePath(m.HTTP.Path, route) {

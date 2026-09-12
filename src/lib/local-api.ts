@@ -172,7 +172,7 @@ export interface TraceTrial {
   spans: number;
   flows: TraceTrialFlow[];
   warnings: TraceTrialWarning[];
-  mappings: { services: Record<string, string>; events: Record<string, string> };
+  mappings: { services: Record<string, string>; events: Record<string, string>; routes: Record<string, string> };
 }
 
 export type RunMode = "write" | "check" | "preview" | "project-preview" | "trace-preview";
@@ -341,7 +341,7 @@ export async function startTraceTrial(file: File, projectId: string): Promise<{ 
 }
 
 /** Keeps the recording beside the project, with the names mapped, and regenerates when asked. */
-export async function applyTraceTrial(runId: string, options: { generate: boolean; services?: Record<string, string>; events?: Record<string, string> }): Promise<{ recording: string; project: string; stepAdded: boolean; manifestChanged: boolean; undoToken: string | null; setup: SetupInfo; run: { runId: string; mode: "write" } | null }> {
+export async function applyTraceTrial(runId: string, options: { generate: boolean; services?: Record<string, string>; events?: Record<string, string>; routes?: Record<string, string> }): Promise<{ recording: string; project: string; stepAdded: boolean; manifestChanged: boolean; undoToken: string | null; setup: SetupInfo; run: { runId: string; mode: "write" } | null }> {
   return json(`/traces/trials/${encodeURIComponent(runId)}/apply`, { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(options) });
 }
 

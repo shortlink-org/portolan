@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.7.0
-	github.com/jackc/pgx/v5 v5.11.0
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/shortlink-org/go-sdk/cache v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610

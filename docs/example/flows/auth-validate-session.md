@@ -42,19 +42,19 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `37f66f3381772c818c4de1df0b16c00f`
-- **Recorded:** 2026-09-05T20:47:00.198653Z
-- **Duration:** 1.724 ms
+- **Trace:** `91e3527a68d293f93c652a3a7e9d3aac`
+- **Recorded:** 2026-09-12T10:21:50.395457Z
+- **Duration:** 1.238 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 1.724 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 1.238 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `9007e50cfd5638f2516100d48d14e46c`
-- **Recorded:** 2026-09-05T20:47:06.269111Z
-- **Duration:** 2.133 ms
+- **Trace:** `79ad5ecd711bcf51887ed1db916169ea`
+- **Recorded:** 2026-09-12T10:21:56.469172Z
+- **Duration:** 2.666 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 2.133 ms | `http.request.method=GET` `http.response.status_code=401` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 2.666 ms | `http.request.method=GET` `http.response.status_code=401` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |

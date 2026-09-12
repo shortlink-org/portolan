@@ -87,8 +87,9 @@ reference).
 - **Diagrams** — LikeC4 C4 views (estate landscape, every container in the
   estate with its technology and the protocol on each edge, one per context,
   two per service, one dynamic view per flow), an ELK-routed dependency graph,
-  and a context map. The app never draws these itself; `npm run likec4:gen`
-  writes the model from the catalog.
+  and a context map. The app never draws these itself; `npm run gen` writes
+  the model from the catalog as its last step, and holds it to the catalog in
+  `gen:check`, and `npm run likec4:gen` writes it on its own before `dev`.
 - **ER canvases** — per store: tables, views, keys and crow's feet, plus column
   lineage (`from`) drawn dashed; hovering a column lights the whole chain back
   to where the value came from.

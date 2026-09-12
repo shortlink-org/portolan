@@ -40,11 +40,11 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `fc0d47a555b03d7af44a85259857c04e`
-- **Recorded:** 2026-09-05T20:47:00.381452Z
-- **Duration:** 5.252 ms
+- **Trace:** `c101e38bee6bdba8a160e8eb5fe5543d`
+- **Recorded:** 2026-09-12T10:21:50.698425Z
+- **Duration:** 6.924 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-revoke-sessions-on-password-change.md#step-s1) | `consume auth.PasswordChanged` | 5.252 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=process` `messaging.system=inproc` |
-| [seen1](auth-revoke-sessions-on-password-change.md#step-seen1) | `publish auth.SessionEnded` | 0.009 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s1](auth-revoke-sessions-on-password-change.md#step-s1) | `consume auth.PasswordChanged` | 6.924 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=process` `messaging.system=inproc` |
+| [seen1](auth-revoke-sessions-on-password-change.md#step-seen1) | `publish auth.SessionEnded` | 0.02 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |

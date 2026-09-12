@@ -52,11 +52,11 @@ sequenceDiagram
 Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
 
 - **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
-- **Trace:** `81580abd0bc8ab1c73813a0cab33f499`
-- **Recorded:** 2026-09-05T20:47:06.282783Z
-- **Duration:** 4.452 ms
+- **Trace:** `68ff2d8dd5a0d19ece14c983ae2b752d`
+- **Recorded:** 2026-09-12T10:21:56.486357Z
+- **Duration:** 4.367 ms
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
-| [s1](auth-logout.md#step-s1) | `DELETE /v1/sessions/current` | 4.452 ms | `http.request.method=DELETE` `http.response.status_code=204` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
-| [s4](auth-logout.md#step-s4) | `publish auth.SessionEnded` | 0.003 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s1](auth-logout.md#step-s1) | `DELETE /v1/sessions/current` | 4.367 ms | `http.request.method=DELETE` `http.response.status_code=204` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s4](auth-logout.md#step-s4) | `publish auth.SessionEnded` | 0.002 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |

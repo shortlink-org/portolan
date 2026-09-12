@@ -225,7 +225,7 @@ views {
     description 'Replaces the password of a user, given the current one.'
     client -> auth.auth 'ChangePasswordRequest' {
       color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
     }
     auth.auth -> auth_pg 'ByToken' {
       color declared  line solid  head none
@@ -241,7 +241,7 @@ views {
     }
     auth.auth -> bus 'PasswordChanged' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/application/change_password/usecase.go:48'
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/change_password/usecase.go:48'
     }
     auth.auth -> client '204' {
       color verified  line dashed  head normal
@@ -252,11 +252,11 @@ views {
     title 'Change password — crossings only'
     client -> auth.auth 'ChangePasswordRequest' {
       color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
     }
     auth.auth -> bus 'PasswordChanged' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/application/change_password/usecase.go:48'
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/change_password/usecase.go:48'
     }
     auth.auth -> client '204' {
       color verified  line dashed  head normal
@@ -295,7 +295,7 @@ views {
     description 'Turns credentials into a session.'
     client -> auth.auth 'LoginRequest' {
       color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
+      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
     }
     auth.auth -> auth.auth 'CheckCredentials' {
       color declared  line solid  head none
@@ -329,7 +329,7 @@ views {
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
           }
           auth.auth -> bus 'AccountLocked' {
-            color declared  line solid  head onormal
+            color verified  line solid  head onormal
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
           }
         }
@@ -379,7 +379,7 @@ views {
     }
     auth.auth -> bus 'SessionStarted' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/application/login/usecase.go:77'
+      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/application/login/usecase.go:77'
     }
     auth.auth -> client 'Session' {
       color verified  line dashed  head normal
@@ -390,13 +390,13 @@ views {
     title 'Login — crossings only'
     client -> auth.auth 'LoginRequest' {
       color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
+      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
     }
     alt {
       when '!uc.verifier.Verify(in.Password, u.Password)' {
         break 'ends the flow' {
           auth.auth -> bus 'AccountLocked' {
-            color declared  line solid  head onormal
+            color verified  line solid  head onormal
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
           }
         }
@@ -418,7 +418,7 @@ views {
     }
     auth.auth -> bus 'SessionStarted' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/application/login/usecase.go:77'
+      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/application/login/usecase.go:77'
     }
     auth.auth -> client 'Session' {
       color verified  line dashed  head normal

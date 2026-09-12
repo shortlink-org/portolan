@@ -20,6 +20,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 
 import { loadManifest, readManifest, readManifestText } from "./manifest.mjs";
 import { builtinPluginNames } from "./builtin-plugins.mjs";
+import { pluginsFresh } from "./plugins-fresh.mjs";
 import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import { formatLike } from "./json-format.mjs";
@@ -1093,7 +1094,7 @@ function prepareTraceTrial(workspace, { projectId, name, content }) {
  * that reads it and the names the page mapped. Undoable the way a project
  * is: the manifest before is remembered for a while.
  */
-function applyTraceTrial(workspace, trial, { services, events } = {}) {
+function applyTraceTrial(workspace, trial, { services, events, routes } = {}) {
   const manifestPath = join(workspace, "portolan.json");
   const before = readFileSync(manifestPath, "utf8");
   const manifest = readManifestText(before, manifestPath);
@@ -1105,7 +1106,7 @@ function applyTraceTrial(workspace, trial, { services, events } = {}) {
   writeFileSync(target, trial.trace.content, { flag: "wx" });
   const next = manifestWithTraceStep(manifest, project);
   const found = traceStepFor(next.manifest, project);
-  const mapped = stepWithMappings(found.step, { services, events });
+  const mapped = stepWithMappings(found.step, { services, events, routes });
   const changed = next.changed || JSON.stringify(mapped) !== JSON.stringify(found.step);
   let undoToken = null;
   if (changed) {
@@ -1177,6 +1178,28 @@ async function startProjectPreview(job) {
   return job.previewUrl;
 }
 
+/**
+ * Rebuilds src/likec4/generated.jsx from likec4/ in the workspace, the way
+ * `npm run likec4:gen` does before `dev`. Said in the run's log either way;
+ * a bundle that fails to build leaves the last one in place.
+ */
+function refreshLikeC4Bundle(job) {
+  return new Promise((done) => {
+    const bin = join(job.runRoot, "node_modules/likec4/bin/likec4.mjs");
+    if (!lstatExists(bin)) return done();
+    emit(job, { type: "log", stream: "stdout", message: "likec4 → src/likec4/generated.jsx" });
+    const child = spawn(process.execPath, [bin, "gen", "react", "likec4", "-o", "src/likec4/generated.jsx", "--no-use-dot"], { cwd: job.runRoot, stdio: ["ignore", "pipe", "pipe"] });
+    let output = "";
+    child.stdout.on("data", (chunk) => { output += chunk; });
+    child.stderr.on("data", (chunk) => { output += chunk; });
+    child.on("error", (error) => { emit(job, { type: "log", stream: "stderr", message: `likec4: ${error.message}` }); done(); });
+    child.on("close", (code) => {
+      if (code !== 0) emit(job, { type: "log", stream: "stderr", message: `likec4 gen react exited with ${code}:\n${output.trim()}` });
+      done();
+    });
+  });
+}
+
 function startJob(workspace, mode, approvedPreview, preparedTrial) {
   const id = randomUUID();
   const preview = mode === "preview" || mode === "project-preview" || mode === "trace-preview";
@@ -1191,10 +1214,18 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
   const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, gitAuth, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt, projectPlan: preparedTrial?.plan ?? null, projectRequest: preparedTrial?.request ? structuredClone(preparedTrial.request) : null, trace: preparedTrial?.trace ?? null };
   jobs.set(id, job);
   const cli = process.env.PORTOLAN_CLI;
-  const command = cli ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm";
+  // `npm run gen` builds the plugins first, which a checkout whose plugin
+  // sources have not moved since the last build does not need: the fourth
+  // trial of a recording in a row learns nothing from a minute of javac.
+  // When every artefact is at least as new as its sources the generator
+  // runs on its own; anything doubtful takes the road that builds.
+  const fresh = !cli && pluginsFresh(job.runRoot);
+  const command = cli || fresh ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm";
   const args = cli
     ? [cli, mode === "check" ? "check" : "generate", "--cwd", job.runRoot]
-    : ["run", mode === "check" ? "gen:check" : "gen"];
+    : fresh
+      ? [join(job.runRoot, "scripts/gen.mjs"), ...(mode === "check" ? ["--check"] : [])]
+      : ["run", mode === "check" ? "gen:check" : "gen"];
   let child;
   try {
     child = spawn(command, args, {
@@ -1238,6 +1269,11 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
       }
       catch (cause) { job.status = "failed"; emit(job, { type: "log", stream: "stderr", message: `Could not summarise the recording: ${cause instanceof Error ? cause.message : String(cause)}` }); }
     }
+    // The catalog is written, and the pictures' sources with it; the bundle
+    // the dev server draws them from is built once before it starts, so a
+    // write from the page rebuilds it here, or the new flow has no picture
+    // until the next start.
+    if (mode === "write" && job.status === "ok" && !process.env.PORTOLAN_CLI) await refreshLikeC4Bundle(job);
     emit(job, { type: "process-finished", status: job.status, code, signal });
     for (const response of job.subscribers) response.end();
     job.subscribers.clear();
@@ -1359,7 +1395,7 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             if (!trial?.trace || trial.status !== "ok" || !trial.traceTrial) return send(res, 409, { error: "Run a successful recording trial before keeping it." });
             if (trial.applied) return send(res, 409, { error: "This recording was already kept." });
             if (workspaceFingerprint(workspace) !== trial.fingerprint) return send(res, 409, { error: "Files changed after this trial. Upload the recording again." });
-            const result = applyTraceTrial(workspace, trial, { services: input.services, events: input.events });
+            const result = applyTraceTrial(workspace, trial, { services: input.services, events: input.events, routes: input.routes });
             trial.applied = true;
             const generation = input.generate ? startJob(workspace, "write", trial) : null;
             return send(res, 201, { ...result, setup: setup(workspace, publicSetupFrom), run: generation ? { runId: generation.id, mode: generation.mode } : null });

@@ -102,13 +102,21 @@ function Logs({ events }: { events: RunEvent[] }) {
  * The list of ids is offered rather than enforced: the verifier says when
  * the id names nothing, on the next run.
  */
+type MappingKind = "service" | "event" | "route";
+
+const PLACEHOLDER: Record<MappingKind, string> = {
+  service: "context.service",
+  event: "context.service.aggregate.Event",
+  route: "operation name, as the interface declares it",
+};
+
 function MappingRow({
   kind,
   name,
   value,
   onChange,
 }: {
-  kind: "service" | "event";
+  kind: MappingKind;
   name: string;
   value: string;
   onChange: (next: string) => void;
@@ -117,12 +125,12 @@ function MappingRow({
   return (
     <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
       <span className="mono truncate text-ink" title={name}>{name}</span>
-      <span className="mono text-faint">is {kind}</span>
+      <span className="mono text-faint">{kind === "route" ? "answers on operation" : `is ${kind}`}</span>
       <input
         className="mono w-full rounded-control border border-line bg-canvas px-2.5 py-1.5 text-ink"
         list={listId}
         value={value}
-        placeholder={kind === "service" ? "context.service" : "context.service.aggregate.Event"}
+        placeholder={PLACEHOLDER[kind]}
         onChange={(e) => onChange(e.target.value)}
         aria-label={`Catalog ${kind} for ${name}`}
       />
@@ -142,10 +150,20 @@ function IdLists() {
       ),
     [],
   );
+  const operations = useMemo(
+    () =>
+      [...new Set(
+        catalog.contexts.flatMap((c) =>
+          c.services.flatMap((s) => s.provides.flatMap((p) => p.methods.map((m) => m.name))),
+        ),
+      )].sort(),
+    [],
+  );
   return (
     <>
       <datalist id="trace-service-ids">{services.map((id) => <option key={id} value={id} />)}</datalist>
       <datalist id="trace-event-ids">{events.map((id) => <option key={id} value={id} />)}</datalist>
+      <datalist id="trace-route-ids">{operations.map((name) => <option key={name} value={name} />)}</datalist>
     </>
   );
 }
@@ -199,6 +217,7 @@ export function TraceTrialPanel({
   const { events: writeEvents, ended: writeEnded } = useRunEvents(writeRunId);
   const [services, setServices] = useState<Mapping>({});
   const [events, setEvents] = useState<Mapping>({});
+  const [routes, setRoutes] = useState<Mapping>({});
   const [busy, setBusy] = useState(false);
   const [kept, setKept] = useState<{ recording: string; manifestChanged: boolean } | null>(null);
 
@@ -215,14 +234,14 @@ export function TraceTrialPanel({
   const unplaced = useMemo(() => {
     const seen = new Set<string>();
     return (trial?.warnings ?? []).filter((w) => {
-      if ((w.kind !== "service" && w.kind !== "event") || !w.name) return false;
+      if ((w.kind !== "service" && w.kind !== "event" && w.kind !== "route") || !w.name) return false;
       const key = `${w.kind}:${w.name}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
   }, [trial]);
-  const others = (trial?.warnings ?? []).filter((w) => w.kind !== "service" && w.kind !== "event");
+  const others = (trial?.warnings ?? []).filter((w) => w.kind !== "service" && w.kind !== "event" && w.kind !== "route");
   const shown = (trial?.flows ?? []).filter((f) => f.inRecording);
   const rest = (trial?.flows ?? []).filter((f) => !f.inRecording);
 
@@ -230,7 +249,7 @@ export function TraceTrialPanel({
     setBusy(true);
     try {
       const clean = (m: Mapping) => Object.fromEntries(Object.entries(m).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()]));
-      const result = await applyTraceTrial(runId, { generate, services: clean(services), events: clean(events) });
+      const result = await applyTraceTrial(runId, { generate, services: clean(services), events: clean(events), routes: clean(routes) });
       setKept({ recording: result.recording, manifestChanged: result.manifestChanged });
       if (result.run) {
         onWriteStarted?.(result.run.runId);
@@ -354,14 +373,16 @@ export function TraceTrialPanel({
         <section>
           <div className="label mb-1.5">names the verifier could not place · {unplaced.length}</div>
           <p className="mb-2 text-muted">
-            Say which catalog entry each one is and the mapping is kept in the verify step for every run after this one. Leave one empty to keep the spans it names out.
+            Say which catalog entry each one is and the mapping is kept in the verify step for every run after this one. Leave one empty to keep the spans it names out; a route left empty opens a flow of its own, written down as it was seen.
           </p>
           <div className="flex flex-col gap-2">
             {unplaced.map((w) =>
               w.kind === "service" ? (
                 <MappingRow key={`s:${w.name}`} kind="service" name={w.name!} value={services[w.name!] ?? trial.mappings.services[w.name!] ?? ""} onChange={(v) => setServices((m) => ({ ...m, [w.name!]: v }))} />
-              ) : (
+              ) : w.kind === "event" ? (
                 <MappingRow key={`e:${w.name}`} kind="event" name={w.name!} value={events[w.name!] ?? trial.mappings.events[w.name!] ?? ""} onChange={(v) => setEvents((m) => ({ ...m, [w.name!]: v }))} />
+              ) : (
+                <MappingRow key={`r:${w.name}`} kind="route" name={w.name!} value={routes[w.name!] ?? trial.mappings.routes?.[w.name!] ?? ""} onChange={(v) => setRoutes((m) => ({ ...m, [w.name!]: v }))} />
               ),
             )}
           </div>

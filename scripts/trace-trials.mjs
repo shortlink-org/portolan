@@ -48,10 +48,11 @@ export function manifestWithTraceStep(manifest, project) {
 }
 
 /** The step with the names the page was told to map, merged over what it had. */
-export function stepWithMappings(step, { services, events } = {}) {
+export function stepWithMappings(step, { services, events, routes } = {}) {
   const options = { ...step.options };
   if (services && Object.keys(services).length) options.services = { ...options.services, ...services };
   if (events && Object.keys(events).length) options.events = { ...options.events, ...events };
+  if (routes && Object.keys(routes).length) options.routes = { ...options.routes, ...routes };
   return { ...step, options };
 }
 
@@ -170,6 +171,6 @@ export function summarizeTraceTrial(snapshot, trial, events) {
     spans: trial.spans,
     flows,
     warnings,
-    mappings: { services: step.options?.services ?? {}, events: step.options?.events ?? {} },
+    mappings: { services: step.options?.services ?? {}, events: step.options?.events ?? {}, routes: step.options?.routes ?? {} },
   };
 }

@@ -1080,7 +1080,12 @@ recording showed before anything is written (portolan.0014).
 `service.name` is matched to the one service whose slug it is, `event.name` to
 the one event whose `wire.name` it is, or failing that to the one event of the
 publisher's with that last segment; `services` and `events` in the options say
-otherwise where an estate's names differ. A publish span whose
+otherwise where an estate's names differ. A server span's route is matched to
+the operation whose `http` verb and path template it fits; `routes` in the
+options names an operation for a route the estate spells another way - a
+prefix a gateway adds, a path the document writes differently - as
+`{ "POST /api/v1/sessions": "login" }`, and the name has to be one the
+service's interface declares. A publish span whose
 `messaging.destination.name` is not the event's `wire.channel` is a warning:
 the event went out, but not where the code says it does.
 

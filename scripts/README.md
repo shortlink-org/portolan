@@ -37,7 +37,9 @@ and validates the union. Nothing here draws anything.
 - Read a plugin's stdout for anything but the one message, or its stderr for
   anything but notes; a warning is kept beside the step in the build report.
 - Draw the C4 model: `gen-likec4.mjs` writes `likec4/` from the same merged
-  catalog, and the site draws.
+  catalog, and the site draws. It runs as the last step of `gen.mjs` -
+  written, or in check mode held to the catalog like every generated page -
+  and on its own before `dev`.
 
 ## Files
 

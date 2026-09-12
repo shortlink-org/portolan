@@ -42,8 +42,8 @@ describe("the step that reads a project's recordings", () => {
 
   it("takes the names the page mapped over what it had", () => {
     const step = { plugin: "otel", in: "x", out: "y", options: { traces: ["a"], events: { "a.B": "x.y.B" } } };
-    const mapped = stepWithMappings(step, { services: { "auth-api": "auth.auth" }, events: { "a.C": "x.y.C" } });
-    expect(mapped.options).toEqual({ traces: ["a"], events: { "a.B": "x.y.B", "a.C": "x.y.C" }, services: { "auth-api": "auth.auth" } });
+    const mapped = stepWithMappings(step, { services: { "auth-api": "auth.auth" }, events: { "a.C": "x.y.C" }, routes: { "POST /api/v1/sessions": "login" } });
+    expect(mapped.options).toEqual({ traces: ["a"], events: { "a.B": "x.y.B", "a.C": "x.y.C" }, services: { "auth-api": "auth.auth" }, routes: { "POST /api/v1/sessions": "login" } });
     expect(stepWithMappings(step, {})).toEqual(step);
   });
 });
@@ -125,7 +125,7 @@ describe("what a trial run said about the recording", () => {
 
     const summary = summarizeTraceTrial(snapshot, { projectId: "auth", root: "examples/auth", recording, step, stepAdded: true, stepChange: "widened", spans: 7 }, events);
 
-    expect(summary).toMatchObject({ project: "auth", recording, stepAdded: true, stepChange: "widened", status: "warning", spans: 7, mappings: { services: { "auth-api": "auth.auth" }, events: {} } });
+    expect(summary).toMatchObject({ project: "auth", recording, stepAdded: true, stepChange: "widened", status: "warning", spans: 7, mappings: { services: { "auth-api": "auth.auth" }, events: {}, routes: {} } });
     expect(summary.warnings).toEqual([{ kind: "service", name: "risk", message: events[1].warnings[0] }]);
     expect(summary.flows.map((flow) => flow.slug)).toEqual(["auth-login", "observed-auth-get-v1-health"]);
     expect(summary.flows[0]).toMatchObject({ kind: "declared", inRecording: true, traces: 1, verified: 1, unresolved: 1, added: 1, shown: 2, steps: 3, examples: 1 });

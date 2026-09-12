@@ -35,6 +35,14 @@ type Options struct {
 	// name is not the event's name in the model.
 	Events map[string]string `json:"events,omitempty"`
 
+	// Routes maps a route a server span answers on - "GET /api/v1/sessions",
+	// the verb and the http.route - to the name of the operation the
+	// service's interface declares for it, for an estate where the two do
+	// not line up: a prefix the gateway adds, a path the document spells
+	// another way. Without a line here a route is matched to an operation
+	// by verb and path shape.
+	Routes map[string]string `json:"routes,omitempty"`
+
 	// Examples is how many recordings a flow keeps as examples of itself
 	// running: the ones that show the most of it, earliest first. Five when
 	// unset; zero keeps none.

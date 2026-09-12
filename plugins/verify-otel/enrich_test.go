@@ -252,6 +252,53 @@ func TestARecordingIsKeptAsAnExampleWithoutAnybodysData(t *testing.T) {
 	}
 }
 
+// A route the estate spells differently from its document is named to the
+// operation under `routes`, and then opens the operation's flow like any
+// other; a name the service does not declare is not taken.
+func TestARouteNamedInTheManifestOpensItsOperationsFlow(t *testing.T) {
+	gateway := `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"auth"}}]},"scopeSpans":[{"spans":[
+ {"traceId":"t7","spanId":"g1","name":"POST /api/v1/sessions","kind":2,"startTimeUnixNano":"700","attributes":[{"key":"http.route","value":{"stringValue":"/api/v1/sessions"}},{"key":"http.request.method","value":{"stringValue":"POST"}}]},
+ {"traceId":"t7","spanId":"g2","parentSpanId":"g1","name":"publish auth.SessionStarted","kind":4,"startTimeUnixNano":"710","attributes":[{"key":"event.name","value":{"stringValue":"auth.SessionStarted"}}]}
+]}]}]}`
+
+	unnamed, resp := runVerify(t, gateway, Options{})
+	if _, observed := findFlow(unnamed, "observed-auth-post-api-v1-sessions"); !observed {
+		t.Errorf("without a name the route opens an observed flow: %v", slugs(unnamed))
+	}
+	var asked bool
+	for _, d := range resp.Warnings() {
+		if strings.Contains(d.Message, "POST /api/v1/sessions") && strings.Contains(d.Message, "`routes`") {
+			asked = true
+		}
+	}
+	if !asked {
+		t.Errorf("the warning should say how to name the route: %+v", resp.Warnings())
+	}
+
+	named, _ := runVerify(t, gateway, Options{Routes: map[string]string{"POST /api/v1/sessions": "login"}})
+	if _, observed := findFlow(named, "observed-auth-post-api-v1-sessions"); observed {
+		t.Errorf("named to login, the route should open the login flow, not an observed one: %v", slugs(named))
+	}
+	if got := statuses(flowNamed(t, named, "auth-login")); got["s1"] != catalog.StatusVerified || got["s6"] != catalog.StatusVerified {
+		t.Errorf("login = %v", got)
+	}
+
+	typo, _ := runVerify(t, gateway, Options{Routes: map[string]string{"POST /api/v1/sessions": "logIn"}})
+	if _, observed := findFlow(typo, "observed-auth-post-api-v1-sessions"); !observed {
+		t.Errorf("a name the service does not declare is not taken: %v", slugs(typo))
+	}
+}
+
+func findFlow(cat catalog.Catalog, slug string) (catalog.Flow, bool) {
+	for _, f := range cat.Flows {
+		if f.Slug == slug {
+			return f, true
+		}
+	}
+
+	return catalog.Flow{}, false
+}
+
 // The manifest says how many examples a flow keeps; zero is none.
 func TestTheManifestSaysHowManyExamplesToKeep(t *testing.T) {
 	one := 1

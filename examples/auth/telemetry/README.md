@@ -1,7 +1,11 @@
 # Telemetry
 
 `traces.jsonl` is a recording of this service running: every endpoint driven
-once, plus the password change that makes the policy run, captured by an
+once, plus the password change that makes the policy run, and then the
+refusals - a wrong current password, a wrong password at login, the failures
+that lock an account, a login against the locked account, an address nobody
+registered - so that where a request can part from its happy path the
+recording shows both ways and the catalog draws the branch. Captured by an
 OpenTelemetry collector as OTLP JSON. It is what the catalog is verified
 against - a hop in a flow is `verified` when this recording shows the same
 message going the same way, and `declared` when only the code says so.

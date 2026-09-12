@@ -36,6 +36,7 @@ import {
 } from "./output-path.mjs";
 import { builtinPlugin } from "./builtin-plugins.mjs";
 import { diagnoseWarnings } from "./warning-policy.mjs";
+import { likec4Sources } from "./gen-likec4.mjs";
 
 const PORTOLAN_VERSION = "0.1.0";
 const EVENTS = process.env.PORTOLAN_EVENTS === "1";
@@ -62,6 +63,10 @@ function event(value) {
 // writes the same files under its new key, and a file removed and written back
 // in one run is drift that never happened.
 const MANIFEST = ".portolan-manifest";
+
+// The one step no manifest declares: the app's own pictures, generated from
+// every source, keyed by its own name in likec4/.portolan-manifest.
+const LIKEC4_STEP = { plugin: "likec4", out: "likec4", key: "likec4" };
 
 const check = process.argv.includes("--check");
 const manifestSha256 = createHash("sha256")
@@ -194,6 +199,15 @@ async function generate() {
     { inputs: generated.sources.map((source) => source.path), excludes: [] });
   }
 
+  // The LikeC4 sources are pages of the catalog like any the generators
+  // write: committed, reviewed as a diff, and held to the catalog by the
+  // check. They used to be written only before the dev server started,
+  // which left a flow a verifier had just changed with a picture of the
+  // flow before - and a run from the page with no picture of a new flow.
+  await executeStep("generate", LIKEC4_STEP, "likec4 → likec4", async () => ({
+    files: await likec4Sources({ catalog, manifest }),
+  }), { inputs: sources.map((source) => source.path), excludes: [] });
+
   sweepAll();
 }
 
@@ -206,6 +220,17 @@ function sweepAll() {
       drifted = summarise(`${out}: steps no longer in portolan.json`, [], changes) || drifted;
     }
   }
+}
+
+/**
+ * The keys of the steps that write into a directory this run: the manifest's,
+ * and the likec4 step's in its own directory, which no manifest declares and
+ * the sweep would otherwise take for a step that was dropped.
+ */
+function liveKeysIn(out) {
+  const live = new Set(keys.liveIn(out));
+  if (out === LIKEC4_STEP.out) live.add(LIKEC4_STEP.key);
+  return live;
 }
 
 /** Every file the sweep would remove, in every directory a step writes into. */
@@ -230,7 +255,7 @@ function staleAll() {
  */
 function staleIn(out) {
   const listing = previous(out);
-  const live = keys.liveIn(out);
+  const live = liveKeysIn(out);
   const dead = Object.keys(listing).filter((key) => !live.has(key));
   if (dead.length === 0) return [];
 
@@ -267,7 +292,7 @@ async function executeStep(phase, step, label, work, reads) {
       project: projectForStep(step),
       phase,
     });
-    const changes = apply(files, step.out, keys.keyOf(step), check);
+    const changes = apply(files, step.out, step.key ?? keys.keyOf(step), check);
     const since = changes.length > 0 ? whyChanged(step, files.map((file) => join(step.out, file.name)), reads) : null;
     const changed = summarise(label, files, changes, diagnostics, since);
     drifted = changed || drifted;
@@ -436,6 +461,8 @@ function whyChanged(step, outputs, reads) {
 
 /** Whether the manifest at `commit` told this step the same thing it is told now. */
 function stepEntryChanged(commit, step) {
+  // A step no manifest declares has no entry to have changed.
+  if (step.key) return false;
   let then;
   try {
     then = JSON.parse(fileAt(process.cwd(), commit, "portolan.json"));
@@ -552,7 +579,7 @@ function apply(files, out, key, checkOnly) {
 function sweep(out, checkOnly) {
   const changes = [];
   const listing = previous(out);
-  const live = keys.liveIn(out);
+  const live = liveKeysIn(out);
   const dead = Object.keys(listing).filter((key) => !live.has(key));
   if (dead.length === 0) return changes;
 

@@ -2052,6 +2052,18 @@
             }
           ]
         },
+        "routes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which operation a route a server span answers on belongs to - the verb and the http.route, to the operation's name in the service's interface - for an estate where the two do not line up: a prefix a gateway adds, a path the document spells another way. Without a line here a route is matched by verb and path shape.",
+          "examples": [
+            {
+              "POST /api/v1/sessions": "login"
+            }
+          ]
+        },
         "examples": {
           "type": "integer",
           "minimum": 0,

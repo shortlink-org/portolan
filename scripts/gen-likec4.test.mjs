@@ -6,6 +6,8 @@ import { execFileSync } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
 
+import { likec4Sources } from "./gen-likec4.mjs";
+
 const generator = fileURLToPath(new URL("./gen-likec4.mjs", import.meta.url));
 const likec4 = join(
   dirname(dirname(generator)),
@@ -41,6 +43,18 @@ function generate(catalog) {
     deployment: readFileSync(join(root, "likec4", "deployment.c4"), "utf8"),
   };
 }
+
+describe("the LikeC4 generator as a step of gen", () => {
+  it("hands back the four sources as files rather than writing them, so gen can settle them", async () => {
+    const files = await likec4Sources({
+      catalog: { generatedAt: "2026-09-06T00:00:00Z", commit: "0", adrs: [], defs: {}, contexts: [], flows: [] },
+      manifest: { sources: ["data/*.json"] },
+    });
+    expect(files.map((file) => file.name)).toEqual(["deployment.c4", "spec.c4", "model.c4", "views.c4"]);
+    expect(files.find((file) => file.name === "views.c4")?.contents).toContain("view landscape");
+    expect(files.every((file) => file.contents.endsWith("\n"))).toBe(true);
+  });
+});
 
 describe("the LikeC4 generator", () => {
   it("emits valid fallback views for an empty catalog", () => {
