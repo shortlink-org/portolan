@@ -26,6 +26,8 @@ import { useProblemEvaluation } from "../../lib/use-problems";
 import { paths } from "../../routes";
 
 const FIELD = "mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
+// A control that takes its own width: a filter beside other filters.
+const CONTROL = "mono rounded-control border border-line bg-canvas px-3 py-1 text-ink outline-none focus:border-accent";
 const SUBJECT_NAMES = Object.keys(SUBJECTS) as RuleSubject[];
 
 export function RulesSettings({ local }: { local: boolean }) {
@@ -72,8 +74,29 @@ export function RulesSettings({ local }: { local: boolean }) {
     }
   }
 
-  const builtin = rules.filter((rule) => rule.builtin);
-  const custom = rules.filter((rule) => !rule.builtin);
+  // The filters narrow what is listed, never what is in force: a rule hidden
+  // here still runs. They are the page's own state and are not written
+  // anywhere - a filter is how a reader looks, not a fact about the estate.
+  const [query, setQuery] = useState("");
+  const [over, setOver] = useState<RuleSubject | "all">("all");
+  const [severity, setSeverity] = useState<RuleSeverity | "all">("all");
+  const [state, setState] = useState<"all" | "on" | "off">("all");
+  const [rows, setRows] = useState<"all" | "with" | "without">("all");
+  const needle = query.trim().toLowerCase();
+  const shown = rules.filter((rule) => {
+    const count = matches.get(rule.id) ?? 0;
+    return (
+      (over === "all" || rule.over === over) &&
+      (severity === "all" || rule.severity === severity) &&
+      (state === "all" || (state === "on") === rule.enabled) &&
+      (rows === "all" || (rows === "with") === count > 0) &&
+      (!needle || rule.id.includes(needle) || rule.title.toLowerCase().includes(needle) || rule.note.toLowerCase().includes(needle))
+    );
+  });
+  const filtered = shown.length !== rules.length;
+  const builtin = shown.filter((rule) => rule.builtin);
+  const custom = shown.filter((rule) => !rule.builtin);
+  const customTotal = rules.filter((rule) => !rule.builtin).length;
   const off = rules.filter((rule) => !rule.enabled).length;
   const canWrite = local && revision !== null && !busy;
 
@@ -93,7 +116,7 @@ export function RulesSettings({ local }: { local: boolean }) {
             <span className="tnum text-ink">{rules.length}</span> {plural(rules.length, "rule")}
           </span>
           <span>
-            <span className="tnum text-ink">{custom.length}</span> yours
+            <span className="tnum text-ink">{customTotal}</span> yours
           </span>
           {off > 0 ? (
             <span>
@@ -108,8 +131,62 @@ export function RulesSettings({ local }: { local: boolean }) {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          aria-label="Find a rule"
+          className={`${CONTROL} min-w-48`}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="find by id or title"
+          spellCheck={false}
+        />
+        <select aria-label="Filter rules by subject" className={`${CONTROL}`} value={over} onChange={(event) => setOver(event.target.value as RuleSubject | "all")}>
+          <option value="all">all subjects</option>
+          {SUBJECT_NAMES.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <select aria-label="Filter rules by severity" className={`${CONTROL}`} value={severity} onChange={(event) => setSeverity(event.target.value as RuleSeverity | "all")}>
+          <option value="all">all severities</option>
+          <option value="error">error</option>
+          <option value="warning">warning</option>
+        </select>
+        <select aria-label="Filter rules by switch" className={`${CONTROL}`} value={state} onChange={(event) => setState(event.target.value as "all" | "on" | "off")}>
+          <option value="all">on and off</option>
+          <option value="on">on</option>
+          <option value="off">off</option>
+        </select>
+        <select aria-label="Filter rules by rows" className={`${CONTROL}`} value={rows} onChange={(event) => setRows(event.target.value as "all" | "with" | "without")}>
+          <option value="all">with and without rows</option>
+          <option value="with">with rows</option>
+          <option value="without">without rows</option>
+        </select>
+        {filtered ? (
+          <span className="mono text-muted">
+            {shown.length} of {rules.length}
+            <button
+              type="button"
+              className="tbtn ml-2 py-0.5"
+              onClick={() => {
+                setQuery("");
+                setOver("all");
+                setSeverity("all");
+                setState("all");
+                setRows("all");
+              }}
+            >
+              clear
+            </button>
+          </span>
+        ) : null}
+      </div>
+
       <div>
         <div className="label mb-2">built in</div>
+        {builtin.length === 0 ? <p className="mono text-muted">No built-in rule matches the filter.</p> : null}
         <div className="space-y-1">
           {builtin.map((rule) => (
             <RuleRow
@@ -144,9 +221,11 @@ export function RulesSettings({ local }: { local: boolean }) {
         ) : null}
         {custom.length === 0 && editing !== "new" ? (
           <p className="mono text-muted">
-            {local
-              ? "No rules of your own yet. A rule is one subject, a condition and a message; the built-in rows above show the shape."
-              : "portolan.json declares no rules of its own."}
+            {customTotal > 0
+              ? "No rule of yours matches the filter."
+              : local
+                ? "No rules of your own yet. A rule is one subject, a condition and a message; the built-in rows above show the shape."
+                : "portolan.json declares no rules of its own."}
           </p>
         ) : null}
         <div className="space-y-1">
@@ -336,7 +415,7 @@ function RuleRow({
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2">
                 <span className="label">severity</span>
-                <select className={`${FIELD} w-auto py-1`} value={rule.severity} onChange={(event) => onSeverity(event.target.value as RuleSeverity)}>
+                <select className={`${CONTROL}`} value={rule.severity} onChange={(event) => onSeverity(event.target.value as RuleSeverity)}>
                   <option value="error">error</option>
                   <option value="warning">warning</option>
                 </select>
