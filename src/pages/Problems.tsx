@@ -99,20 +99,22 @@ export function Problems() {
 
   return (
     <div className="h-full overflow-y-auto p-gutter">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
+      {/* One line: the name, the two counts as the filters they are, and
+          how much of this is the rules' doing. Two counts, not a score. */}
+      <div className="flex max-w-table flex-wrap items-center gap-x-3 gap-y-2">
         <h1 className="text-lg font-semibold">Problems</h1>
-        <span className="mono text-muted" title={absoluteTime(catalog.generatedAt)}>
-          last checked {relativeTime(catalog.generatedAt)}
+        {all.length > 0 ? (
+          <div className="seg inline-flex" role="group" aria-label="Filter by severity">
+            <SeverityPill count={errors} label="error" on={severity === "error"} onClick={() => set("severity", severity === "error" ? "all" : "error")} />
+            <SeverityPill count={warnings} label="warning" on={severity === "warning"} onClick={() => set("severity", severity === "warning" ? "all" : "warning")} />
+          </div>
+        ) : null}
+        <Link to={paths.settingsRules()} className="mono rounded-control text-muted hover:text-ink hover:underline" title="The rules on the Settings page">
+          {firing} of {rules.length} {plural(rules.length, "rule")} firing{off > 0 ? ` · ${off} off` : ""}
+        </Link>
+        <span className="mono ml-auto text-faint" title={absoluteTime(catalog.generatedAt)}>
+          checked {relativeTime(catalog.generatedAt)}
         </span>
-      </div>
-
-      {/* Two counts, not a score; and the two numbers that say how much of
-          this is the rules' doing - how many are firing, how many are off. */}
-      <div className="mt-4 grid max-w-table grid-cols-2 gap-grid sm:grid-cols-4">
-        <Stat value={errors} label={plural(errors, "error")} tone={errors > 0 ? "error" : undefined} on={severity === "error"} onClick={() => set("severity", severity === "error" ? "all" : "error")} />
-        <Stat value={warnings} label={plural(warnings, "warning")} tone={warnings > 0 ? "warning" : undefined} on={severity === "warning"} onClick={() => set("severity", severity === "warning" ? "all" : "warning")} />
-        <Stat value={firing} label={`of ${rules.length} ${plural(rules.length, "rule")} firing`} to={paths.settingsRules()} />
-        <Stat value={off} label={`${plural(off, "rule")} switched off`} to={paths.settingsRules()} />
       </div>
 
       {failures.length > 0 ? (
@@ -150,6 +152,16 @@ export function Problems() {
                 spellCheck={false}
               />
             </label>
+            {filtered ? (
+              <span className="mono flex items-center gap-1.5 text-muted">
+                <span>
+                  <span className="tnum text-ink">{rows.length}</span> of {all.length}
+                </span>
+                <button type="button" className="tbtn py-0.5" onClick={clear} title="Clear every filter">
+                  <X size={12} aria-hidden /> clear
+                </button>
+              </span>
+            ) : null}
             {rulesShown.length > 1 ? (
               <select aria-label="Filter by rule" className={CONTROL} value={rulesShown.some((candidate) => candidate.id === rule) ? rule : "all"} onChange={(event) => set("rule", event.target.value)}>
                 <option value="all">all rules</option>
@@ -202,17 +214,6 @@ export function Problems() {
             </div>
           </div>
 
-          {filtered ? (
-            <div className="mono mt-2 flex max-w-table items-center gap-2 text-muted">
-              <span>
-                <span className="tnum text-ink">{rows.length}</span> of {all.length}
-              </span>
-              <button type="button" className="tbtn py-0.5" onClick={clear}>
-                <X size={12} aria-hidden /> clear
-              </button>
-            </div>
-          ) : null}
-
           {rows.length === 0 ? (
             <div className="mt-section max-w-table rounded-card border border-line px-4 py-6 text-center text-muted">
               Nothing matches. <button type="button" className="text-accent hover:underline" onClick={clear}>Clear the filters</button> to see all {all.length}.
@@ -228,25 +229,20 @@ export function Problems() {
   );
 }
 
-function Stat({ value, label, tone, to, on, onClick }: { value: number; label: string; tone?: "error" | "warning"; to?: string; on?: boolean; onClick?: () => void }) {
-  const colour = tone === "error" ? "text-unresolved" : tone === "warning" ? "text-declared" : "text-ink";
-  const body = (
-    <>
-      <span className={`tnum text-lg leading-none ${colour}`}>{value}</span>
-      <span className="mono mt-1 block text-muted">{label}</span>
-    </>
-  );
-  const className = `block w-full rounded-control border px-3 py-2 text-left ${on ? "border-accent bg-surface" : "border-line"}`;
-  if (to) {
-    return (
-      <Link to={to} className={`${className} hover:border-accent`}>
-        {body}
-      </Link>
-    );
-  }
+/** A count that is also the filter for what it counts: a member of the severity segment. */
+function SeverityPill({ count, label, on, onClick }: { count: number; label: "error" | "warning"; on: boolean; onClick: () => void }) {
+  const colour = label === "error" ? "var(--status-unresolved)" : "var(--status-declared)";
   return (
-    <button type="button" className={`${className} ${onClick && value > 0 ? "hover:border-accent" : "cursor-default"}`} aria-pressed={on} onClick={value > 0 ? onClick : undefined} title={value > 0 ? (on ? "Show all" : `Show only ${label}`) : undefined}>
-      {body}
+    <button
+      type="button"
+      aria-pressed={on}
+      className={`flex items-center gap-1.5 ${on ? "is-on" : ""}`}
+      onClick={onClick}
+      disabled={count === 0 && !on}
+      title={count === 0 ? `no ${plural(count, label)}` : on ? "Show all" : `Show only ${plural(count, label)}`}
+    >
+      <span aria-hidden className="size-1.5 rounded-[1px]" style={{ background: count > 0 ? colour : "var(--fg-faint)" }} />
+      <span className="tnum">{count}</span> {plural(count, label)}
     </button>
   );
 }
