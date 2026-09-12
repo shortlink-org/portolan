@@ -11,12 +11,14 @@ import { Link } from "react-router";
 import { catalog } from "../../data";
 import { useToastStore } from "../../app/toast";
 import { TraceTrialPanel } from "../../flow/TraceTrial";
+import { forgetTraceTrial, recallTraceTrial, rememberTraceTrial, sessionStore } from "../../flow/trace-trial-resume";
 import { plural } from "../../lib/format";
 import { startTraceTrial } from "../../lib/local-api";
 import type { SetupProject } from "../../lib/setup-info";
 import { paths } from "../../routes";
 
 const FIELD = "w-full rounded-control border border-line bg-canvas px-2.5 py-1.5 text-ink";
+const SCOPE = "settings";
 
 /** Every recording the catalog names, with the flows it is an example of. */
 function recordingsInCatalog() {
@@ -38,7 +40,10 @@ export function RecordingSettings({ local, projects }: { local: boolean; project
   const say = useToastStore((s) => s.say);
   const input = useRef<HTMLInputElement | null>(null);
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
-  const [runId, setRunId] = useState<string | null>(null);
+  // Picked back up from before a reload: keeping a recording reloads the
+  // page twice, and the panel outlives it.
+  const [resumed] = useState(() => recallTraceTrial(sessionStore(), SCOPE));
+  const [runId, setRunId] = useState<string | null>(resumed?.runId ?? null);
   const [busy, setBusy] = useState(false);
   const known = useMemo(recordingsInCatalog, []);
 
@@ -47,6 +52,7 @@ export function RecordingSettings({ local, projects }: { local: boolean; project
     setBusy(true);
     try {
       const started = await startTraceTrial(file, projectId);
+      rememberTraceTrial(sessionStore(), SCOPE, { runId: started.runId, writeRunId: null });
       setRunId(started.runId);
     } catch (cause) {
       say(cause instanceof Error ? cause.message : String(cause));
@@ -92,7 +98,13 @@ export function RecordingSettings({ local, projects }: { local: boolean; project
         )}
         {runId ? (
           <div className="mt-4 border-t border-line pt-4">
-            <TraceTrialPanel runId={runId} onDone={() => setRunId(null)} />
+            <TraceTrialPanel
+              key={runId}
+              runId={runId}
+              initialWriteRunId={resumed?.runId === runId ? resumed.writeRunId : null}
+              onWriteStarted={(writeRunId) => rememberTraceTrial(sessionStore(), SCOPE, { runId, writeRunId })}
+              onDone={() => { forgetTraceTrial(sessionStore()); setRunId(null); }}
+            />
           </div>
         ) : null}
       </div>

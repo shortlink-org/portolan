@@ -20,6 +20,7 @@ import { projectForFlow, projectsForFlow } from "../lib/trace-project";
 import { paths } from "../routes";
 import { formatMs, stepsShownBy } from "./examples";
 import { TraceTrialPanel } from "./TraceTrial";
+import { forgetTraceTrial, recallTraceTrial, rememberTraceTrial, sessionStore } from "./trace-trial-resume";
 
 function shortRecording(recording: string): string {
   const parts = recording.split("/");
@@ -47,8 +48,19 @@ export function Recordings({
   const activeRun = status.data?.activeRun ?? null;
   const say = useToastStore((s) => s.say);
   const input = useRef<HTMLInputElement | null>(null);
-  const [runId, setRunId] = useState<string | null>(null);
+  // Picked back up from before a reload, when this page was watching one:
+  // keeping a recording reloads the page twice, and the dialog outlives it.
+  const [resumed] = useState(() => recallTraceTrial(sessionStore(), flow.slug));
+  const [runId, setRunId] = useState<string | null>(resumed?.runId ?? null);
   const [busy, setBusy] = useState(false);
+  const watch = (id: string) => {
+    rememberTraceTrial(sessionStore(), flow.slug, { runId: id, writeRunId: null });
+    setRunId(id);
+  };
+  const done = () => {
+    forgetTraceTrial(sessionStore());
+    setRunId(null);
+  };
   const examples = flow.examples ?? [];
   const project = local ? projectForFlow(projects, flow) : null;
   const candidates = local ? projectsForFlow(projects, flow) : [];
@@ -60,7 +72,7 @@ export function Recordings({
     setBusy(true);
     try {
       const started = await startTraceTrial(file, target);
-      setRunId(started.runId);
+      watch(started.runId);
     } catch (cause) {
       say(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -140,7 +152,18 @@ export function Recordings({
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {runId ? <TraceTrialPanel runId={runId} onDone={() => setRunId(null)} /> : null}
+          {runId ? (
+            /* Keyed by the run: a dialog closing on one run and opening on
+               the next within the exit animation must not hand the next run
+               the state of the one before. */
+            <TraceTrialPanel
+              key={runId}
+              runId={runId}
+              initialWriteRunId={resumed?.runId === runId ? resumed.writeRunId : null}
+              onWriteStarted={(writeRunId) => rememberTraceTrial(sessionStore(), flow.slug, { runId, writeRunId })}
+              onDone={done}
+            />
+          ) : null}
         </div>
       </Modal>
     </section>

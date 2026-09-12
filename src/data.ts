@@ -63,6 +63,22 @@ export const activeCatalogProfile = catalogProfileNamed(
 
 export const activeCatalogDocs = catalogDocs(manifestJson, activeCatalogProfile.id, import.meta.env.BASE_URL);
 
+// The manifest is imported, so a change to it would reload the page - and
+// the page changes it: keeping a recording widens a verify step, adding a
+// project appends one. Neither touches what this module derived from it (the
+// profiles: which sources make which catalog), and in local mode the setup
+// itself is read from the server, not from here. So the update is taken
+// without a reload unless the profiles did change, in which case the reload
+// is the right answer and is asked for.
+if (import.meta.hot) {
+  const profileKey = (m: CatalogProfileManifest & { sources?: string[] }) =>
+    JSON.stringify(profilesFromManifest(m).map((p) => [p.id, p.sources, p.contexts]));
+  import.meta.hot.accept("../portolan.json", (next) => {
+    const incoming = (next as { default?: CatalogProfileManifest & { sources?: string[] } } | undefined)?.default;
+    if (!incoming || profileKey(incoming) !== profileKey(manifest)) import.meta.hot?.invalidate();
+  });
+}
+
 /**
  * Where sources are looked for. The patterns are written out because
  * import.meta.glob resolves at build time and needs literals - and because

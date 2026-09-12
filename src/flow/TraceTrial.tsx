@@ -24,18 +24,41 @@ import { paths } from "../routes";
 
 type Mapping = Record<string, string>;
 
-function useRunEvents(runId: string | null): RunEvent[] {
+/**
+ * The events of a run, as they arrive. The server keeps every run's events
+ * and replays them to a late subscriber, so a run picked back up after a
+ * reload reads the same as one watched from the start. `ended` says the
+ * stream closed: with a `process-finished` in it the run is over, without
+ * one the server no longer knows the run.
+ */
+function useRunEvents(runId: string | null): { events: RunEvent[]; ended: boolean } {
   const [events, setEvents] = useState<RunEvent[]>([]);
+  const [ended, setEnded] = useState(false);
   useEffect(() => {
     setEvents([]);
+    setEnded(false);
     if (!runId) return;
     return subscribeToRun(
       runId,
       (event) => setEvents((current) => [...current, event]),
-      () => {},
+      () => setEnded(true),
     );
   }, [runId]);
-  return events;
+  return { events, ended };
+}
+
+function Lost({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start gap-2 text-ink">
+        <CircleAlert size={16} className="mt-0.5 shrink-0 text-muted" />
+        <div>The server no longer knows this run - it was restarted, or the run was cancelled. Nothing more can be said about it here.</div>
+      </div>
+      <div className="flex justify-end">
+        <button type="button" className="tbtn" onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
 }
 
 function Progress({ events, label }: { events: RunEvent[]; label: string }) {
@@ -158,16 +181,22 @@ function FlowRow({ flow }: { flow: TraceTrial["flows"][number] }) {
  */
 export function TraceTrialPanel({
   runId,
+  initialWriteRunId = null,
+  onWriteStarted,
   onDone,
 }: {
   runId: string;
+  /** The write run already started by keeping this recording, when the page comes back to it. */
+  initialWriteRunId?: string | null;
+  /** Keeping the recording started a write run: the page remembers it for a reload. */
+  onWriteStarted?: (writeRunId: string) => void;
   /** The trial is over: kept and regenerated, kept, or discarded. */
   onDone: (outcome: "kept" | "discarded") => void;
 }) {
   const say = useToastStore((s) => s.say);
-  const trialEvents = useRunEvents(runId);
-  const [writeRunId, setWriteRunId] = useState<string | null>(null);
-  const writeEvents = useRunEvents(writeRunId);
+  const { events: trialEvents, ended: trialEnded } = useRunEvents(runId);
+  const [writeRunId, setWriteRunId] = useState<string | null>(initialWriteRunId);
+  const { events: writeEvents, ended: writeEnded } = useRunEvents(writeRunId);
   const [services, setServices] = useState<Mapping>({});
   const [events, setEvents] = useState<Mapping>({});
   const [busy, setBusy] = useState(false);
@@ -203,8 +232,10 @@ export function TraceTrialPanel({
       const clean = (m: Mapping) => Object.fromEntries(Object.entries(m).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()]));
       const result = await applyTraceTrial(runId, { generate, services: clean(services), events: clean(events) });
       setKept({ recording: result.recording, manifestChanged: result.manifestChanged });
-      if (result.run) setWriteRunId(result.run.runId);
-      else {
+      if (result.run) {
+        onWriteStarted?.(result.run.runId);
+        setWriteRunId(result.run.runId);
+      } else {
         say(`${result.recording} kept`);
         onDone("kept");
       }
@@ -229,6 +260,7 @@ export function TraceTrialPanel({
 
   // The write run: the recording is on disk, the catalog is being written.
   if (writeRunId) {
+    if (writeEnded && !writeFinished) return <Lost onClose={() => onDone("kept")} />;
     return (
       <div className="flex flex-col gap-3">
         {writeFinished ? (
@@ -238,7 +270,7 @@ export function TraceTrialPanel({
               <div className="font-medium text-ink">
                 {writeFinished.status === "ok" ? "Recording kept and documentation regenerated" : `Regeneration ${writeFinished.status}`}
               </div>
-              <div className="mono mt-0.5 text-muted">{kept?.recording}</div>
+              <div className="mono mt-0.5 text-muted">{kept?.recording ?? trial?.recording}</div>
             </div>
           </div>
         ) : (
@@ -257,6 +289,7 @@ export function TraceTrialPanel({
   }
 
   if (!trialFinished) {
+    if (trialEnded) return <Lost onClose={() => onDone("discarded")} />;
     return (
       <div className="flex flex-col gap-3">
         <Progress events={trialEvents} label="reading the recording against the catalog…" />
