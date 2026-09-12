@@ -1,13 +1,18 @@
 // The recordings a flow has been seen running in, and the way to add one.
 //
 // A recording is an example of the flow: which steps ran, how long each took,
-// what the spans were called. Choosing one lights the steps it showed on the
-// picture; the step's own panel says what the span carried. In local mode the
-// same box takes a new recording, runs the generator over a copy with it in
-// place, and shows what changed before anything is written.
+// what the spans were called. It is evidence, so it sits in the evidence row
+// as a chip - "recordings · 2" - and opens behind it, the way the catalog
+// stamp does: the rail is for the steps, and a list that is read once and
+// then left alone should not take a row of it for good. Choosing a recording
+// lights the steps it showed on the picture; the step's own panel says what
+// the span carried. In local mode the same panel takes a new recording, runs
+// the generator over a copy with it in place, and shows what changed before
+// anything is written.
 
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { Disc3, LoaderCircle, Upload } from "lucide-react";
 import { Link } from "react-router";
 import type { Flow, FlowExample } from "../catalog";
@@ -27,7 +32,7 @@ function shortRecording(recording: string): string {
   return parts.length > 2 ? `…/${parts.slice(-2).join("/")}` : recording;
 }
 
-export function Recordings({
+export function RecordingsChip({
   flow,
   exampleId,
   onExample,
@@ -66,6 +71,7 @@ export function Recordings({
   const candidates = local ? projectsForFlow(projects, flow) : [];
   const [chosenProject, setChosenProject] = useState<string>("");
   const target = project?.id ?? chosenProject;
+  const lit = exampleId ? examples.find((e) => e.id === exampleId) : undefined;
 
   async function upload(file: File) {
     if (!target) return;
@@ -83,65 +89,94 @@ export function Recordings({
 
   if (examples.length === 0 && !local) return null;
 
-  return (
-    <section className="border-b border-line px-3 py-2" aria-label="Recordings">
-      <div className="flex items-center gap-2">
-        <span className="label flex items-center gap-1 text-faint">
-          <Disc3 size={12} aria-hidden /> recordings
-        </span>
-        <span className="mono text-muted">{examples.length}</span>
-        {activeRun && runId === null ? (
-          <Link to={paths.settings()} className="mono ml-auto flex items-center gap-1 text-muted hover:text-ink" title="A generator run is in progress; the page reloads when it has written">
-            <LoaderCircle size={12} className="animate-spin text-accent" aria-hidden /> {activeRun.mode === "write" ? "regenerating…" : "run in progress…"}
-          </Link>
-        ) : local ? (
-          <span className="ml-auto flex items-center gap-1.5">
-            {candidates.length > 1 && !project ? (
-              <select
-                className="mono rounded-control border border-line bg-canvas px-1 py-0.5 text-ink"
-                value={chosenProject}
-                onChange={(e) => setChosenProject(e.target.value)}
-                aria-label="Project to keep the recording under"
-              >
-                <option value="">project…</option>
-                {candidates.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            ) : null}
-            <button
-              type="button"
-              className="tbtn"
-              disabled={busy || !target}
-              title={target ? `Upload an OTLP JSON recording; it is kept under ${target} after you review what it shows` : candidates.length ? "Choose the project the recording belongs to" : "No project in this flow's context to keep a recording under"}
-              onClick={() => input.current?.click()}
-            >
-              <Upload size={13} aria-hidden /> add
-            </button>
-            <input
-              ref={input}
-              type="file"
-              accept=".jsonl,.json,.ndjson,application/json"
-              className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) void upload(file); }}
-            />
-          </span>
-        ) : null}
-      </div>
+  const summary = examples.length
+    ? `${examples.length} ${plural(examples.length, "recording")}${lit ? ` · lighting #${lit.traceId.slice(0, 8)}` : ""}`
+    : "no recordings yet";
 
-      {examples.length ? (
-        <ul className="mt-1.5 flex flex-col gap-0.5">
-          {examples.map((example) => (
-            <ExampleRow
-              key={example.id}
-              example={example}
-              on={exampleId === example.id}
-              onToggle={() => onExample(exampleId === example.id ? null : example.id)}
-            />
-          ))}
-        </ul>
-      ) : local ? (
-        <p className="mt-1 text-muted">
-          No recording shows this flow yet. Add an OTLP JSON export of a trace that runs through it, or see <Link to={paths.settingsRecordings()} className="text-accent hover:underline">recordings</Link> in settings.
-        </p>
+  return (
+    <>
+      <Popover className="relative">
+        <PopoverButton
+          title={`Recordings this flow was seen running in — ${summary}`}
+          aria-label={`Recordings — ${summary}`}
+          className={({ open }) =>
+            `chip transition-colors focus:outline-none ${open || lit ? "border-accent text-accent" : "border-line text-muted hover:text-ink"}`
+          }
+        >
+          <Disc3 size={11} aria-hidden />
+          {examples.length ? `recordings · ${examples.length}` : "add recording"}
+          {activeRun && runId === null ? <LoaderCircle size={11} className="animate-spin text-accent" aria-hidden /> : null}
+        </PopoverButton>
+        <PopoverPanel
+          anchor={{ to: "bottom start", gap: 4, padding: 8 }}
+          className="palette-in z-50 w-[30rem] max-w-[92vw] rounded-control border bg-canvas p-2 border-line-strong shadow-md focus:outline-none"
+        >
+          <div className="flex items-center gap-2 px-1">
+            <span className="label text-faint">recordings</span>
+            <span className="mono text-muted">{examples.length}</span>
+            {activeRun && runId === null ? (
+              <Link to={paths.settings()} className="mono ml-auto flex items-center gap-1 text-muted hover:text-ink" title="A generator run is in progress; the page reloads when it has written">
+                <LoaderCircle size={12} className="animate-spin text-accent" aria-hidden /> {activeRun.mode === "write" ? "regenerating…" : "run in progress…"}
+              </Link>
+            ) : local ? (
+              <span className="ml-auto flex items-center gap-1.5">
+                {candidates.length > 1 && !project ? (
+                  <select
+                    className="mono rounded-control border border-line bg-canvas px-1 py-0.5 text-ink"
+                    value={chosenProject}
+                    onChange={(e) => setChosenProject(e.target.value)}
+                    aria-label="Project to keep the recording under"
+                  >
+                    <option value="">project…</option>
+                    {candidates.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                ) : null}
+                <button
+                  type="button"
+                  className="tbtn"
+                  disabled={busy || !target}
+                  title={target ? `Upload an OTLP JSON recording; it is kept under ${target} after you review what it shows` : candidates.length ? "Choose the project the recording belongs to" : "No project in this flow's context to keep a recording under"}
+                  onClick={() => input.current?.click()}
+                >
+                  <Upload size={13} aria-hidden /> add
+                </button>
+              </span>
+            ) : null}
+          </div>
+
+          {examples.length ? (
+            <ul className="mt-1.5 flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+              {examples.map((example) => (
+                <ExampleRow
+                  key={example.id}
+                  example={example}
+                  on={exampleId === example.id}
+                  onToggle={() => onExample(exampleId === example.id ? null : example.id)}
+                />
+              ))}
+            </ul>
+          ) : local ? (
+            <p className="mt-1.5 px-1 text-muted">
+              No recording shows this flow yet. Add an OTLP JSON export of a trace that runs through it, or see <Link to={paths.settingsRecordings()} className="text-accent hover:underline">recordings</Link> in settings.
+            </p>
+          ) : null}
+          {examples.length ? (
+            <p className="mt-1.5 px-1 text-faint">Choose one to light the steps it showed on the picture; a step's panel says what its span carried.</p>
+          ) : null}
+        </PopoverPanel>
+      </Popover>
+
+      {/* Outside the panel, which is gone the moment it closes: the file
+          input the button clicks and the dialog the upload opens must outlive
+          the popover. */}
+      {local ? (
+        <input
+          ref={input}
+          type="file"
+          accept=".jsonl,.json,.ndjson,application/json"
+          className="hidden"
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) void upload(file); }}
+        />
       ) : null}
 
       <Modal open={runId !== null} onClose={() => {}} label="Recording" width="min(760px,94vw)">
@@ -166,7 +201,7 @@ export function Recordings({
           ) : null}
         </div>
       </Modal>
-    </section>
+    </>
   );
 }
 

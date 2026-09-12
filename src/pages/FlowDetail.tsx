@@ -30,7 +30,7 @@ import {
   isCrossContext,
 } from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
-import { Recordings } from "../flow/Recordings";
+import { RecordingsChip } from "../flow/Recordings";
 import { stepsShownBy } from "../flow/examples";
 import { FlowTable } from "../flow/FlowTable";
 import { FlowToolbar } from "../flow/FlowToolbar";
@@ -434,7 +434,6 @@ export function FlowDetail() {
 
   const rail = (
     <>
-      <Recordings flow={flow} exampleId={exampleId} onExample={setExampleId} />
       <MatchPill
         selection={selection}
         matches={matches}
@@ -529,6 +528,10 @@ export function FlowDetail() {
             </a>
           ) : null}
           <EditorLink location={flowSource} variant="text" />
+          {/* A recording is evidence too: the traces the flow was seen
+              running in, opened behind a chip rather than laid out in the
+              rail, which is for the steps. */}
+          <RecordingsChip flow={flow} exampleId={exampleId} onExample={setExampleId} />
           <WhatLinksHere
             target={{ kind: "flow", id: flow.slug }}
             variant="line"
