@@ -1,0 +1,4 @@
+plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/IntegrationEvents/MemberCreatedIntegrationEvent.cs:5: MemberCreatedIntegrationEvent is declared and published nowhere; it is filed under Meetings's integration events
+plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/UserRegistrationsController.cs:9: UserRegistrationsController sits under no module's directory of the API host, so no module answers on it
+plugins/extract-csharp-ddd/testdata/mymeetings/src/Database/CompanyName.MyMeetings.Database/Structure/app: schema app: no module maps a table into it or writes one, so its one table belongs to nobody and is not read
+plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Users: Domain/Users has no aggregate root and no application group of its name; 1 type (UserId) is read nowhere

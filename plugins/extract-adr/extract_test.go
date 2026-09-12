@@ -124,7 +124,10 @@ func TestAHalfRecordedSupersessionIsRefusedWhole(t *testing.T) {
 
 // A tree kept with adr-tools, with the mistakes such a tree collects: two
 // records numbered the same by two branches, and a file of notes among them.
-// Each is left out with a warning that names it, and the rest is read.
+// Each is left out with a warning that names it, and the rest is read. The
+// first record also carries a "Log date:" line under its date, the way a
+// tree that records old decisions late does; it is not a field and not an
+// error.
 func TestATreeOfAdrToolsRecordsIsReadAndItsMistakesAreLeftOut(t *testing.T) {
 	resp, err := extract(input("testdata/lenient"), Options{Scope: "avia.aviasupp", Files: []string{"docs/adr/*.md"}, History: "none"})
 	if err != nil {

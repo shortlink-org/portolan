@@ -1,0 +1,245 @@
+{
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "org.0001",
+      "slug": "org-0001-record-architecture-decisions",
+      "number": 1,
+      "title": "Record architecture decisions",
+      "status": "accepted",
+      "date": "2019-10-28",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nAs the project is an example of a more advanced monolith architecture, it is necessary to save all architectural decisions in one place.\n\n## Decision\n\nFor all architectural decisions Architecture Decision Log (ADL) is created. All decisions will be recorded as Architecture Decision Records (ADR). \n\nEach ADR will be recorded using [Michael Nygard template](http://thinkrelevance.com/blog/2011/11/15/documenting-architecture-decisions), which contains following sections: Status, Context, Decision and Consequences.\n\n## Consequences\n\nAll architectural decisions should be recorded in log. Old decisions should be recorded as well with an approximate decision date. New decisions should be recorded on a regular basis.\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0001-record-architecture-decisions.md"
+    },
+    {
+      "id": "org.0002",
+      "slug": "org-0002-use_modular-monolith-system-architecture",
+      "number": 2,
+      "title": "Use Modular Monolith System Architecture",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nAn advanced example of Modular Monolith architecture and tactical DDD implementation in .NET is missing on the internet.\n\n## Decision\n\nI decided to create nontrivial application using Modular Monolith architecture and Domain-Driven Design tactical patterns.\n\n## Consequences\n\n- All modules must run in one single process as single application (Monolith)\n- All modules should have maximum autonomy (Modular)\n- DDD Bounded Contexts will be used to divide monolith into modules\n- DDD tactical patterns will be used to implement most of modules\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0002-use_modular-monolith-system-architecture.md"
+    },
+    {
+      "id": "org.0003",
+      "slug": "org-0003-use_dotnetcore_and_csharp",
+      "number": 3,
+      "title": "Use .NET Core and C# language",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nAs it is monolith, only one language (or platform) must be selected for implementation.\n\n## Decision\n\nI decided to use:\n\n- .NET Core platform - it is new generation multi-platform, fully supported by Microsoft and open-source community, optimized and designed to replace old .NET Framework\n- C# language - most popuplar language in .NET ecosystem, I have 12 years commercial experience\n- F# will not be used, I don't have commercial experience with it\n\n## Consequences\n\n- Whole application will be implemented in C# object-oriented language in .NET Core framework\n- .NET Core applications can be executed on Windows, MacOS, Linux\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0003-use_dotnetcore_and_csharp.md"
+    },
+    {
+      "id": "org.0004",
+      "slug": "org-0004-divide-the-system-into-4-modules",
+      "number": 4,
+      "title": "Divide the system into 4 modules",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nThe MyMeetings domain contains 4 main subdomains: Meetings (core domain), Administration (supporting subdomain), Payments (supporting subdomain) and User Access (generic domain).\n\nWe use Modular Monolith architecture so we need to implement one application which solves all requirements from all domains listed above.\n\nWe need to modularize our system.\n\n## Possible solutions\n1. Create one \"MyMeetings\" module and divide it into sub-modules. This solution is simpler to implement at the beginning. We do not have to set module boundaries and think how to communicate between them. On the other hand, this causes a lack of autonomy and can lead to Big Ball Of Mud anti-pattern.\n2. Create 4 modules based on Bounded Contexts which in this scenario maps 1:1 to domains. This solution is more difficult at the beginning. We need to set modules boundaries, communication strategy between modules and have more advanced infrastructure code. It is a more complex solution. On the other hand, it supports autonomy, maintainability, readability. We can develop our Domain Models in all of the Bounded Contexts independently.\n\n## Decision\n\nSolution 2.\n\nWe created 4 modules: Meetings, Administration, Payments, User Access. The key factor here is module autonomy and maintainability. We want to develop each module independently. This is more cleaner solution. It involves more work at the beginning but we want to invest.\n\n## Consequences\n- We can implement each module/Bounded Context independently.\n- We need to set clear boundaries between modules and communication strategy between modules (and implement them)\n- We need to define the API of each module\n- The API/GUI layer needs to know about all of the modules\n- We need to create shared libraries/classes to limit boilerplate code which will be the same in all modules\n- Complexity of the whole solution will increase\n- Complexity of each module will decrease\n- We will have clear separation of concerns\n- In addition to the application, we must divide the data\n- We will have business concepts modeled in a proper way - without \"godclasses\" which do everything\n- We can delegate development of particular module to defined team, work should be done without any conflicts on codebase\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0004-divide-the-system-into-4-modules.md"
+    },
+    {
+      "id": "org.0005",
+      "slug": "org-0005-create-one-rest-api-module",
+      "number": 5,
+      "title": "Create one REST API module",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nWe need to expose the API of our application to the outside world. For now, we expect one client of our application - FrontEnd SPA application.\n\n## Possible solutions\n1. Create one .NET Core MVC host application which contains all endpoints. This host application will have references to all business modules and communicates with them directly:\u003c/br\u003e\n\nHost/API references:\u003c/br\u003e\nAdministration module\u003c/br\u003e\nMeetings module\u003c/br\u003e\nPayments module\u003c/br\u003e\nUser Access module\u003c/br\u003e\n\n2. Create one .NET Core MVC host application and multiple APIs projects per module. Each API project should have endpoints which are handled by particular business module:\u003c/br\u003e \n\nHost references:\u003c/br\u003e\nAdministration API references Administration module\u003c/br\u003e\nMeetings API references Meetings module\u003c/br\u003e\nPayments API references Payments module\u003c/br\u003e\nUser Access API references User Access module\u003c/br\u003e\n\n## Decision\n\nSolution 1.\n\nCreating separate API projects for each module will add complexity and little value. Grouping endpoints for a particular business module in a special directory is enough. Another layer on top of the module is unnecessary.\n\n## Consequences\n- We will have only one API layer/module\n- Each controller has responsibility to delegate Command/Query processing to appropriate module\n- We don't need to scan other projects than host for controllers, routes and other MVC mechanisms\n- API configuration is easier\n- Overall complexity of API layer is lower\n- Complexity of each controller is a little bit higher\n- Build time will be shorter (less projects)\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0005-create-one-rest-api-module.md"
+    },
+    {
+      "id": "org.0006",
+      "slug": "org-0006-create-facade-between-api-and-business-module",
+      "number": 6,
+      "title": "Create façade between API and business module",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nOur API layer should communicate with business modules to fulfill client requests. To support the maximum level of autonomy, each module should expose a minimal set of operations (the module API/contract/interface).\n\n## Decision\n\nEach module will provide implementation for one interface with 3 methods:\u003c/br\u003e\n\n```csharp\nTask\u003cTResult\u003e ExecuteCommandAsync\u003cTResult\u003e(ICommand\u003cTResult\u003e command);\n\nTask ExecuteCommandAsync(ICommand command);\n\nTask\u003cTResult\u003e ExecuteQueryAsync\u003cTResult\u003e(IQuery\u003cTResult\u003e query);\n```\n\nThis interface will act as a façade (Façade pattern) between API and module. Only Commands, Queries and returned objects (which are part of this interface) should be visible to the API. Everything else should be hidden behind the façade (module encapsulation).\n\n## Consequences\n- API can communicate with the module only by façade (the interface).\n- Implementation of API is simpler\n- We can change module implementation and API does not require change if the interface is not changed\n- We need to focus on module encapsulation, sometimes it involves additional work (like instantiation using internal constructors)\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0006-create-facade-between-api-and-business-module.md"
+    },
+    {
+      "id": "org.0007",
+      "slug": "org-0007-use-cqrs-architectural-style",
+      "number": 7,
+      "title": "Use CQRS architectural style",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nOur application should handle 2 types of requests - reading and writing. \u003c/br\u003e\n\nFor now, it looks like:\u003c/br\u003e\n\n- for reading, we need data model in relational form to return data in tabular/flattened way (tables, lists, dictionaries).\n- for writing, we need to have a graph of objects to perform more sophisticated work like validations, business rules checks, calculations.\n\n## Decision\n\nWe applied the CQRS architectural style/pattern for each business module. Each module will have a separate model for reading and writing. For now, it will be the simplest CQRS implementation when the read model is immediate consistent. This kind of separation is useful even in simple modules like User Access.\n\n## Consequences\n- Façade method of each module should take as parameter only Command or Query object\n- We have optimized models for writes and reads (SRP principle).\n- We can process Commands and Queries in different ways\n- As Command or Query is an object, we can easily serialize them and save/log them.\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0007-use-cqrs-architectural-style.md"
+    },
+    {
+      "id": "org.0008",
+      "slug": "org-0008-allow-return-result-after-command-processing",
+      "number": 8,
+      "title": "Allow return result after command processing",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nThe theory of the CQRS and the CQS principle says that we should not return any information as the result of Command processing. The result should be always \"void\". However, sometimes we need to return some data immediately as part of the same request.\n\n## Decision\n\nWe decided to allow in some cases return results after command processing. Especially, when we create something and we need to return the ID of created object or don't know if request is Command or Query (like Authentication).\n\n## Consequences\n- We will have two definitions of Commands and CommandHandlers - with and without result\n- It will add some complexity to processing commands (like implementation of decorators)\n- We can immediately return the ID of created object/resource. We don't need a second call (query) to retrieve this ID.\n- We should be careful to not overuse this approach (sticking as much as possible to the CQRS)\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0008-allow-return-result-after-command-processing.md"
+    },
+    {
+      "id": "org.0009",
+      "slug": "org-0009-use-2-layered-architectural-style-for-reads",
+      "number": 9,
+      "title": "Use 2 layered architectural style for reads",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nWe applied the CQRS style (see [ADR 7. Use CQRS architectural style](007-use-cqrs-architectural-style.md)), now we need to decide how to handle reading (querying) requests.\n\n## Decision\n\nWe will use 2 layered architecture to handle queries: API layer and Application Service layer. As we applied the CQRS and created a separated read model, querying should be straightforward so 2 layers are enough. The API layer is responsible for Query creation based on HTTP request and the module Application layer is responsible for query handling.\n\n## Consequences\n- Whole query handling logic is in Application Service layer\n- Application Service layer is coupled to the database and querying framework\n- Solution is simple, easy to understand\n- We don't abstract over database\n- Performance is better (no object mapping between layers, querying database almost immediately)\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0009-use-2-layered-architectural-style-for-reads.md"
+    },
+    {
+      "id": "org.0010",
+      "slug": "org-0010-use-clean-architecture-for-writes",
+      "number": 10,
+      "title": "Use Clean Architecture for writes",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nWe applied the CQRS style (see [ADR #7](0007-use-cqrs-architectural-style.md)), now we need to decide how to handle writing operations (Commands).\n\n## Decision\n\nWe will use **Clean Architecture** to handle commands with 4 layers: **API layer**, **Application Service layer**, **Infrastructure layer** and **Domain layer**. \u003c/br\u003e\nWe need to add Domain layer because domain logic will be complex and we want to isolate this logic from other stuff like infrastructure or API. Isolation of domain logic supports testing, maintainability and readability.\n\n## Consequences\n- Complexity of the whole solution is higher - we need to add two more layers - domain and infrastructure\n- Complexity of implementation of business logic will be smaller - we can focus only on business concerns on this layer\n- Complexity of implementation of infrastructure will be smaller - we can focus only on infrastructure concerns on this layer\n- Business logic will be testable (no references to other layers)\n- Business logic will be independent of persistence (to some level)\n- In the Domain layer, we will have the same level of abstraction (close to business)\n- Application layer will have louse coupling to the Domain layer and Infrastructure layer (depend  on abstractions only)\n- We use one of the most popular application architecture - developers are familiar with it\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0010-use-clean-architecture-for-writes.md"
+    },
+    {
+      "id": "org.0011",
+      "slug": "org-0011-create-rich-domain-models",
+      "number": 11,
+      "title": "Create rich Domain Models",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nWe need to create Domain Models for all of the modules. Each Domain Model should represent a solution that solves a particular set of Domain problems (implements business logic).\n\n## Possible solutions\n1. Create Anemic Domain Model (Data Model) and implement *Transaction Script* pattern together with *Active Record* pattern\n2. Put all business logic to database in stored procedures\n3. Create a Rich Domain Model\n\n## Decision\n\nSolution number 3 - Rich Domain Model\u003c/br\u003e\n\n1 - no, because the procedural style of coding will not be enough. We want to focus on behavior, not on the data.\u003c/br\u003e\n2 - no, keeping business logic in the database is not a good idea in that case, object-oriented programming is better than T-SQL to model our domain and we don't have performance architectural drivers to resign from OOD.\u003c/br\u003e\n\nWe expect complex business logic with different rules, calculations and processing so we want to get as much as possible from Object-Oriented Design principles like abstraction, encapsulation, polymorphism. We want to mutate the state of our objects only through methods (abstraction) to encapsulate all logic and hide implementation details from the client (the Application Service Layer and Unit Tests).\u003c/br\u003e\n\n## Consequences\n- All objects should be encapsulated (private by default principle) \n- Encapsulation of objects implies more work in infrastructure (mapping to private fields, collections is harder)\n- Encapsulation of objects decreases to some level testability of these objects (Object-Oriented Design vs Testable Design)\n- All public methods of domain objects create Domain Model API\n- Implementation details of business logic are hidden\n- Clients of Domain Model are easier to implement\n- Better object-oriented programming skills are required to implement Rich Domain Model\n- Is easier to protect business rules/invariants using Rich Domain Model\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0011-create-rich-domain-models.md"
+    },
+    {
+      "id": "org.0012",
+      "slug": "org-0012-use-domain-driven-design-tactical-patterns",
+      "number": 12,
+      "title": "Use Domain-Driven Design tactical patterns",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nWe decided to use the Clean Architecture ([ADR #10](0010-use-clean-architecture-for-writes.md)) and create Rich Domain Models ([ADR #11](0011-create-rich-domain-models.md)) for each module. We need to define or use some construction elements / building blocks to implement our architecture and business logic.\n\n## Decision\n\nWe decided to use **Domain-Driven Design** tactical patterns. They focus on the Domain Model implementation. Especially we will use the following building blocks:\n\n- Command - public method on Aggregate (behavior)\n- Domain Event - the immutable class which represents important fact occurred on a special point of time (behavior)\n- Entity - class with identity (identity cannot change) with mutable attributes which represents concept from domain\n- Value Object - immutable class without an identity which represents concept from domain\n- Aggregate - cluster of domain objects (Entities, Value Objects) with one class entry point (Entity as Aggregate Root) which defines the boundary of transaction/consistency and protects business rules and invariants\n- Repository - collection-like abstraction to persist and load particular Aggregate\n- Domain Service - stateless service to execute some business logic which does not belong to any of Entity/Value Object\n\n## Consequences\n- We need to define entities and value objects\n- We need to define aggregates boundaries\n- We need to add repositories for each aggregate\n- We can invoke only public methods on Aggregate Roots, everything else should be hidden\n- Developers need to be familiar with DDD tactical patterns\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0012-use-domain-driven-design-tactical-patterns.md"
+    },
+    {
+      "id": "org.0013",
+      "slug": "org-0013-protect-business-invariants-using-exceptions",
+      "number": 13,
+      "title": "Protect business invariants using exceptions",
+      "status": "accepted",
+      "date": "2019-07-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nAggregates should check business invariants. When the invariant is broken, we should stop processing and return an error immediately to the client.\n\n## Possible solutions\n\n### 1. Use exceptions\n#### Pros\n- we can stop processing immediately (fail-fast)\n-  popular approach in C# \n-  we don't need to check the result of each method (if-else statements)\n-   we can catch all Business Exceptions in one place and translate them (for example in the API layer to some HTTP response code). \n#### Cons\n- indirection \n- little performance impact \n- for special cases, we need to add a specific catch.\n### 2. Return Result object\n#### Pros \n- no indirection\n- no performance impact\n- signature method is more descriptive. \n### Cons \n- we need to add checks result of each method (if-else statements)\n- approach is less-known in the C# world \n- it needs a library or more coding to support Results\n\n## Decision\n\nSolution number 1 - Use exceptions. \u003c/br\u003e\n\nPerformance cost of throwing an exception is irrelevant, we don't want too many if/else statements in entities, more familiar with exceptions approach.\n\n## Consequences\n- We need to add special *BusinessException* class to separate business rules validation exceptions from other exceptions\n- We need to create different business exceptions for each business rule\n- We will have a small performance impact (throwing exceptions)\n- We will have generic mechanism which catches *BusinessException*\n- We will not have a lot of if/else statements in Entities/Value Objects to check method results\n- Some monitoring tools logs automatically each exception. If we want to use one of this tool we should be aware of this and figure it out proper solution\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0013-protect-business-invariants-using-exceptions.md"
+    },
+    {
+      "id": "org.0014",
+      "slug": "org-0014-event-driven-communication-between-modules",
+      "number": 14,
+      "title": "Event-driven communication between modules",
+      "status": "accepted",
+      "date": "2019-07-15",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nEach module should be autonomous. However, communication between them must take place. We have to decide what will be the preferred way of communication and integration between modules.\n\n## Possible solutions\n\n### 1. Direct method call (synchronous)\n\nEach Module will expose a set of methods (interface, module API) which can be called by other modules directly.\n\n#### Pros\n- easier implementation\n- no indirection\n- more natural in the monolith architecture\n- supports immediate consistency\n#### Cons\n- less autonomy\n- strong coupling between modules\n- direct method call is blocking\n- module has a dependency on another module\n\n### 2. Event-driven (asynchronous)\n\nEach module will publish a specific set of events. Other modules can subscribe to specific events. It is the implementation of _Publish/Subscribe_ pattern.\n\n#### Pros\n- more autonomy\n- coupling is only to middleware/broker of events\n- no blocking communication\n- stronger modules boundaries\n- module does not have a dependency on another module\n#### Cons\n- indirection\n- more complex solution\n- middleware/broker is needed\n- does not support immediate consistency\n\n## Decision\n\nSolution number 2 - Event-driven (asynchronous)\u003c/br\u003e\n\nWe want to achieve the maximum level of autonomy and loose coupling between modules. Moreover, we don't want dependencies between modules. We allow direct calls in the future, but this should be an exception, not a rule.\n\n## Consequences\n- We need to implement the Publish/Subscribe pattern\n- Solution will be more complex\n- Modules will have more autonomy\n- Modules will have coupling to broker/middleware\n- During modules integration, eventual consistency will occur (asynchronous communication)\n- Events become Published Language of our Bounded Contexts (modules)\n- Events structure should be stable as much as possible\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0014-event-driven-communication-between-modules.md"
+    },
+    {
+      "id": "org.0015",
+      "slug": "org-0015-use-in-memory-events-bus",
+      "number": 15,
+      "title": "Use In-Memory Events Bus",
+      "status": "accepted",
+      "date": "2019-07-15",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nAs we want to base inter-modular communication on asynchronous communication in the form of event-driven architecture, we need some \"events bus\" to do that.\n\n## Possible solutions\n\n### 1. In Memory Events Bus\n\nIn memory Publish/Subscribe implementation without any external component.\n\n#### Pros\n- very easy to implement\n- no network communication needed\n- performance (it depends)\n- no need to learn anything\n- simple solution\n#### Cons\n- does not support more advanced integration scenarios, everything needs to be implemented\n- does not have configuration\n- does not have other features (who have messaging brokers)\n\n### 2. Message Broker\n\nExternal middleware component. It could be a low-level broker (like RabbitMQ) or a high-level broker (like MassTransit, NServiceBus). \n\n#### Pros\n- only integration with platform code needed\n- more advanced integration scenarios\n- richness of configuration\n- a lot of features\n#### Cons\n- complex solution\n- network communication\n- new platform learning needed\n- performance (it depends)\n\n## Decision\n\nSolution number 1 - In Memory Events Bus\u003c/br\u003e\n\nAt that moment we don't see more advanced integration scenarios in our system than simple publish/subscribe scenario. We decided to follow the simplest scenario and if it will be necessary - move to more advanced.\n\n## Consequences\n- We need to implement Publish/Subscribe in memory\n- All modules will have dependency to In Memory Events Bus to publish events/subscribe to events\n- if we ever want to separate a module to another process (microservices architecture), we will need to switch to middleware\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0015-use-in-memory-events-bus.md"
+    },
+    {
+      "id": "org.0016",
+      "slug": "org-0016-create-ioc-container-per-module",
+      "number": 16,
+      "title": "Create an IoC Container per module",
+      "status": "accepted",
+      "date": "2019-07-15",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nFor each module, when we process particular Command or Query, we need to resolve a graph of objects. We need to decide how dependencies of objects will be resolved.\n\n## Possible solutions\n\n### 1. One IoC Container for whole application\n\nOne IoC container located in the host project.\n\n#### Pros\n- standard approach\n- dependencies configured in one place\n#### Cons\n- couples host application with all of projects, libraries\n- modules autonomy decreases\n- strong coupling\n\n### 2. IoC Container per module\n\nMultiple IoC containers per modules.\n\n#### Pros\n- module autonomy\n- loose coupling \n- host application has dependency only to Application Service Layer\n#### Cons\n- duplicated code\n- non-standard approach\n\n## Decision\n\nSolution number 2 - IoC Container per module\u003c/br\u003e\n\nIoC Container per module supports the autonomy of the module and louse coupling so this is a more important aspect for us than duplicated code in some places.\n\n## Consequences\n- Create and maintain an IoC Container for each module\n- Implementation is not standard, but still acceptable easy\n- We can add dependencies to module and other modules are intact\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0016-create-ioc-container-per-module.md"
+    },
+    {
+      "id": "org.0017",
+      "slug": "org-0017-implement-archictecture-tests",
+      "number": 17,
+      "title": "Implement Architecture Tests",
+      "status": "accepted",
+      "date": "2019-11-16",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Status\n\nAccepted\n\n## Context\n\nIn some cases it is not possible to enforce the application architecture, design or established conventions using compiler (compile-time). For this reason, code implementations can diverge from the original design and architecture. We want to minimize this behavior, not only by code review.\n\n## Decision\n\nWe decided to implement Unit Tests for our architecture. \u003c/br\u003e\nWe will implement tests for each module separately and one tests library for general architecture. We will use _NetArchTest_ library which was created exactly for this purpose.\n\n## Consequences\n- We will have quick feedback about breaking the design rules\n- Unit tests for architecture are documenting our architecture to some level\n- We will have dependency to external library\n- We need to implement some _\"reflection-based\"_ code to check some rules, because library does not provide everything what we need\n- This kind of tests are a bit slower than normal unit tests (because of reflection)\n- More tests to maintain\n",
+      "relates": {},
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/docs/architecture-decision-log/0017-implement-archictecture-tests.md"
+    }
+  ]
+}

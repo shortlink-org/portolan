@@ -368,7 +368,7 @@ func TestWhatAnAdrToolsRecordCannotBeReadWithout(t *testing.T) {
 	if errs := refusedTools(t, strings.Replace(toolsSample, "Accepted", "Superseded by a later one", 1)); !strings.Contains(errs, "says by which one record") {
 		t.Errorf("errors: %s", errs)
 	}
-	if errs := refusedTools(t, strings.Replace(toolsSample, "Date: 2024-09-10", "Date: 2024-09-10\n\nWritten in a hurry.", 1)); !strings.Contains(errs, `only "Date:" belongs`) {
+	if errs := refusedTools(t, strings.Replace(toolsSample, "Date: 2024-09-10", "Date: 2024-09-10\n\nWritten in a hurry.", 1)); !strings.Contains(errs, `only "Date:" and other`) {
 		t.Errorf("errors: %s", errs)
 	}
 }

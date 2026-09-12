@@ -1,0 +1,598 @@
+{
+  "contexts": [
+    {
+      "id": "meetings",
+      "slug": "meetings",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "meetings.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "meetings.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "payments.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "registrations",
+      "slug": "registrations",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "registrations.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "registrations.module.db"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "meetings.module.db",
+      "slug": "db",
+      "name": "Meetings database",
+      "kind": "other",
+      "owner": "meetings.module",
+      "tables": [
+        {
+          "id": "meetings.module.db.Countries",
+          "name": "Countries",
+          "columns": [
+            {
+              "name": "Code",
+              "type": "varchar(2)",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(100)",
+              "nullable": false
+            }
+          ],
+          "role": "lookup",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetAllCountriesQueryHandler.Handle",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Countries/GetAllCountriesQueryHandler.cs:15"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.InternalCommands",
+          "name": "InternalCommands",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "EnqueueDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "other"
+        },
+        {
+          "id": "meetings.module.db.MeetingAttendees",
+          "name": "MeetingAttendees",
+          "columns": [
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "meetings.module.db.Meetings",
+                "column": "Id"
+              },
+              "maps": "MeetingAttendee.meetingId"
+            },
+            {
+              "name": "AttendeeId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingAttendee.attendeeId"
+            },
+            {
+              "name": "DecisionDate",
+              "type": "datetime2",
+              "nullable": false,
+              "maps": "MeetingAttendee.decisionDate"
+            },
+            {
+              "name": "GuestsNumber",
+              "type": "int",
+              "nullable": true,
+              "maps": "MeetingAttendee.guestsNumber"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "IX_meetings_MeetingAttendees_AttendeeId",
+              "columns": [
+                "AttendeeId"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting-attendee"
+          },
+          "role": "child"
+        },
+        {
+          "id": "meetings.module.db.Meetings",
+          "name": "Meetings",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "Meeting.id"
+            },
+            {
+              "name": "Title",
+              "type": "nvarchar(200)",
+              "nullable": false,
+              "maps": "Meeting.title"
+            },
+            {
+              "name": "TermStartDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "Meeting.term"
+            },
+            {
+              "name": "TermEndDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "Meeting.term"
+            },
+            {
+              "name": "StatusCode",
+              "type": "varchar(50)",
+              "nullable": false,
+              "maps": "Meeting.status"
+            },
+            {
+              "name": "CreatorId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "Meeting.creatorId"
+            },
+            {
+              "name": "CancelDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "Meeting.cancelDate"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingRepository.AddAsync",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:14"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingRepository.GetByIdAsync",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:19"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingDetailsQueryHandler.Handle",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/GetMeetingDetails/GetMeetingDetailsQueryHandler.cs:15"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.Members",
+          "name": "Members",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "Member.id"
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false,
+              "maps": "Member.login"
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "Member.email"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.members",
+            "block": "meetings.module.members.member"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MemberRepository.AddAsync",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Infrastructure/Domain/Members/MemberRepository.cs:7"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.OutboxMessages",
+          "name": "OutboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "outbox"
+        }
+      ],
+      "views": [
+        {
+          "id": "meetings.module.db.v_Countries",
+          "name": "v_Countries",
+          "columns": [
+            {
+              "name": "Code",
+              "type": "varchar(2)",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(100)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.Countries"
+          ],
+          "definition": "SELECT\n    [Country].[Code],\n    [Country].[Name]\nFROM meetings.Countries AS [Country]",
+          "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Countries.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MeetingDetails",
+          "name": "v_MeetingDetails",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Title",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "TermStartDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "TermEndDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "Status",
+              "type": "varchar(50)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.Meetings"
+          ],
+          "definition": "SELECT\n    [Meeting].[Id],\n    [Meeting].[Title],\n    [Meeting].[TermStartDate],\n    [Meeting].[TermEndDate],\n    [Meeting].[StatusCode] AS [Status]\nFROM [meetings].[Meetings] AS [Meeting]",
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting"
+          },
+          "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingDetails.sql"
+        }
+      ],
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Database/CompanyName.MyMeetings.Database/Structure/meetings"
+    },
+    {
+      "id": "payments.module.db",
+      "slug": "db",
+      "name": "Payments database",
+      "kind": "other",
+      "owner": "payments.module",
+      "tables": [
+        {
+          "id": "payments.module.db.InternalCommands",
+          "name": "InternalCommands",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "EnqueueDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "other"
+        },
+        {
+          "id": "payments.module.db.Messages",
+          "name": "Messages",
+          "columns": [
+            {
+              "name": "StreamIdInternal",
+              "type": "int",
+              "nullable": false
+            },
+            {
+              "name": "StreamVersion",
+              "type": "int",
+              "nullable": false
+            },
+            {
+              "name": "Position",
+              "type": "bigint",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "nvarchar(128)",
+              "nullable": false
+            },
+            {
+              "name": "JsonData",
+              "type": "nvarchar(max)",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "IX_Messages_StreamIdInternal_Revision",
+              "columns": [
+                "StreamIdInternal",
+                "StreamVersion"
+              ],
+              "unique": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "SqlStreamAggregateStore.Save",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:7"
+            },
+            {
+              "operation": "read",
+              "method": "SqlStreamAggregateStore.Load",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:9"
+            },
+            {
+              "operation": "write",
+              "method": "SqlStreamAggregateStore.AppendChanges",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:12"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.SubscriptionDetails",
+          "name": "SubscriptionDetails",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "PayerId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "ExpirationDate",
+              "type": "datetime",
+              "nullable": false
+            }
+          ],
+          "role": "projection",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "ExpireSubscriptionsCommandHandler.Handle",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionDetailsProjector.Handle",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:17"
+            }
+          ]
+        }
+      ],
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Database/CompanyName.MyMeetings.Database/Structure/payments"
+    },
+    {
+      "id": "registrations.module.db",
+      "slug": "db",
+      "name": "Registrations database",
+      "kind": "other",
+      "owner": "registrations.module",
+      "tables": [
+        {
+          "id": "registrations.module.db.UserRegistrations",
+          "name": "UserRegistrations",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "UserRegistration.id"
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false,
+              "maps": "UserRegistration.login"
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "UserRegistration.email"
+            },
+            {
+              "name": "StatusCode",
+              "type": "varchar(50)",
+              "nullable": false,
+              "maps": "UserRegistration.status"
+            }
+          ],
+          "persists": {
+            "aggregate": "registrations.module.user-registrations",
+            "block": "registrations.module.user-registrations.user-registration"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "UserRegistrationRepository.AddAsync",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:7"
+            },
+            {
+              "operation": "read",
+              "method": "UserRegistrationRepository.GetByIdAsync",
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:9"
+            }
+          ]
+        }
+      ],
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Database/CompanyName.MyMeetings.Database/Structure/registrations"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+openapi: 3.1.0
+info:
+  title: Administration HTTP API
+  version: inferred
+  description: Generated statically from ASP.NET Core controller attributes. Unknown details are left unspecified.
+tags:
+  - name: meeting-group-proposals
+paths:
+  /api/administration/meetingGroupProposals:
+    get:
+      operationId: GetMeetingGroupProposals
+      summary: Get meeting group proposals
+      tags:
+        - meeting-group-proposals
+      responses:
+        "200":
+          description: List<MeetingGroupProposalDto>
+          x-portolan-type: List<MeetingGroupProposalDto>
+      x-portolan-permission: AcceptMeetingGroupProposal
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Administration/MeetingGroupProposals/MeetingGroupProposalsController.cs:21
+      x-portolan-controller: MeetingGroupProposalsController
+  /api/administration/meetingGroupProposals/{meetingGroupProposalId}/accept:
+    patch:
+      operationId: AcceptMeetingGroupProposal
+      summary: Accept meeting group proposal
+      tags:
+        - meeting-group-proposals
+      parameters:
+        - name: meetingGroupProposalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: AcceptMeetingGroupProposal
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Administration/MeetingGroupProposals/MeetingGroupProposalsController.cs:32
+      x-portolan-controller: MeetingGroupProposalsController

@@ -1,0 +1,99 @@
+openapi: 3.1.0
+info:
+  title: User Access HTTP API
+  version: inferred
+  description: Generated statically from ASP.NET Core controller attributes. Unknown details are left unspecified.
+tags:
+  - name: authenticated-user
+  - name: emails
+  - name: user-registrations
+paths:
+  /api/userAccess/authenticatedUser:
+    get:
+      operationId: GetAuthenticatedUser
+      summary: Get authenticated user
+      tags:
+        - authenticated-user
+      responses:
+        "200":
+          description: UserDto
+          x-portolan-type: UserDto
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/AuthenticatedUserController.cs:22
+      x-portolan-controller: AuthenticatedUserController
+  /api/userAccess/authenticatedUser/permissions:
+    get:
+      operationId: GetAuthenticatedUserPermissions
+      summary: Get authenticated user permissions
+      tags:
+        - authenticated-user
+      responses:
+        "200":
+          description: List<UserPermissionDto>
+          x-portolan-type: List<UserPermissionDto>
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/AuthenticatedUserController.cs:32
+      x-portolan-controller: AuthenticatedUserController
+  /api/userAccess/emails:
+    get:
+      operationId: GetEmails
+      summary: Get emails
+      tags:
+        - emails
+      responses:
+        default:
+          description: Response schema and status are not available from static controller analysis.
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/EmailsController.cs:20
+      x-portolan-controller: EmailsController
+  /userAccess/UserRegistrations:
+    post:
+      operationId: RegisterNewUser
+      summary: Register new user
+      tags:
+        - user-registrations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: RegisterNewUserRequest
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+                email:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                confirmLink:
+                  type: string
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/UserRegistrationsController.cs:22
+      x-portolan-controller: UserRegistrationsController
+  /userAccess/UserRegistrations/{userRegistrationId}/confirm:
+    patch:
+      operationId: ConfirmRegistration
+      summary: Confirm registration
+      tags:
+        - user-registrations
+      parameters:
+        - name: userRegistrationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/UserRegistrationsController.cs:39
+      x-portolan-controller: UserRegistrationsController

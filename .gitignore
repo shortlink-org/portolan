@@ -63,3 +63,9 @@ plugins/extract-laravel/target
 # The shared PHP reader builds into its own target directory
 plugins/phpscan/target
 plugins/extract-php-ddd/target
+
+# The C# plugin builds into bin/ beside its source, and the SDK keeps obj/
+plugins/extract-csharp-ddd/bin
+plugins/extract-csharp-ddd/obj
+plugins/extract-csharp-ddd/test/bin
+plugins/extract-csharp-ddd/test/obj

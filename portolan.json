@@ -38,6 +38,13 @@
       "sources": ["vendor/repos/CodelyTV/php-ddd-example/git.repo.json", "vendor/repos/CodelyTV/php-ddd-example/catalog/*.json"],
       "contexts": ["mooc", "backoffice", "analytics", "retention"],
       "projects": []
+    },
+    {
+      "id": "modular-monolith",
+      "title": "Modular Monolith with DDD",
+      "sources": ["vendor/repos/kgrzybek/modular-monolith-with-ddd/git.repo.json", "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/*.json"],
+      "contexts": ["administration", "meetings", "payments", "registrations", "user-access"],
+      "projects": []
     }
   ],
   "projects": [
@@ -153,6 +160,13 @@
       "process": {
         "command": "cargo",
         "args": ["run", "--quiet", "--manifest-path", "plugins/extract-php-ddd/Cargo.toml"]
+      }
+    },
+    {
+      "name": "csharp-ddd",
+      "process": {
+        "command": "dotnet",
+        "args": ["plugins/extract-csharp-ddd/bin/portolan-extract-csharp-ddd.dll"]
       }
     },
     {

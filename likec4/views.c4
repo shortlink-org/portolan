@@ -85,6 +85,18 @@ views {
     include *
   }
 
+  view landscape_modular_monolith {
+    title 'Modular Monolith with DDD'
+    description 'The groups and outside systems selected by this catalog profile.'
+    include payments, client, stripe
+  }
+
+  view containers_modular_monolith {
+    title 'Modular Monolith with DDD containers'
+    description 'The services, stores and transports selected by this catalog profile.'
+    include payments, payments.ledger, payments.ledger.pg, bus, client, stripe
+  }
+
   view ctx_auth of auth {
     title 'Authentication'
     include *, auth.auth.pg

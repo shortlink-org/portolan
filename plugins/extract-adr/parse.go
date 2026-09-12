@@ -71,13 +71,18 @@ var (
 	adrTitle   = regexp.MustCompile(`(?i)^#\s+ADR[-\s]?0*(\d+)\s*[.:—-]\s*(.+?)\s*$`)
 	plainTitle = regexp.MustCompile(`^#\s+(.+?)\s*$`)
 	toolsDate  = regexp.MustCompile(`(?i)^Date:\s*(.+?)\s*$`)
+	// A metadata line other than the date: a capitalised label, a colon, a value.
+	toolsMetaLine = regexp.MustCompile(`^[A-Z][A-Za-z -]{0,40}:\s*\S`)
 	toolsLink  = regexp.MustCompile(`\[\s*(\d+)\.[^\]]*\]\([^)]*\)`)
 	toolsBare  = regexp.MustCompile(`(?i)^(?:adr[-\s]?)?0*(\d+)$`)
 	statusHead = regexp.MustCompile(`(?i)^#{2,6}\s+(?:Status|Статус)\s*:?\s*(.*?)\s*$`)
 	sectionAny = regexp.MustCompile(`^#{1,6}\s`)
 	bulletLine = regexp.MustCompile(`^-\s+\*\*([^*:]+):\*\*\s*(.*?)\s*$`)
 	bodyStart  = regexp.MustCompile(`^#{2,6}\s`)
-	fileName   = regexp.MustCompile(`^(\d+)-([a-z0-9]+(?:-[a-z0-9]+)*)$`)
+	// A kebab slug, with an underscore allowed inside a word: adr-tools writes
+	// dashes, and a hand-named record ("0002-use_modular-monolith...") is a
+	// record all the same.
+	fileName   = regexp.MustCompile(`^(\d+)-([a-z0-9_]+(?:-[a-z0-9_]+)*)$`)
 	adrID      = regexp.MustCompile(`^([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*)\.(\d+)$`)
 	scopeValue = regexp.MustCompile(`^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)?$`)
 	flowSlug   = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
@@ -339,8 +344,13 @@ func (p *parser) toolsMeta(from int) int {
 			}
 			p.adr.Date = value
 
+		case toolsMetaLine.MatchString(line):
+			// Another label a tree keeps above the record - "Log date:", a
+			// "Deciders:" line - is metadata the catalog has no field for.
+			// Kept out, not held against the record.
+
 		default:
-			p.fail(i, "only \"Date:\" belongs between the title and the first `##`")
+			p.fail(i, "only \"Date:\" and other `Label: value` lines belong between the title and the first `##`")
 
 			return -1
 		}

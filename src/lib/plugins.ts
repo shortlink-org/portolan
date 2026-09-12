@@ -165,6 +165,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   "rust-domain": { label: "Rust", icon: { brand: "Rust" } },
   "laravel-domain": { label: "Laravel", icon: { brand: "Laravel" } },
   "php-ddd": { label: "PHP by context", icon: { brand: "Symfony" } },
+  "csharp-ddd": { label: "C# by module", icon: { brand: "C#" } },
   "java-domain": { label: "Java", icon: { brand: "Java" } },
   "django-domain": { label: "Django", icon: { brand: "Django" } },
   celery: { label: "Celery", icon: { brand: "Celery" } },

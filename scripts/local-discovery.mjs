@@ -393,6 +393,9 @@ function detectionsFor(root, files) {
   // A PHP tree laid out by bounded context keeps each module's model under
   // src/<Context>/<Module>/Domain, with Shared beside the contexts.
   const phpDdd = files.has("composer.json") ? matches(files, /^src\/(?!Shared\/)[^/]+\/(?!Shared\/)[^/]+\/Domain\/[^/]+\.php$/)[0] ?? "" : "";
+  // A .NET tree laid out by module keeps each module's model under
+  // src/Modules/<Module>/Domain, with the HTTP host under src/API.
+  const csharpDdd = matches(files, /^src\/Modules\/[^/]+\/Domain\/.+\.cs$/)[0] ?? "";
   return [
     detected("project", projectEvidence, {}, projectEvidence.join(", ")),
     detected("go-domain", goDomain ? [goDomain] : [], {}, goDomain),
@@ -402,6 +405,7 @@ function detectionsFor(root, files) {
     detected("django-domain", files.has("manage.py") && matches(files, /(^|\/)models(?:\/[^/]+)?\.py$/i).length ? ["manage.py"] : []),
     detected("laravel-domain", laravelDomain ? [laravelDomain] : [], {}, laravelDomain),
     detected("php-ddd", phpDdd ? [phpDdd] : [], {}, phpDdd),
+    detected("csharp-ddd", csharpDdd ? [csharpDdd] : [], {}, csharpDdd),
     detected("celery", celery, {}, celery[0]),
     detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
     detected(

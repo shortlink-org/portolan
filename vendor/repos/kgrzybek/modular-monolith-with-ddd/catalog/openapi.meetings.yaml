@@ -1,0 +1,785 @@
+openapi: 3.1.0
+info:
+  title: Meetings HTTP API
+  version: inferred
+  description: Generated statically from ASP.NET Core controller attributes. Unknown details are left unspecified.
+tags:
+  - name: countries
+  - name: meeting-commenting-configuration
+  - name: meeting-comments
+  - name: meeting-group-proposals
+  - name: meeting-groups
+  - name: meetings
+paths:
+  /api/meetings/MeetingComments:
+    post:
+      operationId: AddComment
+      summary: Add comment
+      tags:
+        - meeting-comments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: AddMeetingCommentRequest
+              properties:
+                meetingId:
+                  type: string
+                  format: uuid
+                comment:
+                  type: string
+      responses:
+        "200":
+          description: Guid
+          x-portolan-type: Guid
+      x-portolan-permission: AddMeetingComment
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:24
+      x-portolan-controller: MeetingCommentsController
+  /api/meetings/MeetingComments/{meetingCommentId}:
+    delete:
+      operationId: DeleteComment
+      summary: Delete comment
+      tags:
+        - meeting-comments
+      parameters:
+        - name: meetingCommentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: RemoveMeetingComment
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:51
+      x-portolan-controller: MeetingCommentsController
+    put:
+      operationId: EditComment
+      summary: Edit comment
+      tags:
+        - meeting-comments
+      parameters:
+        - name: meetingCommentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: EditMeetingCommentRequest
+              properties:
+                editedComment:
+                  type: string
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: EditMeetingComment
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:37
+      x-portolan-controller: MeetingCommentsController
+  /api/meetings/MeetingComments/{meetingCommentId}/likes:
+    delete:
+      operationId: UnlikeComment
+      summary: Unlike comment
+      tags:
+        - meeting-comments
+      parameters:
+        - name: meetingCommentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: UnlikeMeetingComment
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:83
+      x-portolan-controller: MeetingCommentsController
+    post:
+      operationId: LikeComment
+      summary: Like comment
+      tags:
+        - meeting-comments
+      parameters:
+        - name: meetingCommentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: LikeMeetingComment
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:72
+      x-portolan-controller: MeetingCommentsController
+  /api/meetings/MeetingComments/{meetingCommentId}/replies:
+    post:
+      operationId: AddReply
+      summary: Add reply
+      tags:
+        - meeting-comments
+      parameters:
+        - name: meetingCommentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: AddMeetingCommentReply
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:62
+      x-portolan-controller: MeetingCommentsController
+  /api/meetings/MeetingGroupProposals:
+    get:
+      operationId: GetMemberMeetingGroupProposals
+      summary: Get member meeting group proposals
+      tags:
+        - meeting-group-proposals
+      responses:
+        "200":
+          description: List<MeetingGroupProposalDto>
+          x-portolan-type: List<MeetingGroupProposalDto>
+      x-portolan-permission: GetMeetingGroupProposals
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:22
+      x-portolan-controller: MeetingGroupProposalsController
+    post:
+      operationId: ProposeMeetingGroup
+      summary: Propose meeting group
+      tags:
+        - meeting-group-proposals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: ProposeMeetingGroupRequest
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                locationCity:
+                  type: string
+                locationCountryCode:
+                  type: string
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: ProposeMeetingGroup
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:44
+      x-portolan-controller: MeetingGroupProposalsController
+  /api/meetings/MeetingGroupProposals/all:
+    get:
+      operationId: GetAllMeetingGroupProposals
+      summary: Get all meeting group proposals
+      tags:
+        - meeting-group-proposals
+      responses:
+        "200":
+          description: List<MeetingGroupProposalDto>
+          x-portolan-type: List<MeetingGroupProposalDto>
+      x-portolan-permission: GetMeetingGroupProposals
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:33
+      x-portolan-controller: MeetingGroupProposalsController
+  /api/meetings/MeetingGroups:
+    get:
+      operationId: GetAuthenticatedMemberMeetingGroups
+      summary: Get authenticated member meeting groups
+      tags:
+        - meeting-groups
+      responses:
+        "200":
+          description: List<MemberMeetingGroupDto>
+          x-portolan-type: List<MemberMeetingGroupDto>
+      x-portolan-permission: GetAuthenticatedMemberMeetingGroups
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:24
+      x-portolan-controller: MeetingGroupsController
+  /api/meetings/MeetingGroups/all:
+    get:
+      operationId: GetAllMeetingGroups
+      summary: Get all meeting groups
+      tags:
+        - meeting-groups
+      responses:
+        "200":
+          description: List<MeetingGroupDto>
+          x-portolan-type: List<MeetingGroupDto>
+      x-portolan-permission: GetAllMeetingGroups
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:46
+      x-portolan-controller: MeetingGroupsController
+  /api/meetings/MeetingGroups/{meetingGroupId}:
+    get:
+      operationId: GetMeetingGroupDetails
+      summary: Get meeting group details
+      tags:
+        - meeting-groups
+      parameters:
+        - name: meetingGroupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: MeetingGroupDetailsDto
+          x-portolan-type: MeetingGroupDetailsDto
+      x-portolan-permission: GetMeetingGroupDetails
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:35
+      x-portolan-controller: MeetingGroupsController
+    put:
+      operationId: EditMeetingGroupGeneralAttributes
+      summary: Edit meeting group general attributes
+      tags:
+        - meeting-groups
+      parameters:
+        - name: meetingGroupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: EditMeetingGroupGeneralAttributesRequest
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                locationCity:
+                  type: string
+                locationCountry:
+                  type: string
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: EditMeetingGroupGeneralAttributes
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:56
+      x-portolan-controller: MeetingGroupsController
+  /api/meetings/MeetingGroups/{meetingGroupId}/members:
+    delete:
+      operationId: LeaveMeetingGroup
+      summary: Leave meeting group
+      tags:
+        - meeting-groups
+      parameters:
+        - name: meetingGroupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: LeaveMeetingGroup
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:83
+      x-portolan-controller: MeetingGroupsController
+    post:
+      operationId: JoinToGroup
+      summary: Join to group
+      tags:
+        - meeting-groups
+      parameters:
+        - name: meetingGroupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: JoinToGroup
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:73
+      x-portolan-controller: MeetingGroupsController
+  /api/meetings/countries:
+    get:
+      operationId: GetAllCountries
+      summary: Get all countries
+      tags:
+        - countries
+      responses:
+        "200":
+          description: List<CountryDto>
+          x-portolan-type: List<CountryDto>
+      x-portolan-permission: GetMeetingGroupProposals
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Countries/CountriesController.cs:19
+      x-portolan-controller: CountriesController
+  /api/meetings/meetings:
+    get:
+      operationId: GetAuthenticatedMemberMeetings
+      summary: Get authenticated member meetings
+      tags:
+        - meetings
+      responses:
+        "200":
+          description: List<MemberMeetingDto>
+          x-portolan-type: List<MemberMeetingDto>
+      x-portolan-permission: GetAuthenticatedMemberMeetings
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:32
+      x-portolan-controller: MeetingsController
+    post:
+      operationId: CreateNewMeeting
+      summary: Create new meeting
+      tags:
+        - meetings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: CreateMeetingRequest
+              properties:
+                meetingGroupId:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                termStartDate:
+                  type: string
+                  format: date-time
+                termEndDate:
+                  type: string
+                  format: date-time
+                description:
+                  type: string
+                meetingLocationName:
+                  type: string
+                meetingLocationAddress:
+                  type: string
+                meetingLocationPostalCode:
+                  type: string
+                meetingLocationCity:
+                  type: string
+                attendeesLimit:
+                  type: integer
+                guestsLimit:
+                  type: integer
+                RSVPTermStartDate:
+                  type: string
+                  format: date-time
+                RSVPTermEndDate:
+                  type: string
+                  format: date-time
+                eventFeeValue:
+                  type: number
+                eventFeeCurrency:
+                  type: string
+                hostMemberIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: CreateNewMeeting
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:52
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}:
+    get:
+      operationId: GetMeetingDetails
+      summary: Get meeting details
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: MeetingDetailsDto
+          x-portolan-type: MeetingDetailsDto
+      x-portolan-permission: GetMeetingDetails
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:42
+      x-portolan-controller: MeetingsController
+    put:
+      operationId: EditMeeting
+      summary: Edit meeting
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: ChangeMeetingMainAttributesRequest
+              properties:
+                meetingId:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                termStartDate:
+                  type: string
+                  format: date-time
+                termEndDate:
+                  type: string
+                  format: date-time
+                description:
+                  type: string
+                meetingLocationName:
+                  type: string
+                meetingLocationAddress:
+                  type: string
+                meetingLocationPostalCode:
+                  type: string
+                meetingLocationCity:
+                  type: string
+                attendeesLimit:
+                  type: integer
+                guestsLimit:
+                  type: integer
+                RSVPTermStartDate:
+                  type: string
+                  format: date-time
+                RSVPTermEndDate:
+                  type: string
+                  format: date-time
+                eventFeeValue:
+                  type: number
+                eventFeeCurrency:
+                  type: string
+                hostMemberIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: EditMeeting
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:78
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/attendees:
+    get:
+      operationId: GetMeetingAttendees
+      summary: Get meeting attendees
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List<MeetingAttendeeDto>
+          x-portolan-type: List<MeetingAttendeeDto>
+      x-portolan-permission: GetMeetingAttendees
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:105
+      x-portolan-controller: MeetingsController
+    post:
+      operationId: AddMeetingAttendee
+      summary: Add meeting attendee
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: AddMeetingAttendeeRequest
+              properties:
+                guestsNumber:
+                  type: integer
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: AddMeetingAttendee
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:115
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/attendees/attendeeRole:
+    post:
+      operationId: SetMeetingAttendeeRole
+      summary: Set meeting attendee role
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: SetMeetingHostRequest
+              properties:
+                attendeeId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: SetMeetingAttendeeRole
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:193
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/attendees/{attendeeId}:
+    delete:
+      operationId: RemoveMeetingAttendee
+      summary: Remove meeting attendee
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: attendeeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: RemoveMeetingAttendee
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:129
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/cancel:
+    patch:
+      operationId: CancelMeeting
+      summary: Cancel meeting
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: CancelMeeting
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:203
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/configuration/commenting/disable:
+    patch:
+      operationId: DisableCommenting
+      summary: Disable commenting
+      tags:
+        - meeting-commenting-configuration
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: DisableMeetingCommenting
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingCommentingConfiguration/MeetingCommentingConfigurationController.cs:20
+      x-portolan-controller: MeetingCommentingConfigurationController
+  /api/meetings/meetings/{meetingId}/configuration/commenting/enable:
+    patch:
+      operationId: EnableCommenting
+      summary: Enable commenting
+      tags:
+        - meeting-commenting-configuration
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: EnableMeetingCommenting
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingCommentingConfiguration/MeetingCommentingConfigurationController.cs:29
+      x-portolan-controller: MeetingCommentingConfigurationController
+  /api/meetings/meetings/{meetingId}/hosts:
+    post:
+      operationId: SetMeetingHostRole
+      summary: Set meeting host role
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: SetMeetingHostRequest
+              properties:
+                attendeeId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: SetMeetingHostRole
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:183
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/notAttendees:
+    delete:
+      operationId: ChangeNotAttendeeDecision
+      summary: Change not attendee decision
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: ChangeNotAttendeeDecision
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:153
+      x-portolan-controller: MeetingsController
+    post:
+      operationId: AddNotAttendee
+      summary: Add not attendee
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: AddNotAttendee
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:143
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/waitlistMembers:
+    delete:
+      operationId: SignOffMemberFromWaitlist
+      summary: Sign off member from waitlist
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: SignOffMemberFromWaitlist
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:173
+      x-portolan-controller: MeetingsController
+    post:
+      operationId: SignUpMemberToWaitlist
+      summary: Sign up member to waitlist
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: SignUpMemberToWaitlist
+      x-portolan-inferred: true
+      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:163
+      x-portolan-controller: MeetingsController

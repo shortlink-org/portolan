@@ -1,0 +1,97 @@
+openapi: 3.1.0
+info:
+  title: Meetings HTTP API
+  version: inferred
+  description: Generated statically from ASP.NET Core controller attributes. Unknown details are left unspecified.
+tags:
+  - name: countries
+  - name: meetings
+paths:
+  /api/meetings/countries:
+    get:
+      operationId: GetAllCountries
+      summary: Get all countries
+      tags:
+        - countries
+      responses:
+        "200":
+          description: List<CountryDto>
+          x-portolan-type: List<CountryDto>
+      x-portolan-inferred: true
+      x-portolan-source: plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Countries/CountriesController.cs:18
+      x-portolan-controller: CountriesController
+  /api/meetings/meetings:
+    post:
+      operationId: CreateNewMeeting
+      summary: Create new meeting
+      tags:
+        - meetings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: CreateMeetingRequest
+              properties:
+                title:
+                  type: string
+                termStartDate:
+                  type: string
+                  format: date-time
+                termEndDate:
+                  type: string
+                  format: date-time
+                hostMemberIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Declared by the action.
+      x-portolan-permission: CreateNewMeeting
+      x-portolan-inferred: true
+      x-portolan-source: plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:32
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}:
+    get:
+      operationId: GetMeetingDetails
+      summary: Everything about one meeting.
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: MeetingDetailsDto
+          x-portolan-type: MeetingDetailsDto
+      x-portolan-permission: GetMeetingDetails
+      x-portolan-inferred: true
+      x-portolan-source: plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:22
+      x-portolan-controller: MeetingsController
+  /api/meetings/meetings/{meetingId}/cancel:
+    patch:
+      operationId: CancelMeeting
+      summary: Cancel meeting
+      tags:
+        - meetings
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        default:
+          description: Response schema and status are not available from static controller analysis.
+      x-portolan-permission: CancelMeeting
+      x-portolan-inferred: true
+      x-portolan-source: plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:45
+      x-portolan-controller: MeetingsController

@@ -663,6 +663,84 @@
     }
   },
   {
+    "name": "csharp-ddd",
+    "plugin": "extract-csharp-ddd",
+    "summary": "A C# tree laid out by module and layer - src/Modules/<Module>/{Domain,Application,Infrastructure,IntegrationEvents}, controllers under an API host, a database project - read into contexts, aggregates, commands and queries, domain and integration events, an in-memory bus, SQL Server schemas and flows, through Roslyn without restoring a package.",
+    "category": "code",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "process",
+    "toolchain": "dotnet",
+    "source": "plugins/extract-csharp-ddd",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modules": {
+          "type": "string",
+          "description": "The directory the modules are in, relative to the input root: one directory per module, `Domain`, `Application`, `Infrastructure` and `IntegrationEvents` under it. Each module is a bounded context with one service.",
+          "default": "src/Modules"
+        },
+        "api": {
+          "type": "string",
+          "description": "The directory the HTTP host is in, relative to the input root. Controllers under a `Modules/<Module>` directory beneath it are that module's HTTP edge.",
+          "default": "src/API"
+        },
+        "database": {
+          "type": "string",
+          "description": "The directory the database project is in, relative to the input root: `Structure/<schema>/Tables/*.sql` and `Structure/<schema>/Views/*.sql` beneath it, one schema per module.",
+          "default": "src/Database"
+        },
+        "repo": {
+          "type": "string",
+          "description": "Where the source lives, as `host/owner/name`. Nothing in a .NET tree says, so the manifest does.",
+          "examples": [
+            "github.com/kgrzybek/modular-monolith-with-ddd"
+          ]
+        },
+        "bus": {
+          "type": "string",
+          "description": "The address of the bus integration events cross modules on. The code names the class, `InMemoryEventBus`, and nothing else, so the manifest says.",
+          "default": "integration-events"
+        },
+        "storeKind": {
+          "enum": [
+            "postgres",
+            "mysql",
+            "sqlite",
+            "other"
+          ],
+          "description": "What the schemas live in. SQL Server is `other`.",
+          "default": "other"
+        },
+        "classification": {
+          "enum": [
+            "core",
+            "supporting",
+            "generic"
+          ],
+          "description": "Whether the modules are core to the business, support it, or are generic and could be bought. One value for every module the tree declares."
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "domain.json"
+        },
+        "openapiOut": {
+          "type": "string",
+          "description": "Name of the inferred OpenAPI 3.1 document, inside the step's output directory, one per module with controllers; `{service}` is replaced with the module's slug.",
+          "default": "openapi.{service}.yaml"
+        },
+        "storesOut": {
+          "type": "string",
+          "description": "Name of the store fragment, inside the step's output directory. Written when the database project declares a schema a module maps to.",
+          "default": "stores.json"
+        }
+      }
+    }
+  },
+  {
     "name": "java-domain",
     "plugin": "extract-java",
     "summary": "Reads a Java service by what it declares - jMolecules aggregates, events and ports, Spring's listeners and handlers - into a catalog fragment.",

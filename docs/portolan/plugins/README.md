@@ -181,7 +181,8 @@ constants that share a prefix - `STATUS_PENDING = 'pending'` beside
 `STATUS_CLOSED = 'closed'` - with `@deprecated` in a constant's docblock
 marking the value; see `extract-laravel/README.md`. In a PHP tree laid out
 by bounded context (`extract-php-ddd`) it is a backed `enum` under a module's
-`Domain/`. In proto,
+`Domain/`. In a .NET modular monolith (`extract-csharp-ddd`) it is a C# `enum`
+in the aggregate's directory, `[Obsolete]` marking a value. In proto,
 the enums the messages reach through their fields sit on the interface as
 `enums`, with the numbers the wire uses.
 

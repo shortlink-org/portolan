@@ -1,0 +1,3761 @@
+{
+  "contexts": [
+    {
+      "id": "administration",
+      "slug": "administration",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "administration.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "administration.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "meetings",
+      "slug": "meetings",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "meetings.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "meetings.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "payments.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "registrations",
+      "slug": "registrations",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "registrations.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "registrations.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user-access",
+      "slug": "user-access",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "user-access.module",
+          "slug": "module",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "user-access.module.db"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "administration.module.db",
+      "slug": "db",
+      "name": "Administration database",
+      "kind": "other",
+      "owner": "administration.module",
+      "tables": [
+        {
+          "id": "administration.module.db.InboxMessages",
+          "name": "InboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "IntegrationEventGenericHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            }
+          ]
+        },
+        {
+          "id": "administration.module.db.InternalCommands",
+          "name": "InternalCommands",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "EnqueueDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            },
+            {
+              "name": "Error",
+              "type": "nvarchar(max)",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:25"
+            },
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:44"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:24"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:24"
+            }
+          ]
+        },
+        {
+          "id": "administration.module.db.MeetingGroupProposals",
+          "name": "MeetingGroupProposals",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingGroupProposal.id"
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.name"
+            },
+            {
+              "name": "Description",
+              "type": "varchar(200)",
+              "nullable": true,
+              "maps": "MeetingGroupProposal.description"
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.location"
+            },
+            {
+              "name": "LocationCountryCode",
+              "type": "nvarchar(3)",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.location"
+            },
+            {
+              "name": "ProposalUserId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.proposalUserId"
+            },
+            {
+              "name": "ProposalDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.proposalDate"
+            },
+            {
+              "name": "StatusCode",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.status"
+            },
+            {
+              "name": "DecisionDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "MeetingGroupProposal.decision"
+            },
+            {
+              "name": "DecisionUserId",
+              "type": "uniqueidentifier",
+              "nullable": true,
+              "maps": "MeetingGroupProposal.decision"
+            },
+            {
+              "name": "DecisionCode",
+              "type": "nvarchar(50)",
+              "nullable": true,
+              "maps": "MeetingGroupProposal.decision"
+            },
+            {
+              "name": "DecisionRejectReason",
+              "type": "nvarchar(250)",
+              "nullable": true,
+              "maps": "MeetingGroupProposal.decision"
+            }
+          ],
+          "persists": {
+            "aggregate": "administration.module.meeting-group-proposals",
+            "block": "administration.module.meeting-group-proposals.meeting-group-proposal"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingGroupProposalRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:15"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingGroupProposalRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:20"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingGroupProposalQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Application/MeetingGroupProposals/GetMeetingGroupProposal/GetMeetingGroupProposalQueryHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingGroupProposalsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Application/MeetingGroupProposals/GetMeetingGroupProposals/GetMeetingGroupProposalsQueryHandler.cs:17"
+            }
+          ]
+        },
+        {
+          "id": "administration.module.db.Members",
+          "name": "Members",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "Member.id"
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false,
+              "maps": "Member.login"
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "Member.email"
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "Member.firstName"
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "Member.lastName"
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "Member.name"
+            }
+          ],
+          "persists": {
+            "aggregate": "administration.module.members",
+            "block": "administration.module.members.member"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MemberRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/Members/MemberRepository.cs:15"
+            },
+            {
+              "operation": "read",
+              "method": "MemberRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/Members/MemberRepository.cs:20"
+            },
+            {
+              "operation": "read",
+              "method": "GetMemberQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Application/Members/GetMember/GetMemberQueryHandler.cs:16"
+            }
+          ]
+        },
+        {
+          "id": "administration.module.db.OutboxMessages",
+          "name": "OutboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "outbox",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "id": "administration.module.db.v_MeetingGroupProposals",
+          "name": "v_MeetingGroupProposals",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Description",
+              "type": "varchar(200)",
+              "nullable": true
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LocationCountryCode",
+              "type": "nvarchar(3)",
+              "nullable": false
+            },
+            {
+              "name": "ProposalUserId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "ProposalDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "StatusCode",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "DecisionDate",
+              "type": "datetime",
+              "nullable": true
+            },
+            {
+              "name": "DecisionUserId",
+              "type": "uniqueidentifier",
+              "nullable": true
+            },
+            {
+              "name": "DecisionCode",
+              "type": "nvarchar(50)",
+              "nullable": true
+            },
+            {
+              "name": "DecisionRejectReason",
+              "type": "nvarchar(250)",
+              "nullable": true
+            }
+          ],
+          "reads": [
+            "administration.module.db.MeetingGroupProposals"
+          ],
+          "definition": "SELECT\n    [MeetingGroupProposal].[Id],\n    [MeetingGroupProposal].[Name],\n    [MeetingGroupProposal].[Description],\n    [MeetingGroupProposal].[LocationCity],\n    [MeetingGroupProposal].[LocationCountryCode],\n    [MeetingGroupProposal].[ProposalUserId],\n    [MeetingGroupProposal].[ProposalDate],\n    [MeetingGroupProposal].[StatusCode],\n    [MeetingGroupProposal].[DecisionDate],\n    [MeetingGroupProposal].[DecisionUserId],\n    [MeetingGroupProposal].[DecisionCode],\n    [MeetingGroupProposal].[DecisionRejectReason]\nFROM [administration].[MeetingGroupProposals] AS [MeetingGroupProposal]",
+          "persists": {
+            "aggregate": "administration.module.meeting-group-proposals",
+            "block": "administration.module.meeting-group-proposals.meeting-group-proposal"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/administration/Views/v_MeetingGroupProposals.sql"
+        },
+        {
+          "id": "administration.module.db.v_Members",
+          "name": "v_Members",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "administration.module.db.Members"
+          ],
+          "definition": "SELECT\n    [Member].[Id],\n    [Member].[Login],\n    [Member].[Email],\n    [Member].[FirstName],\n    [Member].[LastName],\n    [Member].[Name]\nFROM [administration].[Members] AS [Member]",
+          "persists": {
+            "aggregate": "administration.module.members",
+            "block": "administration.module.members.member"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/administration/Views/v_Members.sql"
+        }
+      ],
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/administration"
+    },
+    {
+      "id": "meetings.module.db",
+      "slug": "db",
+      "name": "Meetings database",
+      "kind": "other",
+      "owner": "meetings.module",
+      "tables": [
+        {
+          "id": "meetings.module.db.Countries",
+          "name": "Countries",
+          "columns": [
+            {
+              "name": "Code",
+              "type": "char(2)",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "pk": true
+            }
+          ],
+          "role": "other"
+        },
+        {
+          "id": "meetings.module.db.InboxMessages",
+          "name": "InboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "IntegrationEventGenericHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.InternalCommands",
+          "name": "InternalCommands",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "EnqueueDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            },
+            {
+              "name": "Error",
+              "type": "nvarchar(max)",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingAttendees",
+          "name": "MeetingAttendees",
+          "columns": [
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingAttendee.meetingId"
+            },
+            {
+              "name": "AttendeeId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingAttendee.attendeeId"
+            },
+            {
+              "name": "DecisionDate",
+              "type": "datetime2",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingAttendee.decisionDate"
+            },
+            {
+              "name": "RoleCode",
+              "type": "varchar(50)",
+              "nullable": true,
+              "maps": "MeetingAttendee.role"
+            },
+            {
+              "name": "GuestsNumber",
+              "type": "int",
+              "nullable": true,
+              "maps": "MeetingAttendee.guestsNumber"
+            },
+            {
+              "name": "DecisionChanged",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingAttendee.decisionChanged"
+            },
+            {
+              "name": "DecisionChangeDate",
+              "type": "datetime2",
+              "nullable": true,
+              "maps": "MeetingAttendee.decisionChangeDate"
+            },
+            {
+              "name": "IsRemoved",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingAttendee.isRemoved"
+            },
+            {
+              "name": "RemovingMemberId",
+              "type": "uniqueidentifier",
+              "nullable": true,
+              "maps": "MeetingAttendee.removingMemberId"
+            },
+            {
+              "name": "RemovingReason",
+              "type": "nvarchar(500)",
+              "nullable": true,
+              "maps": "MeetingAttendee.removingReason"
+            },
+            {
+              "name": "RemovedDate",
+              "type": "datetime2",
+              "nullable": true,
+              "maps": "MeetingAttendee.removedDate"
+            },
+            {
+              "name": "BecameNotAttendeeDate",
+              "type": "datetime2",
+              "nullable": true
+            },
+            {
+              "name": "FeeValue",
+              "type": "decimal(5,0)",
+              "nullable": true,
+              "maps": "MeetingAttendee.fee"
+            },
+            {
+              "name": "FeeCurrency",
+              "type": "varchar(3)",
+              "nullable": true,
+              "maps": "MeetingAttendee.fee"
+            },
+            {
+              "name": "IsFeePaid",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingAttendee.isFeePaid"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting-attendee"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetAuthenticatedMemberMeetingsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetAuthenticatedMemberMeetings/GetAuthenticatedMemberMeetingsQueryHandler.cs:22"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingAttendeesQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetMeetingAttendees/GetMeetingAttendeesQueryHandler.cs:16"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingCommentingConfigurations",
+          "name": "MeetingCommentingConfigurations",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingCommentingConfiguration.id"
+            },
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "fk": {
+                "table": "meetings.module.db.Meetings",
+                "column": "Id"
+              },
+              "maps": "MeetingCommentingConfiguration.meetingId"
+            },
+            {
+              "name": "IsCommentingEnabled",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingCommentingConfiguration.isCommentingEnabled"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meeting-commenting-configurations",
+            "block": "meetings.module.meeting-commenting-configurations.meeting-commenting-configuration"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingCommentingConfigurationRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingCommentingConfigurations/MeetingCommentingConfigurationRepository.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingCommentingConfigurationRepository.GetByMeetingIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingCommentingConfigurations/MeetingCommentingConfigurationRepository.cs:21"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingCommentingConfigurationQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingCommentingConfigurations/GetMeetingCommentingConfiguration/GetMeetingCommentingConfigurationQueryHandler.cs:16"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingComments",
+          "name": "MeetingComments",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingComment.id"
+            },
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "MeetingComment.meetingId"
+            },
+            {
+              "name": "AuthorId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "MeetingComment.authorId"
+            },
+            {
+              "name": "InReplyToCommentId",
+              "type": "uniqueidentifier",
+              "nullable": true,
+              "maps": "MeetingComment.inReplyToCommentId"
+            },
+            {
+              "name": "Comment",
+              "type": "varchar(300)",
+              "nullable": true,
+              "maps": "MeetingComment.comment"
+            },
+            {
+              "name": "IsRemoved",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingComment.isRemoved"
+            },
+            {
+              "name": "RemovedByReason",
+              "type": "varchar(300)",
+              "nullable": true,
+              "maps": "MeetingComment.removedByReason"
+            },
+            {
+              "name": "CreateDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "MeetingComment.createDate"
+            },
+            {
+              "name": "EditDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "MeetingComment.editDate"
+            },
+            {
+              "name": "LikesCount",
+              "type": "int",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meeting-comments",
+            "block": "meetings.module.meeting-comments.meeting-comment"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingCommentRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingComments/MeetingCommentRepository.cs:14"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingCommentRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingComments/MeetingCommentRepository.cs:19"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingCommentsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/GetMeetingComments/GetMeetingCommentsQueryHandler.cs:16"
+            },
+            {
+              "operation": "write",
+              "method": "MeetingCommentLikedNotificationHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentLikedNotificationHandler.cs:16"
+            },
+            {
+              "operation": "write",
+              "method": "MeetingCommentUnlikeNotificationHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentUnlikeNotificationHandler.cs:16"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingGroupMembers",
+          "name": "MeetingGroupMembers",
+          "columns": [
+            {
+              "name": "MeetingGroupId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingGroupMember.meetingGroupId"
+            },
+            {
+              "name": "MemberId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingGroupMember.memberId"
+            },
+            {
+              "name": "JoinedDate",
+              "type": "datetime2",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingGroupMember.joinedDate"
+            },
+            {
+              "name": "RoleCode",
+              "type": "varchar(50)",
+              "nullable": false,
+              "maps": "MeetingGroupMember.role"
+            },
+            {
+              "name": "IsActive",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingGroupMember.isActive"
+            },
+            {
+              "name": "LeaveDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "MeetingGroupMember.leaveDate"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meeting-groups",
+            "block": "meetings.module.meeting-groups.meeting-group-member"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetAuthenticationMemberMeetingGroupsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetAuthenticationMemberMeetingGroups/GetAuthenticationMemberMeetingGroupsQueryHandler.cs:23"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingGroupDetailsQueryHandler.GetMembersCount",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:43"
+            },
+            {
+              "operation": "read",
+              "method": "MemberSubscriptionExpirationDateChangedNotificationHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MemberSubscriptions/MemberSubscriptionExpirationDateChangedNotificationHandler.cs:24"
+            },
+            {
+              "operation": "read",
+              "method": "MembersQueryHelper.GetMeetingGroupMember",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:30"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingGroupProposals",
+          "name": "MeetingGroupProposals",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.id"
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.name"
+            },
+            {
+              "name": "Description",
+              "type": "varchar(200)",
+              "nullable": true,
+              "maps": "MeetingGroupProposal.description"
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.location"
+            },
+            {
+              "name": "LocationCountryCode",
+              "type": "nvarchar(3)",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.location"
+            },
+            {
+              "name": "ProposalUserId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.proposalUserId"
+            },
+            {
+              "name": "ProposalDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "MeetingGroupProposal.proposalDate"
+            },
+            {
+              "name": "StatusCode",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingGroupProposal.status"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meeting-group-proposals",
+            "block": "meetings.module.meeting-group-proposals.meeting-group-proposal"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingGroupProposalRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:15"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingGroupProposalRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:20"
+            },
+            {
+              "operation": "read",
+              "method": "GetAllMeetingGroupProposalsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroupProposals/GetAllMeetingGroupProposals/GetAllMeetingGroupProposalsQueryHandler.cs:18"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingGroupProposalQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroupProposals/GetMeetingGroupProposal/GetMeetingGroupProposalQueryHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "GetMemberMeetingGroupProposalsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroupProposals/GetMemberMeetingGroupProposals/GetMemberMeetingGroupProposalsQueryHandler.cs:23"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingGroups",
+          "name": "MeetingGroups",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingGroup.id"
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "MeetingGroup.name"
+            },
+            {
+              "name": "Description",
+              "type": "varchar(200)",
+              "nullable": true,
+              "maps": "MeetingGroup.description"
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "MeetingGroup.location"
+            },
+            {
+              "name": "LocationCountryCode",
+              "type": "nvarchar(3)",
+              "nullable": false,
+              "maps": "MeetingGroup.location"
+            },
+            {
+              "name": "CreatorId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "MeetingGroup.creatorId"
+            },
+            {
+              "name": "CreateDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "MeetingGroup.createDate"
+            },
+            {
+              "name": "PaymentDateTo",
+              "type": "date",
+              "nullable": true,
+              "maps": "MeetingGroup.paymentDateTo"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meeting-groups",
+            "block": "meetings.module.meeting-groups.meeting-group"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingGroupRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:15"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingGroupRepository.Commit",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:20"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingGroupRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:25"
+            },
+            {
+              "operation": "read",
+              "method": "GetAllMeetingGroupsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetAllMeetingGroups/GetAllMeetingGroupsQueryHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "GetAuthenticationMemberMeetingGroupsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetAuthenticationMemberMeetingGroups/GetAuthenticationMemberMeetingGroupsQueryHandler.cs:23"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingGroupDetailsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:17"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingGroupDetailsQueryHandler.GetMembersCount",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:43"
+            },
+            {
+              "operation": "read",
+              "method": "SendMeetingGroupCreatedEmailCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/SendMeetingGroupCreatedEmail/SendMeetingGroupCreatedEmailCommandHandler.cs:23"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingMemberCommentLikes",
+          "name": "MeetingMemberCommentLikes",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingMemberCommentLike.id"
+            },
+            {
+              "name": "MemberId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "fk": {
+                "table": "meetings.module.db.Members",
+                "column": "Id"
+              },
+              "maps": "MeetingMemberCommentLike.memberId"
+            },
+            {
+              "name": "MeetingCommentId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "fk": {
+                "table": "meetings.module.db.MeetingComments",
+                "column": "Id"
+              },
+              "maps": "MeetingMemberCommentLike.meetingCommentId"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meeting-member-comment-likes",
+            "block": "meetings.module.meeting-member-comment-likes.meeting-member-comment-like"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingMemberCommentLikeRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:21"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingMemberCommentLikeRepository.GetAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:26"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingMemberCommentLikeRepository.CountMemberCommentLikesAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:33"
+            },
+            {
+              "operation": "delete",
+              "method": "MeetingMemberCommentLikeRepository.Remove",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:52"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingCommentLikersQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/GetMeetingCommentLikers/GetMeetingCommentLikersQueryHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingCommentLikedNotificationHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentLikedNotificationHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingCommentUnlikeNotificationHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentUnlikeNotificationHandler.cs:16"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MeetingNotAttendees",
+          "name": "MeetingNotAttendees",
+          "columns": [
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingNotAttendee.meetingId"
+            },
+            {
+              "name": "MemberId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingNotAttendee.memberId"
+            },
+            {
+              "name": "DecisionDate",
+              "type": "datetime2",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingNotAttendee.decisionDate"
+            },
+            {
+              "name": "DecisionChanged",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingNotAttendee.decisionChanged"
+            },
+            {
+              "name": "DecisionChangeDate",
+              "type": "datetime2",
+              "nullable": true,
+              "maps": "MeetingNotAttendee.decisionChangeDate"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting-not-attendee"
+          },
+          "role": "child"
+        },
+        {
+          "id": "meetings.module.db.MeetingWaitlistMembers",
+          "name": "MeetingWaitlistMembers",
+          "columns": [
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingWaitlistMember.meetingId"
+            },
+            {
+              "name": "MemberId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingWaitlistMember.memberId"
+            },
+            {
+              "name": "SignUpDate",
+              "type": "datetime2",
+              "nullable": false,
+              "pk": true,
+              "maps": "MeetingWaitlistMember.signUpDate"
+            },
+            {
+              "name": "IsSignedOff",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingWaitlistMember.isSignedOff"
+            },
+            {
+              "name": "SignOffDate",
+              "type": "datetime2",
+              "nullable": true,
+              "maps": "MeetingWaitlistMember.signOffDate"
+            },
+            {
+              "name": "IsMovedToAttendees",
+              "type": "bit",
+              "nullable": false,
+              "maps": "MeetingWaitlistMember.isMovedToAttendees"
+            },
+            {
+              "name": "MovedToAttendeesDate",
+              "type": "datetime2",
+              "nullable": true,
+              "maps": "MeetingWaitlistMember.movedToAttendeesDate"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting-waitlist-member"
+          },
+          "role": "child"
+        },
+        {
+          "id": "meetings.module.db.Meetings",
+          "name": "Meetings",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "Meeting.id"
+            },
+            {
+              "name": "MeetingGroupId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "Meeting.meetingGroupId"
+            },
+            {
+              "name": "CreatorId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "Meeting.creatorId"
+            },
+            {
+              "name": "CreateDate",
+              "type": "datetime2",
+              "nullable": false,
+              "maps": "Meeting.createDate"
+            },
+            {
+              "name": "Title",
+              "type": "nvarchar(200)",
+              "nullable": false,
+              "maps": "Meeting.title"
+            },
+            {
+              "name": "Description",
+              "type": "nvarchar(4000)",
+              "nullable": false,
+              "maps": "Meeting.description"
+            },
+            {
+              "name": "TermStartDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "Meeting.term"
+            },
+            {
+              "name": "TermEndDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "Meeting.term"
+            },
+            {
+              "name": "LocationName",
+              "type": "nvarchar(200)",
+              "nullable": false,
+              "maps": "Meeting.location"
+            },
+            {
+              "name": "LocationAddress",
+              "type": "nvarchar(200)",
+              "nullable": false,
+              "maps": "Meeting.location"
+            },
+            {
+              "name": "LocationPostalCode",
+              "type": "nvarchar(200)",
+              "nullable": true,
+              "maps": "Meeting.location"
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "Meeting.location"
+            },
+            {
+              "name": "AttendeesLimit",
+              "type": "int",
+              "nullable": true,
+              "maps": "Meeting.meetingLimits"
+            },
+            {
+              "name": "GuestsLimit",
+              "type": "int",
+              "nullable": false,
+              "maps": "Meeting.meetingLimits"
+            },
+            {
+              "name": "RSVPTermStartDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "Meeting.rsvpTerm"
+            },
+            {
+              "name": "RSVPTermEndDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "Meeting.rsvpTerm"
+            },
+            {
+              "name": "EventFeeValue",
+              "type": "decimal(5,0)",
+              "nullable": true,
+              "maps": "Meeting.eventFee"
+            },
+            {
+              "name": "EventFeeCurrency",
+              "type": "varchar(3)",
+              "nullable": true,
+              "maps": "Meeting.eventFee"
+            },
+            {
+              "name": "ChangeDate",
+              "type": "datetime2",
+              "nullable": true,
+              "maps": "Meeting.changeDate"
+            },
+            {
+              "name": "ChangeMemberId",
+              "type": "uniqueidentifier",
+              "nullable": true,
+              "maps": "Meeting.changeMemberId"
+            },
+            {
+              "name": "CancelDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "Meeting.cancelDate"
+            },
+            {
+              "name": "CancelMemberId",
+              "type": "uniqueidentifier",
+              "nullable": true,
+              "maps": "Meeting.cancelMemberId"
+            },
+            {
+              "name": "IsCanceled",
+              "type": "bit",
+              "nullable": false,
+              "maps": "Meeting.isCanceled"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MeetingRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:14"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:19"
+            },
+            {
+              "operation": "read",
+              "method": "GetAuthenticatedMemberMeetingsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetAuthenticatedMemberMeetings/GetAuthenticatedMemberMeetingsQueryHandler.cs:22"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingDetailsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetMeetingDetails/GetMeetingDetailsQueryHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "MeetingsQueryHelper.GetMeeting",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/MeetingsQueryHelper.cs:9"
+            },
+            {
+              "operation": "read",
+              "method": "MembersQueryHelper.GetMeetingGroupMember",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:30"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.MemberSubscriptions",
+          "name": "MemberSubscriptions",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "MemberSubscription.id"
+            },
+            {
+              "name": "ExpirationDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "MemberSubscription.expirationDate"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.member-subscriptions",
+            "block": "meetings.module.member-subscriptions.member-subscription"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MemberSubscriptionRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberSubscriptions/MemberSubscriptionRepository.cs:15"
+            },
+            {
+              "operation": "read",
+              "method": "MemberSubscriptionRepository.GetByIdOptionalAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberSubscriptions/MemberSubscriptionRepository.cs:20"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.Members",
+          "name": "Members",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "Member.id"
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false,
+              "maps": "Member.login"
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "Member.email"
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "Member.firstName"
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "Member.lastName"
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "Member.name"
+            }
+          ],
+          "persists": {
+            "aggregate": "meetings.module.members",
+            "block": "meetings.module.members.member"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "MemberRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberRepository.cs:15"
+            },
+            {
+              "operation": "read",
+              "method": "MemberRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberRepository.cs:20"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingCommentLikersQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/GetMeetingCommentLikers/GetMeetingCommentLikersQueryHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "GetMeetingAttendeesQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetMeetingAttendees/GetMeetingAttendeesQueryHandler.cs:16"
+            },
+            {
+              "operation": "read",
+              "method": "MembersQueryHelper.GetMember",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:11"
+            }
+          ]
+        },
+        {
+          "id": "meetings.module.db.OutboxMessages",
+          "name": "OutboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "outbox",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "id": "meetings.module.db.v_Countriess",
+          "name": "v_Countriess",
+          "columns": [
+            {
+              "name": "Code",
+              "type": "char(2)",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(50)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.Countries"
+          ],
+          "definition": "SELECT\n    [Country].[Code],\n    [Country].[Name]\nFROM meetings.Countries AS [Country]",
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Countries.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MeetingAttendees",
+          "name": "v_MeetingAttendees",
+          "columns": [
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "AttendeeId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "DecisionDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "RoleCode",
+              "type": "varchar(50)",
+              "nullable": true
+            },
+            {
+              "name": "GuestsNumber",
+              "type": "int",
+              "nullable": true
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.MeetingAttendees",
+            "meetings.module.db.Members"
+          ],
+          "definition": "SELECT\n    [MeetingAttendee].[MeetingId],\n    [MeetingAttendee].[AttendeeId],\n    [MeetingAttendee].[DecisionDate],\n    [MeetingAttendee].[RoleCode],\n    [MeetingAttendee].[GuestsNumber],\n\n    [Member].[FirstName],\n    [Member].[LastName]\nFROM [meetings].[MeetingAttendees] AS [MeetingAttendee]\n    INNER JOIN [meetings].[Members] AS [Member]\n        ON [MeetingAttendee].[AttendeeId] = [Member].[Id]",
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingAttendees.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MeetingComments",
+          "name": "v_MeetingComments",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "AuthorId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "InReplyToCommentId",
+              "type": "uniqueidentifier",
+              "nullable": true
+            },
+            {
+              "name": "Comment",
+              "type": "varchar(300)",
+              "nullable": true
+            },
+            {
+              "name": "CreateDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "EditDate",
+              "type": "datetime",
+              "nullable": true
+            }
+          ],
+          "reads": [
+            "meetings.module.db.MeetingComments"
+          ],
+          "definition": "SELECT\n    [MeetingComments].Id,\n    [MeetingComments].MeetingId,\n    [MeetingComments].AuthorId,\n    [MeetingComments].InReplyToCommentId,\n    [MeetingComments].Comment,\n    [MeetingComments].CreateDate,\n    [MeetingComments].EditDate\nFROM [meetings].[MeetingComments] AS [MeetingComments]\nWHERE [MeetingComments].IsRemoved = 0",
+          "persists": {
+            "aggregate": "meetings.module.meeting-comments",
+            "block": "meetings.module.meeting-comments.meeting-comment"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingComments.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MeetingDetails",
+          "name": "v_MeetingDetails",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "MeetingGroupId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Title",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "TermStartDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "TermEndDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "Description",
+              "type": "nvarchar(4000)",
+              "nullable": false
+            },
+            {
+              "name": "LocationName",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "LocationAddress",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "LocationPostalCode",
+              "type": "nvarchar(200)",
+              "nullable": true
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "AttendeesLimit",
+              "type": "int",
+              "nullable": true
+            },
+            {
+              "name": "GuestsLimit",
+              "type": "int",
+              "nullable": false
+            },
+            {
+              "name": "RSVPTermStartDate",
+              "type": "datetime",
+              "nullable": true
+            },
+            {
+              "name": "RSVPTermEndDate",
+              "type": "datetime",
+              "nullable": true
+            },
+            {
+              "name": "EventFeeValue",
+              "type": "decimal(5,0)",
+              "nullable": true
+            },
+            {
+              "name": "EventFeeCurrency",
+              "type": "varchar(3)",
+              "nullable": true
+            }
+          ],
+          "reads": [
+            "meetings.module.db.Meetings"
+          ],
+          "definition": "SELECT\n    [Meeting].[Id],\n    [Meeting].[MeetingGroupId],\n    [Meeting].[Title],\n    [Meeting].[TermStartDate],\n    [Meeting].[TermEndDate],\n    [Meeting].[Description],\n    [Meeting].[LocationName],\n    [Meeting].[LocationAddress],\n    [Meeting].[LocationPostalCode],\n    [Meeting].[LocationCity],\n    [Meeting].[AttendeesLimit],\n    [Meeting].[GuestsLimit],\n    [Meeting].[RSVPTermStartDate],\n    [Meeting].[RSVPTermEndDate],\n    [Meeting].[EventFeeValue],\n    [Meeting].[EventFeeCurrency]\nFROM [meetings].[Meetings] AS [Meeting]",
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingDetails.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MeetingGroupMembers",
+          "name": "v_MeetingGroupMembers",
+          "columns": [
+            {
+              "name": "MeetingGroupId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "MemberId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "RoleCode",
+              "type": "varchar(50)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.MeetingGroupMembers"
+          ],
+          "definition": "SELECT\n    [MeetingGroupMember].MeetingGroupId,\n    [MeetingGroupMember].MemberId,\n    [MeetingGroupMember].RoleCode\nFROM meetings.MeetingGroupMembers AS [MeetingGroupMember]",
+          "persists": {
+            "aggregate": "meetings.module.meeting-groups",
+            "block": "meetings.module.meeting-groups.meeting-group-member"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroupMembers.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MeetingGroupProposals",
+          "name": "v_MeetingGroupProposals",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Description",
+              "type": "varchar(200)",
+              "nullable": true
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LocationCountryCode",
+              "type": "nvarchar(3)",
+              "nullable": false
+            },
+            {
+              "name": "ProposalUserId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "ProposalDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "StatusCode",
+              "type": "nvarchar(50)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.MeetingGroupProposals"
+          ],
+          "definition": "SELECT\n    [MeetingGroupProposal].[Id],\n    [MeetingGroupProposal].[Name],\n    [MeetingGroupProposal].[Description],\n    [MeetingGroupProposal].[LocationCity],\n    [MeetingGroupProposal].[LocationCountryCode],\n    [MeetingGroupProposal].[ProposalUserId],\n    [MeetingGroupProposal].[ProposalDate],\n    [MeetingGroupProposal].[StatusCode]\nFROM [meetings].[MeetingGroupProposals] AS [MeetingGroupProposal]",
+          "persists": {
+            "aggregate": "meetings.module.meeting-group-proposals",
+            "block": "meetings.module.meeting-group-proposals.meeting-group-proposal"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroupProposals.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MeetingGroups",
+          "name": "v_MeetingGroups",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Description",
+              "type": "varchar(200)",
+              "nullable": true
+            },
+            {
+              "name": "LocationCountryCode",
+              "type": "nvarchar(3)",
+              "nullable": false
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.MeetingGroups"
+          ],
+          "definition": "SELECT\n    [MeetingGroup].Id,\n    [MeetingGroup].[Name],\n    [MeetingGroup].[Description],\n    [MeetingGroup].[LocationCountryCode],\n    [MeetingGroup].[LocationCity]\nFROM meetings.MeetingGroups AS [MeetingGroup]",
+          "persists": {
+            "aggregate": "meetings.module.meeting-groups",
+            "block": "meetings.module.meeting-groups.meeting-group"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroups.sql"
+        },
+        {
+          "id": "meetings.module.db.v_Meetings",
+          "name": "v_Meetings",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Title",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "Description",
+              "type": "nvarchar(4000)",
+              "nullable": false
+            },
+            {
+              "name": "LocationAddress",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LocationPostalCode",
+              "type": "nvarchar(200)",
+              "nullable": true
+            },
+            {
+              "name": "TermStartDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "TermEndDate",
+              "type": "datetime",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.Meetings"
+          ],
+          "definition": "SELECT\n\tMeeting.[Id],\n    Meeting.[Title],\n    Meeting.[Description],\n    Meeting.LocationAddress,\n    Meeting.LocationCity,\n    Meeting.LocationPostalCode,\n    Meeting.TermStartDate,\n    Meeting.TermEndDate\nFROM meetings.Meetings AS [Meeting]",
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Meetings.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MemberMeetingGroups",
+          "name": "v_MemberMeetingGroups",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Description",
+              "type": "varchar(200)",
+              "nullable": true
+            },
+            {
+              "name": "LocationCountryCode",
+              "type": "nvarchar(3)",
+              "nullable": false
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "MemberId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "RoleCode",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "IsActive",
+              "type": "bit",
+              "nullable": false
+            },
+            {
+              "name": "JoinedDate",
+              "type": "datetime2",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.MeetingGroups",
+            "meetings.module.db.MeetingGroupMembers"
+          ],
+          "definition": "SELECT\n    [MeetingGroup].Id,\n    [MeetingGroup].[Name],\n    [MeetingGroup].[Description],\n    [MeetingGroup].[LocationCountryCode],\n    [MeetingGroup].[LocationCity],\n\n    [MeetingGroupMember].[MemberId],\n    [MeetingGroupMember].[RoleCode],\n    [MeetingGroupMember].[IsActive],\n    [MeetingGroupMember].[JoinedDate]\nFROM meetings.MeetingGroups AS [MeetingGroup]\n    INNER JOIN [meetings].[MeetingGroupMembers] AS [MeetingGroupMember]\n        ON [MeetingGroup].[Id] = [MeetingGroupMember].[MeetingGroupId]",
+          "persists": {
+            "aggregate": "meetings.module.meeting-groups",
+            "block": "meetings.module.meeting-groups.meeting-group"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MemberMeetingGroups.sql"
+        },
+        {
+          "id": "meetings.module.db.v_MemberMeetings",
+          "name": "v_MemberMeetings",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Title",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "Description",
+              "type": "nvarchar(4000)",
+              "nullable": false
+            },
+            {
+              "name": "LocationAddress",
+              "type": "nvarchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "LocationCity",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LocationPostalCode",
+              "type": "nvarchar(200)",
+              "nullable": true
+            },
+            {
+              "name": "TermStartDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "TermEndDate",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "AttendeeId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "IsRemoved",
+              "type": "bit",
+              "nullable": false
+            },
+            {
+              "name": "RoleCode",
+              "type": "varchar(50)",
+              "nullable": true
+            }
+          ],
+          "reads": [
+            "meetings.module.db.Meetings",
+            "meetings.module.db.MeetingAttendees"
+          ],
+          "definition": "SELECT\n\t[Meeting].[Id],\n    [Meeting].[Title],\n    [Meeting].[Description],\n    [Meeting].[LocationAddress],\n    [Meeting].[LocationCity],\n    [Meeting].[LocationPostalCode],\n    [Meeting].[TermStartDate],\n    [Meeting].[TermEndDate],\n\n    [MeetingAttendee].[AttendeeId],\n    [MeetingAttendee].[IsRemoved],\n    [MeetingAttendee].[RoleCode]\nFROM [meetings].[Meetings] AS [Meeting]\n    INNER JOIN [meetings].[MeetingAttendees] AS [MeetingAttendee]\n        ON [Meeting].[Id] = [MeetingAttendee].[MeetingId]",
+          "persists": {
+            "aggregate": "meetings.module.meetings",
+            "block": "meetings.module.meetings.meeting"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MemberMeetings.sql"
+        },
+        {
+          "id": "meetings.module.db.v_Members",
+          "name": "v_Members",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "meetings.module.db.Members"
+          ],
+          "definition": "SELECT\n    [Member].Id,\n    [Member].[Name],\n    [Member].[Login],\n    [Member].[Email]\nFROM meetings.Members AS [Member]",
+          "persists": {
+            "aggregate": "meetings.module.members",
+            "block": "meetings.module.members.member"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Members.sql"
+        }
+      ],
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings"
+    },
+    {
+      "id": "payments.module.db",
+      "slug": "db",
+      "name": "Payments database",
+      "kind": "other",
+      "owner": "payments.module",
+      "tables": [
+        {
+          "id": "payments.module.db.InboxMessages",
+          "name": "InboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "IntegrationEventGenericHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.InternalCommands",
+          "name": "InternalCommands",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "EnqueueDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            },
+            {
+              "name": "Error",
+              "type": "nvarchar(max)",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "PaymentsUnitOfWork.CommitAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/PaymentsUnitOfWork.cs:33"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.MeetingFees",
+          "name": "MeetingFees",
+          "columns": [
+            {
+              "name": "MeetingFeeId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "PayerId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "MeetingId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "FeeValue",
+              "type": "decimal(18,2)",
+              "nullable": false
+            },
+            {
+              "name": "FeeCurrency",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Status",
+              "type": "varchar(50)",
+              "nullable": false
+            }
+          ],
+          "role": "projection",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetMeetingFeesQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/MeetingFees/GetMeetingFees/GetMeetingFeesQueryHandler.cs:16"
+            },
+            {
+              "operation": "write",
+              "method": "MeetingFeesProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/MeetingFees/GetMeetingFees/MeetingFeesProjector.cs:24"
+            },
+            {
+              "operation": "write",
+              "method": "MeetingFeesProjector.UpdateStatus",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/MeetingFees/GetMeetingFees/MeetingFeesProjector.cs:56"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.Messages",
+          "name": "Messages",
+          "columns": [
+            {
+              "name": "StreamIdInternal",
+              "type": "int",
+              "nullable": false,
+              "fk": {
+                "table": "payments.module.db.Streams",
+                "column": "IdInternal"
+              }
+            },
+            {
+              "name": "StreamVersion",
+              "type": "int",
+              "nullable": false
+            },
+            {
+              "name": "Position",
+              "type": "bigint",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Created",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "nvarchar(128)",
+              "nullable": false
+            },
+            {
+              "name": "JsonData",
+              "type": "nvarchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "JsonMetadata",
+              "type": "nvarchar(max)",
+              "nullable": true
+            }
+          ],
+          "indexes": [
+            {
+              "name": "IX_Messages_Position",
+              "columns": [
+                "Position"
+              ],
+              "unique": true
+            },
+            {
+              "name": "IX_Messages_StreamIdInternal_Id",
+              "columns": [
+                "StreamIdInternal",
+                "Id"
+              ],
+              "unique": true
+            },
+            {
+              "name": "IX_Messages_StreamIdInternal_Revision",
+              "columns": [
+                "StreamIdInternal",
+                "StreamVersion"
+              ],
+              "unique": true
+            },
+            {
+              "name": "IX_Messages_StreamIdInternal_Created",
+              "columns": [
+                "StreamIdInternal",
+                "Created"
+              ],
+              "unique": false
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "SqlStreamAggregateStore.Save",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:28"
+            },
+            {
+              "operation": "read",
+              "method": "SqlStreamAggregateStore.Load",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:41"
+            },
+            {
+              "operation": "read",
+              "method": "SqlStreamAggregateStore.GetChanges",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:79"
+            },
+            {
+              "operation": "write",
+              "method": "SqlStreamAggregateStore.AppendChanges",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:84"
+            },
+            {
+              "operation": "delete",
+              "method": "SqlStreamAggregateStore.ClearChanges",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:90"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.OutboxMessages",
+          "name": "OutboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "outbox",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "SqlOutboxAccessor.Save",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlOutboxAccessor.cs:24"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.Payers",
+          "name": "Payers",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            }
+          ],
+          "role": "projection",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetPayerQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Payers/GetPayer/GetPayerQueryHandler.cs:16"
+            },
+            {
+              "operation": "write",
+              "method": "PayerDetailsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Payers/GetPayer/PayerDetailsProjector.cs:24"
+            },
+            {
+              "operation": "read",
+              "method": "PayerEmailProvider.GetPayerEmail",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Payers/GetPayerEmail/PayerEmailProvider.cs:8"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.PriceListItems",
+          "name": "PriceListItems",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "SubscriptionPeriodCode",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "CategoryCode",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "CountryCode",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "MoneyValue",
+              "type": "decimal(18,2)",
+              "nullable": false
+            },
+            {
+              "name": "MoneyCurrency",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "IsActive",
+              "type": "bit",
+              "nullable": false
+            }
+          ],
+          "role": "projection",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetPriceListItemQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/GetPriceListItemQueryHandler.cs:16"
+            },
+            {
+              "operation": "write",
+              "method": "PriceListItemsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:24"
+            },
+            {
+              "operation": "write",
+              "method": "PriceListItemsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:42"
+            },
+            {
+              "operation": "write",
+              "method": "PriceListItemsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:54"
+            },
+            {
+              "operation": "write",
+              "method": "PriceListItemsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:66"
+            },
+            {
+              "operation": "read",
+              "method": "PriceListFactory.GetPriceListItems",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/PriceListFactory.cs:33"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.Streams",
+          "name": "Streams",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "char(42)",
+              "nullable": false
+            },
+            {
+              "name": "IdOriginal",
+              "type": "nvarchar(1000)",
+              "nullable": false
+            },
+            {
+              "name": "IdInternal",
+              "type": "int",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "Version",
+              "type": "int",
+              "nullable": false
+            },
+            {
+              "name": "Position",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "IX_Streams_Id",
+              "columns": [
+                "Id"
+              ],
+              "unique": true
+            }
+          ],
+          "role": "other"
+        },
+        {
+          "id": "payments.module.db.SubscriptionCheckpoints",
+          "name": "SubscriptionCheckpoints",
+          "columns": [
+            {
+              "name": "Code",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Position",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "SqlServerCheckpointStore.GetCheckpoint",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlServerCheckpointStore.cs:15"
+            },
+            {
+              "operation": "write",
+              "method": "SqlServerCheckpointStore.StoreCheckpoint",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlServerCheckpointStore.cs:35"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.SubscriptionDetails",
+          "name": "SubscriptionDetails",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "PayerId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Period",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Status",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "CountryCode",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "ExpirationDate",
+              "type": "datetime",
+              "nullable": false
+            }
+          ],
+          "role": "projection",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "ExpireSubscriptionsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:23"
+            },
+            {
+              "operation": "read",
+              "method": "GetAuthenticatedPayerSubscriptionQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetPayerSubscription/GetAuthenticatedPayerSubscriptionQueryHandler.cs:23"
+            },
+            {
+              "operation": "read",
+              "method": "GetSubscriptionDetailsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/GetSubscriptionDetailsQueryHandler.cs:16"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionDetailsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:25"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionDetailsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:45"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionDetailsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:59"
+            }
+          ]
+        },
+        {
+          "id": "payments.module.db.SubscriptionPayments",
+          "name": "SubscriptionPayments",
+          "columns": [
+            {
+              "name": "PaymentId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "PayerId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Status",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Period",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Date",
+              "type": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "SubscriptionId",
+              "type": "uniqueidentifier",
+              "nullable": true
+            },
+            {
+              "name": "MoneyValue",
+              "type": "decimal(18,2)",
+              "nullable": false
+            },
+            {
+              "name": "MoneyCurrency",
+              "type": "varchar(50)",
+              "nullable": false
+            }
+          ],
+          "role": "projection",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "ExpireSubscriptionPaymentsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptionPayments/ExpireSubscriptionPaymentsCommandHandler.cs:24"
+            },
+            {
+              "operation": "read",
+              "method": "GetSubscriptionPaymentsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/GetSubscriptionPaymentsQueryHandler.cs:17"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionPaymentsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:27"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionPaymentsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:50"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionPaymentsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:62"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionPaymentsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:86"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionPaymentsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:98"
+            },
+            {
+              "operation": "write",
+              "method": "SubscriptionPaymentsProjector.When",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:110"
+            }
+          ]
+        }
+      ],
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/payments"
+    },
+    {
+      "id": "registrations.module.db",
+      "slug": "db",
+      "name": "Registrations database",
+      "kind": "other",
+      "owner": "registrations.module",
+      "tables": [
+        {
+          "id": "registrations.module.db.InboxMessages",
+          "name": "InboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "IntegrationEventGenericHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            }
+          ]
+        },
+        {
+          "id": "registrations.module.db.InternalCommands",
+          "name": "InternalCommands",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "EnqueueDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            },
+            {
+              "name": "Error",
+              "type": "nvarchar(max)",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            }
+          ]
+        },
+        {
+          "id": "registrations.module.db.OutboxMessages",
+          "name": "OutboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "outbox",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            }
+          ]
+        },
+        {
+          "id": "registrations.module.db.UserRegistrations",
+          "name": "UserRegistrations",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "UserRegistration.id"
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false,
+              "maps": "UserRegistration.login"
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "UserRegistration.email"
+            },
+            {
+              "name": "Password",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "UserRegistration.password"
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "UserRegistration.firstName"
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "UserRegistration.lastName"
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "UserRegistration.name"
+            },
+            {
+              "name": "StatusCode",
+              "type": "varchar(50)",
+              "nullable": false,
+              "maps": "UserRegistration.status"
+            },
+            {
+              "name": "RegisterDate",
+              "type": "datetime",
+              "nullable": false,
+              "maps": "UserRegistration.registerDate"
+            },
+            {
+              "name": "ConfirmedDate",
+              "type": "datetime",
+              "nullable": true,
+              "maps": "UserRegistration.confirmedDate"
+            }
+          ],
+          "persists": {
+            "aggregate": "registrations.module.user-registrations",
+            "block": "registrations.module.user-registrations.user-registration"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "UserRegistrationRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:15"
+            },
+            {
+              "operation": "read",
+              "method": "UserRegistrationRepository.GetByIdAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:20"
+            },
+            {
+              "operation": "read",
+              "method": "UserRegistrationProvider.GetById",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Application/UserRegistrations/GetUserRegistration/UserRegistrationProvider.cs:8"
+            },
+            {
+              "operation": "read",
+              "method": "UsersCounter.CountUsersWithLogin",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Application/UserRegistrations/UsersCounter.cs:16"
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "id": "registrations.module.db.v_UserRegistrations",
+          "name": "v_UserRegistrations",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "StatusCode",
+              "type": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "Password",
+              "type": "nvarchar(255)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "registrations.module.db.UserRegistrations"
+          ],
+          "definition": "SELECT\n    [UserRegistration].[Id],\n    [UserRegistration].[Login],\n    [UserRegistration].[Email],\n    [UserRegistration].[FirstName],\n    [UserRegistration].[LastName],\n    [UserRegistration].[Name],\n    [UserRegistration].[StatusCode],\n    [UserRegistration].[Password]\nFROM [registrations].[UserRegistrations] AS [UserRegistration]",
+          "persists": {
+            "aggregate": "registrations.module.user-registrations",
+            "block": "registrations.module.user-registrations.user-registration"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/registrations/Views/v_UserRegistrations.sql"
+        }
+      ],
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/registrations"
+    },
+    {
+      "id": "user-access.module.db",
+      "slug": "db",
+      "name": "User Access database",
+      "kind": "other",
+      "owner": "user-access.module",
+      "tables": [
+        {
+          "id": "user-access.module.db.InboxMessages",
+          "name": "InboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "IntegrationEventGenericHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+            }
+          ]
+        },
+        {
+          "id": "user-access.module.db.InternalCommands",
+          "name": "InternalCommands",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "EnqueueDate",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            },
+            {
+              "name": "Error",
+              "type": "nvarchar(max)",
+              "nullable": true
+            }
+          ],
+          "role": "other",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "CommandsScheduler.EnqueueAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
+            },
+            {
+              "operation": "read",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessInternalCommandsCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+            }
+          ]
+        },
+        {
+          "id": "user-access.module.db.OutboxMessages",
+          "name": "OutboxMessages",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "OccurredOn",
+              "type": "datetime2",
+              "nullable": false
+            },
+            {
+              "name": "Type",
+              "type": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Data",
+              "type": "varchar(max)",
+              "nullable": false
+            },
+            {
+              "name": "ProcessedDate",
+              "type": "datetime2",
+              "nullable": true
+            }
+          ],
+          "role": "outbox",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            },
+            {
+              "operation": "write",
+              "method": "ProcessOutboxCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+            }
+          ]
+        },
+        {
+          "id": "user-access.module.db.Permissions",
+          "name": "Permissions",
+          "columns": [
+            {
+              "name": "Code",
+              "type": "varchar(50)",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "Name",
+              "type": "varchar(100)",
+              "nullable": false
+            }
+          ],
+          "role": "other"
+        },
+        {
+          "id": "user-access.module.db.RolesToPermissions",
+          "name": "RolesToPermissions",
+          "columns": [
+            {
+              "name": "RoleCode",
+              "type": "varchar(50)",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "PermissionCode",
+              "type": "varchar(50)",
+              "nullable": false,
+              "pk": true
+            }
+          ],
+          "role": "lookup",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetAuthenticatedUserPermissionsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetAuthenticatedUserPermissions/GetAuthenticatedUserPermissionsQueryHandler.cs:23"
+            },
+            {
+              "operation": "read",
+              "method": "GetUserPermissionsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetUserPermissions/GetUserPermissionsQueryHandler.cs:16"
+            }
+          ]
+        },
+        {
+          "id": "user-access.module.db.UserRoles",
+          "name": "UserRoles",
+          "columns": [
+            {
+              "name": "UserId",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "maps": "UserRole.userId"
+            },
+            {
+              "name": "RoleCode",
+              "type": "nvarchar(50)",
+              "nullable": true,
+              "maps": "UserRole.value"
+            }
+          ],
+          "persists": {
+            "aggregate": "user-access.module.users",
+            "block": "user-access.module.users.user-role"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "GetAuthenticatedUserPermissionsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetAuthenticatedUserPermissions/GetAuthenticatedUserPermissionsQueryHandler.cs:23"
+            },
+            {
+              "operation": "read",
+              "method": "GetUserPermissionsQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetUserPermissions/GetUserPermissionsQueryHandler.cs:16"
+            }
+          ]
+        },
+        {
+          "id": "user-access.module.db.Users",
+          "name": "Users",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false,
+              "pk": true,
+              "maps": "User.id"
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false,
+              "maps": "User.login"
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "User.email"
+            },
+            {
+              "name": "Password",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "User.password"
+            },
+            {
+              "name": "IsActive",
+              "type": "bit",
+              "nullable": false,
+              "maps": "User.isActive"
+            },
+            {
+              "name": "FirstName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "User.firstName"
+            },
+            {
+              "name": "LastName",
+              "type": "nvarchar(50)",
+              "nullable": false,
+              "maps": "User.lastName"
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false,
+              "maps": "User.name"
+            }
+          ],
+          "persists": {
+            "aggregate": "user-access.module.users",
+            "block": "user-access.module.users.user"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "UserRepository.AddAsync",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Domain/Users/UserRepository.cs:14"
+            },
+            {
+              "operation": "read",
+              "method": "AuthenticateCommandHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authentication/Authenticate/AuthenticateCommandHandler.cs:18"
+            },
+            {
+              "operation": "read",
+              "method": "GetAuthenticatedUserQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Users/GetAuthenticatedUser/GetAuthenticatedUserQueryHandler.cs:23"
+            },
+            {
+              "operation": "read",
+              "method": "GetUserQueryHandler.Handle",
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Users/GetUser/GetUserQueryHandler.cs:16"
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "id": "user-access.module.db.v_UserPermissions",
+          "name": "v_UserPermissions",
+          "columns": [
+            {
+              "name": "UserId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "PermissionCode",
+              "type": "varchar(50)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "user-access.module.db.UserRoles",
+            "user-access.module.db.RolesToPermissions"
+          ],
+          "definition": "SELECT \n\tDISTINCT\n\t[UserRole].UserId,\n\t[RolesToPermission].PermissionCode\nFROM [users].UserRoles AS [UserRole]\n\tINNER JOIN [users].RolesToPermissions AS [RolesToPermission]\n\t\tON [UserRole].RoleCode = [RolesToPermission].RoleCode",
+          "persists": {
+            "aggregate": "user-access.module.users",
+            "block": "user-access.module.users.user-role"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_UserPermissions.sql"
+        },
+        {
+          "id": "user-access.module.db.v_UserRoles",
+          "name": "v_UserRoles",
+          "columns": [
+            {
+              "name": "UserId",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "RoleCode",
+              "type": "nvarchar(50)",
+              "nullable": true
+            }
+          ],
+          "reads": [
+            "user-access.module.db.UserRoles"
+          ],
+          "definition": "SELECT\n    [UserRole].[UserId],\n    [UserRole].[RoleCode]\nFROM [users].[UserRoles] AS [UserRole]",
+          "persists": {
+            "aggregate": "user-access.module.users",
+            "block": "user-access.module.users.user-role"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_UserRoles.sql"
+        },
+        {
+          "id": "user-access.module.db.v_Users",
+          "name": "v_Users",
+          "columns": [
+            {
+              "name": "Id",
+              "type": "uniqueidentifier",
+              "nullable": false
+            },
+            {
+              "name": "IsActive",
+              "type": "bit",
+              "nullable": false
+            },
+            {
+              "name": "Login",
+              "type": "nvarchar(100)",
+              "nullable": false
+            },
+            {
+              "name": "Password",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Email",
+              "type": "nvarchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "Name",
+              "type": "nvarchar(255)",
+              "nullable": false
+            }
+          ],
+          "reads": [
+            "user-access.module.db.Users"
+          ],
+          "definition": "SELECT\n    [User].[Id],\n    [User].[IsActive],\n    [User].[Login],\n    [User].[Password],\n    [User].[Email],\n    [User].[Name]\nFROM [users].[Users] AS [User]",
+          "persists": {
+            "aggregate": "user-access.module.users",
+            "block": "user-access.module.users.user"
+          },
+          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_Users.sql"
+        }
+      ],
+      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users"
+    }
+  ]
+}

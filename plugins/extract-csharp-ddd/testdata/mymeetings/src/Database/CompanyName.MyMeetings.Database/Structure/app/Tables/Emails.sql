@@ -1,0 +1,7 @@
+CREATE TABLE app.Emails
+(
+    [Id] UNIQUEIDENTIFIER NOT NULL,
+    [To] NVARCHAR(255) NOT NULL,
+    CONSTRAINT [PK_app_Emails_Id] PRIMARY KEY ([Id] ASC)
+)
+GO

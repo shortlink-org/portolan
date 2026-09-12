@@ -1,0 +1,51 @@
+openapi: 3.1.0
+info:
+  title: Registrations HTTP API
+  version: inferred
+  description: Generated statically from ASP.NET Core controller attributes. Unknown details are left unspecified.
+tags:
+  - name: user-registrations
+paths:
+  /registrations/UserRegistrations:
+    post:
+      operationId: RegisterNewUser
+      summary: Register new user
+      tags:
+        - user-registrations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              x-portolan-type: RegisterNewUserRequest
+              properties:
+                login:
+                  type: string
+                email:
+                  type: string
+      responses:
+        default:
+          description: Response schema and status are not available from static controller analysis.
+      x-portolan-inferred: true
+      x-portolan-source: plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Registrations/UserRegistrationsController.cs:19
+      x-portolan-controller: UserRegistrationsController
+  /registrations/UserRegistrations/{userRegistrationId}/confirm:
+    patch:
+      operationId: ConfirmRegistration
+      summary: Confirm registration
+      tags:
+        - user-registrations
+      parameters:
+        - name: userRegistrationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        default:
+          description: Response schema and status are not available from static controller analysis.
+      x-portolan-inferred: true
+      x-portolan-source: plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Registrations/UserRegistrationsController.cs:27
+      x-portolan-controller: UserRegistrationsController

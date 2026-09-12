@@ -125,7 +125,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 
 | phase | plugins |
 | --- | --- |
-| extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-laravel`, `extract-php-ddd`, `extract-celery`, `extract-python-kafka`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-redis`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-go-nats`, `extract-go-sqs`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary`, `extract-commands`, `extract-k8s`, `extract-argocd` |
+| extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-laravel`, `extract-php-ddd`, `extract-csharp-ddd`, `extract-celery`, `extract-python-kafka`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-redis`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-go-nats`, `extract-go-sqs`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary`, `extract-commands`, `extract-k8s`, `extract-argocd` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified`; `verify-codeowners` — reads CODEOWNERS, says who to ask about each service |
 | generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities |
 
@@ -330,6 +330,40 @@ and Mooc's Notifications are empty scaffolding; the front end routes
 `/api/courses` to a controller that does not exist. How the fragments were
 made is in `vendor/repos/CodelyTV/php-ddd-example/README.md`; the reading
 rules are in `plugins/extract-php-ddd/README.md`.
+
+### The same lesson in C#: Modular Monolith with DDD
+
+The fifth profile, **Modular Monolith with DDD**, is Kamil Grzybek's
+[modular-monolith-with-ddd](https://github.com/kgrzybek/modular-monolith-with-ddd),
+the reference for the pattern in .NET: five modules laid out as
+`src/Modules/<Module>/{Domain,Application,Infrastructure,IntegrationEvents}`,
+one API host, one SQL Server database with a schema per module, read by
+`extract-csharp-ddd` alone - through Roslyn, the compiler's own parser, over
+the tree as one compilation and without restoring a single package. What
+comes out, pinned in `vendor/repos/kgrzybek/modular-monolith-with-ddd`: five
+contexts with one service each, nineteen aggregates and five model groups,
+sixty domain events dispatched in process and seven integration events on
+the in-memory bus, sixty-one commands and twenty-nine queries, an internal command queue
+per module, the forty-three tables and seventeen views of the database
+project with the root tables mapped to their aggregates through the EF
+configurations, fifty-one HTTP operations across four documents, the
+project's seventeen decision records, and a hundred and two flows. The one
+to read is `register-new-user`: the User Access controller hands
+`RegisterNewUserCommand` to the Registrations module's facade in process,
+the flow crosses with a `call` step, `NewUserRegisteredDomainEvent` is
+raised and saved, and from there the outbox republishes it to the bus as an
+integration event that Meetings, Administration and Payments each hear and
+turn into a job on their own internal queue.
+
+The warnings are findings about the project: `MemberCreatedIntegrationEvent`
+is declared and published nowhere while User Access subscribes to it;
+Payments subscribes to `MeetingGroupProposalAcceptedIntegrationEvent` and
+has no handler; the `app` schema belongs to no module; the view is created
+as `v_Countriess` and the query reads `v_Countries`; and two modules keep a
+`Domain/Users` directory with a typed id and nothing to hold it. How the
+fragments were made is in
+`vendor/repos/kgrzybek/modular-monolith-with-ddd/README.md`; the reading
+rules are in `plugins/extract-csharp-ddd/README.md`.
 
 ## Develop Portolan itself
 

@@ -1,0 +1,1978 @@
+{
+  "contexts": [
+    {
+      "id": "meetings",
+      "slug": "meetings",
+      "name": "Meetings",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "meetings.module",
+          "slug": "module",
+          "name": "Meetings module",
+          "repo": "github.com/acme/mymeetings",
+          "path": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings",
+          "readme": "",
+          "provides": [
+            {
+              "id": "meetings.module.countries",
+              "methods": [
+                {
+                  "name": "GetAllCountries",
+                  "doc": "Get all countries",
+                  "http": {
+                    "method": "GET",
+                    "path": "/api/meetings/countries"
+                  }
+                }
+              ],
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/openapi.meetings.yaml"
+            },
+            {
+              "id": "meetings.module.meetings",
+              "methods": [
+                {
+                  "name": "CreateNewMeeting",
+                  "doc": "Create new meeting",
+                  "http": {
+                    "method": "POST",
+                    "path": "/api/meetings/meetings"
+                  }
+                },
+                {
+                  "name": "GetMeetingDetails",
+                  "doc": "Everything about one meeting.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/api/meetings/meetings/{meetingId}"
+                  }
+                },
+                {
+                  "name": "CancelMeeting",
+                  "doc": "Cancel meeting",
+                  "http": {
+                    "method": "PATCH",
+                    "path": "/api/meetings/meetings/{meetingId}/cancel"
+                  }
+                }
+              ],
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/openapi.meetings.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "meetings.module.countries",
+              "slug": "countries",
+              "name": "Countries",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "get-all-countries",
+                  "kind": "query",
+                  "doc": "",
+                  "exposedBy": [
+                    "GetAllCountries"
+                  ],
+                  "fields": [],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Countries/GetAllCountriesQueryHandler.cs:15"
+                }
+              ],
+              "events": []
+            },
+            {
+              "id": "meetings.module.integration-events",
+              "slug": "integration-events",
+              "name": "Integration events",
+              "readme": "",
+              "kind": "model-group",
+              "root": "",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [],
+              "events": [
+                {
+                  "id": "meetings.module.integration-events.MemberCreatedIntegrationEvent",
+                  "slug": "member-created-integration-event",
+                  "name": "MemberCreatedIntegrationEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/IntegrationEvents/MemberCreatedIntegrationEvent.cs",
+                      "fields": [
+                        {
+                          "name": "MemberId",
+                          "type": "Guid",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "MemberCreatedIntegrationEvent",
+                    "channel": "integration-events.MemberCreatedIntegrationEvent"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "meetings.module.meetings",
+              "slug": "meetings",
+              "name": "Meeting",
+              "readme": "",
+              "root": "Meeting",
+              "entities": [
+                {
+                  "id": "meetings.module.meetings.meeting",
+                  "slug": "meeting",
+                  "name": "Meeting",
+                  "doc": "A meeting of a group: who comes, when and where.",
+                  "fields": [
+                    {
+                      "name": "attendees",
+                      "type": "List<MeetingAttendee>",
+                      "doc": ""
+                    },
+                    {
+                      "name": "id",
+                      "type": "MeetingId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "title",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "term",
+                      "type": "MeetingTerm",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "MeetingStatus",
+                      "doc": ""
+                    },
+                    {
+                      "name": "creatorId",
+                      "type": "MemberId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "cancelDate",
+                      "type": "DateTime?",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "meetings.module.meetings.meeting-attendee",
+                  "slug": "meeting-attendee",
+                  "name": "MeetingAttendee",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "decisionDate",
+                      "type": "DateTime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "guestsNumber",
+                      "type": "int",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "meetings.module.meetings.meeting-id",
+                  "slug": "meeting-id",
+                  "name": "MeetingId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "meetings.module.meetings.meeting-term",
+                  "slug": "meeting-term",
+                  "name": "MeetingTerm",
+                  "doc": "When a meeting starts and ends.",
+                  "fields": [
+                    {
+                      "name": "startDate",
+                      "type": "DateTime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "endDate",
+                      "type": "DateTime",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "cancel-meeting",
+                  "kind": "command",
+                  "doc": "",
+                  "exposedBy": [
+                    "CancelMeeting"
+                  ],
+                  "fields": [
+                    {
+                      "name": "meetingId",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/CancelMeeting/CancelMeetingCommandHandler.cs:16"
+                },
+                {
+                  "id": "create-meeting",
+                  "kind": "command",
+                  "doc": "Announce a meeting.",
+                  "exposedBy": [
+                    "CreateNewMeeting"
+                  ],
+                  "fields": [
+                    {
+                      "name": "title",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "termStartDate",
+                      "type": "DateTime",
+                      "doc": ""
+                    },
+                    {
+                      "name": "termEndDate",
+                      "type": "DateTime",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/CreateMeeting/CreateMeetingCommandHandler.cs:16"
+                },
+                {
+                  "id": "get-meeting-details",
+                  "kind": "query",
+                  "doc": "",
+                  "exposedBy": [
+                    "GetMeetingDetails"
+                  ],
+                  "fields": [
+                    {
+                      "name": "meetingId",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/GetMeetingDetails/GetMeetingDetailsQueryHandler.cs:15"
+                }
+              ],
+              "events": [
+                {
+                  "id": "meetings.module.meetings.MeetingAttendeeAddedDomainEvent",
+                  "slug": "meeting-attendee-added-domain-event",
+                  "name": "MeetingAttendeeAddedDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Meetings/Events/MeetingAttendeeAddedDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "MeetingId",
+                          "type": "MeetingId",
+                          "doc": ""
+                        },
+                        {
+                          "name": "AttendeeId",
+                          "type": "MemberId",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "meetings.module",
+                      "status": "declared",
+                      "note": "MeetingAttendeeAddedPublishEventHandler"
+                    }
+                  ]
+                },
+                {
+                  "id": "meetings.module.meetings.MeetingCanceledDomainEvent",
+                  "slug": "meeting-canceled-domain-event",
+                  "name": "MeetingCanceledDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Meetings/Events/MeetingCanceledDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "MeetingId",
+                          "type": "MeetingId",
+                          "doc": ""
+                        },
+                        {
+                          "name": "CancelMemberId",
+                          "type": "MemberId",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "meetings.module.meetings.MeetingCreatedDomainEvent",
+                  "slug": "meeting-created-domain-event",
+                  "name": "MeetingCreatedDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A meeting was announced.",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Meetings/Events/MeetingCreatedDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "MeetingId",
+                          "type": "MeetingId",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "meetings.module",
+                      "status": "declared",
+                      "note": "MeetingCreatedEventHandler"
+                    }
+                  ]
+                },
+                {
+                  "id": "meetings.module.meetings.MeetingAttendeeAddedIntegrationEvent",
+                  "slug": "meeting-attendee-added-integration-event",
+                  "name": "MeetingAttendeeAddedIntegrationEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/IntegrationEvents/MeetingAttendeeAddedIntegrationEvent.cs",
+                      "fields": [
+                        {
+                          "name": "MeetingId",
+                          "type": "Guid",
+                          "doc": ""
+                        },
+                        {
+                          "name": "AttendeeId",
+                          "type": "Guid",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "MeetingAttendeeAddedIntegrationEvent",
+                    "channel": "integration-events.MeetingAttendeeAddedIntegrationEvent"
+                  }
+                }
+              ],
+              "enums": [
+                {
+                  "id": "meetings.module.meetings.meeting-status",
+                  "slug": "meeting-status",
+                  "name": "MeetingStatus",
+                  "doc": "Where a meeting is in its life.",
+                  "values": [
+                    {
+                      "name": "Planned",
+                      "doc": "Announced, not yet held."
+                    },
+                    {
+                      "name": "Held",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Postponed",
+                      "doc": "",
+                      "deprecated": true
+                    },
+                    {
+                      "name": "Canceled",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "meetings.module.members",
+              "slug": "members",
+              "name": "Member",
+              "readme": "",
+              "root": "Member",
+              "entities": [
+                {
+                  "id": "meetings.module.members.member",
+                  "slug": "member",
+                  "name": "Member",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "MemberId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "login",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "email",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "meetings.module.members.member-id",
+                  "slug": "member-id",
+                  "name": "MemberId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "create-member",
+                  "kind": "command",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "Guid",
+                      "doc": ""
+                    },
+                    {
+                      "name": "memberId",
+                      "type": "Guid",
+                      "doc": ""
+                    },
+                    {
+                      "name": "login",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "email",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/CreateMemberCommandHandler.cs:15"
+                }
+              ],
+              "events": [
+                {
+                  "id": "meetings.module.members.MemberCreatedDomainEvent",
+                  "slug": "member-created-domain-event",
+                  "name": "MemberCreatedDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Members/Events/MemberCreatedDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "MemberId",
+                          "type": "MemberId",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                }
+              ]
+            }
+          ],
+          "channels": [
+            {
+              "address": "integration-events.MeetingAttendeeAddedIntegrationEvent",
+              "kind": "event",
+              "title": "Bus · Meeting attendee added",
+              "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
+              "messages": [
+                {
+                  "name": "MeetingAttendeeAddedIntegrationEvent",
+                  "title": "Meeting attendee added",
+                  "doc": "",
+                  "direction": "send"
+                }
+              ],
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/MeetingAttendeeAddedPublishEventHandler.cs"
+            },
+            {
+              "address": "integration-events.NewUserRegisteredIntegrationEvent",
+              "kind": "event",
+              "title": "Bus · New user registered",
+              "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
+              "messages": [
+                {
+                  "name": "NewUserRegisteredIntegrationEvent",
+                  "title": "New user registered",
+                  "doc": "Somebody registered; the other modules make their own records of them.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Infrastructure/Configuration/EventsBus/EventsBusStartup.cs"
+            },
+            {
+              "address": "meetings.internal-commands",
+              "kind": "job",
+              "title": "Internal commands · Meetings",
+              "doc": "The module's own queue: a command written to its InternalCommands table in the same transaction as the change that asked for it, read by the ProcessInternalCommands job and handed to its handler.",
+              "messages": [
+                {
+                  "name": "CreateMemberCommand",
+                  "title": "Create member",
+                  "doc": "",
+                  "direction": "send"
+                },
+                {
+                  "name": "CreateMemberCommand",
+                  "title": "Create member",
+                  "doc": "",
+                  "direction": "receive"
+                }
+              ],
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/NewUserRegisteredIntegrationEventHandler.cs"
+            }
+          ],
+          "stores": [
+            "meetings.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "Payments",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "payments.module",
+          "slug": "module",
+          "name": "Payments module",
+          "repo": "github.com/acme/mymeetings",
+          "path": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "payments.module.subscriptions",
+              "slug": "subscriptions",
+              "name": "Subscription",
+              "readme": "",
+              "root": "Subscription",
+              "entities": [
+                {
+                  "id": "payments.module.subscriptions.subscription",
+                  "slug": "subscription",
+                  "name": "Subscription",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "Guid",
+                      "doc": ""
+                    },
+                    {
+                      "name": "version",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "payerId",
+                      "type": "Guid",
+                      "doc": ""
+                    },
+                    {
+                      "name": "expirationDate",
+                      "type": "DateTime",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "payments.module.subscriptions.subscription-id",
+                  "slug": "subscription-id",
+                  "name": "SubscriptionId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "create-subscription",
+                  "kind": "command",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "Guid",
+                      "doc": ""
+                    },
+                    {
+                      "name": "payerId",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/CreateSubscription/CreateSubscriptionCommandHandler.cs:16"
+                },
+                {
+                  "id": "expire-subscriptions",
+                  "kind": "command",
+                  "doc": "",
+                  "fields": [],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:19"
+                }
+              ],
+              "events": [
+                {
+                  "id": "payments.module.subscriptions.SubscriptionCreatedDomainEvent",
+                  "slug": "subscription-created-domain-event",
+                  "name": "SubscriptionCreatedDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Domain/Subscriptions/Events/SubscriptionCreatedDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "SubscriptionId",
+                          "type": "Guid",
+                          "doc": ""
+                        },
+                        {
+                          "name": "PayerId",
+                          "type": "Guid",
+                          "doc": ""
+                        },
+                        {
+                          "name": "ExpirationDate",
+                          "type": "DateTime",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "payments.module",
+                      "status": "declared",
+                      "note": "SubscriptionDetailsProjector"
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.module.subscriptions.SubscriptionExpiredDomainEvent",
+                  "slug": "subscription-expired-domain-event",
+                  "name": "SubscriptionExpiredDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Domain/Subscriptions/Events/SubscriptionCreatedDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "SubscriptionId",
+                          "type": "Guid",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                }
+              ]
+            }
+          ],
+          "stores": [
+            "payments.module.db"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "registrations",
+      "slug": "registrations",
+      "name": "Registrations",
+      "summary": "",
+      "classification": "core",
+      "services": [
+        {
+          "id": "registrations.module",
+          "slug": "module",
+          "name": "Registrations module",
+          "repo": "github.com/acme/mymeetings",
+          "path": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations",
+          "readme": "",
+          "provides": [
+            {
+              "id": "registrations.module.user-registrations",
+              "methods": [
+                {
+                  "name": "RegisterNewUser",
+                  "doc": "Register new user",
+                  "http": {
+                    "method": "POST",
+                    "path": "/registrations/UserRegistrations"
+                  }
+                },
+                {
+                  "name": "ConfirmRegistration",
+                  "doc": "Confirm registration",
+                  "http": {
+                    "method": "PATCH",
+                    "path": "/registrations/UserRegistrations/{userRegistrationId}/confirm"
+                  }
+                }
+              ],
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/openapi.registrations.yaml"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "registrations.module.user-registrations",
+              "slug": "user-registrations",
+              "name": "UserRegistration",
+              "readme": "",
+              "root": "UserRegistration",
+              "entities": [
+                {
+                  "id": "registrations.module.user-registrations.user-registration",
+                  "slug": "user-registration",
+                  "name": "UserRegistration",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "UserRegistrationId",
+                      "doc": ""
+                    },
+                    {
+                      "name": "login",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "email",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "UserRegistrationStatus",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "registrations.module.user-registrations.user-registration-id",
+                  "slug": "user-registration-id",
+                  "name": "UserRegistrationId",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "registrations.module.user-registrations.user-registration-status",
+                  "slug": "user-registration-status",
+                  "name": "UserRegistrationStatus",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "confirm-user-registration",
+                  "kind": "command",
+                  "doc": "",
+                  "exposedBy": [
+                    "ConfirmRegistration"
+                  ],
+                  "fields": [
+                    {
+                      "name": "userRegistrationId",
+                      "type": "Guid",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/ConfirmUserRegistration/ConfirmUserRegistrationCommandHandler.cs:15"
+                },
+                {
+                  "id": "register-new-user",
+                  "kind": "command",
+                  "doc": "",
+                  "exposedBy": [
+                    "RegisterNewUser"
+                  ],
+                  "fields": [
+                    {
+                      "name": "login",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "email",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ],
+                  "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/RegisterNewUserCommandHandler.cs:15"
+                }
+              ],
+              "events": [
+                {
+                  "id": "registrations.module.user-registrations.NewUserRegisteredDomainEvent",
+                  "slug": "new-user-registered-domain-event",
+                  "name": "NewUserRegisteredDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Domain/UserRegistrations/Events/NewUserRegisteredDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "UserRegistrationId",
+                          "type": "UserRegistrationId",
+                          "doc": ""
+                        },
+                        {
+                          "name": "Login",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "Email",
+                          "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "registrations.module",
+                      "status": "declared",
+                      "note": "NewUserRegisteredPublishEventHandler"
+                    }
+                  ]
+                },
+                {
+                  "id": "registrations.module.user-registrations.UserRegistrationConfirmedDomainEvent",
+                  "slug": "user-registration-confirmed-domain-event",
+                  "name": "UserRegistrationConfirmedDomainEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Domain/UserRegistrations/Events/UserRegistrationConfirmedDomainEvent.cs",
+                      "fields": [
+                        {
+                          "name": "UserRegistrationId",
+                          "type": "UserRegistrationId",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "registrations.module.user-registrations.NewUserRegisteredIntegrationEvent",
+                  "slug": "new-user-registered-integration-event",
+                  "name": "NewUserRegisteredIntegrationEvent",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Somebody registered; the other modules make their own records of them.",
+                      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/IntegrationEvents/NewUserRegisteredIntegrationEvent.cs",
+                      "fields": [
+                        {
+                          "name": "UserId",
+                          "type": "Guid",
+                          "doc": ""
+                        },
+                        {
+                          "name": "Login",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "Email",
+                          "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "meetings.module",
+                      "status": "declared",
+                      "note": "NewUserRegisteredIntegrationEventHandler"
+                    }
+                  ],
+                  "wire": {
+                    "name": "NewUserRegisteredIntegrationEvent",
+                    "channel": "integration-events.NewUserRegisteredIntegrationEvent"
+                  }
+                }
+              ]
+            }
+          ],
+          "channels": [
+            {
+              "address": "integration-events.NewUserRegisteredIntegrationEvent",
+              "kind": "event",
+              "title": "Bus · New user registered",
+              "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
+              "messages": [
+                {
+                  "name": "NewUserRegisteredIntegrationEvent",
+                  "title": "New user registered",
+                  "doc": "Somebody registered; the other modules make their own records of them.",
+                  "direction": "send"
+                }
+              ],
+              "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/NewUserRegisteredPublishEventHandler.cs"
+            }
+          ],
+          "stores": [
+            "registrations.module.db"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.meetings-countries-get-all-countries",
+      "slug": "meetings-countries-get-all-countries",
+      "name": "Get all countries",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Countries/CountriesController.cs",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /api/meetings/countries",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor"
+        },
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "meetings-module-db",
+          "kind": "store",
+          "context": "meetings"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "meetings.module",
+          "kind": "rpc",
+          "label": "GET /api/meetings/countries",
+          "status": "declared",
+          "ref": "meetings.module.countries/GetAllCountries",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Countries/CountriesController.cs:18"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "meetings-module-db",
+          "kind": "call",
+          "label": "read meetings.v_Countries",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Countries/GetAllCountriesQueryHandler.cs:19",
+          "storeAccess": {
+            "store": "meetings.module.db",
+            "method": "GetAllCountriesQueryHandler.Handle"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.meetings-meetings-create-new-meeting",
+      "slug": "meetings-meetings-create-new-meeting",
+      "name": "Create new meeting",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /api/meetings/meetings",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor"
+        },
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "meetings-module-db",
+          "kind": "store",
+          "context": "meetings"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "meetings.module",
+          "kind": "rpc",
+          "label": "POST /api/meetings/meetings",
+          "status": "declared",
+          "ref": "meetings.module.meetings/CreateNewMeeting",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:32"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "meetings.module",
+          "kind": "event",
+          "label": "MeetingCreatedDomainEvent",
+          "status": "declared",
+          "ref": "meetings.module.meetings.MeetingCreatedDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Meetings/Meeting.cs:37"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "meetings.module",
+          "to": "meetings.module",
+          "kind": "event",
+          "label": "MeetingAttendeeAddedDomainEvent",
+          "status": "declared",
+          "ref": "meetings.module.meetings.MeetingAttendeeAddedDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Meetings/Meeting.cs:45"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "meetings.module",
+          "to": "meetings-module-db",
+          "kind": "call",
+          "label": "IMeetingRepository.AddAsync",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/CreateMeeting/CreateMeetingCommandHandler.cs:23",
+          "storeAccess": {
+            "store": "meetings.module.db",
+            "method": "IMeetingRepository.AddAsync"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.meetings-meetings-get-meeting-details",
+      "slug": "meetings-meetings-get-meeting-details",
+      "name": "Get meeting details",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /api/meetings/meetings/{meetingId}",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor"
+        },
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "meetings-module-db",
+          "kind": "store",
+          "context": "meetings"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "meetings.module",
+          "kind": "rpc",
+          "label": "GET /api/meetings/meetings/{meetingId}",
+          "status": "declared",
+          "ref": "meetings.module.meetings/GetMeetingDetails",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:22"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "meetings-module-db",
+          "kind": "call",
+          "label": "read meetings.v_MeetingDetails",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/GetMeetingDetails/GetMeetingDetailsQueryHandler.cs:19",
+          "storeAccess": {
+            "store": "meetings.module.db",
+            "method": "GetMeetingDetailsQueryHandler.Handle"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.meetings-meetings-cancel-meeting",
+      "slug": "meetings-meetings-cancel-meeting",
+      "name": "Cancel meeting",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs",
+      "trigger": {
+        "kind": "http",
+        "label": "PATCH /api/meetings/meetings/{meetingId}/cancel",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor"
+        },
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "meetings-module-db",
+          "kind": "store",
+          "context": "meetings"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "meetings.module",
+          "kind": "rpc",
+          "label": "PATCH /api/meetings/meetings/{meetingId}/cancel",
+          "status": "declared",
+          "ref": "meetings.module.meetings/CancelMeeting",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:45"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "meetings-module-db",
+          "kind": "call",
+          "label": "IMeetingRepository.GetByIdAsync",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/CancelMeeting/CancelMeetingCommandHandler.cs:18",
+          "storeAccess": {
+            "store": "meetings.module.db",
+            "method": "IMeetingRepository.GetByIdAsync"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "meetings.module",
+          "to": "meetings.module",
+          "kind": "event",
+          "label": "MeetingCanceledDomainEvent",
+          "status": "declared",
+          "ref": "meetings.module.meetings.MeetingCanceledDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Meetings/Meeting.cs:53"
+        }
+      ]
+    },
+    {
+      "id": "flow.meetings-meeting-attendee-added-publish-event-handler",
+      "slug": "meetings-meeting-attendee-added-publish-event-handler",
+      "name": "Meeting attendee added publish event handler",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/MeetingAttendeeAddedPublishEventHandler.cs",
+      "trigger": {
+        "kind": "event",
+        "label": "MeetingAttendeeAddedDomainEvent",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "integration-events",
+          "kind": "broker",
+          "label": "Bus · integration-events"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "meetings.module",
+          "to": "meetings.module",
+          "kind": "event",
+          "label": "MeetingAttendeeAddedDomainEvent",
+          "status": "declared",
+          "ref": "meetings.module.meetings.MeetingAttendeeAddedDomainEvent",
+          "note": "heard as a notification after the unit of work commits, replayed from the outbox",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/MeetingAttendeeAddedPublishEventHandler.cs:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "integration-events",
+          "kind": "event",
+          "label": "MeetingAttendeeAddedIntegrationEvent",
+          "status": "declared",
+          "ref": "meetings.module.meetings.MeetingAttendeeAddedIntegrationEvent",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/MeetingAttendeeAddedPublishEventHandler.cs:18",
+          "handoff": {
+            "kind": "message",
+            "transport": "in-memory",
+            "channel": "integration-events.MeetingAttendeeAddedIntegrationEvent",
+            "message": "MeetingAttendeeAddedIntegrationEvent",
+            "direction": "send"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.meetings-meeting-created-event-handler",
+      "slug": "meetings-meeting-created-event-handler",
+      "name": "Meeting created event handler",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/MeetingCreatedEventHandler.cs",
+      "trigger": {
+        "kind": "event",
+        "label": "MeetingCreatedDomainEvent",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "meetings-module-db",
+          "kind": "store",
+          "context": "meetings"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "meetings.module",
+          "to": "meetings.module",
+          "kind": "event",
+          "label": "MeetingCreatedDomainEvent",
+          "status": "declared",
+          "ref": "meetings.module.meetings.MeetingCreatedDomainEvent",
+          "note": "heard in the same transaction, as a MediatR notification",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/MeetingCreatedEventHandler.cs:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "meetings-module-db",
+          "kind": "call",
+          "label": "IMeetingRepository.GetByIdAsync",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/MeetingCreatedEventHandler.cs:18",
+          "storeAccess": {
+            "store": "meetings.module.db",
+            "method": "IMeetingRepository.GetByIdAsync"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.meetings-new-user-registered-integration-event-handler",
+      "slug": "meetings-new-user-registered-integration-event-handler",
+      "name": "New user registered integration event handler",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/NewUserRegisteredIntegrationEventHandler.cs",
+      "trigger": {
+        "kind": "message",
+        "label": "NewUserRegisteredIntegrationEvent",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "integration-events",
+          "kind": "broker",
+          "label": "Bus · integration-events"
+        },
+        {
+          "id": "meetings-internal-commands",
+          "kind": "broker",
+          "label": "Internal commands · Meetings"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "integration-events",
+          "to": "meetings.module",
+          "kind": "event",
+          "label": "NewUserRegisteredIntegrationEvent",
+          "status": "declared",
+          "ref": "registrations.module.user-registrations.NewUserRegisteredIntegrationEvent",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/NewUserRegisteredIntegrationEventHandler.cs:16",
+          "handoff": {
+            "kind": "message",
+            "transport": "in-memory",
+            "channel": "integration-events.NewUserRegisteredIntegrationEvent",
+            "message": "NewUserRegisteredIntegrationEvent",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "meetings-internal-commands",
+          "kind": "call",
+          "label": "enqueue CreateMemberCommand",
+          "status": "declared",
+          "note": "a row in InternalCommands, in the same transaction; a Quartz job picks it up and runs create-member",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/NewUserRegisteredIntegrationEventHandler.cs:18",
+          "handoff": {
+            "kind": "job",
+            "transport": "internal-commands",
+            "channel": "meetings.internal-commands",
+            "message": "CreateMemberCommand",
+            "direction": "send"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.meetings-create-member-job",
+      "slug": "meetings-create-member-job",
+      "name": "Create member (job)",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/CreateMemberCommandHandler.cs",
+      "trigger": {
+        "kind": "job",
+        "label": "CreateMemberCommand",
+        "confidence": "high"
+      },
+      "owner": "meetings",
+      "participants": [
+        {
+          "id": "meetings.module",
+          "kind": "service",
+          "context": "meetings"
+        },
+        {
+          "id": "meetings-internal-commands",
+          "kind": "broker",
+          "label": "Internal commands · Meetings"
+        },
+        {
+          "id": "meetings-module-db",
+          "kind": "store",
+          "context": "meetings"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "meetings-internal-commands",
+          "to": "meetings.module",
+          "kind": "call",
+          "label": "dequeue CreateMemberCommand",
+          "status": "declared",
+          "ref": "meetings.module.members/create-member",
+          "note": "the ProcessInternalCommands job reads the row and hands the command to its handler",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/CreateMemberCommandHandler.cs:15",
+          "handoff": {
+            "kind": "job",
+            "transport": "internal-commands",
+            "channel": "meetings.internal-commands",
+            "message": "CreateMemberCommand",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "meetings.module",
+          "to": "meetings.module",
+          "kind": "event",
+          "label": "MemberCreatedDomainEvent",
+          "status": "declared",
+          "ref": "meetings.module.members.MemberCreatedDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Domain/Members/Member.cs:21"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "meetings.module",
+          "to": "meetings-module-db",
+          "kind": "call",
+          "label": "IMemberRepository.AddAsync",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/CreateMemberCommandHandler.cs:19",
+          "storeAccess": {
+            "store": "meetings.module.db",
+            "method": "IMemberRepository.AddAsync"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.payments-subscription-details-projector",
+      "slug": "payments-subscription-details-projector",
+      "name": "Subscription details projector",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs",
+      "trigger": {
+        "kind": "event",
+        "label": "SubscriptionCreatedDomainEvent",
+        "confidence": "high"
+      },
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "payments.module",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "payments-module-db",
+          "kind": "store",
+          "context": "payments"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "payments.module",
+          "to": "payments.module",
+          "kind": "event",
+          "label": "SubscriptionCreatedDomainEvent",
+          "status": "declared",
+          "ref": "payments.module.subscriptions.SubscriptionCreatedDomainEvent",
+          "note": "heard in the same transaction, as a MediatR notification",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:17"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.module",
+          "to": "payments-module-db",
+          "kind": "call",
+          "label": "write payments.SubscriptionDetails",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:21",
+          "storeAccess": {
+            "store": "payments.module.db",
+            "method": "SubscriptionDetailsProjector.Handle"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.payments-create-subscription-job",
+      "slug": "payments-create-subscription-job",
+      "name": "Create subscription (job)",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/CreateSubscription/CreateSubscriptionCommandHandler.cs",
+      "trigger": {
+        "kind": "job",
+        "label": "CreateSubscriptionCommand",
+        "confidence": "high"
+      },
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "payments.module",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "payments-internal-commands",
+          "kind": "broker",
+          "label": "Internal commands · Payments"
+        },
+        {
+          "id": "payments-module-db",
+          "kind": "store",
+          "context": "payments"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "payments-internal-commands",
+          "to": "payments.module",
+          "kind": "call",
+          "label": "dequeue CreateSubscriptionCommand",
+          "status": "declared",
+          "ref": "payments.module.subscriptions/create-subscription",
+          "note": "the ProcessInternalCommands job reads the row and hands the command to its handler",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/CreateSubscription/CreateSubscriptionCommandHandler.cs:16",
+          "handoff": {
+            "kind": "job",
+            "transport": "internal-commands",
+            "channel": "payments.internal-commands",
+            "message": "CreateSubscriptionCommand",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.module",
+          "to": "payments.module",
+          "kind": "event",
+          "label": "SubscriptionCreatedDomainEvent",
+          "status": "declared",
+          "ref": "payments.module.subscriptions.SubscriptionCreatedDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Domain/Subscriptions/Subscription.cs:22"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "payments.module",
+          "to": "payments-module-db",
+          "kind": "call",
+          "label": "IAggregateStore.AppendChanges",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/CreateSubscription/CreateSubscriptionCommandHandler.cs:20",
+          "storeAccess": {
+            "store": "payments.module.db",
+            "method": "IAggregateStore.AppendChanges"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "payments.module",
+          "to": "payments-module-db",
+          "kind": "call",
+          "label": "IAggregateStore.Save",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/CreateSubscription/CreateSubscriptionCommandHandler.cs:22",
+          "storeAccess": {
+            "store": "payments.module.db",
+            "method": "IAggregateStore.Save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.payments-expire-subscriptions-scheduled",
+      "slug": "payments-expire-subscriptions-scheduled",
+      "name": "Expire subscriptions (scheduled)",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs",
+      "trigger": {
+        "kind": "scheduled",
+        "label": "ExpireSubscriptionsCommand",
+        "confidence": "medium"
+      },
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "payments.module",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "payments-module-db",
+          "kind": "store",
+          "context": "payments"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "payments.module",
+          "to": "payments.module",
+          "kind": "call",
+          "label": "ExpireSubscriptionsCommand",
+          "status": "declared",
+          "ref": "payments.module.subscriptions/expire-subscriptions",
+          "note": "a recurring command: a Quartz job in the module's infrastructure runs it on a schedule",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:19"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.module",
+          "to": "payments-module-db",
+          "kind": "call",
+          "label": "read payments.SubscriptionDetails",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:23",
+          "storeAccess": {
+            "store": "payments.module.db",
+            "method": "ExpireSubscriptionsCommandHandler.Handle"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "payments.module",
+          "to": "payments-module-db",
+          "kind": "call",
+          "label": "IAggregateStore.Load",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:29",
+          "storeAccess": {
+            "store": "payments.module.db",
+            "method": "IAggregateStore.Load"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "payments.module",
+          "to": "payments.module",
+          "kind": "event",
+          "label": "SubscriptionExpiredDomainEvent",
+          "status": "declared",
+          "ref": "payments.module.subscriptions.SubscriptionExpiredDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Domain/Subscriptions/Subscription.cs:30"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "payments.module",
+          "to": "payments-module-db",
+          "kind": "call",
+          "label": "IAggregateStore.AppendChanges",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:31",
+          "storeAccess": {
+            "store": "payments.module.db",
+            "method": "IAggregateStore.AppendChanges"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "payments.module",
+          "to": "payments-module-db",
+          "kind": "call",
+          "label": "IAggregateStore.Save",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:34",
+          "storeAccess": {
+            "store": "payments.module.db",
+            "method": "IAggregateStore.Save"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.registrations-user-registrations-register-new-user",
+      "slug": "registrations-user-registrations-register-new-user",
+      "name": "Register new user",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Registrations/UserRegistrationsController.cs",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /registrations/UserRegistrations",
+        "confidence": "high"
+      },
+      "owner": "registrations",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor"
+        },
+        {
+          "id": "registrations.module",
+          "kind": "service",
+          "context": "registrations"
+        },
+        {
+          "id": "registrations-module-db",
+          "kind": "store",
+          "context": "registrations"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "registrations.module",
+          "kind": "rpc",
+          "label": "POST /registrations/UserRegistrations",
+          "status": "declared",
+          "ref": "registrations.module.user-registrations/RegisterNewUser",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Registrations/UserRegistrationsController.cs:19"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "registrations.module",
+          "to": "registrations.module",
+          "kind": "event",
+          "label": "NewUserRegisteredDomainEvent",
+          "status": "declared",
+          "ref": "registrations.module.user-registrations.NewUserRegisteredDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Domain/UserRegistrations/UserRegistration.cs:29"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "registrations.module",
+          "to": "registrations-module-db",
+          "kind": "call",
+          "label": "IUserRegistrationRepository.AddAsync",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/RegisterNewUserCommandHandler.cs:19",
+          "storeAccess": {
+            "store": "registrations.module.db",
+            "method": "IUserRegistrationRepository.AddAsync"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.registrations-user-registrations-confirm-registration",
+      "slug": "registrations-user-registrations-confirm-registration",
+      "name": "Confirm registration",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Registrations/UserRegistrationsController.cs",
+      "trigger": {
+        "kind": "http",
+        "label": "PATCH /registrations/UserRegistrations/{userRegistrationId}/confirm",
+        "confidence": "high"
+      },
+      "owner": "registrations",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor"
+        },
+        {
+          "id": "registrations.module",
+          "kind": "service",
+          "context": "registrations"
+        },
+        {
+          "id": "registrations-module-db",
+          "kind": "store",
+          "context": "registrations"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "registrations.module",
+          "kind": "rpc",
+          "label": "PATCH /registrations/UserRegistrations/{userRegistrationId}/confirm",
+          "status": "declared",
+          "ref": "registrations.module.user-registrations/ConfirmRegistration",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/API/CompanyName.MyMeetings.API/Modules/Registrations/UserRegistrationsController.cs:27"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "registrations.module",
+          "to": "registrations-module-db",
+          "kind": "call",
+          "label": "IUserRegistrationRepository.GetByIdAsync",
+          "status": "declared",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/ConfirmUserRegistration/ConfirmUserRegistrationCommandHandler.cs:17",
+          "storeAccess": {
+            "store": "registrations.module.db",
+            "method": "IUserRegistrationRepository.GetByIdAsync"
+          }
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "registrations.module",
+          "to": "registrations.module",
+          "kind": "event",
+          "label": "UserRegistrationConfirmedDomainEvent",
+          "status": "declared",
+          "ref": "registrations.module.user-registrations.UserRegistrationConfirmedDomainEvent",
+          "note": "raised in process: a MediatR notification in the same transaction, and a notification from the outbox after it commits",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Domain/UserRegistrations/UserRegistration.cs:36"
+        }
+      ]
+    },
+    {
+      "id": "flow.registrations-new-user-registered-publish-event-handler",
+      "slug": "registrations-new-user-registered-publish-event-handler",
+      "name": "New user registered publish event handler",
+      "summary": "",
+      "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/NewUserRegisteredPublishEventHandler.cs",
+      "trigger": {
+        "kind": "event",
+        "label": "NewUserRegisteredDomainEvent",
+        "confidence": "high"
+      },
+      "owner": "registrations",
+      "participants": [
+        {
+          "id": "registrations.module",
+          "kind": "service",
+          "context": "registrations"
+        },
+        {
+          "id": "integration-events",
+          "kind": "broker",
+          "label": "Bus · integration-events"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "registrations.module",
+          "to": "registrations.module",
+          "kind": "event",
+          "label": "NewUserRegisteredDomainEvent",
+          "status": "declared",
+          "ref": "registrations.module.user-registrations.NewUserRegisteredDomainEvent",
+          "note": "heard as a notification after the unit of work commits, replayed from the outbox",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/NewUserRegisteredPublishEventHandler.cs:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "registrations.module",
+          "to": "integration-events",
+          "kind": "event",
+          "label": "NewUserRegisteredIntegrationEvent",
+          "status": "declared",
+          "ref": "registrations.module.user-registrations.NewUserRegisteredIntegrationEvent",
+          "line": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/NewUserRegisteredPublishEventHandler.cs:18",
+          "handoff": {
+            "kind": "message",
+            "transport": "in-memory",
+            "channel": "integration-events.NewUserRegisteredIntegrationEvent",
+            "message": "NewUserRegisteredIntegrationEvent",
+            "direction": "send"
+          }
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

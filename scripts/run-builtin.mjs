@@ -90,6 +90,7 @@ function prebuiltCargoBinary(argv) {
 function resolveArgument(executable, index) {
   if (["node", "python", "python3"].includes(executable)) return index === 0;
   if (executable === "java") return index === 1;
+  if (executable === "dotnet") return index === 0;
   if (executable === "cargo") return index === 3;
   return false;
 }
