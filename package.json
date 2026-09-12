@@ -92,7 +92,7 @@
     "@tanstack/react-virtual": "^3.14.10",
     "@vitejs/plugin-react": "^6.1.1",
     "@xyflow/react": "^12.11.5",
-    "ai": "7.0.97",
+    "ai": "7.0.99",
     "ajv": "^8.20.0",
     "elkjs": "^0.12.0",
     "html-to-image": "^1.11.13",
