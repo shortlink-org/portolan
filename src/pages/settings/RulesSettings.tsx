@@ -15,6 +15,7 @@
 // many hits are there now.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Switch } from "@headlessui/react";
 import { Link } from "react-router";
 import { ChevronDown, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { catalog, index } from "../../data";
@@ -345,20 +346,26 @@ function regraded(entries: ProblemRuleEntry[], rule: ProblemRule, severity: Rule
 // One rule.
 
 /**
- * The app's own switch: the segmented control Preferences uses for the theme
- * and the row density, with the two states as two members and `is-on` on
- * the one in force. Off on a rule in local mode asks for a reason first.
+ * The switch the delivery presets use: Headless UI's, styled the same way,
+ * so a toggle is one thing across the settings tabs. Off on a shipped rule
+ * in local mode asks for a reason first, which is why the change handler
+ * is the row's and not a plain setter.
  */
-function Switch({ on, id, disabled, onOn, onOff }: { on: boolean; id: string; disabled: boolean; onOn: () => void; onOff: () => void }) {
+function RuleSwitch({ on, id, disabled, onChange }: { on: boolean; id: string; disabled: boolean; onChange: () => void }) {
   return (
-    <div className="seg inline-flex shrink-0" role="group" aria-label={`${id} on or off`}>
-      <button type="button" aria-pressed={on} aria-label={`Switch on ${id}`} className={on ? "is-on" : ""} disabled={disabled} onClick={() => !on && onOn()}>
-        on
-      </button>
-      <button type="button" aria-pressed={!on} aria-label={`Switch off ${id}`} className={!on ? "is-on" : ""} disabled={disabled} onClick={() => on && onOff()}>
-        off
-      </button>
-    </div>
+    <Switch
+      checked={on}
+      disabled={disabled}
+      onChange={onChange}
+      aria-label={`Switch ${on ? "off" : "on"} ${id}`}
+      title={disabled ? "local mode required" : on ? "on · click to switch off" : "off · click to switch on"}
+      className="group inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-line-strong bg-surface transition-colors outline-none data-checked:border-accent data-checked:bg-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed"
+    >
+      <span
+        aria-hidden
+        className="size-3.5 translate-x-0.5 rounded-full bg-muted shadow-xs transition-transform group-data-checked:translate-x-[18px] group-data-checked:bg-canvas"
+      />
+    </Switch>
   );
 }
 
@@ -399,7 +406,7 @@ function RuleRow({
   return (
     <div id={`rule-${rule.id}`} className="scroll-mt-4 border-t border-line">
       <div className={`grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto_5.5rem_auto] ${open ? "bg-surface/60" : "hover:bg-surface/60"}`}>
-        <Switch on={rule.enabled} id={rule.id} disabled={!canWrite} onOn={toggle} onOff={toggle} />
+        <RuleSwitch on={rule.enabled} id={rule.id} disabled={!canWrite} onChange={toggle} />
         <KindIcon kind={ICON_OF[rule.over]} className={rule.enabled ? "" : "opacity-50"} />
         <button
           type="button"
