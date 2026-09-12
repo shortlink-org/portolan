@@ -22,6 +22,7 @@ import { loadManifest, readManifest, readManifestText } from "./manifest.mjs";
 import { builtinPluginNames } from "./builtin-plugins.mjs";
 import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
+import { formatLike } from "./json-format.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
 import {
   discoverProject,
@@ -615,11 +616,19 @@ function projectRequestPlan(workspace, manifest, request) {
   return { base, plan, starter };
 }
 
+/**
+ * Writes the manifest in the style the file already has: an unchanged
+ * subtree is copied byte for byte, a changed array keeps the shape its old
+ * self had, so that what the page changed is what the diff shows.
+ */
 export function writeManifest(path, manifest) {
+  let before = "";
+  try { before = readFileSync(path, "utf8"); } catch {}
+  const text = before.trim() ? formatLike(before.replace(/\n$/, ""), manifest) : JSON.stringify(manifest, null, 2);
   const staging = mkdtempSync(join(dirname(path), ".portolan-manifest-"));
   const temp = join(staging, "portolan.json");
   try {
-    writeFileSync(temp, `${JSON.stringify(manifest, null, 2)}\n`, { flag: "wx" });
+    writeFileSync(temp, `${text}\n`, { flag: "wx" });
     const validation = loadManifest(temp);
     if (validation.problems.length) throw new Error(validation.problems.join("\n"));
     renameSync(temp, path);

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, removeProject, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, removeProject, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeManifest, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -772,5 +772,53 @@ describe("workspaceFingerprint", () => {
     const unborn = workspaceFingerprint(root);
     execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "empty"], { cwd: root });
     expect(workspaceFingerprint(root)).toBe(unborn);
+  });
+});
+
+describe("writing the manifest", () => {
+  it("keeps the file's own formatting and changes only what changed", () => {
+    const root = workspace();
+    const path = join(root, "portolan.json");
+    const before = [
+      "{",
+      '  "sources": ["data/*.json", "services/*/portolan/*.json"],',
+      '  "projects": [],',
+      '  "plugins": [{ "name": "otel", "process": { "command": "true" } }],',
+      '  "extract": [],',
+      '  "verify": [',
+      "    {",
+      '      "plugin": "otel",',
+      '      "in": "services/billing",',
+      '      "out": "services/billing/portolan",',
+      '      "options": {',
+      '        "traces": [',
+      '          "telemetry/traces.jsonl"',
+      "        ]",
+      "      }",
+      "    }",
+      "  ]",
+      "}",
+      "",
+    ].join("\n");
+    writeFileSync(path, before);
+
+    const manifest = JSON.parse(before);
+    manifest.verify[0].options.traces.push("telemetry/recordings/*.jsonl");
+    writeManifest(path, manifest);
+
+    const after = readFileSync(path, "utf8");
+    expect(JSON.parse(after)).toEqual(manifest);
+    expect(after).toContain('  "sources": ["data/*.json", "services/*/portolan/*.json"],');
+    expect(after).toContain('  "plugins": [{ "name": "otel", "process": { "command": "true" } }],');
+    expect(after).toContain('          "telemetry/traces.jsonl",\n          "telemetry/recordings/*.jsonl"\n        ]');
+    expect(after.endsWith("}\n")).toBe(true);
+  });
+
+  it("still refuses a manifest the schema rejects, and leaves the file as it was", () => {
+    const root = workspace();
+    const path = join(root, "portolan.json");
+    const before = readFileSync(path, "utf8");
+    expect(() => writeManifest(path, { ...JSON.parse(before), verify: [{ plugin: "nope", in: "x", out: "y" }] })).toThrow();
+    expect(readFileSync(path, "utf8")).toBe(before);
   });
 });
