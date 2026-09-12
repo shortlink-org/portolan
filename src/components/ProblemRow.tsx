@@ -1,19 +1,24 @@
-// One problem, as a row: what the near end is, where both ends live, and
-// the words for what is wrong with the edge between them. The problems page
-// lists every one of these; the overview shows the first few.
+// One problem, as a row: the edge, the words for what is wrong with it,
+// where it is met in the flows, and where the code is.
 //
-// The words and the icon come from the rule that made the row - its passport
-// in rules/builtin.json, or the manifest's entry - and the rule's subject
-// says where the near end leads: an event has a page, a table has a canvas,
-// a channel, a call and a deployment are shown on their service's page.
+// The row is light on purpose: under a rule's heading on the Problems page
+// the rule's words are said once, above, and the row is the edge and its
+// note. On its own - the overview shows the first few - it wears the rule's
+// words too, as a link to the rule. The rule's subject says where the near
+// end leads: an event has a page, a table has a canvas, a channel, a call
+// and a deployment are shown on their service's page.
 
 import { Link } from "react-router";
+import { ExternalLink } from "lucide-react";
+import { catalog, index } from "../data";
 import type { Problem } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
 import type { Kind } from "../lib/kinds";
 import { staggerStyle } from "../lib/motion";
+import { flowsOfProblem } from "../lib/problem-flows";
 import { useProblemRules } from "../lib/problem-rules";
 import type { RuleSubject } from "../lib/problem-rules";
+import { sourceHref } from "../lib/source-link";
 import {
   aggregatePath,
   eventPath,
@@ -54,7 +59,7 @@ function columnPath(id: string): string | null {
 }
 
 /** Where the near end of a problem lives, by what the rule is about. */
-function nearPath(over: RuleSubject, problem: Problem): string | null {
+export function nearPath(over: RuleSubject, problem: Problem): string | null {
   switch (over) {
     case "event":
     case "consumer":
@@ -86,88 +91,117 @@ function peerPath(peer: string): string | null {
   return servicePath(peer) ?? eventPath(peer) ?? relationPath(peer) ?? columnPath(peer) ?? storePath(peer);
 }
 
-export function ProblemRow({ problem, index }: { problem: Problem; index: number }) {
+/** An http(s) URL the note ends with, for a row whose far end is a page elsewhere - the deployer's. */
+function urlIn(note: string | undefined): string | null {
+  const match = note?.match(/https?:\/\/\S+$/);
+  return match ? match[0] : null;
+}
+
+const MAX_FLOWS = 4;
+
+export function ProblemRow({
+  problem,
+  index: at,
+  showRule = true,
+}: {
+  problem: Problem;
+  index: number;
+  /** Say which rule made the row. Off under a heading that already says so. */
+  showRule?: boolean;
+}) {
   const rules = useProblemRules();
   const rule = rules.find((candidate) => candidate.id === problem.rule);
   const over = rule?.over ?? "service";
   const near = nearPath(over, problem);
   const peerTo = peerPath(problem.peer);
   const note = rule?.note ?? problem.rule;
-  const tone =
-    problem.severity === "error"
-      ? "var(--status-unresolved)"
-      : "var(--status-declared)";
+  const service = problem.service ? index.serviceById.get(problem.service) : undefined;
+  const source = problem.source ? sourceHref(problem.source, service) : null;
+  const url = over === "deployment" ? urlIn(problem.note) : null;
+  const text = url && problem.note ? problem.note.slice(0, problem.note.length - url.length).trim() : problem.note;
+  const flows = flowsOfProblem(catalog, index, over, problem);
+  const tone = problem.severity === "error" ? "text-unresolved" : "text-declared";
 
   return (
-    <div
-      className="stagger-in flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-control border px-3 py-2"
-      style={{ ...staggerStyle(index), borderColor: tone }}
-      data-rule={problem.rule}
-    >
-      <KindIcon kind={ICON_OF[over]} />
-      {near ? (
-        <Link
-          to={near}
-          data-nav-item
-          className="mono rounded-control text-accent hover:underline"
-          title={problem.id}
-        >
-          {problem.id}
-        </Link>
-      ) : (
-        <Ident value={problem.id} />
-      )}
-      {/* A rule may name no far end; then there is no arrow to draw. */}
-      {problem.peer ? (
-        <>
-          <span aria-hidden className="text-muted">
-            →
+    <div className="stagger-in px-3 py-2.5" style={staggerStyle(at)} data-rule={problem.rule}>
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <KindIcon kind={ICON_OF[over]} className="self-center" />
+        {near ? (
+          <Link to={near} data-nav-item className="mono rounded-control text-accent hover:underline" title={problem.id}>
+            {problem.id}
+          </Link>
+        ) : (
+          <Ident value={problem.id} />
+        )}
+        {/* A rule may name no far end; then there is no arrow to draw. */}
+        {problem.peer ? (
+          <>
+            <span aria-hidden className="text-faint">
+              →
+            </span>
+            {peerTo ? (
+              <Link to={peerTo} className={`mono rounded-control hover:underline ${tone}`} title={problem.peer}>
+                {problem.peer}
+              </Link>
+            ) : (
+              <Ident value={problem.peer} className={tone} title={`${problem.peer} — ${note}. Click to copy.`} />
+            )}
+          </>
+        ) : null}
+        {problem.context ? (
+          <span className="chip ctx" style={ctxStyle(problem.context)}>
+            <span aria-hidden className="dot" />
+            {problem.context}
           </span>
-          {peerTo ? (
-            <Link
-              to={peerTo}
-              className="mono rounded-control hover:underline"
-              style={{ color: tone }}
-              title={problem.peer}
-            >
-              {problem.peer}
-            </Link>
-          ) : (
-            <Ident
-              value={problem.peer}
-              className={
-                problem.severity === "error" ? "text-unresolved" : "text-declared"
-              }
-              title={`${problem.peer} — ${note}. Click to copy.`}
-            />
-          )}
-        </>
-      ) : null}
-      {/* A problem with no near end in the estate has no context to wear:
-          a chip with nothing in it would be a claim about a context named "". */}
-      {problem.context ? (
-        <span className="chip ctx" style={ctxStyle(problem.context)}>
-          <span aria-hidden className="dot" />
-          {problem.context}
-        </span>
-      ) : null}
-      {/* The rule's words, leading to the rule: what it checks, what to do,
-          and the switch that turns it off. */}
-      <Link
-        to={`${paths.settingsRules()}#rule-${problem.rule}`}
-        className="mono ml-auto rounded-control text-muted hover:text-ink hover:underline"
-        title={`rule ${problem.rule}${rule?.action ? ` — ${rule.action}` : ""}`}
-      >
-        {note}
-      </Link>
-      {problem.note ? (
-        <p className="w-full border-l-2 pl-2 border-line-strong text-muted">
-          {problem.note}
-        </p>
-      ) : null}
-      {problem.source ? (
-        <div className="mono w-full text-muted">
-          <Ident value={problem.source} />
+        ) : null}
+        {showRule ? (
+          <Link
+            to={`${paths.settingsRules()}#rule-${problem.rule}`}
+            className="mono ml-auto max-w-[45%] truncate rounded-control text-muted hover:text-ink hover:underline"
+            title={`rule ${problem.rule}${rule?.action ? ` — ${rule.action}` : ""}`}
+          >
+            {note}
+          </Link>
+        ) : null}
+      </div>
+      {text ? <p className="mt-1 max-w-prose text-muted">{text}</p> : null}
+      {flows.length > 0 || source || url ? (
+        <div className="mono mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted">
+          {flows.length > 0 ? (
+            <span className="flex flex-wrap items-center gap-1">
+              <span className="text-faint">in</span>
+              {flows.slice(0, MAX_FLOWS).map((hit) => (
+                <Link
+                  key={hit.flow.id}
+                  to={hit.stepId ? paths.flowStep(hit.flow.slug, hit.stepId) : paths.flow(hit.flow.slug)}
+                  className="chip border-line-strong hover:border-accent hover:text-accent"
+                  title={hit.stepId ? `${hit.flow.name}, step ${hit.number}` : hit.flow.name}
+                >
+                  {hit.flow.name}
+                  {hit.number ? <span className="text-faint">·{hit.number}</span> : null}
+                </Link>
+              ))}
+              {flows.length > MAX_FLOWS ? (
+                <span className="text-faint" title={flows.slice(MAX_FLOWS).map((hit) => hit.flow.name).join(", ")}>
+                  +{flows.length - MAX_FLOWS}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+          {problem.source ? (
+            source ? (
+              <a href={source} target="_blank" rel="noreferrer" className="truncate rounded-control text-accent hover:underline" title={problem.source}>
+                {problem.source} ↗
+              </a>
+            ) : (
+              <Ident value={problem.source} className="truncate" />
+            )
+          ) : null}
+          {url ? (
+            <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-control text-accent hover:underline">
+              <ExternalLink size={12} aria-hidden /> open in the deployer
+            </a>
+          ) : null}
         </div>
       ) : null}
     </div>

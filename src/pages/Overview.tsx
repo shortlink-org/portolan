@@ -519,13 +519,15 @@ export function Overview() {
             Problems
           </SectionTitle>
           <div className="flex max-w-table flex-col gap-2" data-nav-list>
-            {issues.slice(0, OVERVIEW_PROBLEMS).map((problem, i) => (
-              <ProblemRow
-                key={`${problem.rule}:${problem.id}:${problem.peer}`}
-                problem={problem}
-                index={i}
-              />
-            ))}
+            <div className="divide-y divide-line overflow-hidden rounded-card border border-line shadow-xs">
+              {issues.slice(0, OVERVIEW_PROBLEMS).map((problem, i) => (
+                <ProblemRow
+                  key={`${problem.rule}:${problem.id}:${problem.peer}`}
+                  problem={problem}
+                  index={i}
+                />
+              ))}
+            </div>
             {issueCount > OVERVIEW_PROBLEMS ? (
               <Link
                 to={paths.problems()}
