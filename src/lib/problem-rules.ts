@@ -1,36 +1,41 @@
 // The rules the Problems page is made of, as one list a reader can see.
 //
-// Two kinds of rule, one shape. A built-in rule is a reader in TypeScript -
-// derive.ts, data-problems.ts, wire-problems.ts, proto-problems.ts,
-// deploy-problems.ts - with a passport in rules/builtin.json: its id, the
-// subject its rows are about, how wrong a row is, and what to do about one.
-// A custom rule is written in the manifest under `problemRules`, in CEL over
-// one subject, and carries the same passport fields itself. The manifest can
-// also switch a built-in rule off or re-grade it, with a reason.
+// Every rule is the same thing: a subject, a condition in CEL, a message in
+// CEL, and a passport - id, severity, title, the words on the row, what it
+// checks, what to do. The package ships its own in rules/builtin.json; the
+// estate writes more under `problemRules` in the manifest, and there it can
+// also switch a shipped rule off or re-grade it, with a reason.
 //
-// Rules are applied here, in the browser, over the merged catalog - where the
-// readers already run - and not at generation. Nothing about a problem is
-// written to a fragment: the catalog says what is, and a rule says what should
-// not be, and the second is the estate's to change without a build. That is
-// also why a switch flipped on the Settings page takes effect on the next
-// render, and why the same expression is type-checked twice, once when the
-// manifest is read and once here, by the same module (portolan.0016).
+// A rule reads one row of one subject, and the row already carries every
+// fact the rule would otherwise have to look up (problem-subjects.ts). So a
+// rule never walks the catalog, and the whole of what makes a row a problem
+// is in the expression a reader can see on the Settings page.
+//
+// Rules are applied here, in the browser, over the merged catalog, and not
+// at generation. Nothing about a problem is written to a fragment: the
+// catalog says what is, and a rule says what should not be, and the second
+// is the estate's to change without a build. That is also why a switch
+// flipped on the Settings page takes effect on the next render, and why the
+// same expression is type-checked twice, once when the manifest is read and
+// once here, by the same module (portolan.0016, portolan.0017).
 
 import { useMemo } from "react";
 import { create } from "zustand";
 
 import builtinJson from "../../rules/builtin.json";
 import manifestJson from "../../portolan.json";
-import type { Aggregate, Catalog, CatalogIndex, Event, Flow, Service, Table } from "../catalog";
-import { allDeployments, deploys, enumsOf, walkSteps } from "../catalog";
+import type { Catalog, CatalogIndex } from "../catalog";
+import type { Problem } from "./derive";
 import { compileExpression, SUBJECT_NAMES } from "./problem-rules-cel.mjs";
 import type { RuleSeverity, RuleSubject } from "./problem-rules-cel.mjs";
-import type { Finding, Problem } from "./derive";
+import { estateOf, subjectsOf } from "./problem-subjects";
 
 export type { RuleSeverity, RuleSubject } from "./problem-rules-cel.mjs";
 export { SUBJECTS } from "./problem-rules-cel.mjs";
+export { estateOf, subjectsOf } from "./problem-subjects";
+export type { Subject } from "./problem-subjects";
 
-/** What every rule says about itself, built-in or not. */
+/** What every rule says about itself, and what it says in CEL. */
 export interface RulePassport {
   id: string;
   /** What a row of this rule is about, and where its near end links to. */
@@ -42,8 +47,12 @@ export interface RulePassport {
   description: string;
   /** What a reader does about a row. */
   action: string;
-  /** Where the reader is, for a built-in rule: the file in this repository. */
-  source?: string;
+  /** Boolean CEL over the subject; the row exists when it holds. */
+  when: string;
+  /** String CEL over the subject; the row's note. */
+  message: string;
+  /** String CEL over the subject; the row's far end. Optional. */
+  peer?: string;
 }
 
 /** One entry of `problemRules` in the manifest, as written. */
@@ -54,11 +63,8 @@ export interface ProblemRuleEntry {
   /** Why a rule is off or re-graded; required with `enabled: false`. */
   reason?: string;
   over?: RuleSubject;
-  /** Boolean CEL over the subject; the row exists when it holds. */
   when?: string;
-  /** String CEL over the subject; the row's note. */
   message?: string;
-  /** String CEL over the subject; the row's far end. Optional. */
   peer?: string;
   title?: string;
   note?: string;
@@ -66,16 +72,13 @@ export interface ProblemRuleEntry {
   action?: string;
 }
 
-/** A rule as the page shows it: passport, switch, and the CEL when there is any. */
+/** A rule as the page shows it: passport, switch, and where it came from. */
 export interface ProblemRule extends RulePassport {
   builtin: boolean;
   enabled: boolean;
   /** The severity the passport was written with, before the manifest re-graded it. */
   defaultSeverity: RuleSeverity;
   reason?: string;
-  when?: string;
-  message?: string;
-  peer?: string;
 }
 
 export const BUILTIN_RULES: readonly RulePassport[] = builtinJson as RulePassport[];
@@ -87,9 +90,9 @@ export function isBuiltinRule(id: string): boolean {
 }
 
 /**
- * The rules in force: every built-in one, switched or re-graded where the
+ * The rules in force: every shipped one, switched or re-graded where the
  * manifest says, then the manifest's own, in manifest order. An entry naming
- * a built-in id changes that rule; any other entry is a rule of its own.
+ * a shipped id changes that rule; any other entry is a rule of its own.
  */
 export function resolveRules(entries: readonly ProblemRuleEntry[]): ProblemRule[] {
   const byId = new Map(entries.map((entry) => [entry.id, entry]));
@@ -117,12 +120,12 @@ export function resolveRules(entries: readonly ProblemRuleEntry[]): ProblemRule[
         note: entry.note ?? entry.title ?? entry.id,
         description: entry.description ?? "",
         action: entry.action ?? "",
+        when: entry.when ?? "",
+        message: entry.message ?? "",
+        ...(entry.peer ? { peer: entry.peer } : {}),
         builtin: false,
         enabled: entry.enabled !== false,
         ...(entry.reason ? { reason: entry.reason } : {}),
-        ...(entry.when ? { when: entry.when } : {}),
-        ...(entry.message ? { message: entry.message } : {}),
-        ...(entry.peer ? { peer: entry.peer } : {}),
       };
     });
   return [...builtin, ...custom];
@@ -130,277 +133,6 @@ export function resolveRules(entries: readonly ProblemRuleEntry[]): ProblemRule[
 
 export function ruleById(rules: readonly ProblemRule[], id: string): ProblemRule | undefined {
   return rules.find((rule) => rule.id === id);
-}
-
-// ---------------------------------------------------------------------------
-// Subjects: the flat view of one row a CEL rule reads.
-
-/** One row a rule is asked about, with what a problem needs to know of it. */
-export interface Subject {
-  id: string;
-  context: string;
-  service: string;
-  source: string | undefined;
-  /** What the expression sees, under the subject's name. */
-  row: Record<string, unknown>;
-}
-
-const int = (n: number) => BigInt(n);
-
-function contextOf(index: CatalogIndex, service: Service | undefined): string {
-  return service ? index.serviceContext.get(service.id)?.id ?? "" : "";
-}
-
-function eventSubject(index: CatalogIndex, event: Event): Subject {
-  const owner = index.eventOwner.get(event.id);
-  const latest = event.versions[event.versions.length - 1];
-  return {
-    id: event.id,
-    context: contextOf(index, owner?.service),
-    service: owner?.service.id ?? "",
-    source: latest?.source,
-    row: {
-      id: event.id,
-      slug: event.slug,
-      name: event.name,
-      aggregate: owner?.aggregate.id ?? "",
-      service: owner?.service.id ?? "",
-      context: contextOf(index, owner?.service),
-      versions: int(event.versions.length),
-      deprecated: latest?.deprecated === true,
-      consumers: event.consumers.map((consumer) => consumer.service),
-      unresolvedConsumers: int(event.consumers.filter((consumer) => consumer.status === "unresolved").length),
-      wireName: event.wire?.name ?? "",
-      channel: event.wire?.channel ?? "",
-      fields: latest?.fields.map((field) => field.name) ?? [],
-    },
-  };
-}
-
-function tableSubject(index: CatalogIndex, table: Table, store: { id: string; kind: string; owner: string }): Subject {
-  const owner = index.serviceById.get(store.owner);
-  const accesses = table.accesses ?? [];
-  return {
-    id: table.id,
-    context: contextOf(index, owner),
-    service: store.owner,
-    source: undefined,
-    row: {
-      id: table.id,
-      name: table.name,
-      store: store.id,
-      storeKind: store.kind,
-      owner: store.owner,
-      context: contextOf(index, owner),
-      role: table.role ?? "",
-      aggregate: table.persists?.aggregate ?? "",
-      block: table.persists?.block ?? "",
-      columns: table.columns.map((column) => column.name),
-      primaryKey: table.columns.filter((column) => column.pk).map((column) => column.name),
-      foreignKeys: table.columns.flatMap((column) => (column.fk ? [column.fk.table] : [])),
-      indexes: int(table.indexes?.length ?? 0),
-      reads: int(accesses.filter((access) => access.operation === "read").length),
-      writes: int(accesses.filter((access) => access.operation === "write").length),
-      deletes: int(accesses.filter((access) => access.operation === "delete").length),
-    },
-  };
-}
-
-function flowSubject(catalog: Catalog, flow: Flow): Subject {
-  const steps = walkSteps(flow.steps);
-  const participants = flow.participants.filter((participant) => participant.kind === "service").map((participant) => participant.id);
-  const contexts = [...new Set(flow.participants.flatMap((participant) => (participant.context ? [participant.context] : [])))];
-  // The near end of a flow's row is the service that owns its first lane,
-  // which is where the flow's page says it starts; the owner is a context.
-  const first = participants[0] ?? "";
-  return {
-    id: flow.id,
-    context: flow.owner,
-    service: catalog.contexts.some((context) => context.services.some((service) => service.id === first)) ? first : "",
-    source: flow.source,
-    row: {
-      id: flow.id,
-      slug: flow.slug,
-      name: flow.name,
-      owner: flow.owner,
-      trigger: flow.trigger?.kind ?? "",
-      triggerConfidence: flow.trigger?.confidence ?? "",
-      participants,
-      contexts,
-      crossContext: contexts.length > 1,
-      steps: int(steps.length),
-      verifiedSteps: int(steps.filter((step) => step.status === "verified").length),
-      declaredSteps: int(steps.filter((step) => step.status === "declared").length),
-      unresolvedSteps: int(steps.filter((step) => step.status === "unresolved").length),
-      seenSteps: int(steps.filter((step) => step.seen !== undefined).length),
-      events: [...new Set(steps.filter((step) => step.kind === "event" && step.ref).map((step) => step.ref!))],
-      stores: [...new Set(steps.flatMap((step) => (step.storeAccess ? [step.storeAccess.store] : [])))],
-      examples: int(flow.examples?.length ?? 0),
-      source: flow.source ?? "",
-    },
-  };
-}
-
-function aggregateSubject(catalog: Catalog, index: CatalogIndex, aggregate: Aggregate): Subject {
-  const owner = index.aggregateOwner.get(aggregate.id);
-  const tables = (catalog.stores ?? []).flatMap((store) =>
-    store.tables.filter((table) => table.persists?.aggregate === aggregate.id).map((table) => table.id),
-  );
-  return {
-    id: aggregate.id,
-    context: contextOf(index, owner),
-    service: owner?.id ?? "",
-    source: undefined,
-    row: {
-      id: aggregate.id,
-      slug: aggregate.slug,
-      name: aggregate.name,
-      root: aggregate.root,
-      modelGroup: aggregate.kind === "model-group",
-      service: owner?.id ?? "",
-      context: contextOf(index, owner),
-      entities: int(aggregate.entities.length),
-      valueObjects: int(aggregate.valueObjects.length),
-      enums: int(enumsOf(aggregate).length),
-      commands: int(aggregate.operations.filter((operation) => operation.kind === "command").length),
-      queries: int(aggregate.operations.filter((operation) => operation.kind === "query").length),
-      exposedOperations: int(aggregate.operations.filter((operation) => (operation.exposedBy?.length ?? 0) > 0).length),
-      deprecatedOperations: int(aggregate.operations.filter((operation) => operation.deprecated).length),
-      events: aggregate.events.map((event) => event.id),
-      states: aggregate.lifecycle?.states ?? [],
-      transitions: int(aggregate.lifecycle?.transitions.length ?? 0),
-      tables,
-    },
-  };
-}
-
-/** Every row of one subject kind in the catalog, in catalog order. */
-export function subjectsOf(catalog: Catalog, index: CatalogIndex, over: RuleSubject): Subject[] {
-  const services = catalog.contexts.flatMap((context) => context.services.map((service) => ({ context, service })));
-  switch (over) {
-    case "service":
-      return services.map(({ context, service }) => ({
-        id: service.id,
-        context: context.id,
-        service: service.id,
-        source: undefined,
-        row: {
-          id: service.id,
-          slug: service.slug,
-          name: service.name,
-          context: context.id,
-          kind: service.kind ?? "service",
-          repo: service.repo,
-          path: service.path,
-          technologies: service.technologies ?? [],
-          owners: service.owners ?? [],
-          provides: int(service.provides.length),
-          methods: int(service.provides.reduce((n, provided) => n + provided.methods.length, 0)),
-          calls: int(service.consumes.length),
-          unresolvedCalls: int(service.consumes.filter((call) => call.status === "unresolved").length),
-          aggregates: int(service.aggregates.length),
-          events: int(service.aggregates.reduce((n, aggregate) => n + aggregate.events.length, 0)),
-          stores: service.stores ?? [],
-          channels: (service.channels ?? []).map((channel) => channel.address),
-          hosts: service.hosts ?? [],
-          dials: service.dials ?? [],
-        },
-      }));
-    case "event":
-      return services.flatMap(({ service }) =>
-        service.aggregates.flatMap((aggregate) => aggregate.events.map((event) => eventSubject(index, event))),
-      );
-    case "channel":
-      return services.flatMap(({ context, service }) =>
-        (service.channels ?? []).map((channel) => ({
-          id: channel.address,
-          context: context.id,
-          service: service.id,
-          source: channel.source,
-          row: {
-            address: channel.address,
-            kind: channel.kind ?? "event",
-            title: channel.title ?? "",
-            service: service.id,
-            context: context.id,
-            sends: channel.messages.filter((message) => message.direction === "send").map((message) => message.name),
-            receives: channel.messages.filter((message) => message.direction === "receive").map((message) => message.name),
-            source: channel.source ?? "",
-          },
-        })),
-      );
-    case "table":
-      return (catalog.stores ?? []).flatMap((store) => store.tables.map((table) => tableSubject(index, table, store)));
-    case "deployment":
-      return allDeployments(catalog).map((deployment) => {
-        const owner = services.find(({ service }) => deploys(deployment, service));
-        return {
-          id: deployment.id,
-          context: owner?.context.id ?? "",
-          service: owner?.service.id ?? "",
-          source: undefined,
-          row: {
-            id: deployment.id,
-            name: deployment.name,
-            project: deployment.project,
-            environment: deployment.environment,
-            cluster: deployment.cluster,
-            namespace: deployment.namespace,
-            repo: deployment.repo,
-            path: deployment.path,
-            chart: deployment.chart ?? "",
-            targetRevision: deployment.targetRevision,
-            revision: deployment.revision,
-            tool: deployment.tool,
-            service: owner?.service.id ?? deployment.service ?? "",
-            context: owner?.context.id ?? "",
-            images: deployment.images ?? [],
-            basis: deployment.basis ?? "api",
-            drifted: deployment.drift !== undefined && Object.keys(deployment.drift).length > 0,
-          },
-        };
-      });
-    case "flow":
-      return catalog.flows.map((flow) => flowSubject(catalog, flow));
-    case "aggregate":
-      return services.flatMap(({ service }) => service.aggregates.map((aggregate) => aggregateSubject(catalog, index, aggregate)));
-    case "call":
-      return services.flatMap(({ context, service }) =>
-        service.consumes.map((call) => {
-          const slash = call.id.lastIndexOf("/");
-          return {
-            id: call.id,
-            context: context.id,
-            service: service.id,
-            source: call.source,
-            row: {
-              id: call.id,
-              interface: slash >= 0 ? call.id.slice(0, slash) : call.id,
-              method: slash >= 0 ? call.id.slice(slash + 1) : "",
-              peer: call.peer,
-              status: call.status,
-              resolved: call.status !== "unresolved",
-              service: service.id,
-              context: context.id,
-              source: call.source,
-              module: call.module ?? "",
-            },
-          };
-        }),
-      );
-  }
-}
-
-/** The names the estate answers to, for `x in estate.services`. */
-export function estateOf(catalog: Catalog): Record<string, string[]> {
-  const services = catalog.contexts.flatMap((context) => context.services);
-  return {
-    services: services.map((service) => service.id),
-    contexts: catalog.contexts.map((context) => context.id),
-    stores: (catalog.stores ?? []).map((store) => store.id),
-    channels: [...new Set(services.flatMap((service) => (service.channels ?? []).map((channel) => channel.address)))],
-    externals: (catalog.externals ?? []).map((external) => external.id),
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -414,7 +146,7 @@ export interface RuleFailure {
 export interface RuleEvaluation {
   /** Rows the enabled rules produced, in rule order, not yet sorted by severity. */
   problems: Problem[];
-  /** Custom rules that could not be compiled or run, and why; their rows are absent. */
+  /** Rules that could not be compiled or run, and why; their rows are absent. */
   failures: RuleFailure[];
   /**
    * How many rows each rule would produce, enabled or not. A switched-off
@@ -424,19 +156,19 @@ export interface RuleEvaluation {
 }
 
 /**
- * Runs one custom rule over the catalog. Every row is tried; the first
- * expression that throws stops the rule, because a rule that fails on one row
- * is a rule that is wrong, not a row that is.
+ * Runs one rule over the catalog. Every row is tried; the first expression
+ * that throws stops the rule, because a rule that fails on one row is a rule
+ * that is wrong, not a row that is.
  */
-export function runCustomRule(
-  rule: ProblemRule,
+export function runRule(
+  rule: Pick<ProblemRule, "id" | "over" | "severity" | "when" | "message" | "peer">,
   catalog: Catalog,
   index: CatalogIndex,
   estate: Record<string, string[]> = estateOf(catalog),
 ): { problems: Problem[]; failure?: RuleFailure } {
   const problems: Problem[] = [];
   try {
-    if (!rule.when || !rule.message) throw new Error("a custom rule needs both `when` and `message`");
+    if (!rule.when || !rule.message) throw new Error("a rule needs both `when` and `message`");
     if (!SUBJECT_NAMES.includes(rule.over)) throw new Error(`unknown subject "${rule.over}"`);
     const when = compileExpression(rule.over, rule.when, "bool");
     const message = compileExpression(rule.over, rule.message, "string");
@@ -444,15 +176,15 @@ export function runCustomRule(
     for (const subject of subjectsOf(catalog, index, rule.over)) {
       const context = { [rule.over]: subject.row, estate };
       if (when(context) !== true) continue;
+      const note = String(message(context));
       problems.push({
-        kind: "rule",
         rule: rule.id,
         severity: rule.severity,
         context: subject.context,
         service: subject.service,
         id: subject.id,
         peer: peer ? String(peer(context)) : "",
-        note: String(message(context)),
+        note: note || undefined,
         source: subject.source,
       });
     }
@@ -462,40 +194,36 @@ export function runCustomRule(
   }
 }
 
+/** `runRule`, by the name the Settings editor calls it: the draft is a rule like any other. */
+export const runCustomRule = runRule;
+
 /**
- * Turns what the readers found into the problems the rules allow: a finding
- * whose rule is off is dropped, one whose rule is re-graded takes the new
- * severity, and the custom rules add their rows after. A finding whose kind
- * has no passport is kept as it is - a rule nobody can switch is still a
- * finding - and the test over rules/builtin.json makes sure there is none.
+ * Every rule over the catalog. A switched-off rule is still run, so the page
+ * can say how many rows it would produce, and its rows are left out.
  */
-export function evaluateRules(
-  findings: readonly Finding[],
-  catalog: Catalog,
-  index: CatalogIndex,
-  rules: readonly ProblemRule[],
-): RuleEvaluation {
-  const byId = new Map(rules.map((rule) => [rule.id, rule]));
+export function evaluateRules(catalog: Catalog, index: CatalogIndex, rules: readonly ProblemRule[]): RuleEvaluation {
+  const estate = estateOf(catalog);
   const matches = new Map<string, number>();
   const failures: RuleFailure[] = [];
   const problems: Problem[] = [];
-  for (const finding of findings) {
-    matches.set(finding.kind, (matches.get(finding.kind) ?? 0) + 1);
-    const rule = byId.get(finding.kind);
-    if (rule && !rule.enabled) continue;
-    problems.push({ ...finding, rule: finding.kind, severity: rule?.severity ?? finding.severity });
-  }
-  const custom = rules.filter((rule) => !rule.builtin);
-  if (custom.length > 0) {
-    const estate = estateOf(catalog);
-    for (const rule of custom) {
-      const ran = runCustomRule(rule, catalog, index, estate);
-      if (ran.failure) failures.push(ran.failure);
-      matches.set(rule.id, ran.problems.length);
-      if (rule.enabled) problems.push(...ran.problems);
-    }
+  for (const rule of rules) {
+    const ran = runRule(rule, catalog, index, estate);
+    if (ran.failure) failures.push(ran.failure);
+    matches.set(rule.id, ran.problems.length);
+    if (rule.enabled) problems.push(...ran.problems);
   }
   return { problems, failures, matches };
+}
+
+/**
+ * The shipped rules, all on, over a catalog - or only the ones named. What
+ * the readers used to answer, for a test that holds a rule to a fixture.
+ */
+export function builtinProblems(catalog: Catalog, index: CatalogIndex, ids?: readonly string[]): Problem[] {
+  const rules = resolveRules([]).filter((rule) => !ids || ids.includes(rule.id));
+  const { problems, failures } = evaluateRules(catalog, index, rules);
+  if (failures.length > 0) throw new Error(failures.map((failure) => `${failure.rule}: ${failure.message}`).join("\n"));
+  return [...problems.filter((p) => p.severity === "error"), ...problems.filter((p) => p.severity === "warning")];
 }
 
 // ---------------------------------------------------------------------------
@@ -503,7 +231,7 @@ export function evaluateRules(
 
 type ManifestWithRules = { problemRules?: ProblemRuleEntry[] };
 
-/** The `problemRules` of a manifest, or none: a manifest without the key has every built-in rule on. */
+/** The `problemRules` of a manifest, or none: a manifest without the key has every shipped rule on. */
 export function problemRulesFromManifest(manifest: unknown): ProblemRuleEntry[] {
   const entries = (manifest as ManifestWithRules | null | undefined)?.problemRules;
   return Array.isArray(entries) ? entries : [];

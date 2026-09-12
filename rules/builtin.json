@@ -1,43 +1,63 @@
 [
   {
     "id": "rpc",
-    "over": "service",
+    "over": "call",
     "severity": "error",
     "title": "Call resolves to nothing",
     "note": "the provider of this call is not in the catalog",
     "description": "A service calls a method, by interface and name, and no service in the catalog declares that interface. The chart draws an arrow into open water.",
     "action": "Add the provider's contract to the catalog, or map the peer under externals, then regenerate.",
-    "source": "src/lib/derive.ts"
+    "when": "!call.resolved",
+    "message": "call.note",
+    "peer": "call.peer"
   },
   {
     "id": "consumer",
-    "over": "event",
+    "over": "consumer",
     "severity": "error",
     "title": "Consumer is not in the catalog",
     "note": "this consumer of the event is not in the catalog",
     "description": "An event names a consuming service that no source in the catalog declares. Either the consumer's repository has not been read, or the name is spelled differently on the two sides.",
     "action": "Point an extractor at the consuming service, or correct the consumer's name where the event declares it.",
-    "source": "src/lib/derive.ts"
+    "when": "!consumer.resolved",
+    "message": "consumer.note",
+    "peer": "consumer.consumer"
   },
   {
     "id": "cross-service-fk",
-    "over": "table",
+    "over": "column",
     "severity": "error",
     "title": "Foreign key across a service boundary",
     "note": "foreign key across a service boundary",
     "description": "A column references a table another service owns. The database enforces a relation the services' contracts do not know about, and one migration can break the other service.",
     "action": "Carry the reference as a plain id and resolve it through the owning service's contract, or move the two tables under one owner.",
-    "source": "src/lib/data-problems.ts"
+    "when": "column.fkOwner != '' && column.fkOwner != column.owner",
+    "message": "column.owner + ' holds a foreign key into a table owned by ' + column.fkOwner + '; neither service can migrate that table alone.'",
+    "peer": "column.fk"
   },
   {
     "id": "cross-service-lineage",
-    "over": "table",
+    "over": "column",
     "severity": "warning",
     "title": "Value copied from another service's schema",
     "note": "a value copied from another service's schema",
-    "description": "A column or a view is computed from a column in a store another service owns. The copy follows the source's schema without a contract saying so.",
+    "description": "A column is computed from a column in a store another service owns. The copy follows the source's schema without a contract saying so, and nothing on the other side records that the copy exists.",
     "action": "Feed the projection from the owning service's events, or document the read as an accepted coupling.",
-    "source": "src/lib/data-problems.ts"
+    "when": "size(column.foreignFrom) > 0",
+    "message": "column.owner + ' copies this value from ' + column.foreignFrom.join(', ') + ', which ' + column.foreignOwners.join(', ') + ' owns; nothing on that side records that the copy exists.'",
+    "peer": "column.foreignFrom[0]"
+  },
+  {
+    "id": "cross-service-view",
+    "over": "table",
+    "severity": "warning",
+    "title": "View defined over another service's relation",
+    "note": "a view over another service's table",
+    "description": "A view reads a table or view in a store another service owns. A rename over there breaks this view with no error until it is read.",
+    "action": "Build the view over a local projection fed by the owner's events, or document the read as an accepted coupling.",
+    "when": "table.kind == 'view' && size(table.foreignReads) > 0",
+    "message": "table.id + ' is defined over ' + table.foreignReads.join(', ') + ', which another service owns; a rename over there breaks this view with no error until it is read.'",
+    "peer": "table.foreignReads[0]"
   },
   {
     "id": "shared-store",
@@ -45,9 +65,11 @@
     "severity": "error",
     "title": "Second writer on a database",
     "note": "a second service writes this database",
-    "description": "A service writes a table in a store it does not own. Two services now share one schema, and neither can change it alone.",
+    "description": "A table in one service's store holds an aggregate another service writes. Two services now share one schema, and neither can change it alone. A projection is a copy maintained from the owner's events and is not this.",
     "action": "Move the write behind the owner's API or events, or give the table to the service that writes it.",
-    "source": "src/lib/data-problems.ts"
+    "when": "table.kind == 'table' && table.role != 'projection' && table.aggregateOwner != '' && table.aggregateOwner != table.owner",
+    "message": "table.store + ' is owned by ' + table.owner + ', but this table holds ' + table.aggregate + ', which ' + table.aggregateOwner + ' writes.'",
+    "peer": "table.aggregateOwner"
   },
   {
     "id": "persistence-drift",
@@ -55,19 +77,23 @@
     "severity": "warning",
     "title": "Table no longer holds the aggregate it claims",
     "note": "this table no longer carries the aggregate it claims",
-    "description": "A table says it persists an aggregate or a block, and nothing in the domain model by that id exists any more. The claim in the migrations is stale.",
-    "action": "Point the table at the aggregate that replaced it, or drop the persists annotation.",
-    "source": "src/lib/data-problems.ts"
+    "description": "A table says it persists an aggregate, and no column of it maps to a field the aggregate declares any more. The table was relabelled and the columns were not, or the aggregate moved on without it.",
+    "action": "Point the table at the aggregate that replaced it, map its columns again, or drop the persists claim.",
+    "when": "table.kind == 'table' && table.role != 'projection' && table.role != 'outbox' && table.aggregate != '' && table.aggregateFields > 0 && table.mappedColumns == 0",
+    "message": "table.claimedColumns == 0 ? 'no column of ' + table.name + ' maps to a field of ' + table.aggregate : string(table.claimedColumns) + ' column(s) of ' + table.name + ' map to fields ' + table.aggregate + ' no longer declares'",
+    "peer": "table.aggregate"
   },
   {
     "id": "column-type",
-    "over": "table",
+    "over": "column",
     "severity": "warning",
     "title": "Column type and domain type disagree",
     "note": "column type and domain type disagree",
     "description": "A column is mapped to a domain field, and the database type is not one the field's type is stored as. One side has changed without the other.",
     "action": "Align the migration with the field's type, or correct the mapping if the column holds something else.",
-    "source": "src/lib/data-problems.ts"
+    "when": "column.kind == 'table' && column.maps != '' && column.fieldType != '' && !column.typeMatches",
+    "message": "'column is ' + column.type + ', ' + column.maps + ' is ' + column.fieldType",
+    "peer": "column.maps"
   },
   {
     "id": "outbox-payload",
@@ -75,39 +101,47 @@
     "severity": "warning",
     "title": "Outbox without a payload column",
     "note": "an outbox with no payload column",
-    "description": "A table plays the outbox role and has no column that could carry a message body. Whatever the relay reads, it is not an event.",
+    "description": "A table plays the outbox role and has no json column that could carry a message body. The whole point of the pattern is that the event body is committed with the state change, so this is either not an outbox or not finished.",
     "action": "Add a payload column to the outbox table, or clear its role if it is not an outbox.",
-    "source": "src/lib/data-problems.ts"
+    "when": "table.role == 'outbox' && !table.hasPayload",
+    "message": "'an outbox carries the event body in the same transaction as the state change; this table declares no json column to hold one'",
+    "peer": "table.store"
   },
   {
     "id": "proto-missing",
-    "over": "service",
+    "over": "call",
     "severity": "error",
     "title": "Provider answers on no such method",
     "note": "the provider is in the catalog but answers on no such method",
-    "description": "A call names a service the catalog knows and a method that service's interfaces do not declare. The caller's vendored copy is ahead of, or behind, the provider.",
+    "description": "A call names a service the catalog knows and a method that service's interfaces do not declare. The caller's vendored copy is ahead of, or behind, the provider, and the call will fail.",
     "action": "Regenerate the caller's vendored proto from the provider's module, or add the method on the provider.",
-    "source": "src/lib/proto-problems.ts"
+    "when": "call.resolved && call.peerKnown && !call.methodDeclared",
+    "message": "call.note",
+    "peer": "call.peer"
   },
   {
     "id": "proto-drift",
-    "over": "service",
+    "over": "copy",
     "severity": "warning",
     "title": "Vendored proto and provider schema disagree",
     "note": "the vendored proto and provider schema disagree",
-    "description": "The copy of an interface a caller compiled against differs from the interface the provider publishes: a message, a field or a type is not the same on both sides.",
+    "description": "The copy of an interface a caller compiled against differs from the interface the provider publishes: a message, a field or an enum value is not the same on both sides.",
     "action": "Pin the caller to the provider's published module version and regenerate the copy.",
-    "source": "src/lib/proto-problems.ts"
+    "when": "copy.provider != '' && size(copy.differences) > 0",
+    "message": "'Vendored copy differs from ' + copy.provider + ': ' + copy.differences.join('; ') + '.'",
+    "peer": "copy.provider"
   },
   {
     "id": "shared-channel",
-    "over": "event",
+    "over": "channel",
     "severity": "error",
     "title": "Second publisher on a channel",
     "note": "a second service publishes on this channel",
-    "description": "Two services publish on one channel. A subscriber dispatches on the event's name and cannot tell whose message arrived, until one it cannot parse does.",
+    "description": "Two services publish on one channel, by an event that names it or a document that declares a send on it. A subscriber dispatches on the event's name and cannot tell whose message arrived, until one it cannot parse does.",
     "action": "Give each publisher its own channel, named after the aggregate whose events travel on it.",
-    "source": "src/lib/wire-problems.ts"
+    "when": "channel.publishes && size(channel.otherPublishers) > 0",
+    "message": "channel.service + ' publishes on ' + channel.address + ', and so does ' + channel.otherPublishers.join(', ') + ': ' + channel.otherClaims.join('; ') + '. A subscriber reads both without being told.'",
+    "peer": "channel.otherPublishers[0]"
   },
   {
     "id": "channel-undeclared",
@@ -115,39 +149,47 @@
     "severity": "warning",
     "title": "Event leaves on an undeclared channel",
     "note": "this event goes out on a channel the service does not declare",
-    "description": "The code publishes an event on a channel the service's AsyncAPI document does not list. The document is behind the code.",
+    "description": "The code publishes an event on a channel the service's AsyncAPI document does not list among its sends. The document is behind the code. A service whose document declares no sends says nothing here.",
     "action": "Declare the channel and its messages in the service's AsyncAPI document.",
-    "source": "src/lib/wire-problems.ts"
+    "when": "event.channel != '' && size(event.declaredChannels) > 0 && !(event.channel in event.declaredChannels)",
+    "message": "event.name + ' goes out on ' + event.channel + ', which ' + event.service + ' does not declare it sends on. A subscriber reading the document does not know this message exists.'",
+    "peer": "event.channel"
   },
   {
     "id": "channel-unpublished",
-    "over": "service",
+    "over": "channel",
     "severity": "warning",
     "title": "Declared channel nothing publishes on",
     "note": "a declared channel no event of this service names",
-    "description": "The service's document declares it sends on a channel, and no event of the service names that channel as its wire. The code is behind the document, or the channel is dead.",
+    "description": "The service's document declares it sends domain events on a channel, and no event of the service names that channel as its wire. The code is behind the document, or the channel is dead.",
     "action": "Remove the channel from the document, or wire the event that should leave on it.",
-    "source": "src/lib/wire-problems.ts"
+    "when": "channel.declared && channel.kind == 'event' && size(channel.sends) > 0 && size(channel.events) == 0",
+    "message": "channel.service + ' declares it sends on ' + channel.address + ', and no event of it names that channel: ' + channel.sends.join(', ') + '.'",
+    "peer": "channel.address"
   },
   {
     "id": "message-encoding",
-    "over": "service",
+    "over": "subscription",
     "severity": "error",
     "title": "Publisher and subscriber encode differently",
     "note": "publisher and subscriber use different payload encodings",
     "description": "Both sides of a message have named a payload encoding, and the two names differ. The subscriber will not read what the publisher writes.",
     "action": "Agree one encoding in both AsyncAPI documents.",
-    "source": "src/lib/wire-problems.ts"
+    "when": "subscription.encoding != '' && size(subscription.mismatched) > 0",
+    "message": "subscription.service + ' expects ' + subscription.name + ' on ' + subscription.channel + ' as ' + subscription.encoding + ', but ' + subscription.mismatched[0] + ' sends it as ' + subscription.mismatchedEncodings[0] + '.'",
+    "peer": "subscription.mismatched[0]"
   },
   {
     "id": "subscription-unresolved",
-    "over": "service",
+    "over": "subscription",
     "severity": "warning",
     "title": "Subscription nothing publishes",
     "note": "nothing in the catalog publishes what this service listens for",
-    "description": "A service declares it receives a message on a channel, and no service in the catalog publishes that message there. The publisher has not been read, or the subscription is stale.",
+    "description": "A service declares it receives a message, and no event of the estate goes by that name on the wire and no document declares a send of it. The publisher is outside the estate, or the name has drifted.",
     "action": "Read the publisher's repository into the catalog, or remove the subscription.",
-    "source": "src/lib/wire-problems.ts"
+    "when": "!subscription.published",
+    "message": "subscription.service + ' listens on ' + subscription.channel + ' for ' + subscription.name + ', and nothing in the catalog publishes it. Either the publisher is outside the estate, or the name has drifted.'",
+    "peer": "subscription.name"
   },
   {
     "id": "deployment-unclaimed",
@@ -156,8 +198,10 @@
     "title": "Deployed from nowhere the catalog knows",
     "note": "the deployer runs this from a repository and directory no service in the catalog lives at",
     "description": "The deployer runs an Application from a repository and path, or with labels, that match no service. It is a service nobody has read yet, a path spelled differently, or infrastructure that is not a service at all.",
-    "action": "Read the service into the catalog, align its path with where its manifests live, or disable this rule for infrastructure with a reason.",
-    "source": "src/lib/deploy-problems.ts"
+    "action": "Read the service into the catalog, align its path with where its manifests live, or switch this rule off for infrastructure with a reason.",
+    "when": "!deployment.claimed",
+    "message": "deployment.name + ' runs in ' + deployment.runsIn + (deployment.namespace != '' ? ', namespace ' + deployment.namespace : '') + '; ' + (deployment.labelled != '' ? 'its labels name ' + deployment.labelled + ', which is no service of the estate' : 'if it is a service of the estate, its `path` should be a directory the Application\\'s path is under, or the Application should carry app.kubernetes.io/part-of and app.kubernetes.io/name') + '. ' + deployment.url",
+    "peer": "deployment.from"
   },
   {
     "id": "deployment-drift",
@@ -167,6 +211,8 @@
     "note": "the GitOps tree and the deployer disagree about this Application",
     "description": "What the GitOps tree says should run and what the deployer reports is running differ on a project, cluster, namespace, path, revision or image.",
     "action": "Sync the Application, or commit to the tree what was changed on the cluster.",
-    "source": "src/lib/deploy-problems.ts"
+    "when": "deployment.drifted",
+    "message": "deployment.drift + '. ' + deployment.url",
+    "peer": "deployment.environment"
   }
 ]

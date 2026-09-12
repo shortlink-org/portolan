@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { catalog } from "../data";
-import { contextStats, edgeCount, problems } from "./derive";
+import { catalog, index } from "../data";
+import { contextStats, edgeCount } from "./derive";
+import { builtinProblems } from "./problem-rules";
+
+import { buildIndex } from "../catalog";
 import type { Catalog } from "../catalog";
+
+const problems = (of: Catalog) => builtinProblems(of, of === catalog ? index : buildIndex(of), ["rpc", "consumer"]);
 
 describe("problems", () => {
   it("finds every unresolved edge and nothing else", () => {
@@ -13,7 +18,7 @@ describe("problems", () => {
         `${problem.id} names a service not in the catalog`,
       ).toBeDefined();
 
-      if (problem.kind === "rpc") {
+      if (problem.rule === "rpc") {
         const call = service?.consumes.find((c) => c.id === problem.id);
         expect(call?.status).toBe("unresolved");
         expect(call?.peer).toBe(problem.peer);

@@ -9,7 +9,9 @@ import {
   type Service,
 } from "../catalog";
 import { catalog as estate } from "../data";
-import { wireProblems } from "./wire-problems";
+import { builtinProblems } from "./problem-rules";
+
+const WIRE = ["shared-channel", "channel-undeclared", "channel-unpublished", "message-encoding", "subscription-unresolved"];
 
 function event(id: string, channel?: string): Event {
   const name = id.slice(id.lastIndexOf(".") + 1);
@@ -84,7 +86,7 @@ function catalogWith(services: Service[]): Catalog {
 }
 
 function found(catalog: Catalog) {
-  return wireProblems(catalog, buildIndex(catalog));
+  return builtinProblems(catalog, buildIndex(catalog), WIRE);
 }
 
 const cart = () =>
@@ -95,7 +97,7 @@ const cart = () =>
     ]),
   ]);
 
-describe("wireProblems", () => {
+describe("the wire rules", () => {
   it("reports each side of a channel two services publish on", () => {
     const oms = service("shop.oms", [
       aggregate("shop.oms.order", [
@@ -109,7 +111,7 @@ describe("wireProblems", () => {
       ["shop.oms", "shop.oms.order.OrderPlaced", "shop.cart"],
     ]);
     const [first] = problems;
-    expect(first?.kind).toBe("shared-channel");
+    expect(first?.rule).toBe("shared-channel");
     expect(first?.severity).toBe("error");
     expect(first?.note).toContain("OrderPlaced");
     expect(first?.source).toBe("BasketCreated.ts");
@@ -150,7 +152,7 @@ describe("wireProblems", () => {
     );
     const problems = found(catalogWith([cart(), oms]));
 
-    expect(problems.filter((p) => p.kind === "shared-channel")).toHaveLength(2);
+    expect(problems.filter((p) => p.rule === "shared-channel")).toHaveLength(2);
     const theirs = problems.find((p) => p.service === "shop.oms");
     // No event of theirs to point at, so the row leads to the service.
     expect(theirs?.id).toBe("shop.oms");
@@ -166,7 +168,7 @@ describe("wireProblems", () => {
     );
     const problems = found(catalogWith([one]));
 
-    const undeclared = problems.filter((p) => p.kind === "channel-undeclared");
+    const undeclared = problems.filter((p) => p.rule === "channel-undeclared");
     expect(undeclared.map((p) => [p.id, p.peer])).toEqual([
       ["shop.cart.basket.BasketCreated", "shop.cart.basket"],
       ["shop.cart.basket.BasketCheckedOut", "shop.cart.basket"],
@@ -182,7 +184,7 @@ describe("wireProblems", () => {
     );
     const problems = found(catalogWith([one]));
 
-    const promised = problems.filter((p) => p.kind === "channel-unpublished");
+    const promised = problems.filter((p) => p.rule === "channel-unpublished");
     expect(promised.map((p) => p.peer)).toEqual(["shop.cart.wishlist"]);
     expect(promised[0]?.id).toBe("shop.cart");
     expect(promised[0]?.note).toContain("cart.ItemWished");
@@ -202,7 +204,7 @@ describe("wireProblems", () => {
       channel("payments.ledger.payment", "receive payments.PaymentAuthorized"),
     );
     const problems = found(catalogWith([one])).filter(
-      (p) => p.kind === "channel-undeclared" || p.kind === "channel-unpublished",
+      (p) => p.rule === "channel-undeclared" || p.rule === "channel-unpublished",
     );
 
     expect(problems).toEqual([]);
@@ -240,7 +242,7 @@ describe("wireProblems", () => {
     );
     const problems = found(catalogWith([cart(), oms]));
 
-    expect(problems.filter((p) => p.kind === "subscription-unresolved")).toEqual(
+    expect(problems.filter((p) => p.rule === "subscription-unresolved")).toEqual(
       [],
     );
   });
@@ -253,7 +255,7 @@ describe("wireProblems", () => {
     const problems = found(catalogWith([cart(), oms]));
 
     const unresolved = problems.filter(
-      (p) => p.kind === "subscription-unresolved",
+      (p) => p.rule === "subscription-unresolved",
     );
     expect(unresolved.map((p) => [p.service, p.peer])).toEqual([
       ["shop.oms", "billing.InvoiceRaised"],
@@ -270,7 +272,7 @@ describe("wireProblems", () => {
     const subscriber = speaking(service("shop.search", []), subscriberChannel);
 
     const mismatch = found(catalogWith([publisher, subscriber])).find(
-      (problem) => problem.kind === "message-encoding",
+      (problem) => problem.rule === "message-encoding",
     );
     expect(mismatch).toMatchObject({
       severity: "error",

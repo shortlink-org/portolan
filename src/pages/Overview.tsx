@@ -521,7 +521,7 @@ export function Overview() {
           <div className="flex max-w-table flex-col gap-2" data-nav-list>
             {issues.slice(0, OVERVIEW_PROBLEMS).map((problem, i) => (
               <ProblemRow
-                key={`${problem.kind}:${problem.id}:${problem.peer}`}
+                key={`${problem.rule}:${problem.id}:${problem.peer}`}
                 problem={problem}
                 index={i}
               />

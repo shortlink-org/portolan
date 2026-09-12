@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { Catalog, CatalogIndex, Service } from "../catalog";
-import { protoProblems } from "./proto-problems";
+import { buildIndex } from "../catalog";
+import type { Catalog, Service } from "../catalog";
+import { builtinProblems } from "./problem-rules";
+
+const PROTO = ["proto-missing", "proto-drift"];
 
 function service(id: string, overrides: Partial<Service> = {}): Service {
   const slug = id.slice(id.indexOf(".") + 1);
@@ -141,36 +144,17 @@ const copiedPricing = (overrides = {}) =>
   });
 
 function found(catalog: Catalog) {
-  const serviceById = new Map<string, Service>();
-  const serviceContext = new Map<string, Catalog["contexts"][number]>();
-  const rpcProviderByMethod = new Map<string, Service>();
-  for (const context of catalog.contexts) {
-    for (const item of context.services) {
-      serviceById.set(item.id, item);
-      serviceContext.set(item.id, context);
-      for (const provided of item.provides) {
-        for (const method of provided.methods) {
-          rpcProviderByMethod.set(`${provided.id}/${method.name}`, item);
-        }
-      }
-    }
-  }
-  const index = {
-    serviceById,
-    serviceContext,
-    rpcProviderByMethod,
-  } as CatalogIndex;
-  return protoProblems(catalog, index);
+  return builtinProblems(catalog, buildIndex(catalog), PROTO);
 }
 
-describe("protoProblems", () => {
+describe("the proto rules", () => {
   it("reports a call whose provider answers on no such method", () => {
     const problems = found(
       catalogWith([pricing(), calling("pricing.v1.Pricing/ListPriceLists")]),
     );
 
     expect(problems).toHaveLength(1);
-    expect(problems[0]?.kind).toBe("proto-missing");
+    expect(problems[0]?.rule).toBe("proto-missing");
     expect(problems[0]?.severity).toBe("error");
     // The near end is the CALLER: that is the copy to go and look at.
     expect(problems[0]?.service).toBe("shop.oms");
@@ -238,7 +222,7 @@ describe("protoProblems", () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]).toMatchObject({
-      kind: "proto-drift",
+      rule: "proto-drift",
       severity: "warning",
       service: "shop.oms",
       id: "pricing.v1.Pricing",

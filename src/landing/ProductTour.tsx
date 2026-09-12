@@ -228,7 +228,7 @@ function ProblemsDemo() {
         <div className="space-y-2">
           {shown.map((problem, i) => (
             <div
-              key={`${problem.kind}:${problem.id}:${problem.peer}`}
+              key={`${problem.rule}:${problem.id}:${problem.peer}`}
               style={staggerStyle(i)}
               className="stagger-in grid grid-cols-[20px_minmax(0,1fr)_auto] items-start gap-3 rounded-card border border-line bg-canvas p-3"
             >
@@ -255,7 +255,7 @@ function ProblemsDemo() {
                 </div>
               </div>
               <span className="chip border-line text-muted">
-                {problem.kind}
+                {problem.rule}
               </span>
             </div>
           ))}

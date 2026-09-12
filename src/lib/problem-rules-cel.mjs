@@ -7,13 +7,12 @@
 // says what `event.consumers` is so that the two cannot disagree. Types live
 // in problem-rules-cel.d.mts.
 //
-// A rule is written over ONE subject - a service, an event, a channel, a
-// table, a deployment or a call - and reads a flat view of it: strings, ints,
-// bools and lists of strings. It is not written over the catalog. A rule that
-// needs the graph - who else writes this table, where a column's value came
-// from - is a reader in TypeScript with a passport in rules/builtin.json,
-// because a predicate over one row cannot see the row next to it, and giving
-// it the whole catalog makes every rule a program.
+// A rule is written over ONE subject and reads a flat view of it: strings,
+// ints, bools and lists of strings. Everything a rule would have to join -
+// who else writes the table, who publishes on the channel, whether a call's
+// peer is in the estate - is a field on the row, computed once by
+// problem-subjects.ts. The rule decides; the projection only describes
+// (portolan.0017).
 
 import { Environment } from "@marcbachmann/cel-js";
 
@@ -47,6 +46,36 @@ export const SUBJECTS = {
       dials: "list<string>",
     },
   },
+  call: {
+    description: "One call a service makes on an interface, and whether the estate answers it.",
+    schema: {
+      id: "string",
+      interface: "string",
+      method: "string",
+      peer: "string",
+      status: "string",
+      resolved: "bool",
+      peerKnown: "bool",
+      methodDeclared: "bool",
+      service: "string",
+      context: "string",
+      source: "string",
+      module: "string",
+      note: "string",
+    },
+  },
+  copy: {
+    description: "One vendored copy of an interface, held against what the provider publishes.",
+    schema: {
+      id: "string",
+      service: "string",
+      context: "string",
+      provider: "string",
+      methods: "int",
+      differences: "list<string>",
+      source: "string",
+    },
+  },
   event: {
     description: "One domain event, as its owning aggregate declares it.",
     schema: {
@@ -62,45 +91,111 @@ export const SUBJECTS = {
       unresolvedConsumers: "int",
       wireName: "string",
       channel: "string",
+      declaredChannels: "list<string>",
       fields: "list<string>",
     },
   },
+  consumer: {
+    description: "One consumer an event names, from the publisher's side.",
+    schema: {
+      event: "string",
+      name: "string",
+      aggregate: "string",
+      owner: "string",
+      context: "string",
+      consumer: "string",
+      status: "string",
+      resolved: "bool",
+      note: "string",
+    },
+  },
   channel: {
-    description: "One channel a service's AsyncAPI document declares.",
+    description: "One channel a service touches, declared or named by its events, and who else publishes there.",
     schema: {
       address: "string",
       kind: "string",
       title: "string",
       service: "string",
       context: "string",
+      declared: "bool",
+      publishes: "bool",
       sends: "list<string>",
       receives: "list<string>",
+      events: "list<string>",
+      otherPublishers: "list<string>",
+      otherClaims: "list<string>",
+      source: "string",
+    },
+  },
+  subscription: {
+    description: "One message a service's document says it receives, and who in the estate sends it.",
+    schema: {
+      service: "string",
+      context: "string",
+      channel: "string",
+      kind: "string",
+      name: "string",
+      encoding: "string",
+      published: "bool",
+      publishers: "list<string>",
+      mismatched: "list<string>",
+      mismatchedEncodings: "list<string>",
       source: "string",
     },
   },
   table: {
-    description: "One table of a store, with what the code does to it.",
+    description: "One table or view of a store, with what the model and the code say of it.",
     schema: {
       id: "string",
       name: "string",
+      kind: "string",
       store: "string",
       storeKind: "string",
       owner: "string",
       context: "string",
       role: "string",
       aggregate: "string",
+      aggregateOwner: "string",
+      aggregateFields: "int",
+      mappedColumns: "int",
+      claimedColumns: "int",
       block: "string",
       columns: "list<string>",
       primaryKey: "list<string>",
       foreignKeys: "list<string>",
+      foreignReads: "list<string>",
+      hasPayload: "bool",
       indexes: "int",
       reads: "int",
       writes: "int",
       deletes: "int",
     },
   },
+  column: {
+    description: "One column of a table or view, with where its value points and where it came from.",
+    schema: {
+      id: "string",
+      name: "string",
+      relation: "string",
+      kind: "string",
+      store: "string",
+      owner: "string",
+      context: "string",
+      type: "string",
+      nullable: "bool",
+      pk: "bool",
+      fk: "string",
+      fkOwner: "string",
+      from: "list<string>",
+      foreignFrom: "list<string>",
+      foreignOwners: "list<string>",
+      maps: "string",
+      fieldType: "string",
+      typeMatches: "bool",
+    },
+  },
   deployment: {
-    description: "One Application the deployer manages.",
+    description: "One Application the deployer manages, and whether the catalog can place it.",
     schema: {
       id: "string",
       name: "string",
@@ -111,14 +206,20 @@ export const SUBJECTS = {
       repo: "string",
       path: "string",
       chart: "string",
+      from: "string",
       targetRevision: "string",
       revision: "string",
       tool: "string",
       service: "string",
+      labelled: "string",
+      claimed: "bool",
       context: "string",
+      runsIn: "string",
       images: "list<string>",
       basis: "string",
       drifted: "bool",
+      drift: "string",
+      url: "string",
     },
   },
   flow: {
@@ -165,21 +266,6 @@ export const SUBJECTS = {
       states: "list<string>",
       transitions: "int",
       tables: "list<string>",
-    },
-  },
-  call: {
-    description: "One call a service makes on another's interface.",
-    schema: {
-      id: "string",
-      interface: "string",
-      method: "string",
-      peer: "string",
-      status: "string",
-      resolved: "bool",
-      service: "string",
-      context: "string",
-      source: "string",
-      module: "string",
     },
   },
 };
@@ -249,7 +335,7 @@ export function compileExpression(subject, source, type) {
 
 /**
  * Everything wrong with one rule entry as written, as lines. Empty when the
- * entry is good. `builtinIds` are the rules that have a reader: an entry
+ * entry is good. `builtinIds` are the rules the package ships: an entry
  * naming one may only switch it, re-grade it and say why; any other id must
  * carry a whole rule.
  */
@@ -281,37 +367,37 @@ export function problemRuleProblems(entries, builtinIds, path = "portolan.json")
       if (entry.enabled === false && !entry.reason) problems.push(`${at}/reason: a disabled rule needs a reason`);
       return;
     }
-    if (!SUBJECT_NAMES.includes(entry.over)) {
-      problems.push(`${at}/over: must be one of ${SUBJECT_NAMES.join(", ")}`);
-      return;
-    }
-    if (typeof entry.title !== "string" || !entry.title.trim()) problems.push(`${at}/title: required`);
-    if (typeof entry.when !== "string" || !entry.when.trim()) {
-      problems.push(`${at}/when: required`);
-    } else {
-      try {
-        compileExpression(entry.over, entry.when, "bool");
-      } catch (cause) {
-        problems.push(`${at}/when: ${firstLine(cause)}`);
-      }
-    }
-    if (typeof entry.message !== "string" || !entry.message.trim()) {
-      problems.push(`${at}/message: required`);
-    } else {
-      try {
-        compileExpression(entry.over, entry.message, "string");
-      } catch (cause) {
-        problems.push(`${at}/message: ${firstLine(cause)}`);
-      }
-    }
-    if (entry.peer !== undefined) {
-      try {
-        compileExpression(entry.over, entry.peer, "string");
-      } catch (cause) {
-        problems.push(`${at}/peer: ${firstLine(cause)}`);
-      }
-    }
+    problems.push(...ruleExpressionProblems(entry, at));
   });
+  return problems;
+}
+
+/** The expressions of one whole rule, checked over its subject; lines for what is wrong. */
+export function ruleExpressionProblems(rule, at = rule.id) {
+  const problems = [];
+  if (!SUBJECT_NAMES.includes(rule.over)) return [`${at}/over: must be one of ${SUBJECT_NAMES.join(", ")}`];
+  if (typeof rule.title !== "string" || !rule.title.trim()) problems.push(`${at}/title: required`);
+  for (const [key, type] of [
+    ["when", "bool"],
+    ["message", "string"],
+  ]) {
+    if (typeof rule[key] !== "string" || !rule[key].trim()) {
+      problems.push(`${at}/${key}: required`);
+      continue;
+    }
+    try {
+      compileExpression(rule.over, rule[key], type);
+    } catch (cause) {
+      problems.push(`${at}/${key}: ${firstLine(cause)}`);
+    }
+  }
+  if (rule.peer !== undefined) {
+    try {
+      compileExpression(rule.over, rule.peer, "string");
+    } catch (cause) {
+      problems.push(`${at}/peer: ${firstLine(cause)}`);
+    }
+  }
   return problems;
 }
 

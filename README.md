@@ -121,12 +121,17 @@ first:
 - what the deployer runs from a place no service lives at, and where the GitOps
   tree and the deployer disagree.
 
-Each check is a rule with a passport in `rules/builtin.json` - id, subject,
-severity, what it looks for and what to do about a row - and **Settings →
-Rules** lists them with the rows each produces now. A rule can be switched off
-or re-graded in `portolan.json`, with a reason, and a rule of your own is
-written there in CEL over one subject - a service, an event, a channel, a
-table, a deployment, a flow, an aggregate or a call - and runs in the page the moment it is saved:
+Each check is a rule in `rules/builtin.json`: a passport - id, severity, what
+it looks for and what to do about a row - and the rule itself, in CEL over one
+subject. A subject is one row with every fact a rule would otherwise have to
+look up already on it - a table knows who writes it, a channel knows who else
+publishes there, a call knows whether its peer is in the estate - so a rule is
+one line a reader can read, copy and tighten. **Settings → Rules** lists them
+with the rows each produces now. A shipped rule can be switched off or
+re-graded in `portolan.json`, with a reason, and a rule of your own is written
+there the same way - over a service, a call, a copy, an event, a consumer, a
+channel, a subscription, a table, a column, a deployment, a flow or an
+aggregate - and runs in the page the moment it is saved:
 
 ```json
 {
@@ -148,7 +153,7 @@ table, a deployment, a flow, an aggregate or a call - and runs in the page the m
 Expressions are type-checked against the subject's fields when the manifest is
 read - `event.nme` is refused, not shown as an empty page - and again in the
 page, by the same module. The Rules page writes the entry after a preview of
-the rows it would add (portolan.0016).
+the rows it would add (portolan.0016, portolan.0017).
 
 ## Where the facts come from
 

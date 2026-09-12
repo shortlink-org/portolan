@@ -20,9 +20,9 @@ import { ChevronDown, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { catalog, index } from "../../data";
 import { useToastStore } from "../../app/toast";
 import { KindIcon } from "../../components/kind";
+import { ICON_OF } from "../../components/ProblemRow";
 import { SectionTitle } from "../../components/PageHeader";
 import { plural } from "../../lib/format";
-import type { Kind } from "../../lib/kinds";
 import { problemRules as readProblemRules, saveProblemRules } from "../../lib/local-api";
 import {
   runCustomRule,
@@ -31,7 +31,6 @@ import {
   useRuleEntries,
 } from "../../lib/problem-rules";
 import type { ProblemRule, ProblemRuleEntry, RuleSeverity, RuleSubject } from "../../lib/problem-rules";
-import { sourceHref } from "../../lib/source-link";
 import { useProblemEvaluation } from "../../lib/use-problems";
 import { paths } from "../../routes";
 
@@ -40,17 +39,6 @@ const FIELD = "mono w-full rounded-control border border-line bg-canvas px-3 py-
 const CONTROL = "mono rounded-control border border-line bg-canvas px-2.5 py-1 text-ink outline-none focus:border-accent";
 const SUBJECT_NAMES = Object.keys(SUBJECTS) as RuleSubject[];
 
-/** The icon a rule wears: what one row of it is about. */
-const ICON_OF: Record<RuleSubject, Kind> = {
-  service: "service",
-  call: "service",
-  event: "event",
-  channel: "event",
-  table: "table",
-  deployment: "service",
-  flow: "flow",
-  aggregate: "aggregate",
-};
 
 const SEVERITY_CHIP: Record<RuleSeverity, string> = {
   error: "chip status-unresolved",
@@ -158,8 +146,9 @@ export function RulesSettings({ local }: { local: boolean }) {
     <section>
       <SectionTitle right={local ? "written to portolan.json after a type check" : "declared in portolan.json"}>Rules</SectionTitle>
       <p className="max-w-prose text-muted">
-        What the Problems page looks for. A built-in rule is a reader over the merged catalog and can be switched off or re-graded here; a rule of your own is an
-        expression over one subject, and runs in the page the moment it is saved.
+        What the Problems page looks for. Every rule is one condition in CEL over one subject - a table that knows who writes it, a channel that knows who
+        else publishes there. The shipped ones can be switched off or re-graded here, with a reason; a rule of your own is written the same way and runs the
+        moment it is saved.
       </p>
 
       {/* Four numbers a reader wants before the list: how many rules there
@@ -546,15 +535,7 @@ function RuleRow({
                 </>
               ) : null}
               <dt>written in</dt>
-              <dd className="text-ink">
-                {rule.builtin ? (
-                  <>
-                    code, not CEL{rule.source ? <>: <ReaderLink path={rule.source} /></> : null}
-                  </>
-                ) : (
-                  "CEL, in portolan.json → problemRules"
-                )}
-              </dd>
+              <dd className="text-ink">{rule.builtin ? "rules/builtin.json, shipped with Portolan" : "portolan.json → problemRules"}</dd>
               {onEdit || onRemove ? (
                 <>
                   <dt />
@@ -577,18 +558,6 @@ function RuleRow({
         </div>
       ) : null}
     </div>
-  );
-}
-
-/** The reader's file, as a link to it in the repository when the build knows where that is. */
-function ReaderLink({ path }: { path: string }) {
-  const href = sourceHref(path, null);
-  return href ? (
-    <a href={href} target="_blank" rel="noreferrer" className="rounded-control text-accent hover:underline">
-      {path} ↗
-    </a>
-  ) : (
-    <span>{path}</span>
   );
 }
 

@@ -439,41 +439,6 @@ export function usesOfDef(catalog: Catalog, defId: string): DefUse {
 // ---------------------------------------------------------------------------
 
 /**
- * The built-in readings the catalog makes of itself. Each is a reader in
- * TypeScript - a walk over the merged catalog that one row cannot make on its
- * own - with a passport in `rules/builtin.json`: title, severity, what to do.
- * The two lists are held equal by a test; a kind without a passport has no
- * row on the Settings page and no switch, and a passport without a reader
- * promises a check nothing performs.
- *
- * `rule` is the one kind that is not a reader: a row a CEL rule from the
- * manifest produced, over one subject, whose id is in `Problem.rule`.
- */
-export const PROBLEM_KINDS = [
-  "rpc",
-  "consumer",
-  "cross-service-fk",
-  "cross-service-lineage",
-  "shared-store",
-  "persistence-drift",
-  "column-type",
-  "outbox-payload",
-  "proto-missing",
-  "proto-drift",
-  "shared-channel",
-  "channel-undeclared",
-  "channel-unpublished",
-  "message-encoding",
-  "subscription-unresolved",
-  "deployment-unclaimed",
-  "deployment-drift",
-] as const;
-
-export type BuiltinProblemKind = (typeof PROBLEM_KINDS)[number];
-
-export type ProblemKind = BuiltinProblemKind | "rule";
-
-/**
  * How wrong a problem is. Two values, not five: an edge either lands somewhere
  * the catalog knows about or it does not (an error), or the catalog holds two
  * claims that do not quite agree and one of them is probably stale (a warning).
@@ -482,40 +447,26 @@ export type ProblemKind = BuiltinProblemKind | "rule";
 export type Severity = "error" | "warning";
 
 /**
- * What a reader finds: one edge that does not land, or two claims that do not
- * agree. A reader knows its kind and what it saw; it does not know whether the
- * estate has switched the rule off or re-graded it, which is the registry's
- * to say when it turns a finding into a problem.
+ * One row of the Problems page: what a rule found, from the near end the
+ * reader can see. Every rule is CEL over one subject (rules/builtin.json for
+ * the ones the package ships, `problemRules` in the manifest for the estate's
+ * own), and `rule` says which; the subject says where `id` leads.
  */
-export interface Finding {
-  kind: ProblemKind;
+export interface Problem {
+  rule: string;
   severity: Severity;
   /** The context that owns the end we can see. */
   context: string;
   /** The service that owns the end we can see. */
   service: string;
-  /** The call id or the event id - what is on the near end of the edge. */
+  /** What is on the near end of the edge: the subject's id. */
   id: string;
-  /** The name that resolves to nothing. */
+  /** The far end, when the rule names one. */
   peer: string;
   note: string | undefined;
   source: string | undefined;
 }
 
-/**
- * A finding the rules let through: the rule that made it, by id, and the
- * severity that rule has now. For a built-in reader the rule id is its kind;
- * for a CEL rule the kind is `rule` and the id is the manifest's.
- */
-export interface Problem extends Finding {
-  rule: string;
-}
-
-/**
- * Every unresolved edge, contexts in catalog order. Nothing is scored and
- * nothing is ranked: an unresolved consumer is exactly as broken as an
- * unresolved call, and sorting them by badness would invent a fact.
- */
 /**
  * How many edges there were to resolve at all - every rpc call a service makes
  * and every consumer an event names, whatever their status.
@@ -538,41 +489,3 @@ export function edgeCount(catalog: Catalog): number {
   return n;
 }
 
-export function problems(catalog: Catalog): Finding[] {
-  const out: Finding[] = [];
-  for (const context of catalog.contexts) {
-    for (const service of context.services) {
-      for (const call of service.consumes) {
-        if (call.status !== "unresolved") continue;
-        out.push({
-          kind: "rpc",
-          severity: "error",
-          context: context.id,
-          service: service.id,
-          id: call.id,
-          peer: call.peer,
-          note: call.note,
-          source: call.source,
-        });
-      }
-      for (const aggregate of service.aggregates) {
-        for (const event of aggregate.events) {
-          for (const consumer of event.consumers) {
-            if (consumer.status !== "unresolved") continue;
-            out.push({
-              kind: "consumer",
-              severity: "error",
-              context: context.id,
-              service: service.id,
-              id: event.id,
-              peer: consumer.service,
-              note: consumer.note,
-              source: undefined,
-            });
-          }
-        }
-      }
-    }
-  }
-  return out;
-}

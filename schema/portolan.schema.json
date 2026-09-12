@@ -1001,7 +1001,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)*$",
-          "description": "The rule. One of the built-in ids - rpc, consumer, cross-service-fk, cross-service-lineage, shared-store, persistence-drift, column-type, outbox-payload, proto-missing, proto-drift, shared-channel, channel-undeclared, channel-unpublished, message-encoding, subscription-unresolved, deployment-unclaimed, deployment-drift - to switch or re-grade that rule; any other id declares a rule of its own."
+          "description": "The rule. One of the built-in ids - rpc, consumer, cross-service-fk, cross-service-lineage, cross-service-view, shared-store, persistence-drift, column-type, outbox-payload, proto-missing, proto-drift, shared-channel, channel-undeclared, channel-unpublished, message-encoding, subscription-unresolved, deployment-unclaimed, deployment-drift - to switch or re-grade that rule; any other id declares a rule of its own."
         },
         "enabled": {
           "type": "boolean",
@@ -1023,13 +1023,17 @@
         "over": {
           "enum": [
             "service",
+            "call",
+            "copy",
             "event",
+            "consumer",
             "channel",
+            "subscription",
             "table",
+            "column",
             "deployment",
             "flow",
-            "aggregate",
-            "call"
+            "aggregate"
           ],
           "description": "What one row of the rule is about, and what `when` and `message` read."
         },
@@ -1037,19 +1041,19 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 2000,
-          "description": "The condition: a row exists for every subject where it holds. CEL returning bool, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, fields; channel: address, kind, title, service, context, sends, receives, source; table: id, name, store, storeKind, owner, context, role, aggregate, block, columns, primaryKey, foreignKeys, indexes, reads, writes, deletes; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, targetRevision, revision, tool, service, context, images, basis, drifted; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables; call: id, interface, method, peer, status, resolved, service, context, source, module."
+          "description": "The condition: a row exists for every subject where it holds. CEL returning bool, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
         },
         "message": {
           "type": "string",
           "minLength": 1,
           "maxLength": 2000,
-          "description": "The note on the row. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, fields; channel: address, kind, title, service, context, sends, receives, source; table: id, name, store, storeKind, owner, context, role, aggregate, block, columns, primaryKey, foreignKeys, indexes, reads, writes, deletes; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, targetRevision, revision, tool, service, context, images, basis, drifted; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables; call: id, interface, method, peer, status, resolved, service, context, source, module."
+          "description": "The note on the row. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
         },
         "peer": {
           "type": "string",
           "minLength": 1,
           "maxLength": 2000,
-          "description": "The row's far end, when it has one; a service, event or table id links to its page. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, fields; channel: address, kind, title, service, context, sends, receives, source; table: id, name, store, storeKind, owner, context, role, aggregate, block, columns, primaryKey, foreignKeys, indexes, reads, writes, deletes; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, targetRevision, revision, tool, service, context, images, basis, drifted; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables; call: id, interface, method, peer, status, resolved, service, context, source, module."
+          "description": "The row's far end, when it has one; a service, event or table id links to its page. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
         },
         "title": {
           "type": "string",
@@ -1078,6 +1082,7 @@
               "consumer",
               "cross-service-fk",
               "cross-service-lineage",
+              "cross-service-view",
               "shared-store",
               "persistence-drift",
               "column-type",
@@ -3103,18 +3108,6 @@
           "examples": [
             {
               "auth.PasswordChanged": "auth.auth.PasswordChanged"
-            }
-          ]
-        },
-        "routes": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Which operation a route a server span answers on belongs to - the verb and the http.route, to the operation's name in the service's interface - for an estate where the two do not line up: a prefix a gateway adds, a path the document spells another way. Without a line here a route is matched by verb and path shape.",
-          "examples": [
-            {
-              "POST /api/v1/sessions": "login"
             }
           ]
         },

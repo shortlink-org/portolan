@@ -10,7 +10,7 @@
 import { ExternalLink } from "lucide-react";
 import type { Deployment } from "../catalog";
 import { deploymentBasis } from "../catalog";
-import { driftLines } from "../lib/deploy-problems";
+import { driftLines } from "../lib/deployment-drift";
 import { Ident } from "./Ident";
 import { RowActions } from "./RowActions";
 

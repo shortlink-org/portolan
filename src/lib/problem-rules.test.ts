@@ -1,25 +1,26 @@
-// The rules behind the Problems page: the passports match the readers, the
-// manifest's switches and re-grades take effect, and a CEL rule sees what the
-// schema says it sees - proved on the frozen estate.
+// The rules behind the Problems page: every shipped rule compiles over its
+// subject and runs clean on the frozen estate, the manifest's switches and
+// re-grades take effect, and a rule of the estate's own sees what the schema
+// says it sees. What each shipped rule finds is held by the tests beside the
+// subjects they read - rules-data, rules-wire, rules-proto, rules-deploy and rules-edges.
 
-import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { rawCatalog } from "../test-catalog";
 import { buildIndex, validateCatalog } from "../catalog";
 import type { Catalog } from "../catalog";
-import { allFindings, allProblems, evaluateProblems } from "./all-problems";
-import { PROBLEM_KINDS } from "./derive";
+import { allProblems, evaluateProblems } from "./all-problems";
 import {
   BUILTIN_RULES,
+  builtinProblems,
   estateOf,
   evaluateRules,
   resolveRules,
-  runCustomRule,
+  runRule,
   subjectsOf,
   SUBJECTS,
 } from "./problem-rules";
 import type { ProblemRule, ProblemRuleEntry, RuleSubject } from "./problem-rules";
-import { problemRuleProblems, SUBJECT_NAMES } from "./problem-rules-cel.mjs";
+import { problemRuleProblems, ruleExpressionProblems, SUBJECT_NAMES } from "./problem-rules-cel.mjs";
 
 const catalog = validateCatalog(JSON.parse(JSON.stringify(rawCatalog)) as unknown as Catalog);
 const index = buildIndex(catalog);
@@ -33,16 +34,14 @@ const custom = (entry: Partial<ProblemRuleEntry> & { id: string }): ProblemRule 
   note: entry.id,
   description: "",
   action: "",
+  when: "true",
+  message: "'m'",
   builtin: false,
   enabled: true,
   ...entry,
 });
 
 describe("rules/builtin.json", () => {
-  it("names exactly the kinds the readers produce", () => {
-    expect([...builtinIds].sort()).toEqual([...PROBLEM_KINDS].sort());
-  });
-
   it("gives every rule a subject, a severity and words", () => {
     for (const rule of BUILTIN_RULES) {
       expect(SUBJECT_NAMES, rule.id).toContain(rule.over);
@@ -53,28 +52,30 @@ describe("rules/builtin.json", () => {
     }
   });
 
-  it("names the file each reader lives in, and the file exists", () => {
-    for (const rule of BUILTIN_RULES) {
-      expect(rule.source, rule.id).toMatch(/^src\/lib\/[a-z-]+\.ts$/);
-      expect(existsSync(rule.source!), `${rule.id}: ${rule.source}`).toBe(true);
-    }
+  it("is CEL that type-checks over its subject, rule by rule", () => {
+    for (const rule of BUILTIN_RULES) expect(ruleExpressionProblems(rule), rule.id).toEqual([]);
   });
 
-  it("covers every finding the readers make of the sample estate", () => {
-    const kinds = new Set(allFindings(catalog, index).map((finding) => finding.kind));
-    expect(kinds.size).toBeGreaterThan(0);
-    for (const kind of kinds) expect(builtinIds).toContain(kind);
+  it("runs clean over the sample estate", () => {
+    const { failures, problems } = evaluateRules(catalog, index, resolveRules([]));
+    expect(failures).toEqual([]);
+    expect(problems.length).toBeGreaterThan(0);
+    for (const problem of problems) expect(builtinIds, problem.id).toContain(problem.rule);
+  });
+
+  it("has no two rules with one id", () => {
+    expect(new Set(builtinIds).size).toBe(builtinIds.length);
   });
 });
 
 describe("resolveRules", () => {
-  it("is every built-in rule, on, without a manifest entry", () => {
+  it("is every shipped rule, on, without a manifest entry", () => {
     const rules = resolveRules([]);
     expect(rules.map((rule) => rule.id)).toEqual(builtinIds);
     expect(rules.every((rule) => rule.enabled && rule.builtin)).toBe(true);
   });
 
-  it("switches and re-grades a built-in rule, and keeps the passport's own severity", () => {
+  it("switches and re-grades a shipped rule, and keeps the passport's own severity", () => {
     const rules = resolveRules([
       { id: "shared-store", enabled: false, reason: "one database by design" },
       { id: "cross-service-lineage", severity: "error" },
@@ -87,7 +88,7 @@ describe("resolveRules", () => {
     expect(lineage.defaultSeverity).toBe("warning");
   });
 
-  it("appends the manifest's own rules after the built-in ones", () => {
+  it("appends the manifest's own rules after the shipped ones", () => {
     const rules = resolveRules([{ id: "team.quiet-event", over: "event", when: "true", message: "'x'", title: "Quiet event" }]);
     const last = rules[rules.length - 1]!;
     expect(last.id).toBe("team.quiet-event");
@@ -98,25 +99,19 @@ describe("resolveRules", () => {
 });
 
 describe("evaluateRules", () => {
-  const findings = allFindings(catalog, index);
-
-  it("stamps each finding with its rule and leaves the list as it was", () => {
-    const { problems } = evaluateRules(findings, catalog, index, resolveRules([]));
-    expect(problems.length).toBe(findings.length);
-    expect(problems.every((problem) => problem.rule === problem.kind)).toBe(true);
-  });
+  const all = builtinProblems(catalog, index);
 
   it("drops a switched-off rule's rows and still counts them", () => {
-    const shared = findings.filter((finding) => finding.kind === "shared-store");
-    expect(shared.length).toBeGreaterThan(0);
-    const { problems, matches } = evaluateRules(findings, catalog, index, resolveRules([{ id: "shared-store", enabled: false, reason: "by design" }]));
-    expect(problems.some((problem) => problem.rule === "shared-store")).toBe(false);
-    expect(problems.length).toBe(findings.length - shared.length);
-    expect(matches.get("shared-store")).toBe(shared.length);
+    const fk = all.filter((problem) => problem.rule === "cross-service-fk");
+    expect(fk.length).toBeGreaterThan(0);
+    const { problems, matches } = evaluateRules(catalog, index, resolveRules([{ id: "cross-service-fk", enabled: false, reason: "by design" }]));
+    expect(problems.some((problem) => problem.rule === "cross-service-fk")).toBe(false);
+    expect(problems.length).toBe(all.length - fk.length);
+    expect(matches.get("cross-service-fk")).toBe(fk.length);
   });
 
   it("re-grades a rule's rows", () => {
-    const { problems } = evaluateRules(findings, catalog, index, resolveRules([{ id: "cross-service-fk", severity: "warning" }]));
+    const { problems } = evaluateRules(catalog, index, resolveRules([{ id: "cross-service-fk", severity: "warning" }]));
     const fk = problems.filter((problem) => problem.rule === "cross-service-fk");
     expect(fk.length).toBeGreaterThan(0);
     expect(fk.every((problem) => problem.severity === "warning")).toBe(true);
@@ -126,11 +121,11 @@ describe("evaluateRules", () => {
     const { problems } = evaluateProblems(catalog, index, resolveRules([{ id: "cross-service-fk", severity: "warning" }]));
     const firstWarning = problems.findIndex((problem) => problem.severity === "warning");
     expect(problems.slice(firstWarning).every((problem) => problem.severity === "warning")).toBe(true);
-    expect(allProblems(catalog, index, resolveRules([])).length).toBe(findings.length);
+    expect(allProblems(catalog, index, resolveRules([])).length).toBe(all.length);
   });
 });
 
-describe("a CEL rule", () => {
+describe("a rule of the estate's own", () => {
   it("runs over every event and says which it matched", () => {
     const rule = custom({
       id: "team.quiet-event",
@@ -138,13 +133,12 @@ describe("a CEL rule", () => {
       message: "'nothing consumes ' + event.name",
       peer: "event.service",
     });
-    const { problems, failure } = runCustomRule(rule, catalog, index);
+    const { problems, failure } = runRule(rule, catalog, index);
     expect(failure).toBeUndefined();
     const quiet = subjectsOf(catalog, index, "event").filter((subject) => (subject.row.consumers as string[]).length === 0);
     expect(problems.length).toBe(quiet.length);
     expect(problems.length).toBeGreaterThan(0);
     const first = problems[0]!;
-    expect(first.kind).toBe("rule");
     expect(first.rule).toBe("team.quiet-event");
     expect(first.id).toBe(quiet[0]!.id);
     expect(first.note).toBe(`nothing consumes ${quiet[0]!.row.name}`);
@@ -153,8 +147,8 @@ describe("a CEL rule", () => {
   });
 
   it("sees the estate beside its subject", () => {
-    const inside = runCustomRule(custom({ id: "a", over: "call", when: "call.peer in estate.services", message: "'in'" }), catalog, index);
-    const outside = runCustomRule(custom({ id: "b", over: "call", when: "!(call.peer in estate.services)", message: "'out'" }), catalog, index);
+    const inside = runRule(custom({ id: "a", over: "call", when: "call.peer in estate.services", message: "'in'" }), catalog, index);
+    const outside = runRule(custom({ id: "b", over: "call", when: "!(call.peer in estate.services)", message: "'out'" }), catalog, index);
     expect(inside.failure).toBeUndefined();
     expect(outside.failure).toBeUndefined();
     expect(inside.problems.length + outside.problems.length).toBe(subjectsOf(catalog, index, "call").length);
@@ -162,7 +156,7 @@ describe("a CEL rule", () => {
   });
 
   it("runs over flows and aggregates, and lands on the page each has", () => {
-    const flows = runCustomRule(
+    const flows = runRule(
       custom({ id: "team.unproven-flow", over: "flow", when: "flow.verifiedSteps == 0 && flow.steps > 0", message: "flow.name + ' has never been seen running'" }),
       catalog,
       index,
@@ -173,7 +167,7 @@ describe("a CEL rule", () => {
     expect(flows.problems.length).toBeGreaterThan(0);
     expect(flows.problems[0]!.context).toBe(unproven[0]!.row.owner);
 
-    const aggregates = runCustomRule(
+    const aggregates = runRule(
       custom({ id: "team.silent-aggregate", over: "aggregate", when: "size(aggregate.events) == 0 && !aggregate.modelGroup", message: "aggregate.name + ' raises no event'", peer: "aggregate.service" }),
       catalog,
       index,
@@ -185,19 +179,19 @@ describe("a CEL rule", () => {
   });
 
   it("refuses a field the subject does not have, before any row", () => {
-    const { problems, failure } = runCustomRule(custom({ id: "a", when: "event.nme == 'x'", message: "'m'" }), catalog, index);
+    const { problems, failure } = runRule(custom({ id: "a", when: "event.nme == 'x'", message: "'m'" }), catalog, index);
     expect(problems).toEqual([]);
     expect(failure?.message).toMatch(/nme/);
   });
 
   it("refuses a condition that is not a bool and a message that is not a string", () => {
-    expect(runCustomRule(custom({ id: "a", when: "event.id", message: "'m'" }), catalog, index).failure?.message).toMatch(/bool/);
-    expect(runCustomRule(custom({ id: "b", when: "true", message: "event.versions" }), catalog, index).failure?.message).toMatch(/string/);
+    expect(runRule(custom({ id: "a", when: "event.id", message: "'m'" }), catalog, index).failure?.message).toMatch(/bool/);
+    expect(runRule(custom({ id: "b", when: "true", message: "event.versions" }), catalog, index).failure?.message).toMatch(/string/);
   });
 
   it("is counted but not shown while switched off", () => {
     const rule = custom({ id: "team.off", when: "true", message: "'m'", enabled: false });
-    const { problems, matches, failures } = evaluateRules([], catalog, index, [rule]);
+    const { problems, matches, failures } = evaluateRules(catalog, index, [rule]);
     expect(problems).toEqual([]);
     expect(failures).toEqual([]);
     expect(matches.get("team.off")).toBe(subjectsOf(catalog, index, "event").length);
@@ -212,14 +206,17 @@ describe("subjects", () => {
     "list<string>": (value) => Array.isArray(value) && value.every((item) => typeof item === "string"),
   };
 
-  // The frozen estate declares no AsyncAPI channel and no deployment; one of
-  // each is added so the two subjects are proved on a row, not on an absence.
+  // The frozen estate declares no AsyncAPI channel, no deployment and no
+  // vendored copy; one of each is added so every subject is proved on a
+  // row, not on an absence.
   const furnished: Catalog = JSON.parse(JSON.stringify(rawCatalog)) as unknown as Catalog;
-  furnished.contexts[0]!.services[0]!.channels = [
-    { address: "shop.cart.basket", kind: "event", messages: [{ name: "cart.BasketCreated", direction: "send" }], source: "asyncapi.yaml" },
+  const first = furnished.contexts[0]!.services[0]!;
+  first.channels = [
+    { address: "shop.cart.basket", kind: "event", messages: [{ name: "cart.BasketCreated", direction: "send" }, { name: "payments.PaymentAuthorized", direction: "receive" }], source: "asyncapi.yaml" },
   ];
+  first.copies = [{ id: "pricing.v1.Pricing", methods: [{ name: "GetQuote", request: "GetQuoteRequest", response: "Quote" }], source: "vendor/pricing.proto" }];
   furnished.deployments = [
-    { id: "argocd/cart", name: "cart", project: "shop", environment: "prod", cluster: "in-cluster", namespace: "shop", repo: furnished.contexts[0]!.services[0]!.repo, path: furnished.contexts[0]!.services[0]!.path, targetRevision: "main", revision: "abc", tool: "kustomize", url: "https://argocd/cart" },
+    { id: "argocd/cart", name: "cart", project: "shop", environment: "prod", cluster: "in-cluster", namespace: "shop", repo: first.repo, path: first.path, targetRevision: "main", revision: "abc", tool: "kustomize", url: "https://argocd/cart" },
   ];
   const furnishedCatalog = validateCatalog(furnished);
   const furnishedIndex = buildIndex(furnishedCatalog);

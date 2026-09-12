@@ -1,4 +1,16 @@
-export type RuleSubject = "service" | "event" | "channel" | "table" | "deployment" | "flow" | "aggregate" | "call";
+export type RuleSubject =
+  | "service"
+  | "call"
+  | "copy"
+  | "event"
+  | "consumer"
+  | "channel"
+  | "subscription"
+  | "table"
+  | "column"
+  | "deployment"
+  | "flow"
+  | "aggregate";
 
 export type RuleSeverity = "error" | "warning";
 
@@ -24,3 +36,8 @@ export function environmentFor(subject: RuleSubject): unknown;
 export function compileExpression(subject: RuleSubject, source: string, type: "bool" | "string"): CompiledExpression;
 
 export function problemRuleProblems(entries: unknown, builtinIds: Iterable<string>, path?: string): string[];
+
+export function ruleExpressionProblems(
+  rule: { id: string; over?: string; title?: string; when?: string; message?: string; peer?: string },
+  at?: string,
+): string[];

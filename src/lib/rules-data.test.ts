@@ -6,36 +6,38 @@ import { rawCatalog } from "../test-catalog";
 import { buildIndex, validateCatalog } from "../catalog";
 import type { Catalog } from "../catalog";
 import type { Problem } from "./derive";
-import { dataProblems } from "./data-problems";
+import { builtinProblems } from "./problem-rules";
+
+const DATA = ["cross-service-fk", "cross-service-lineage", "cross-service-view", "shared-store", "persistence-drift", "column-type", "outbox-payload"];
 
 const clone = (): Catalog =>
   JSON.parse(JSON.stringify(rawCatalog)) as unknown as Catalog;
 
 function found(catalog: Catalog) {
-  return dataProblems(catalog, buildIndex(validateCatalog(catalog)));
+  return builtinProblems(catalog, buildIndex(validateCatalog(catalog)), DATA);
 }
 
-const kinds = (list: { kind: string }[]) => list.map((p) => p.kind);
+const kinds = (list: { rule: string }[]) => list.map((p) => p.rule);
 
 describe("the sample estate", () => {
   const problems = found(clone());
 
   it("reports the intentional cross-service foreign key", () => {
-    const fk = problems.find((p) => p.kind === "cross-service-fk");
+    const fk = problems.find((p) => p.rule === "cross-service-fk");
     expect(fk?.id).toBe("delivery.core.pg.packages.order_id");
     expect(fk?.peer).toBe("shop.oms.pg.orders");
     expect(fk?.severity).toBe("error");
   });
 
   it("reports the table one service writes in another's database", () => {
-    const shared = problems.find((p) => p.kind === "shared-store");
+    const shared = problems.find((p) => p.rule === "shared-store");
     expect(shared?.id).toBe("shop.oms.pg.price_snapshots");
     expect(shared?.peer).toBe("shop.pricing");
     expect(shared?.severity).toBe("error");
   });
 
   it("reports no persistence drift: every table's columns follow its aggregate", () => {
-    expect(problems.filter((p) => p.kind === "persistence-drift")).toEqual([]);
+    expect(problems.filter((p) => p.rule === "persistence-drift")).toEqual([]);
   });
 
   it("reports a renamed table whose columns did not follow", () => {
@@ -45,13 +47,13 @@ describe("the sample estate", () => {
       ?.tables.find((t) => t.name === "orders");
     if (!orders) throw new Error("fixture has no orders table");
     for (const column of orders.columns) if (column.maps) column.maps = `Order.${column.name}Gone`;
-    const drift = found(drifted).find((p) => p.kind === "persistence-drift");
+    const drift = found(drifted).find((p) => p.rule === "persistence-drift");
     expect(drift?.id).toBe("shop.oms.pg.orders");
     expect(drift?.severity).toBe("warning");
   });
 
   it("reports every type disagreement and nothing else", () => {
-    const types = problems.filter((p) => p.kind === "column-type");
+    const types = problems.filter((p) => p.rule === "column-type");
     expect(types.map((p) => p.id)).toEqual([
       "shop.oms.pg.orders.id",
       "shop.oms.pg.order_items.quantity",
@@ -64,7 +66,7 @@ describe("the sample estate", () => {
   });
 
   it("reports the value delivery copies out of the OMS schema", () => {
-    const copied = problems.filter((p) => p.kind === "cross-service-lineage");
+    const copied = problems.filter((p) => p.rule === "cross-service-lineage");
     expect(copied.map((p) => p.id)).toEqual([
       "delivery.core.pg.packages.ship_to",
     ]);
@@ -78,7 +80,7 @@ describe("the sample estate", () => {
   it("says nothing about lineage that stays inside one service", () => {
     const inside = problems.filter(
       (p) =>
-        p.kind === "cross-service-lineage" &&
+        p.rule === "cross-service-lineage" &&
         p.id.startsWith("shop.oms.pg.outbox"),
     );
     expect(inside).toEqual([]);
@@ -104,7 +106,7 @@ describe("cases that only look like problems", () => {
     const problems = found(clone());
     const inside = problems.filter(
       (p) =>
-        p.kind === "cross-service-fk" &&
+        p.rule === "cross-service-fk" &&
         p.id.startsWith("shop.oms.pg.order_items"),
     );
     expect(inside).toEqual([]);
@@ -120,7 +122,7 @@ describe("cases that only look like problems", () => {
     stops.persists = { aggregate: "shop.oms.order" };
 
     const shared = found(catalog).filter(
-      (p) => p.kind === "shared-store" && p.id === stops.id,
+      (p) => p.rule === "shared-store" && p.id === stops.id,
     );
     expect(shared).toEqual([]);
   });
@@ -129,7 +131,7 @@ describe("cases that only look like problems", () => {
     const problems = found(clone());
     const derived = problems.filter(
       (p) =>
-        p.kind === "persistence-drift" &&
+        p.rule === "persistence-drift" &&
         p.id === "delivery.core.pg.route_stops",
     );
     expect(derived).toEqual([]);
@@ -139,7 +141,7 @@ describe("cases that only look like problems", () => {
     const problems = found(clone());
     expect(
       problems.filter(
-        (p) => p.kind === "persistence-drift" && p.id === "shop.oms.pg.orders",
+        (p) => p.rule === "persistence-drift" && p.id === "shop.oms.pg.orders",
       ),
     ).toEqual([]);
   });
@@ -154,7 +156,7 @@ describe("an outbox with nothing in it", () => {
     if (!outbox) throw new Error("fixture has no outbox");
     outbox.columns = outbox.columns.filter((c) => c.type !== "jsonb");
 
-    const problem = found(catalog).find((p) => p.kind === "outbox-payload");
+    const problem = found(catalog).find((p) => p.rule === "outbox-payload");
     expect(problem?.severity).toBe("warning");
     expect(problem?.id).toBe("shop.oms.pg.outbox");
     expect(problem?.peer).toBe("shop.oms.pg");
@@ -174,5 +176,5 @@ describe("a catalog with no stores", () => {
 
 // A compile-time check that the shared shape really is shared: the page renders
 // one row component over both lists, so the two must stay one type.
-const _shape: (p: Problem) => string = (p) => `${p.severity}:${p.kind}`;
+const _shape: (p: Problem) => string = (p) => `${p.severity}:${p.rule}`;
 void _shape;

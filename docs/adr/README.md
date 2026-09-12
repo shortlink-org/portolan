@@ -20,3 +20,4 @@
 | [portolan.0014](portolan.0014.md) | A recording is kept beside the code, and lays what it showed over the flow | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
 | [portolan.0015](portolan.0015.md) | A rule on a field is read into the catalog, in one vocabulary | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
 | [portolan.0016](portolan.0016.md) | A problem is a rule with a passport, and a new one is written in CEL over one subject | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
+| [portolan.0017](portolan.0017.md) | Every problem rule is CEL over a row that already carries its joins | accepted | 2026-09-12 | [portolan](../portolan/README.md) |

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { buildIndex } from "../catalog";
 import type { Catalog, Deployment } from "../catalog";
-import { deployProblems } from "./deploy-problems";
+import { builtinProblems } from "./problem-rules";
+
+const deployProblems = (catalog: Catalog) => builtinProblems(catalog, buildIndex(catalog), ["deployment-unclaimed", "deployment-drift"]);
 
 const service = (id: string, path: string) => ({
   id,
@@ -72,7 +75,7 @@ describe("deployments the catalog cannot place", () => {
     const [problem, ...rest] = deployProblems(catalog);
     expect(rest).toEqual([]);
     expect(problem).toMatchObject({
-      kind: "deployment-unclaimed",
+      rule: "deployment-unclaimed",
       severity: "warning",
       context: "",
       service: "",
@@ -108,7 +111,7 @@ describe("deployments the catalog cannot place", () => {
     ]);
     const [problem, ...rest] = deployProblems(drifted);
     expect(rest).toEqual([]);
-    expect(problem).toMatchObject({ kind: "deployment-drift", severity: "warning", context: "shop", service: "shop.cart", id: "argocd/cart-prod", peer: "prod" });
+    expect(problem).toMatchObject({ rule: "deployment-drift", severity: "warning", context: "shop", service: "shop.cart", id: "argocd/cart-prod", peer: "prod" });
     expect(problem?.note).toBe(
       "tracks release-2.1 in the tree, main deployed; pins ghcr.io/acme/cart:2.1.0 in the tree; running ghcr.io/acme/cart:2.0.9. https://argocd.example.com/applications/argocd/cart-prod",
     );

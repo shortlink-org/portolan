@@ -11,11 +11,14 @@ import type {
   Service,
   Status,
 } from "./catalog";
-import { validateCatalog, walkSteps } from "./catalog";
+import { buildIndex, validateCatalog, walkSteps } from "./catalog";
 import { enrichCatalog } from "./enrich";
 import { contextMap } from "./lib/context-map";
 import { mergeCatalogs } from "./merge";
-import { problems } from "./lib/derive";
+import { builtinProblems } from "./lib/problem-rules";
+
+// The unresolved edges, as the two shipped rules about them find them.
+const problems = (of: Catalog) => builtinProblems(of, buildIndex(of), ["rpc", "consumer"]);
 
 // ---------------------------------------------------------------------------
 // A tiny estate: two services, one event, one method, and whatever flow the
@@ -1124,7 +1127,7 @@ describe("enrichCatalog: consumers from event steps", () => {
       ["risk", "unresolved"],
       ["ghost.svc", "unresolved"],
     ]);
-    expect(problems(catalog).map((p) => [p.kind, p.peer])).toEqual([
+    expect(problems(catalog).map((p) => [p.rule, p.peer])).toEqual([
       ["consumer", "risk"],
       ["consumer", "ghost.svc"],
     ]);

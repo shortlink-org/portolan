@@ -1,6 +1,6 @@
 # Portolan
 
-> Architecture catalog of Portolan: 1 bounded context, 3 services, 0 aggregates, 0 stores, 1 flow and 16 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Portolan: 1 bounded context, 3 services, 0 aggregates, 0 stores, 1 flow and 17 decision records, read from the code, the specs and the traces of the estate.
 
 *Generated from the portolan catalog. Do not edit by hand.*
 
@@ -42,3 +42,4 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [portolan.0014](adr/portolan.0014.md): A recording is kept beside the code, and lays what it showed over the flow (accepted, 2026-09-12)
 - [portolan.0015](adr/portolan.0015.md): A rule on a field is read into the catalog, in one vocabulary (accepted, 2026-09-12)
 - [portolan.0016](adr/portolan.0016.md): A problem is a rule with a passport, and a new one is written in CEL over one subject (accepted, 2026-09-12)
+- [portolan.0017](adr/portolan.0017.md): Every problem rule is CEL over a row that already carries its joins (accepted, 2026-09-12)

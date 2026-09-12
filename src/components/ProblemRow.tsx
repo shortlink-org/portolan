@@ -3,9 +3,9 @@
 // lists every one of these; the overview shows the first few.
 //
 // The words and the icon come from the rule that made the row - its passport
-// in rules/builtin.json, or the manifest's entry for a CEL rule - so a rule
-// added to the manifest gets a row that reads like the built-in ones, and
-// the built-in ones can be read about on the Settings page the note links to.
+// in rules/builtin.json, or the manifest's entry - and the rule's subject
+// says where the near end leads: an event has a page, a table has a canvas,
+// a channel, a call and a deployment are shown on their service's page.
 
 import { Link } from "react-router";
 import type { Problem } from "../lib/derive";
@@ -13,7 +13,7 @@ import { ctxStyle } from "../lib/context-color";
 import type { Kind } from "../lib/kinds";
 import { staggerStyle } from "../lib/motion";
 import { useProblemRules } from "../lib/problem-rules";
-import type { ProblemRule, RuleSubject } from "../lib/problem-rules";
+import type { RuleSubject } from "../lib/problem-rules";
 import {
   aggregatePath,
   eventPath,
@@ -28,125 +28,70 @@ import { KindIcon } from "./kind";
 import { Ident } from "./Ident";
 
 /** The icon a problem row carries: what the near end of the edge IS. */
-const ICON_OF: Record<RuleSubject, Kind> = {
+export const ICON_OF: Record<RuleSubject, Kind> = {
   service: "service",
   call: "service",
+  copy: "service",
   event: "event",
+  consumer: "event",
   channel: "event",
+  subscription: "service",
   table: "table",
+  column: "table",
   deployment: "service",
   flow: "flow",
   aggregate: "aggregate",
 };
-
-/** Where the near end of a problem lives, by what kind of edge it is. */
-function nearPath(problem: Problem, rule: ProblemRule | undefined): string | null {
-  switch (problem.kind) {
-    case "rpc":
-    // The near end is the CALLING service either way. `rpc` is a call whose
-    // peer is nobody; this is a call whose peer is known and whose method is
-    // not - and in both the thing to go and look at is the caller.
-    case "proto-missing":
-    case "proto-drift":
-      return servicePath(problem.service);
-    case "consumer":
-    case "channel-undeclared":
-      return eventPath(problem.id);
-    // The near end is an event when the service has one on the channel, and
-    // the service itself when the claim comes from its document alone.
-    case "shared-channel":
-      return eventPath(problem.id) ?? servicePath(problem.service);
-    case "channel-unpublished":
-    case "message-encoding":
-    case "subscription-unresolved":
-      return servicePath(problem.service);
-    case "shared-store":
-    case "persistence-drift":
-    case "outbox-payload":
-      return tablePath(problem.id);
-    // The id is "<relation>.<column>", so the relation is its own id minus the
-    // last segment — and the relation is what the canvas can actually show.
-    case "cross-service-fk":
-    case "column-type":
-      return relationPath(problem.id.split(".").slice(0, -1).join("."));
-    // Lineage is stated on a column, except when a view states it whole, so
-    // the id is one or the other and both are looked up the same way.
-    case "cross-service-lineage":
-      return (
-        relationPath(problem.id) ??
-        relationPath(problem.id.split(".").slice(0, -1).join("."))
-      );
-    // The near end is an Application nobody in the catalog is: there is no
-    // page for it here, and the deployer's own page is in the note.
-    case "deployment-unclaimed":
-      return null;
-    // The near end is the service the Application deploys, when the
-    // catalog has one; its page is where the row with the drift chip is.
-    case "deployment-drift":
-      return problem.service ? servicePath(problem.service) : null;
-    // A CEL rule's row is about one subject, and the subject says where it
-    // lives: an event has a page, a table has a canvas, a channel, a call and
-    // a deployment are shown on their service's page.
-    case "rule":
-      return subjectPath(rule?.over ?? "service", problem);
-  }
-}
-
-function subjectPath(over: RuleSubject, problem: Problem): string | null {
-  switch (over) {
-    case "event":
-      return eventPath(problem.id);
-    case "table":
-      return relationPath(problem.id);
-    case "flow":
-      return flowPath(problem.id);
-    case "aggregate":
-      return aggregatePath(problem.id);
-    case "service":
-    case "call":
-    case "channel":
-    case "deployment":
-      return problem.service ? servicePath(problem.service) : null;
-  }
-}
 
 /** A table or a view, whichever the id turns out to name. */
 function relationPath(id: string): string | null {
   return tablePath(id) ?? viewPath(id);
 }
 
-/** Where the far end lives, when the catalog knows it. */
-function peerPath(problem: Problem): string | null {
-  switch (problem.kind) {
-    case "cross-service-fk":
-      return tablePath(problem.peer);
-    case "cross-service-lineage":
-      return (
-        relationPath(problem.peer) ??
-        relationPath(problem.peer.split(".").slice(0, -1).join("."))
-      );
-    case "shared-store":
-    case "shared-channel":
-    case "message-encoding":
-      return servicePath(problem.peer);
-    case "outbox-payload":
-      return storePath(problem.peer);
-    // A CEL rule's peer is whatever its expression said; when that is the id
-    // of something the catalog has, the row leads there.
-    case "rule":
-      return problem.peer
-        ? servicePath(problem.peer) ?? eventPath(problem.peer) ?? relationPath(problem.peer)
-        : null;
-    default:
-      return null;
+/** A column's relation: its id minus the column, which is what the canvas can show. */
+function columnPath(id: string): string | null {
+  return relationPath(id.split(".").slice(0, -1).join("."));
+}
+
+/** Where the near end of a problem lives, by what the rule is about. */
+function nearPath(over: RuleSubject, problem: Problem): string | null {
+  switch (over) {
+    case "event":
+    case "consumer":
+      return eventPath(problem.id);
+    // A channel row is an event of the service when it has one on the
+    // address, and the service itself when the claim comes from its document.
+    case "channel":
+      return eventPath(problem.id) ?? (problem.service ? servicePath(problem.service) : null);
+    case "table":
+      return relationPath(problem.id);
+    case "column":
+      return columnPath(problem.id);
+    case "flow":
+      return flowPath(problem.id);
+    case "aggregate":
+      return aggregatePath(problem.id);
+    case "service":
+    case "call":
+    case "copy":
+    case "subscription":
+    case "deployment":
+      return problem.service ? servicePath(problem.service) : null;
   }
+}
+
+/** Where the far end lives, when it is the id of something the catalog has. */
+function peerPath(peer: string): string | null {
+  if (!peer) return null;
+  return servicePath(peer) ?? eventPath(peer) ?? relationPath(peer) ?? columnPath(peer) ?? storePath(peer);
 }
 
 export function ProblemRow({ problem, index }: { problem: Problem; index: number }) {
   const rules = useProblemRules();
   const rule = rules.find((candidate) => candidate.id === problem.rule);
-  const near = nearPath(problem, rule);
-  const peerTo = peerPath(problem);
+  const over = rule?.over ?? "service";
+  const near = nearPath(over, problem);
+  const peerTo = peerPath(problem.peer);
   const note = rule?.note ?? problem.rule;
   const tone =
     problem.severity === "error"
@@ -159,7 +104,7 @@ export function ProblemRow({ problem, index }: { problem: Problem; index: number
       style={{ ...staggerStyle(index), borderColor: tone }}
       data-rule={problem.rule}
     >
-      <KindIcon kind={ICON_OF[rule?.over ?? "service"]} />
+      <KindIcon kind={ICON_OF[over]} />
       {near ? (
         <Link
           to={near}
@@ -172,7 +117,7 @@ export function ProblemRow({ problem, index }: { problem: Problem; index: number
       ) : (
         <Ident value={problem.id} />
       )}
-      {/* A CEL rule may name no far end; then there is no arrow to draw. */}
+      {/* A rule may name no far end; then there is no arrow to draw. */}
       {problem.peer ? (
         <>
           <span aria-hidden className="text-muted">
