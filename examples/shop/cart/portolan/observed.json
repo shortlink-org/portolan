@@ -68,7 +68,10 @@
           "label": "addItem",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (3 traces).",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43"
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43",
+          "seen": {
+            "traces": 3
+          }
         },
         {
           "type": "step",
@@ -90,7 +93,108 @@
           "label": "BasketItemAdded",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (3 traces).",
-          "line": "examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27"
+          "line": "examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27",
+          "seen": {
+            "traces": 3
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#ab232acad1a6ecd0ba9d3568ce81942a",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "ab232acad1a6ecd0ba9d3568ce81942a",
+          "recordedAt": "2026-09-04T18:33:36.566Z",
+          "durationMs": 5.486,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/items",
+              "durationMs": 5.486,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "publish cart.BasketItemAdded",
+              "durationMs": 0.328,
+              "attributes": {
+                "event.name": "cart.BasketItemAdded",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#874884def44a7a6fd5e0d32de295ddfe",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "874884def44a7a6fd5e0d32de295ddfe",
+          "recordedAt": "2026-09-04T18:33:36.579Z",
+          "durationMs": 4.235,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/items",
+              "durationMs": 4.235,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "publish cart.BasketItemAdded",
+              "durationMs": 0.317,
+              "attributes": {
+                "event.name": "cart.BasketItemAdded",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#d045ed886eeebd471a745f089f1150a6",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "d045ed886eeebd471a745f089f1150a6",
+          "recordedAt": "2026-09-04T18:33:36.622Z",
+          "durationMs": 3.558,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/items",
+              "durationMs": 3.558,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "publish cart.BasketItemAdded",
+              "durationMs": 0.431,
+              "attributes": {
+                "event.name": "cart.BasketItemAdded",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -143,7 +247,10 @@
           "label": "checkout",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60"
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -155,7 +262,10 @@
           "label": "validateSession",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44"
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -198,7 +308,55 @@
           "label": "BasketCheckedOut",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57"
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57",
+          "seen": {
+            "traces": 1
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#36045570eefa6f10a37183eb49945732",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "36045570eefa6f10a37183eb49945732",
+          "recordedAt": "2026-09-04T18:33:36.657Z",
+          "durationMs": 4.541,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/checkout",
+              "durationMs": 4.541,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/checkout",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s2",
+              "label": "GET",
+              "durationMs": 0.768,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "200",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s6",
+              "label": "publish cart.BasketCheckedOut",
+              "durationMs": 0.391,
+              "attributes": {
+                "event.name": "cart.BasketCheckedOut",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -241,7 +399,10 @@
           "label": "createBasket",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33"
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "type": "step",
@@ -263,7 +424,76 @@
           "label": "BasketCreated",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22"
+          "line": "examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22",
+          "seen": {
+            "traces": 2
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#80014f01019ea7c7254374b2317de1d3",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "80014f01019ea7c7254374b2317de1d3",
+          "recordedAt": "2026-09-04T18:33:36.548Z",
+          "durationMs": 4.357,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets",
+              "durationMs": 4.357,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/baskets",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "publish cart.BasketCreated",
+              "durationMs": 0.632,
+              "attributes": {
+                "event.name": "cart.BasketCreated",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#ec15cc6a983573be3a056364aa22acef",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "ec15cc6a983573be3a056364aa22acef",
+          "recordedAt": "2026-09-04T18:33:36.609Z",
+          "durationMs": 2.524,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets",
+              "durationMs": 2.524,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/baskets",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "publish cart.BasketCreated",
+              "durationMs": 0.395,
+              "attributes": {
+                "event.name": "cart.BasketCreated",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -296,7 +526,54 @@
           "label": "getBasket",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38"
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38",
+          "seen": {
+            "traces": 2
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#4997ef8e00085dbb06d43f5f7bf37ee9",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "4997ef8e00085dbb06d43f5f7bf37ee9",
+          "recordedAt": "2026-09-04T18:33:36.448Z",
+          "durationMs": 4.395,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/baskets/:basketId",
+              "durationMs": 4.395,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "404",
+                "http.route": "/v1/baskets/:basketId",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#6ec632f40403e66bf6b0cb4d6ef57508",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "6ec632f40403e66bf6b0cb4d6ef57508",
+          "recordedAt": "2026-09-04T18:33:36.601Z",
+          "durationMs": 1.337,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/baskets/:basketId",
+              "durationMs": 1.337,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            }
+          ]
         }
       ]
     },
@@ -344,7 +621,10 @@
           "label": "mergeBaskets",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -356,7 +636,10 @@
           "label": "validateSession",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -388,7 +671,10 @@
           "label": "BasketCreated",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -400,7 +686,10 @@
           "label": "BasketItemAdded",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -422,7 +711,77 @@
           "label": "BasketMerged",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47",
+          "seen": {
+            "traces": 1
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#2f1e3fbc117e7892a3d2dc7365ff06c7",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "2f1e3fbc117e7892a3d2dc7365ff06c7",
+          "recordedAt": "2026-09-04T18:33:36.633Z",
+          "durationMs": 14.668,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/merge",
+              "durationMs": 14.668,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/merge",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s2",
+              "label": "GET",
+              "durationMs": 4.518,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "200",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s6",
+              "label": "publish cart.BasketItemAdded",
+              "durationMs": 0.326,
+              "attributes": {
+                "event.name": "cart.BasketItemAdded",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            },
+            {
+              "step": "s5",
+              "label": "publish cart.BasketCreated",
+              "durationMs": 0.281,
+              "attributes": {
+                "event.name": "cart.BasketCreated",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            },
+            {
+              "step": "s8",
+              "label": "publish cart.BasketMerged",
+              "durationMs": 0.281,
+              "attributes": {
+                "event.name": "cart.BasketMerged",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -465,7 +824,10 @@
           "label": "removeItem",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49"
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -487,7 +849,44 @@
           "label": "BasketItemRemoved",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22"
+          "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22",
+          "seen": {
+            "traces": 1
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#3c49f023e542942e99703a2140223327",
+          "recording": "examples/shop/cart/telemetry/traces.jsonl",
+          "traceId": "3c49f023e542942e99703a2140223327",
+          "recordedAt": "2026-09-04T18:33:36.59Z",
+          "durationMs": 3.887,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "DELETE /v1/baskets/:basketId/items/:sku",
+              "durationMs": 3.887,
+              "attributes": {
+                "http.request.method": "DELETE",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items/:sku",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "publish cart.BasketItemRemoved",
+              "durationMs": 0.35,
+              "attributes": {
+                "event.name": "cart.BasketItemRemoved",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     }

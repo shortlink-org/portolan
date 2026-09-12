@@ -176,6 +176,8 @@ describe("routes", () => {
     expect(paths.settingsProjects()).toBe("/settings/projects");
     expect(paths.settingsPipeline()).toBe("/settings/pipeline");
     expect(paths.settingsDelivery()).toBe("/settings/delivery");
+    expect(paths.settingsRecordings()).toBe("/settings/recordings");
+    expect(isRoutable(paths.settingsRecordings())).toBe(true);
     expect(paths.settingsIntegrations()).toBe("/settings/integrations");
     expect(paths.settingsPreferences()).toBe("/settings/preferences");
     expect(paths.settingsAbout()).toBe("/settings/about");

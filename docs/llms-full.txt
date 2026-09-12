@@ -38,6 +38,7 @@
 | [portolan.0011](adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |
 | [portolan.0012](adr/portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 |
 | [portolan.0013](adr/portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 |
+| [portolan.0014](adr/portolan.0014.md) | A recording is kept beside the code, and lays what it showed over the flow | accepted | 2026-09-12 |
 
 <!-- portolan/README.md -->
 
@@ -60,7 +61,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 
 ## Language
 
-- [Glossary](glossary.md) — 47 terms this context spells one way
+- [Glossary](glossary.md) — 48 terms this context spells one way
 
 ## Decisions
 
@@ -79,6 +80,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0011](../adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |
 | [portolan.0012](../adr/portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 |
 | [portolan.0013](../adr/portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 |
+| [portolan.0014](../adr/portolan.0014.md) | A recording is kept beside the code, and lays what it showed over the flow | accepted | 2026-09-12 |
 
 <!-- portolan/glossary.md -->
 
@@ -87,7 +89,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
-- **Terms:** 47
+- **Terms:** 48
 - **Read from:** [`GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -127,6 +129,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Plugin** — A program that takes one JSON message on stdin and answers with one on stdout, run as a process or as a wasm module, in whichever language it was written. An extractor, a verifier, a generator or a fetcher.
 - **Problem** — An edge that leaves the chart: a call nobody answers, a channel with a second publisher, a column whose lineage crosses a service boundary. Listed on the Problems page, errors first.
 - **Project** — A named source root in the manifest, so the pipeline inputs that belong to one repository have one name on the Settings page.
+- **Recording** — A file of traces kept beside a project, under `telemetry/recordings/`, that a verifier reads on every run. One is added from the page or by hand; either way it is a file in the repository, so the next regeneration verifies the same hops. A recording is also kept as an **example** of each flow it showed: which steps ran, how long each took, the names the spans carried - never a query text, a header or a path with an id in it.
 - **Repository pin** — A repository the estate was read at and the commit it was read at, so a source path in another repository is still a link. A fact about the estate, not a field on a service.
 - **Service** — What a context owns: a repository path, what it provides and consumes, its aggregates, the stores and modules it touches. Its kind says what it is when it is not a service in the domain sense; see component.
 - **Source** — A file the manifest's sources globs find: a fragment an extractor wrote, a hand-written file in `data/`, a fetched repository's pin.
@@ -418,7 +421,9 @@ variant. In Java it is a top-level enum in the aggregate's package. In PHP it
 is a backed `enum` anywhere in the module, and on an Eloquent model the
 constants that share a prefix - `STATUS_PENDING = 'pending'` beside
 `STATUS_CLOSED = 'closed'` - with `@deprecated` in a constant's docblock
-marking the value; see `extract-laravel/README.md`. In proto,
+marking the value; see `extract-laravel/README.md`. In a PHP tree laid out
+by bounded context (`extract-php-ddd`) it is a backed `enum` under a module's
+`Domain/`. In proto,
 the enums the messages reach through their fields sit on the interface as
 `enums`, with the numbers the wire uses.
 
@@ -1268,8 +1273,41 @@ called" - and `unresolved` is never raised, because a trace does not put the
 far end in the catalog. A consumer span inside a trace opens a flow of its own
 and is matched the same way, so one password change verifies both the
 request's flow and the policy's. A root no flow opens is written down as
-`observed-<service>-<route>`, once per shape, with a summary saying how many
+`observed-<service>-<route>`, once per opening, with a summary saying how many
 traces showed it.
+
+Every recording that opened a flow is laid over it. A declared step carries
+`seen: { traces }`, how many recordings showed it. An rpc or an event a
+recording showed that the code does not declare is put into the flow after
+the declared step it followed, as a step with an id the code never gave
+(`seen1`, `seen2`) and a note saying in how many recordings; a lane such a
+hop needed is added after the declared ones. A store call is never added -
+the code's word on which repository method ran is the better one - and a
+consumer met on the way belongs to the flow it opens. Two observed
+recordings that open the same way are one flow, each step counting the
+recordings that showed it, so a happy path and a refusal read as one
+sequence with two ends. The merge takes all of this from a second
+declaration of a flow because it says where it came from: `seen` on a step
+the first declaration does not have.
+
+A recording is also kept as an example of each flow it showed, under
+`examples` on the flow: the recording and trace it came from, when it ran,
+how long it took, and for each step the span's name, its length and an
+allowlist of its attributes - `http.route`, `http.request.method`,
+`http.response.status_code`, `rpc.service`, `rpc.method`, `db.operation.name`,
+`db.collection.name`, `messaging.destination.name`, `event.name`,
+`server.address` and a few more of that kind. A query text, a header, a full
+URL or a path with an id in it is somebody's data and is never carried; the
+list is closed in `examples.go`, and a new attribute is added there with the
+argument for it. `examples` in the options says how many recordings a flow
+keeps, the ones that show the most of it first: five when unset, zero for
+none.
+
+A recording added from the page lands under the project's
+`telemetry/recordings/` and widens (or adds) the project's `otel` verify step
+to read that directory, so every run after reads it too; the page runs the
+generator over a copy of the workspace first and shows which flows the
+recording showed before anything is written (portolan.0014).
 
 `service.name` is matched to the one service whose slug it is, `event.name` to
 the one event whose `wire.name` it is, or failing that to the one event of the
@@ -1937,6 +1975,7 @@ sequenceDiagram
 | [portolan.0011](portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
 | [portolan.0012](portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
 | [portolan.0013](portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 | [portolan](../portolan/README.md) |
+| [portolan.0014](portolan.0014.md) | A recording is kept beside the code, and lays what it showed over the flow | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
@@ -3129,3 +3168,113 @@ the token and the socket for the part of the work that needs neither, and
 answers nothing the tree cannot for the generators a tree can expand; for
 the ones it cannot, it is the case for a later need, not for making the
 common case need a control plane.
+
+<!-- adr/portolan.0014.md -->
+
+# portolan.0014 — A recording is kept beside the code, and lays what it showed over the flow
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-12
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0014-a-recording-is-kept-beside-the-code-and-lays-what-it-showed-over-the-flow.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0014-a-recording-is-kept-beside-the-code-and-lays-what-it-showed-over-the-flow.md)
+
+### Context and Problem Statement
+
+`verify-otel` read a recording of traces and said which declared hops had
+been seen running. That was all it said. A hop the recording showed that
+the code did not declare was dropped; two recordings of one endpoint that
+differed in the middle - a happy path and a refusal - became two observed
+flows with one name each; and nothing of what the spans carried reached
+the page, so a reader who wanted to know what a real run of the flow looked
+like had to open the recording.
+
+The recording itself lived wherever somebody had put it and was named in
+the manifest by hand. Adding one meant a file, a glob and a run, on a
+machine with the repository checked out. The page, which is where a reader
+holds the flow and the recording side by side, could not take one.
+
+### Decision Drivers
+
+- A recording is evidence, and evidence must survive regeneration: the
+  catalog is rebuilt from files by anyone, on any machine (portolan.0010).
+- What a recording showed and the code did not declare is a fact about the
+  system, not noise; a reader should see it on the flow, marked as such.
+- Two recordings of one flow are one flow, more fully known.
+- The catalog is published. A span attribute is somebody's data until shown
+  otherwise.
+- The page may propose; only a reviewed run writes (the preview-then-write
+  rule every local write already follows).
+
+### Considered Options
+
+1. **A recording is a file beside the project; the verifier lays it over the
+   flow and keeps it as an example.** Uploaded from the page or copied by
+   hand, it lands under `<project root>/telemetry/recordings/`, and the
+   project's `otel` verify step reads that directory. The verifier counts,
+   per declared step, the recordings that showed it; puts an rpc or an event
+   the code does not declare into the flow after the declared step it
+   followed, as a step whose id the code never gave and whose `seen` says
+   why it is there; lays every observed recording that opens the same way
+   over one observed flow; and keeps up to a handful of recordings as
+   `examples` of the flow, each naming the steps it showed with the span's
+   name, its length and an allowlist of attributes.
+2. **A recording is held by the dev server**, in `.portolan/`, and the page
+   shows it live. Nothing to commit, nothing to review - and nothing the
+   next regeneration knows about. A flow verified once, on one machine.
+3. **A recording is an example only.** Kept, shown, never laid over the
+   flow. The reader sees a run and a flow that disagree and is left to
+   reconcile them by eye.
+4. **Carry every attribute.** The most useful example is the fullest one -
+   and the fullest one carries `db.query.text` with an email in it into a
+   published catalog. Once.
+
+### Decision Outcome
+
+Option 1.
+
+The recording is a file in the repository because that is the only place
+regeneration can find it. The page takes an upload, runs the generator over
+a copy of the workspace with the file in place, and shows what changed -
+which flows the recording showed, what it raised and added, which names the
+verifier could not place - before anything is written. Keeping it writes
+the file, widens or adds the project's verify step, records the mappings
+the reader gave for unplaced names, and regenerates through the same
+write run every other local change goes through.
+
+What the verifier writes is accepted by the merge under the one rule it
+already had for a second declaration of a flow, widened: the second may
+raise a status, and it may add a step that carries `seen` and an id the
+first does not have, a lane after the declared ones, and examples. It may
+not move or remove anything declared. A store call is never added: a
+`SELECT` ran, which is not the claim that `ByEmail` was called, and the
+code's word on which repository method it was is the better one. A
+consumer met inside a trace opens a flow of its own and belongs there.
+
+An example carries a closed allowlist of attributes - routes, verbs, status
+codes, operation and service names, destinations, the host a call went to.
+The list is in `plugins/verify-otel/examples.go` with the argument for each
+entry, and an attribute not on it is not carried, whatever it is called.
+Query text, headers, full URLs and paths with ids in them are not on it and
+are not going to be. A flow keeps five examples unless the step's options
+say otherwise: the recordings that show the most of it, earliest first, so
+that a day of traffic does not become the page.
+
+#### Consequences
+
+- A declared flow can now carry steps no source file declares. They are
+  marked - `seen` on the step, `seen<n>` as the id, a note saying in how
+  many recordings - and the page says so next to them.
+- `Step.seen` and `Flow.examples` are in the model, the Go mirror and the
+  validator: an example must name steps the flow has, once each.
+- An observed flow is keyed by how it opens, not by its whole shape. Two
+  observed flows that used to differ only in the middle are one flow now,
+  and their old ids are gone.
+- A recording uploaded from the page is committed like any other source.
+  The reviewer of that commit sees a `.jsonl` under `telemetry/recordings/`
+  and a widened verify step; the data the fragment carries is bounded by
+  the allowlist, but the recording itself is whatever the collector wrote,
+  and is the reviewer's to read before it is pushed.
+- The local API takes one upload, as bytes with the project and file name
+  in headers, up to 32 MB. Everything else it takes is still JSON.

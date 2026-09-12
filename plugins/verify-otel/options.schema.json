@@ -22,6 +22,12 @@
       "description": "Which catalog event a wire name belongs to, for an estate where the event does not declare its wire name and the last segment of the event.name attribute is not the event's name in the model.",
       "examples": [{ "auth.PasswordChanged": "auth.auth.PasswordChanged" }]
     },
+    "examples": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How many recordings a flow keeps as examples of itself running: the ones that show the most of it, earliest first. Five when unset; zero keeps none.",
+      "examples": [3]
+    },
     "out": {
       "type": "string",
       "description": "Name of the fragment file, inside the step's output directory."

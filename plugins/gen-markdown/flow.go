@@ -2,6 +2,7 @@ package genmarkdown
 
 import (
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -94,7 +95,72 @@ func (s *site) renderFlow(flow *catalog.Flow) {
 	counter := 0
 	section(&b, "Steps", s.stepList(self, flow, flow.Steps, &counter))
 
+	if len(flow.Examples) > 0 {
+		section(&b, "Recordings", s.recordings(self, flow))
+	}
+
 	s.b.file(self, b.String())
+}
+
+// recordings is the flow as it was seen running: one recorded trace at a
+// time, the steps it showed in the order it showed them, how long each
+// took, and the names the spans carried. Examples, next to the sequence
+// they are examples of.
+func (s *site) recordings(self string, flow *catalog.Flow) string {
+	var b strings.Builder
+	b.WriteString("Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.\n")
+	for i := range flow.Examples {
+		ex := &flow.Examples[i]
+		meta := [][]string{
+			{"Recording", s.source(self, ex.Recording, s.serviceForSource(ex.Recording))},
+			{"Trace", code(ex.TraceID)},
+		}
+		if ex.RecordedAt != "" {
+			meta = append(meta, []string{"Recorded", ex.RecordedAt})
+		}
+		meta = append(meta, []string{"Duration", millis(ex.DurationMs)})
+		b.WriteString("\n" + defList(meta) + "\n")
+
+		rows := make([][]string, 0, len(ex.Steps))
+		for j := range ex.Steps {
+			st := &ex.Steps[j]
+			keys := make([]string, 0, len(st.Attributes))
+			for key := range st.Attributes {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			attrs := make([]string, 0, len(keys))
+			for _, key := range keys {
+				attrs = append(attrs, code(key+"="+st.Attributes[key]))
+			}
+			label := "—"
+			if st.Label != "" {
+				label = code(st.Label)
+			}
+			// Linked through the page's own name rather than a bare `#`: a
+			// bare fragment is the one link shape the site's link check
+			// does not resolve, and every other page links this way.
+			rows = append(rows, []string{
+				"[" + st.Step + "](" + path.Base(self) + "#step-" + anchorID(st.Step) + ")",
+				label,
+				millis(st.DurationMs),
+				strings.Join(attrs, " "),
+			})
+		}
+		b.WriteString(table([]string{"Step", "Span", "Duration", "Attributes"}, rows))
+	}
+
+	return b.String()
+}
+
+// millis says a span's length the way a reader does, and says nothing for
+// a recording without a clock.
+func millis(ms float64) string {
+	if ms <= 0 {
+		return "—"
+	}
+
+	return strconv.FormatFloat(ms, 'f', -1, 64) + " ms"
 }
 
 // stepList is the same walk again, in prose. The diagram shows the shape and
@@ -135,6 +201,10 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 			}
 			if n.Note != "" {
 				notes = append(notes, n.Note)
+			} else if n.Seen != nil {
+				// The note a verifier writes already says how many; this is
+				// for a step that was counted and left without one.
+				notes = append(notes, "seen in "+plural(n.Seen.Traces, "recording"))
 			}
 			if n.HTTP != nil {
 				wire := []string{"HTTP"}

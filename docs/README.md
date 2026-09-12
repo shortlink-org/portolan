@@ -32,3 +32,4 @@
 | [portolan.0011](adr/portolan.0011.md) | Only names are read from what deploys a service | accepted | 2026-09-11 |
 | [portolan.0012](adr/portolan.0012.md) | Where a service runs is read from the deployer, as a snapshot | accepted | 2026-09-11 |
 | [portolan.0013](adr/portolan.0013.md) | What should run is read from the GitOps tree, and laid under what does | accepted | 2026-09-11 |
+| [portolan.0014](adr/portolan.0014.md) | A recording is kept beside the code, and lays what it showed over the flow | accepted | 2026-09-12 |

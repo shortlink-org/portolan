@@ -46,7 +46,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **operator** → **billing.invoices** — Raise → Invoice
-   `test/e2e/raise_test.go:31`
+   `test/e2e/raise_test.go:31` · seen in 2 recordings
 <a id="step-s2"></a>
 2. **billing.invoices** → **bus** — billing.invoices.invoice.InvoiceRaised
    [`billing.invoices.invoice.InvoiceRaised`](../billing/invoices/aggregates/invoice.md#event-billing-invoices-invoice-invoiceraised)
@@ -78,3 +78,17 @@ sequenceDiagram
 > > <a id="step-s5"></a>
 > > 5. **billing.invoices** → **operator** — write-off notice
 > >    status: declared
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** `services/billing/telemetry/traces.jsonl`
+- **Trace:** `7f1c`
+- **Recorded:** 2026-09-05T20:47:00Z
+- **Duration:** 26.738 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](raise-invoice.md#step-s1) | `POST /v1/invoices` | 26.738 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/invoices` |
+| [s2](raise-invoice.md#step-s2) | `publish billing.InvoiceRaised` | 0.412 ms | `event.name=billing.InvoiceRaised` `messaging.destination.name=billing_invoice` |

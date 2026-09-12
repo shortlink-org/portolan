@@ -50,3 +50,17 @@ sequenceDiagram
 <a id="step-s5"></a>
 5. **auth.auth** → **bus** — PasswordChanged
    [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `fc0d47a555b03d7af44a85259857c04e`
+- **Recorded:** 2026-09-05T20:47:00.207552Z
+- **Duration:** 41.39 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-change-password.md#step-s1) | `POST /v1/users/me/password` | 41.39 ms | `http.request.method=POST` `http.response.status_code=204` `http.route=/v1/users/me/password` `server.address=localhost` `server.port=8080` |
+| [s5](auth-change-password.md#step-s5) | `publish auth.PasswordChanged` | 0.002 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |

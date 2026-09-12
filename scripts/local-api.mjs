@@ -22,6 +22,7 @@ import { loadManifest, readManifest, readManifestText } from "./manifest.mjs";
 import { builtinPluginNames } from "./builtin-plugins.mjs";
 import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
+import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
 import {
   discoverProject,
   matches,
@@ -771,6 +772,18 @@ async function body(req) {
   return text ? JSON.parse(text) : {};
 }
 
+/** The bytes of an upload, as they came, up to a limit that is said out loud. */
+async function rawBody(req, limit) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > limit) throw new Error(`The upload is larger than ${Math.round(limit / 1024 / 1024)} MB.`);
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 function localRequest(req) {
   const address = req.socket.remoteAddress ?? "";
   const localAddress = address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
@@ -1002,6 +1015,65 @@ function prepareProjectTrial(workspace, request) {
   return { ...snapshot, fingerprint, plan };
 }
 
+/**
+ * A recording uploaded from the page, staged where the verifier will read it
+ * - the project's recordings directory, in a snapshot of the workspace - with
+ * the verify step that reads it, added to the snapshot's manifest when the
+ * project has none. The workspace itself is not touched until the trial is
+ * applied.
+ */
+function prepareTraceTrial(workspace, { projectId, name, content }) {
+  const manifest = readManifest(join(workspace, "portolan.json"));
+  const project = (manifest.projects ?? []).find((candidate) => candidate.id === projectId);
+  if (!project) throw new Error(`Project "${projectId}" does not exist. Add the project before recording it.`);
+  const known = builtinPluginNames().has("otel") || (manifest.plugins ?? []).some((plugin) => plugin.name === "otel");
+  if (!known) throw new Error("The otel verifier is not available in this installation.");
+  const { batches, spans } = checkRecording(content);
+  const recording = recordingPath(name, { taken: (candidate) => lstatExists(join(workspace, project.root, candidate)) });
+  const fingerprint = workspaceFingerprint(workspace);
+  const snapshot = snapshotWorkspace(workspace);
+  if (workspaceFingerprint(workspace) !== fingerprint) {
+    rmSync(snapshot.holder, { recursive: true, force: true });
+    throw new Error("Files changed while the trial workspace was being created. Try again.");
+  }
+  const target = join(snapshot.snapshot, project.root, recording);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, content);
+  const next = manifestWithTraceStep(manifest, project);
+  if (next.changed) writeManifest(join(snapshot.snapshot, "portolan.json"), next.manifest);
+  const trace = { projectId, root: project.root, recording, step: next.step, stepAdded: next.changed, stepChange: next.change, batches, spans, content };
+  return { ...snapshot, fingerprint, trace };
+}
+
+/**
+ * The recording written beside the project, and the manifest with the step
+ * that reads it and the names the page mapped. Undoable the way a project
+ * is: the manifest before is remembered for a while.
+ */
+function applyTraceTrial(workspace, trial, { services, events } = {}) {
+  const manifestPath = join(workspace, "portolan.json");
+  const before = readFileSync(manifestPath, "utf8");
+  const manifest = readManifestText(before, manifestPath);
+  const project = (manifest.projects ?? []).find((candidate) => candidate.id === trial.trace.projectId);
+  if (!project) throw new Error(`Project "${trial.trace.projectId}" no longer exists.`);
+  const target = join(workspace, project.root, trial.trace.recording);
+  if (lstatExists(target)) throw new Error(`${posix.join(project.root, trial.trace.recording)} appeared while the trial ran. Run it again.`);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, trial.trace.content, { flag: "wx" });
+  const next = manifestWithTraceStep(manifest, project);
+  const found = traceStepFor(next.manifest, project);
+  const mapped = stepWithMappings(found.step, { services, events });
+  const changed = next.changed || JSON.stringify(mapped) !== JSON.stringify(found.step);
+  let undoToken = null;
+  if (changed) {
+    const verify = [...next.manifest.verify];
+    verify[found.index] = mapped;
+    writeManifest(manifestPath, { ...next.manifest, verify });
+    undoToken = rememberManifestUndo(workspace, before, readFileSync(manifestPath, "utf8"));
+  }
+  return { recording: posix.join(project.root, trial.trace.recording), project: project.id, stepAdded: next.changed, manifestChanged: changed, undoToken };
+}
+
 function freeLocalPort() {
   return new Promise((resolvePort, reject) => {
     const server = createNetServer();
@@ -1064,7 +1136,7 @@ async function startProjectPreview(job) {
 
 function startJob(workspace, mode, approvedPreview, preparedTrial) {
   const id = randomUUID();
-  const preview = mode === "preview" || mode === "project-preview";
+  const preview = mode === "preview" || mode === "project-preview" || mode === "trace-preview";
   const fingerprint = preparedTrial?.fingerprint ?? (preview ? workspaceFingerprint(workspace) : approvedPreview?.fingerprint);
   const snapshot = preparedTrial ?? (preview ? snapshotWorkspace(workspace) : null);
   if (preview && !preparedTrial && workspaceFingerprint(workspace) !== fingerprint) {
@@ -1073,7 +1145,7 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
   }
   const generatedAt = preview ? new Date().toISOString() : approvedPreview?.generatedAt;
   const gitAuth = gitAuthEnvironment();
-  const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, gitAuth, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt, projectPlan: preparedTrial?.plan ?? null, projectRequest: preparedTrial ? structuredClone(preparedTrial.request) : null };
+  const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, gitAuth, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt, projectPlan: preparedTrial?.plan ?? null, projectRequest: preparedTrial?.request ? structuredClone(preparedTrial.request) : null, trace: preparedTrial?.trace ?? null };
   jobs.set(id, job);
   const cli = process.env.PORTOLAN_CLI;
   const command = cli ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm";
@@ -1115,6 +1187,13 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
         emit(job, { type: "project-trial-ready", plan: job.projectPlan, ...job.trial });
       }
       catch (cause) { job.status = "failed"; emit(job, { type: "log", stream: "stderr", message: `Could not summarise project trial: ${cause instanceof Error ? cause.message : String(cause)}` }); }
+    }
+    if (mode === "trace-preview" && job.status === "ok") {
+      try {
+        job.traceTrial = summarizeTraceTrial(job.runRoot, job.trace, job.events);
+        emit(job, { type: "trace-trial-ready", ...job.traceTrial });
+      }
+      catch (cause) { job.status = "failed"; emit(job, { type: "log", stream: "stderr", message: `Could not summarise the recording: ${cause instanceof Error ? cause.message : String(cause)}` }); }
     }
     emit(job, { type: "process-finished", status: job.status, code, signal });
     for (const response of job.subscribers) response.end();
@@ -1168,6 +1247,19 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             req.on("close", () => job.subscribers.delete(res));
             return;
           }
+          if (req.method === "POST" && url.pathname === `${LOCAL_API_PREFIX}/traces/trials` && req.headers["x-portolan-local"] === "1") {
+            // The one upload the local API takes: a recording, as bytes,
+            // named by headers rather than wrapped in JSON.
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });
+            const content = await rawBody(req, UPLOAD_LIMIT);
+            const projectId = String(req.headers["x-portolan-project"] ?? "");
+            const name = decodeURIComponent(String(req.headers["x-portolan-filename"] ?? "recording.jsonl"));
+            const prepared = prepareTraceTrial(workspace, { projectId, name, content });
+            let job;
+            try { job = startJob(workspace, "trace-preview", null, prepared); }
+            catch (cause) { rmSync(prepared.holder, { recursive: true, force: true }); throw cause; }
+            return send(res, 202, { runId: job.id, mode: job.mode, recording: posix.join(prepared.trace.root, prepared.trace.recording), project: projectId, stepAdded: prepared.trace.stepAdded, stepChange: prepared.trace.stepChange, spans: prepared.trace.spans });
+          }
           if (req.method !== "POST" || req.headers["content-type"]?.split(";")[0] !== "application/json" || req.headers["x-portolan-local"] !== "1") {
             return send(res, 405, { error: "Use a local JSON request." });
           }
@@ -1207,6 +1299,27 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             const trial = jobs.get(disposeTrialMatch[1]);
             if (!trial?.projectRequest) return send(res, 404, { error: "Project trial not found." });
             if (trial.status === "running") return send(res, 409, { error: "Cancel the running project trial first." });
+            disposeProjectTrial(trial);
+            return send(res, 200, { runId: trial.id, status: "disposed" });
+          }
+          const applyTraceMatch = url.pathname.match(/^\/__portolan\/traces\/trials\/([^/]+)\/apply$/);
+          if (applyTraceMatch) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });
+            const trial = jobs.get(applyTraceMatch[1]);
+            if (!trial?.trace || trial.status !== "ok" || !trial.traceTrial) return send(res, 409, { error: "Run a successful recording trial before keeping it." });
+            if (trial.applied) return send(res, 409, { error: "This recording was already kept." });
+            if (workspaceFingerprint(workspace) !== trial.fingerprint) return send(res, 409, { error: "Files changed after this trial. Upload the recording again." });
+            const result = applyTraceTrial(workspace, trial, { services: input.services, events: input.events });
+            trial.applied = true;
+            const generation = input.generate ? startJob(workspace, "write", trial) : null;
+            return send(res, 201, { ...result, setup: setup(workspace, publicSetupFrom), run: generation ? { runId: generation.id, mode: generation.mode } : null });
+          }
+          const disposeTraceMatch = url.pathname.match(/^\/__portolan\/traces\/trials\/([^/]+)\/dispose$/);
+          if (disposeTraceMatch) {
+            const trial = jobs.get(disposeTraceMatch[1]);
+            if (!trial?.trace) return send(res, 404, { error: "Recording trial not found." });
+            if (trial.status === "running") return send(res, 409, { error: "Cancel the running trial first." });
+            trial.trace.content = null;
             disposeProjectTrial(trial);
             return send(res, 200, { runId: trial.id, status: "disposed" });
           }

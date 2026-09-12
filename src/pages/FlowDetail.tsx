@@ -30,6 +30,8 @@ import {
   isCrossContext,
 } from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
+import { Recordings } from "../flow/Recordings";
+import { stepsShownBy } from "../flow/examples";
 import { FlowTable } from "../flow/FlowTable";
 import { FlowToolbar } from "../flow/FlowToolbar";
 import { buildChapters, groupRows } from "../flow/chapters";
@@ -127,6 +129,8 @@ export function FlowDetail() {
   const [hoverStep, setHoverStep] = useState<string | null>(null);
   /** The step LikeC4's walkthrough is on, when it is running. */
   const [walkStep, setWalkStep] = useState<string | null>(null);
+  /** The recording whose steps are lit on the picture, when one is chosen. */
+  const [exampleId, setExampleId] = useState<string | null>(null);
 
   const canvas = useRef<CanvasHandle | null>(null);
 
@@ -264,6 +268,17 @@ export function FlowDetail() {
   // watching rather than pointing, and the rail's job is to follow.
   const activeId = walkStep ?? selectedStepId ?? focusedMatch;
 
+  /**
+   * The steps a chosen recording showed. A recording is a reading of the
+   * flow like a path is, and it lights the picture the same way, below
+   * whatever the reader is pointing at.
+   */
+  const exampleSteps = useMemo(() => {
+    const example = exampleId
+      ? flow?.examples?.find((e) => e.id === exampleId)
+      : undefined;
+    return example ? stepsShownBy(example) : [];
+  }, [flow, exampleId]);
   const litSteps = useMemo(
     () =>
       walkStep
@@ -272,8 +287,10 @@ export function FlowDetail() {
           ? [selectedStepId]
           : hoverStep
             ? [hoverStep]
-            : matches,
-    [walkStep, selectedStepId, hoverStep, matches],
+            : matches.length > 0
+              ? matches
+              : exampleSteps,
+    [walkStep, selectedStepId, hoverStep, matches, exampleSteps],
   );
 
   useEffect(() => {
@@ -417,6 +434,7 @@ export function FlowDetail() {
 
   const rail = (
     <>
+      <Recordings flow={flow} exampleId={exampleId} onExample={setExampleId} />
       <MatchPill
         selection={selection}
         matches={matches}

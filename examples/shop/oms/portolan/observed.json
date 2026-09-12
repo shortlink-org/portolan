@@ -125,7 +125,10 @@
           "label": "CancelOrder",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41"
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -169,7 +172,10 @@
                   "label": "OrderCancelled",
                   "status": "verified",
                   "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26"
+                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26",
+                  "seen": {
+                    "traces": 1
+                  }
                 }
               ]
             }
@@ -184,6 +190,38 @@
           "label": "by_id",
           "status": "declared",
           "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42"
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#b23aa3f8bb39a65d8b5000d5741081aa",
+          "recording": "examples/shop/oms/telemetry/traces.jsonl",
+          "traceId": "b23aa3f8bb39a65d8b5000d5741081aa",
+          "recordedAt": "2026-09-04T19:48:30.544095Z",
+          "durationMs": 6.374,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "shop.v1.OrderService/CancelOrder",
+              "durationMs": 6.374,
+              "attributes": {
+                "rpc.method": "CancelOrder",
+                "rpc.service": "shop.v1.OrderService",
+                "rpc.system": "grpc"
+              }
+            },
+            {
+              "step": "s4",
+              "label": "publish oms.OrderCancelled",
+              "durationMs": 0.285,
+              "attributes": {
+                "event.name": "oms.OrderCancelled",
+                "messaging.destination.name": "shop.oms.order",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -221,7 +259,10 @@
           "label": "GetOrder",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31"
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "type": "step",
@@ -232,6 +273,46 @@
           "label": "by_id",
           "status": "declared",
           "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42"
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#a7416708d5eeef4f1559ce68e301d420",
+          "recording": "examples/shop/oms/telemetry/traces.jsonl",
+          "traceId": "a7416708d5eeef4f1559ce68e301d420",
+          "recordedAt": "2026-09-04T19:48:30.53394Z",
+          "durationMs": 3.226,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "shop.v1.OrderService/GetOrder",
+              "durationMs": 3.226,
+              "attributes": {
+                "rpc.method": "GetOrder",
+                "rpc.service": "shop.v1.OrderService",
+                "rpc.system": "grpc"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#bd903650a50496ad991b1a24134f00d9",
+          "recording": "examples/shop/oms/telemetry/traces.jsonl",
+          "traceId": "bd903650a50496ad991b1a24134f00d9",
+          "recordedAt": "2026-09-04T19:48:30.557266Z",
+          "durationMs": 0.794,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "shop.v1.OrderService/GetOrder",
+              "durationMs": 0.794,
+              "attributes": {
+                "rpc.method": "GetOrder",
+                "rpc.service": "shop.v1.OrderService",
+                "rpc.system": "grpc"
+              }
+            }
+          ]
         }
       ]
     },
@@ -270,7 +351,10 @@
           "label": "BasketCheckedOut",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19"
+          "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -312,7 +396,43 @@
           "label": "OrderPlaced",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31"
+          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31",
+          "seen": {
+            "traces": 1
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#9fa8b3540bf975f37448bdd06ea893f2",
+          "recording": "examples/shop/oms/telemetry/traces.jsonl",
+          "traceId": "9fa8b3540bf975f37448bdd06ea893f2",
+          "recordedAt": "2026-09-04T19:48:27.103931Z",
+          "durationMs": 25.826,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "consume cart.BasketCheckedOut",
+              "durationMs": 25.826,
+              "attributes": {
+                "event.name": "cart.BasketCheckedOut",
+                "messaging.destination.name": "shop.cart.basket",
+                "messaging.operation.type": "process",
+                "messaging.system": "nats"
+              }
+            },
+            {
+              "step": "s5",
+              "label": "publish oms.OrderPlaced",
+              "durationMs": 0.766,
+              "attributes": {
+                "event.name": "oms.OrderPlaced",
+                "messaging.destination.name": "shop.oms.order",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     }

@@ -960,26 +960,67 @@ function raise<T extends { status: Status; note?: string }>(
  *
  * Only `declared` is raised. `unresolved` means the far end is not in the
  * catalog, and a trace showing the hop does not put it there.
+ *
+ * The second declaration may also say more than the first: a hop it saw
+ * that the code does not declare, carried as a step with `seen` on it and
+ * an id the code never gave, sitting where the recording put it; a lane
+ * such a hop needed, added after the declared ones; and the recordings
+ * themselves, as examples. Each is taken as it comes - a recording is the
+ * one witness for it - and nothing already declared moves.
  */
 export function overlayFlow(existing: Flow, incoming: Flow): Flow | undefined {
-  const lanes = (flow: Flow) => flow.participants.map((p) => p.id).join(" ");
-  if (lanes(existing) !== lanes(incoming)) return undefined;
+  const mine = existing.participants.map((p) => p.id);
+  const theirs = incoming.participants.map((p) => p.id);
+  if (theirs.length < mine.length || mine.some((id, i) => theirs[i] !== id))
+    return undefined;
 
   const steps = overlayNodes(existing.steps, incoming.steps);
   if (!steps) return undefined;
 
-  return { ...existing, steps };
+  const out: Flow = { ...existing, steps };
+  if (theirs.length > mine.length) {
+    out.participants = [
+      ...existing.participants,
+      ...incoming.participants.slice(mine.length),
+    ];
+  }
+  const examples = [...(existing.examples ?? [])];
+  const held = new Set(examples.map((example) => example.id));
+  for (const example of incoming.examples ?? []) {
+    if (!held.has(example.id)) {
+      held.add(example.id);
+      examples.push(example);
+    }
+  }
+  if (examples.length) out.examples = examples;
+
+  return out;
+}
+
+/** A step the second declaration added: seen in a recording, unknown to the code. */
+function isSeenAddition(node: FlowNode, against: FlowNode | undefined): boolean {
+  return (
+    node.type === "step" &&
+    node.seen !== undefined &&
+    (against === undefined || against.id !== node.id)
+  );
 }
 
 function overlayNodes(
   existing: FlowNode[],
   incoming: FlowNode[],
 ): FlowNode[] | undefined {
-  if (existing.length !== incoming.length) return undefined;
   const out: FlowNode[] = [];
-  for (let i = 0; i < existing.length; i++) {
-    const a = existing[i]!;
-    const b = incoming[i]!;
+  let i = 0;
+  for (const b of incoming) {
+    const a = existing[i];
+    if (isSeenAddition(b, a)) {
+      out.push(b);
+
+      continue;
+    }
+    if (a === undefined) return undefined;
+    i++;
     if (a.type !== b.type || a.id !== b.id) return undefined;
     switch (a.type) {
       case "step": {
@@ -991,10 +1032,11 @@ function overlayNodes(
           (a.ref ?? "") !== (step.ref ?? "")
         )
           return undefined;
+        const seen = step.seen ? { seen: step.seen } : {};
         if (step.status === "verified" && a.status === "declared") {
-          out.push({ ...a, status: "verified", note: a.note || step.note });
+          out.push({ ...a, ...seen, status: "verified", note: a.note || step.note });
         } else {
-          out.push(a);
+          out.push({ ...a, ...seen });
         }
         break;
       }
@@ -1035,6 +1077,8 @@ function overlayNodes(
       }
     }
   }
+
+  if (i !== existing.length) return undefined;
 
   return out;
 }

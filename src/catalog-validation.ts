@@ -678,6 +678,35 @@ export function validateCatalog(catalog: Catalog): Catalog {
       }
     }
 
+    // An example names the steps it showed by id; one that names a step
+    // the flow does not have is a recording of some other flow, or of this
+    // one before it changed, and either way it would be shown next to the
+    // wrong step.
+    const exampleIds = new Set<string>();
+    for (const example of flow.examples ?? []) {
+      if (!example.id || !example.recording || !example.traceId) {
+        fail(
+          `flow "${flow.slug}" has an example with no id, recording or trace id`,
+          `flow ${flow.id}`,
+        );
+      }
+      if (exampleIds.has(example.id)) {
+        fail(
+          `flow "${flow.slug}" carries example "${example.id}" twice`,
+          `flow ${flow.id}`,
+        );
+      }
+      exampleIds.add(example.id);
+      for (const shown of example.steps) {
+        if (!stepById.has(shown.step)) {
+          fail(
+            `flow "${flow.slug}" example "${example.id}" shows unknown step "${shown.step}"`,
+            `flow ${flow.id}`,
+          );
+        }
+      }
+    }
+
     for (const step of steps) {
       if (step.kind !== "response") {
         if (step.replyTo !== undefined) {

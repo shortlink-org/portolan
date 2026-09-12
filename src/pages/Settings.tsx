@@ -56,6 +56,7 @@ import { CapabilityEmpty, Empty, SectionTitle } from "../components/PageHeader";
 import { Modal } from "../components/Overlay";
 import { MachineDocs } from "../components/MachineDocs";
 import { DeliverySettings } from "./settings/DeliverySettings";
+import { RecordingSettings } from "./settings/RecordingSettings";
 import { PreferencesSettings } from "./settings/PreferencesSettings";
 import { AboutSettings } from "./settings/AboutSettings";
 import { IntegrationsSettings } from "./settings/IntegrationsSettings";
@@ -1030,10 +1031,21 @@ const SETTINGS_LINKS = [
   ["Projects", paths.settingsProjects()],
   ["Pipeline", paths.settingsPipeline()],
   ["Delivery", paths.settingsDelivery()],
+  ["Recordings", paths.settingsRecordings()],
   ["Integrations", paths.settingsIntegrations()],
   ["Preferences", paths.settingsPreferences()],
   ["About", paths.settingsAbout()],
 ] as const;
+
+function RecordingsRoute({ local }: { local: boolean }) {
+  const setupInfo = useSetup();
+  return (
+    <section>
+      <SectionTitle right={local ? "reviewed before writing" : "local mode required"}>Recordings</SectionTitle>
+      <RecordingSettings local={local} projects={setupInfo.projects} />
+    </section>
+  );
+}
 
 function SettingsNav() {
   return (
@@ -1211,6 +1223,7 @@ function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolea
             <Route path="projects" element={<ProjectsSettings local={local} onAdd={onAdd} onRemove={onRemove} />} />
             <Route path="pipeline" element={<PipelineSettings />} />
             <Route path="delivery" element={<section><SectionTitle right={local ? "preview before writing" : "local mode required"}>Delivery presets</SectionTitle><DeliverySettings local={local} /></section>} />
+            <Route path="recordings" element={<RecordingsRoute local={local} />} />
             <Route path="integrations" element={<IntegrationsSettings />} />
             <Route path="preferences" element={<PreferencesSettings />} />
             <Route path="about" element={<AboutSettings />} />

@@ -858,6 +858,63 @@ describe("a second source that has seen the flow run", () => {
     expect(first?.type === "step" ? first.status : "").toBe("declared");
   });
 
+  it("takes a hop a recording showed that the code does not declare, where the recording put it", () => {
+    const seen = {
+      type: "step" as const,
+      id: "seen1",
+      from: "auth.auth",
+      to: "profile",
+      kind: "rpc" as const,
+      label: "GET /v1/profiles/42",
+      status: "unresolved" as const,
+      seen: { traces: 2 },
+    };
+    const lane = { id: "profile", kind: "unknown" as const, context: null, label: "profile" };
+    const example = { id: "telemetry/traces.jsonl#t1", recording: "telemetry/traces.jsonl", traceId: "t1", durationMs: 2.5, steps: [{ step: "s1", durationMs: 2.5 }] };
+    const merged = mergeCatalogs([
+      source("a.json", { flows: [flow([step("s1", "declared"), step("s2", "declared")])] }),
+      source("b.json", {
+        flows: [{
+          ...flow([{ ...step("s1", "verified"), seen: { traces: 2 } }, seen, step("s2", "declared")]),
+          participants: [...flow([]).participants, lane],
+          examples: [example],
+        }],
+      }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    const out = merged.catalog.flows[0]!;
+    expect(out.steps.map((s) => (s.type === "step" ? `${s.id}:${s.status}` : s.type))).toEqual(["s1:verified", "seen1:unresolved", "s2:declared"]);
+    expect(out.steps[0]?.type === "step" ? out.steps[0].seen : undefined).toEqual({ traces: 2 });
+    expect(out.participants.map((p) => p.id)).toEqual(["client", "auth.auth", "profile"]);
+    expect(out.examples).toEqual([example]);
+  });
+
+  it("is still a conflict when a lane the code declared is missing or a declared step is", () => {
+    const fewerLanes = mergeCatalogs([
+      source("a.json", { flows: [flow([step("s1", "declared")])] }),
+      source("b.json", { flows: [{ ...flow([step("s1", "verified")]), participants: [{ id: "client", kind: "actor" as const, context: null }] }] }),
+    ]);
+    expect(fewerLanes.conflicts).toHaveLength(1);
+
+    const fewerSteps = mergeCatalogs([
+      source("a.json", { flows: [flow([step("s1", "declared"), step("s2", "declared")])] }),
+      source("b.json", { flows: [flow([step("s1", "verified")])] }),
+    ]);
+    expect(fewerSteps.conflicts).toHaveLength(1);
+  });
+
+  it("keeps an example it already has when a second recording says it again", () => {
+    const example = (id: string) => ({ id, recording: "t.jsonl", traceId: id, durationMs: 1, steps: [] });
+    const merged = mergeCatalogs([
+      source("a.json", { flows: [{ ...flow([step("s1", "declared")]), examples: [example("a")] }] }),
+      source("b.json", { flows: [{ ...flow([step("s1", "verified")]), examples: [example("a"), example("b")] }] }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    expect(merged.catalog.flows[0]?.examples?.map((e) => e.id)).toEqual(["a", "b"]);
+  });
+
   it("lets verified win for a consumer and a call declared twice", () => {
     const withEdges = (status: "declared" | "verified") => {
       const ctx = context("shop", ["shop.oms"]);

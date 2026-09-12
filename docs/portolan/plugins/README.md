@@ -179,7 +179,9 @@ variant. In Java it is a top-level enum in the aggregate's package. In PHP it
 is a backed `enum` anywhere in the module, and on an Eloquent model the
 constants that share a prefix - `STATUS_PENDING = 'pending'` beside
 `STATUS_CLOSED = 'closed'` - with `@deprecated` in a constant's docblock
-marking the value; see `extract-laravel/README.md`. In proto,
+marking the value; see `extract-laravel/README.md`. In a PHP tree laid out
+by bounded context (`extract-php-ddd`) it is a backed `enum` under a module's
+`Domain/`. In proto,
 the enums the messages reach through their fields sit on the interface as
 `enums`, with the numbers the wire uses.
 
@@ -1029,8 +1031,41 @@ called" - and `unresolved` is never raised, because a trace does not put the
 far end in the catalog. A consumer span inside a trace opens a flow of its own
 and is matched the same way, so one password change verifies both the
 request's flow and the policy's. A root no flow opens is written down as
-`observed-<service>-<route>`, once per shape, with a summary saying how many
+`observed-<service>-<route>`, once per opening, with a summary saying how many
 traces showed it.
+
+Every recording that opened a flow is laid over it. A declared step carries
+`seen: { traces }`, how many recordings showed it. An rpc or an event a
+recording showed that the code does not declare is put into the flow after
+the declared step it followed, as a step with an id the code never gave
+(`seen1`, `seen2`) and a note saying in how many recordings; a lane such a
+hop needed is added after the declared ones. A store call is never added -
+the code's word on which repository method ran is the better one - and a
+consumer met on the way belongs to the flow it opens. Two observed
+recordings that open the same way are one flow, each step counting the
+recordings that showed it, so a happy path and a refusal read as one
+sequence with two ends. The merge takes all of this from a second
+declaration of a flow because it says where it came from: `seen` on a step
+the first declaration does not have.
+
+A recording is also kept as an example of each flow it showed, under
+`examples` on the flow: the recording and trace it came from, when it ran,
+how long it took, and for each step the span's name, its length and an
+allowlist of its attributes - `http.route`, `http.request.method`,
+`http.response.status_code`, `rpc.service`, `rpc.method`, `db.operation.name`,
+`db.collection.name`, `messaging.destination.name`, `event.name`,
+`server.address` and a few more of that kind. A query text, a header, a full
+URL or a path with an id in it is somebody's data and is never carried; the
+list is closed in `examples.go`, and a new attribute is added there with the
+argument for it. `examples` in the options says how many recordings a flow
+keeps, the ones that show the most of it first: five when unset, zero for
+none.
+
+A recording added from the page lands under the project's
+`telemetry/recordings/` and widens (or adds) the project's `otel` verify step
+to read that directory, so every run after reads it too; the page runs the
+generator over a copy of the workspace first and shows which flows the
+recording showed before anything is written (portolan.0014).
 
 `service.name` is matched to the one service whose slug it is, `event.name` to
 the one event whose `wire.name` it is, or failing that to the one event of the

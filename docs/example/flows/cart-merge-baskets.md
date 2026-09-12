@@ -62,3 +62,20 @@ sequenceDiagram
 <a id="step-s8"></a>
 8. **shop.cart** → **bus** — BasketMerged
    [`shop.cart.basket.BasketMerged`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketmerged) · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L47) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `2f1e3fbc117e7892a3d2dc7365ff06c7`
+- **Recorded:** 2026-09-04T18:33:36.633Z
+- **Duration:** 14.668 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-merge-baskets.md#step-s1) | `POST /v1/baskets/:basketId/merge` | 14.668 ms | `http.request.method=POST` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/merge` `server.address=localhost` `server.port=8081` |
+| [s2](cart-merge-baskets.md#step-s2) | `GET` | 4.518 ms | `http.request.method=GET` `http.response.status_code=200` `server.address=localhost` `server.port=8080` |
+| [s6](cart-merge-baskets.md#step-s6) | `publish cart.BasketItemAdded` | 0.326 ms | `event.name=cart.BasketItemAdded` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s5](cart-merge-baskets.md#step-s5) | `publish cart.BasketCreated` | 0.281 ms | `event.name=cart.BasketCreated` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s8](cart-merge-baskets.md#step-s8) | `publish cart.BasketMerged` | 0.281 ms | `event.name=cart.BasketMerged` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |

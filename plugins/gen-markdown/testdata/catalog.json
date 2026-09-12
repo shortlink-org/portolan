@@ -398,6 +398,36 @@
       "summary": "An invoice is raised, and paid or written off.",
       "source": "test/e2e/raise_test.go",
       "owner": "billing",
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#7f1c",
+          "recording": "services/billing/telemetry/traces.jsonl",
+          "traceId": "7f1c",
+          "recordedAt": "2026-09-05T20:47:00Z",
+          "durationMs": 26.738,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/invoices",
+              "durationMs": 26.738,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.route": "/v1/invoices",
+                "http.response.status_code": "201"
+              }
+            },
+            {
+              "step": "s2",
+              "label": "publish billing.InvoiceRaised",
+              "durationMs": 0.412,
+              "attributes": {
+                "event.name": "billing.InvoiceRaised",
+                "messaging.destination.name": "billing_invoice"
+              }
+            }
+          ]
+        }
+      ],
       "participants": [
         {
           "id": "operator",
@@ -430,7 +460,10 @@
           "kind": "rpc",
           "label": "Raise",
           "status": "verified",
-          "line": "raise_test.go:31"
+          "line": "raise_test.go:31",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "type": "step",

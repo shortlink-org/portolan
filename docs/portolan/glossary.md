@@ -3,7 +3,7 @@
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
-- **Terms:** 47
+- **Terms:** 48
 - **Read from:** [`GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -43,6 +43,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Plugin** — A program that takes one JSON message on stdin and answers with one on stdout, run as a process or as a wasm module, in whichever language it was written. An extractor, a verifier, a generator or a fetcher.
 - **Problem** — An edge that leaves the chart: a call nobody answers, a channel with a second publisher, a column whose lineage crosses a service boundary. Listed on the Problems page, errors first.
 - **Project** — A named source root in the manifest, so the pipeline inputs that belong to one repository have one name on the Settings page.
+- **Recording** — A file of traces kept beside a project, under `telemetry/recordings/`, that a verifier reads on every run. One is added from the page or by hand; either way it is a file in the repository, so the next regeneration verifies the same hops. A recording is also kept as an **example** of each flow it showed: which steps ran, how long each took, the names the spans carried - never a query text, a header or a path with an id in it.
 - **Repository pin** — A repository the estate was read at and the commit it was read at, so a source path in another repository is still a link. A fact about the estate, not a field on a service.
 - **Service** — What a context owns: a repository path, what it provides and consumes, its aggregates, the stores and modules it touches. Its kind says what it is when it is not a service in the domain sense; see component.
 - **Source** — A file the manifest's sources globs find: a fragment an extractor wrote, a hand-written file in `data/`, a fetched repository's pin.

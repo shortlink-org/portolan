@@ -35,6 +35,11 @@ type Options struct {
 	// name is not the event's name in the model.
 	Events map[string]string `json:"events,omitempty"`
 
+	// Examples is how many recordings a flow keeps as examples of itself
+	// running: the ones that show the most of it, earliest first. Five when
+	// unset; zero keeps none.
+	Examples *int `json:"examples,omitempty"`
+
 	// Out names the fragment file.
 	Out string `json:"out,omitempty"`
 }

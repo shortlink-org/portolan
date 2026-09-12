@@ -1974,6 +1974,14 @@
             }
           ]
         },
+        "examples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many recordings a flow keeps as examples of itself running: the ones that show the most of it, earliest first. Five when unset; zero keeps none.",
+          "examples": [
+            3
+          ]
+        },
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory."

@@ -118,7 +118,10 @@
           "label": "changePassword",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/user/infrastructure/http/change_password.go:20"
+          "line": "examples/auth/internal/user/infrastructure/http/change_password.go:20",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "evidence": [
@@ -246,7 +249,44 @@
           "label": "PasswordChanged",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/user/application/change_password/usecase.go:48"
+          "line": "examples/auth/internal/user/application/change_password/usecase.go:48",
+          "seen": {
+            "traces": 1
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#fc0d47a555b03d7af44a85259857c04e",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "fc0d47a555b03d7af44a85259857c04e",
+          "recordedAt": "2026-09-05T20:47:00.207552Z",
+          "durationMs": 41.39,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/users/me/password",
+              "durationMs": 41.39,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "204",
+                "http.route": "/v1/users/me/password",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s5",
+              "label": "publish auth.PasswordChanged",
+              "durationMs": 0.002,
+              "attributes": {
+                "event.name": "auth.PasswordChanged",
+                "messaging.destination.name": "auth_user",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -292,7 +332,10 @@
           "label": "getUser",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (3 traces).",
-          "line": "examples/auth/internal/user/infrastructure/http/get.go:11"
+          "line": "examples/auth/internal/user/infrastructure/http/get.go:11",
+          "seen": {
+            "traces": 3
+          }
         },
         {
           "evidence": [
@@ -327,6 +370,71 @@
             "store": "auth.auth.pg",
             "method": "ByID"
           }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#11892613b4650af0870b876205a89fe5",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "11892613b4650af0870b876205a89fe5",
+          "recordedAt": "2026-09-05T20:47:00.06401Z",
+          "durationMs": 1.845,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/users/{userId}",
+              "durationMs": 1.845,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "404",
+                "http.route": "/v1/users/{userId}",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#81bc03dd8efa5caad98d84087bf15f84",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "81bc03dd8efa5caad98d84087bf15f84",
+          "recordedAt": "2026-09-05T20:47:00.077493Z",
+          "durationMs": 0.729,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/users/{userId}",
+              "durationMs": 0.729,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "404",
+                "http.route": "/v1/users/{userId}",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#233c6f00d7a0373ee63a2e9c7bbc1f2e",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "233c6f00d7a0373ee63a2e9c7bbc1f2e",
+          "recordedAt": "2026-09-05T20:47:06.335468Z",
+          "durationMs": 0.992,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/users/{userId}",
+              "durationMs": 0.992,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "200",
+                "http.route": "/v1/users/{userId}",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            }
+          ]
         }
       ]
     },
@@ -383,7 +491,10 @@
           "label": "login",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/session/infrastructure/http/login.go:11"
+          "line": "examples/auth/internal/session/infrastructure/http/login.go:11",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "evidence": [
@@ -1073,7 +1184,76 @@
           "label": "SessionStarted",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/session/application/login/usecase.go:77"
+          "line": "examples/auth/internal/session/application/login/usecase.go:77",
+          "seen": {
+            "traces": 2
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#4ad5c108c2cddcec5041e0563c9b79ca",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "4ad5c108c2cddcec5041e0563c9b79ca",
+          "recordedAt": "2026-09-05T20:47:00.132546Z",
+          "durationMs": 26.738,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/sessions",
+              "durationMs": 26.738,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/sessions",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s20",
+              "label": "publish auth.SessionStarted",
+              "durationMs": 0.003,
+              "attributes": {
+                "event.name": "auth.SessionStarted",
+                "messaging.destination.name": "auth_session",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#ec6f863cfcaa33835afdde517f205f1b",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "ec6f863cfcaa33835afdde517f205f1b",
+          "recordedAt": "2026-09-05T20:47:00.167488Z",
+          "durationMs": 23.918,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/sessions",
+              "durationMs": 23.918,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/sessions",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s20",
+              "label": "publish auth.SessionStarted",
+              "durationMs": 0.002,
+              "attributes": {
+                "event.name": "auth.SessionStarted",
+                "messaging.destination.name": "auth_session",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -1124,7 +1304,10 @@
           "label": "logout",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/session/infrastructure/http/logout.go:15"
+          "line": "examples/auth/internal/session/infrastructure/http/logout.go:15",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "evidence": [
@@ -1218,7 +1401,44 @@
           "label": "SessionEnded",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/session/application/logout/usecase.go:48"
+          "line": "examples/auth/internal/session/application/logout/usecase.go:48",
+          "seen": {
+            "traces": 1
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#81580abd0bc8ab1c73813a0cab33f499",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "81580abd0bc8ab1c73813a0cab33f499",
+          "recordedAt": "2026-09-05T20:47:06.282783Z",
+          "durationMs": 4.452,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "DELETE /v1/sessions/current",
+              "durationMs": 4.452,
+              "attributes": {
+                "http.request.method": "DELETE",
+                "http.response.status_code": "204",
+                "http.route": "/v1/sessions/current",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s4",
+              "label": "publish auth.SessionEnded",
+              "durationMs": 0.003,
+              "attributes": {
+                "event.name": "auth.SessionEnded",
+                "messaging.destination.name": "auth_session",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -1269,7 +1489,10 @@
           "label": "registerUser",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/user/infrastructure/http/register.go:16"
+          "line": "examples/auth/internal/user/infrastructure/http/register.go:16",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "evidence": [
@@ -1363,7 +1586,76 @@
           "label": "UserRegistered",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/user/application/register/usecase.go:53"
+          "line": "examples/auth/internal/user/application/register/usecase.go:53",
+          "seen": {
+            "traces": 2
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#2b90c7968845189e6fe599f929f78d3e",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "2b90c7968845189e6fe599f929f78d3e",
+          "recordedAt": "2026-09-05T20:47:00.094859Z",
+          "durationMs": 29.607,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/users",
+              "durationMs": 29.607,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/users",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s4",
+              "label": "publish auth.UserRegistered",
+              "durationMs": 0.001,
+              "attributes": {
+                "event.name": "auth.UserRegistered",
+                "messaging.destination.name": "auth_user",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#3b9423e32e2b098574b290b3efc43687",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "3b9423e32e2b098574b290b3efc43687",
+          "recordedAt": "2026-09-05T20:47:06.298264Z",
+          "durationMs": 28.56,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/users",
+              "durationMs": 28.56,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/users",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            },
+            {
+              "step": "s4",
+              "label": "publish auth.UserRegistered",
+              "durationMs": 0.002,
+              "attributes": {
+                "event.name": "auth.UserRegistered",
+                "messaging.destination.name": "auth_user",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -1405,7 +1697,57 @@
           "label": "PasswordChanged",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47"
+          "line": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47",
+          "seen": {
+            "traces": 1
+          }
+        },
+        {
+          "type": "step",
+          "id": "seen1",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.session.SessionEnded",
+          "label": "SessionEnded",
+          "status": "verified",
+          "note": "Seen in 1 recording of 1 trace; the code does not declare this hop.",
+          "seen": {
+            "traces": 1
+          }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#fc0d47a555b03d7af44a85259857c04e",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "fc0d47a555b03d7af44a85259857c04e",
+          "recordedAt": "2026-09-05T20:47:00.381452Z",
+          "durationMs": 5.252,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "consume auth.PasswordChanged",
+              "durationMs": 5.252,
+              "attributes": {
+                "event.name": "auth.PasswordChanged",
+                "messaging.destination.name": "auth_user",
+                "messaging.operation.type": "process",
+                "messaging.system": "inproc"
+              }
+            },
+            {
+              "step": "seen1",
+              "label": "publish auth.SessionEnded",
+              "durationMs": 0.009,
+              "attributes": {
+                "event.name": "auth.SessionEnded",
+                "messaging.destination.name": "auth_session",
+                "messaging.operation.type": "publish",
+                "messaging.system": "outbox"
+              }
+            }
+          ]
         }
       ]
     },
@@ -1451,7 +1793,10 @@
           "label": "validateSession",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/session/infrastructure/http/validate.go:12"
+          "line": "examples/auth/internal/session/infrastructure/http/validate.go:12",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "evidence": [
@@ -1486,6 +1831,50 @@
             "store": "auth.auth.pg",
             "method": "ByToken"
           }
+        }
+      ],
+      "examples": [
+        {
+          "id": "telemetry/traces.jsonl#37f66f3381772c818c4de1df0b16c00f",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "37f66f3381772c818c4de1df0b16c00f",
+          "recordedAt": "2026-09-05T20:47:00.198653Z",
+          "durationMs": 1.724,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/sessions/current",
+              "durationMs": 1.724,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "200",
+                "http.route": "/v1/sessions/current",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            }
+          ]
+        },
+        {
+          "id": "telemetry/traces.jsonl#9007e50cfd5638f2516100d48d14e46c",
+          "recording": "examples/auth/telemetry/traces.jsonl",
+          "traceId": "9007e50cfd5638f2516100d48d14e46c",
+          "recordedAt": "2026-09-05T20:47:06.269111Z",
+          "durationMs": 2.133,
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/sessions/current",
+              "durationMs": 2.133,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "401",
+                "http.route": "/v1/sessions/current",
+                "server.address": "localhost",
+                "server.port": "8080"
+              }
+            }
+          ]
         }
       ]
     }

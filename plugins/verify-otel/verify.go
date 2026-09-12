@@ -28,6 +28,7 @@ type hop struct {
 	wire      string // for a publish, the event.name it carried
 	call      *catalog.RpcCall
 	file      string
+	span      *span // the span the hop was read from, for what it can say as an example
 }
 
 // key is what makes two hops the same hop, for a declared step to match on.
@@ -35,6 +36,10 @@ func (h hop) key() string {
 	switch {
 	case h.entry:
 		return "entry|" + h.to.ID + "|" + h.operation
+	case h.kind == catalog.StepRPC && h.from.ID == laneClient:
+		// Somebody calling in on a route no interface declares: the route
+		// is what it is known by.
+		return "entry|" + h.to.ID + "|" + h.label
 	case h.kind == catalog.StepEvent && h.consume:
 		return "con|" + h.to.ID + "|" + h.eventID
 	case h.kind == catalog.StepEvent:
@@ -49,6 +54,7 @@ func (h hop) key() string {
 type verifier struct {
 	l        *lookup
 	b        *plugin.Builder
+	root     string // the step's input, relative to the repository: what a recording is named under
 	children map[string][]*span
 	byID     map[string]*span
 	warned   map[string]bool
@@ -60,20 +66,33 @@ type verifier struct {
 	callers   map[string]map[string]bool // call id -> service ids that made it
 }
 
+// overlay is a declared flow with what the recordings showed of it: the
+// declared steps they raised, counted per recording; the hops they showed
+// that the code does not declare, each hung after the declared step it
+// followed; and the recordings themselves, as examples.
 type overlay struct {
 	flow   *catalog.Flow
 	svc    *catalog.Service
-	seen   map[string]bool
 	traces int
 	file   string
+
+	keys      map[string]string    // hop key -> declared step id
+	seen      map[string]int       // hop key -> recordings that showed it
+	additions map[string]*sequence // declared step id -> hops seen after it
+	added     map[string]*seenStep // hop key -> the addition, wherever it hangs
+	next      int
+	examples  []*example
 }
 
+// observed is a sequence nobody declared, laid over across every recording
+// that opened the same way.
 type observed struct {
-	svc    *catalog.Service
-	root   hop
-	hops   []hop
-	traces int
-	files  map[string]bool
+	svc      *catalog.Service
+	root     hop
+	steps    sequence
+	traces   int
+	files    map[string]bool
+	examples []*example
 }
 
 func verify(req plugin.Request, opts Options) (plugin.Response, error) {
@@ -91,6 +110,7 @@ func verify(req plugin.Request, opts Options) (plugin.Response, error) {
 	v := &verifier{
 		l:         newLookup(&req.Catalog, opts),
 		b:         b,
+		root:      root,
 		children:  map[string][]*span{},
 		byID:      map[string]*span{},
 		warned:    map[string]bool{},
@@ -165,21 +185,62 @@ func (v *verifier) trace(root *span) {
 		}
 	}
 
-	matched := v.match(hops[0], hops)
+	// A consumer inside the trace opens a flow of its own, and what ran under
+	// it belongs to that flow: the request's flow is read without it.
+	own := v.withoutConsumed(hops, spans)
+	matched := v.match(own[0], own, root)
 	for i := 1; i < len(hops); i++ {
 		if hops[i].consume {
-			sub, _ := v.sequence(spans[i])
-			v.match(sub[0], sub)
+			sub, subSpans := v.sequence(spans[i])
+			v.match(sub[0], v.withoutConsumed(sub, subSpans), spans[i])
 		}
 	}
 	if !matched {
-		v.observe(hops)
+		v.observe(own, root)
 	}
 }
 
-// match finds the declared flow the sequence opens, and raises what the
-// sequence shows. False when no flow opens that way.
-func (v *verifier) match(opening hop, hops []hop) bool {
+// withoutConsumed drops every hop under a consumer span other than the
+// first hop's own: those hops are the consumer's flow, matched on their own.
+func (v *verifier) withoutConsumed(hops []hop, spans []*span) []hop {
+	var out []hop
+	var cut *span
+	for i, h := range hops {
+		if cut != nil && v.under(spans[i], cut) {
+			continue
+		}
+		cut = nil
+		out = append(out, h)
+		if i > 0 && h.consume {
+			cut = spans[i]
+		}
+	}
+
+	return out
+}
+
+// under says whether a span sits below another, however deep.
+func (v *verifier) under(s, ancestor *span) bool {
+	for p := v.byID[s.parentID]; p != nil; p = v.byID[p.parentID] {
+		if p == ancestor {
+			return true
+		}
+	}
+
+	return false
+}
+
+// match finds the declared flow the sequence opens, and lays the sequence
+// over it: the declared steps it shows are counted, the rpcs and events it
+// shows that the code does not declare are hung after the declared step
+// they followed, and the recording is kept as an example. False when no
+// flow opens that way.
+//
+// A store call is never added: a query ran, which is not the claim that
+// the repository method the code names was called, and the code's word on
+// which one is the better one. A server span met in the middle is the far
+// end of a call the sequence already holds, and is not a second hop.
+func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 	var key string
 	switch {
 	case opening.entry:
@@ -196,35 +257,104 @@ func (v *verifier) match(opening hop, hops []hop) bool {
 
 	o := v.overlays[flow.ID]
 	if o == nil {
-		o = &overlay{flow: copyFlow(flow), svc: v.l.services[opening.to.ID], seen: map[string]bool{}, file: opening.file}
+		o = &overlay{
+			flow: copyFlow(flow), svc: v.l.services[opening.to.ID], file: opening.file,
+			keys: declaredKeys(flow), seen: map[string]int{},
+			additions: map[string]*sequence{}, added: map[string]*seenStep{},
+		}
 		v.overlays[flow.ID] = o
 	}
 	o.traces++
-	for _, h := range hops {
-		o.seen[h.key()] = true
+
+	ex := newExample(v.root, root)
+	counted := map[string]bool{}
+	anchor := ""
+	for i, h := range hops {
+		hopKey := h.key()
+		if id, declared := o.keys[hopKey]; declared {
+			if !counted[hopKey] {
+				counted[hopKey] = true
+				o.seen[hopKey]++
+			}
+			anchor = id
+			ex.add(id, h.span)
+
+			continue
+		}
+		// A consumer met on the way is the opening of another flow, and is
+		// raised there; a server span met on the way is the far end of a
+		// call already held. Neither is a hop of this flow.
+		if h.kind == catalog.StepCall || (i > 0 && (h.entry || h.consume)) || anchor == "" {
+			continue
+		}
+		s := o.added[hopKey]
+		if s == nil {
+			o.next++
+			s = &seenStep{hop: h, id: "seen" + strconv.Itoa(o.next)}
+			o.added[hopKey] = s
+			q := o.additions[anchor]
+			if q == nil {
+				q = &sequence{}
+				o.additions[anchor] = q
+			}
+			q.steps = append(q.steps, s)
+		}
+		if !counted[hopKey] {
+			counted[hopKey] = true
+			s.traces++
+		}
+		ex.add(s.id, h.span)
 	}
+	o.examples = append(o.examples, ex)
 
 	return true
 }
 
-// observe writes a sequence nobody declared down as seen, once per shape.
-func (v *verifier) observe(hops []hop) {
-	var parts []string
-	for _, h := range hops {
-		parts = append(parts, h.from.ID+">"+h.to.ID+":"+string(h.kind)+":"+h.label+":"+h.ref)
-	}
-	shape := strings.Join(parts, " ")
-
-	o := v.observed[shape]
-	if o == nil {
-		o = &observed{svc: v.l.services[hops[0].to.ID], root: hops[0], hops: hops, files: map[string]bool{}}
-		if o.svc == nil {
-			o.svc = v.l.services[hops[0].from.ID]
+// declaredKeys is every declared step a hop can be matched to, by the key
+// the hop would carry: the opening by the operation or event it arrives on,
+// an rpc by its ref, an event by its ref whether published or consumed.
+func declaredKeys(flow *catalog.Flow) map[string]string {
+	keys := map[string]string{}
+	first := firstStep(flow.Steps)
+	walkSteps(flow.Steps, func(step *catalog.Step) {
+		switch step.Kind {
+		case catalog.StepRPC:
+			if step == first && step.Ref == "" {
+				keys["entry|"+step.To+"|"+step.Label] = step.ID
+			} else if step.Ref != "" {
+				keys["rpc|"+step.From+"|"+step.Ref] = step.ID
+			}
+		case catalog.StepEvent:
+			if step.Ref != "" {
+				keys["pub|"+step.From+"|"+step.Ref] = step.ID
+				keys["con|"+step.To+"|"+step.Ref] = step.ID
+			}
 		}
-		v.observed[shape] = o
+	})
+
+	return keys
+}
+
+// observe writes a sequence nobody declared down as seen. Every recording
+// that opens the same way - the same route in, the same event arriving -
+// is laid over the one flow, so that a happy path and a refusal read as
+// one sequence with two ends rather than two flows with one name.
+func (v *verifier) observe(hops []hop, root *span) {
+	first := hops[0]
+	key := first.key()
+	o := v.observed[key]
+	if o == nil {
+		o = &observed{svc: v.l.services[first.to.ID], root: first, files: map[string]bool{}}
+		if o.svc == nil {
+			o.svc = v.l.services[first.from.ID]
+		}
+		v.observed[key] = o
 	}
 	o.traces++
-	o.files[hops[0].file] = true
+	o.files[first.file] = true
+	ex := newExample(v.root, root)
+	o.steps.absorb(hops, ex)
+	o.examples = append(o.examples, ex)
 }
 
 // sequence reads a span and everything under it, in the order it ran, into
@@ -241,6 +371,7 @@ func (v *verifier) sequence(s *span) ([]hop, []*span) {
 	walk = func(s *span, parentDB bool, publishing string) {
 		h, isDB := v.hop(s, parentDB, publishing)
 		if h != nil {
+			h.span = s
 			hops = append(hops, *h)
 			spans = append(spans, s)
 			if h.kind == catalog.StepEvent && !h.consume {
@@ -481,9 +612,15 @@ func (v *verifier) fragment(in plugin.Input) catalog.Catalog {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+	limit := defaultExamples
+	if v.l.opts.Examples != nil {
+		limit = *v.l.opts.Examples
+	}
 	for _, id := range ids {
 		o := v.overlays[id]
 		raise(o)
+		enrich(o)
+		o.flow.Examples = pickExamples(o.examples, limit)
 		out.Flows = append(out.Flows, *o.flow)
 	}
 
@@ -493,7 +630,7 @@ func (v *verifier) fragment(in plugin.Input) catalog.Catalog {
 	}
 	sort.Strings(shapes)
 	for _, shape := range shapes {
-		out.Flows = append(out.Flows, v.observedFlow(v.observed[shape]))
+		out.Flows = append(out.Flows, v.observedFlow(v.observed[shape], limit))
 	}
 	sort.SliceStable(out.Flows, func(i, j int) bool { return out.Flows[i].Slug < out.Flows[j].Slug })
 
@@ -597,26 +734,20 @@ func (v *verifier) fragment(in plugin.Input) catalog.Catalog {
 // `unresolved` means the far end is not in the catalog, and a trace does not
 // put it there.
 func raise(o *overlay) {
-	first := firstStep(o.flow.Steps)
+	byID := map[string]int{}
+	for key, id := range o.keys {
+		if n := o.seen[key]; n > byID[id] {
+			byID[id] = n
+		}
+	}
 	note := "Seen running in " + o.file + " (" + plural(o.traces, "trace") + ")."
 	walkSteps(o.flow.Steps, func(step *catalog.Step) {
-		if step.Status != catalog.StatusDeclared {
+		n := byID[step.ID]
+		if n == 0 {
 			return
 		}
-		var shown bool
-		switch step.Kind {
-		case catalog.StepRPC:
-			if step == first && step.Ref == "" {
-				shown = o.seen["entry|"+step.To+"|"+step.Label]
-			} else if step.Ref != "" {
-				shown = o.seen["rpc|"+step.From+"|"+step.Ref]
-			}
-		case catalog.StepEvent:
-			if step.Ref != "" {
-				shown = o.seen["pub|"+step.From+"|"+step.Ref] || o.seen["con|"+step.To+"|"+step.Ref]
-			}
-		}
-		if !shown {
+		step.Seen = &catalog.StepSeen{Traces: n}
+		if step.Status != catalog.StatusDeclared {
 			return
 		}
 		step.Status = catalog.StatusVerified
@@ -626,8 +757,67 @@ func raise(o *overlay) {
 	})
 }
 
+// enrich puts the hops the recordings showed and the code did not declare
+// into the flow, each after the declared step it followed, on lanes the
+// flow gains when it has to. The merge accepts them because they say where
+// they came from: `seen` on a step with an id the code never gave.
+func enrich(o *overlay) {
+	if len(o.additions) == 0 {
+		return
+	}
+	lanes := o.flow.Participants
+	held := map[string]bool{}
+	for _, p := range lanes {
+		held[p.ID] = true
+	}
+	lane := func(p catalog.Participant) {
+		if !held[p.ID] {
+			held[p.ID] = true
+			lanes = append(lanes, p)
+		}
+	}
+	var after func(nodes catalog.FlowNodes) catalog.FlowNodes
+	after = func(nodes catalog.FlowNodes) catalog.FlowNodes {
+		out := catalog.FlowNodes{}
+		for _, node := range nodes {
+			switch x := node.(type) {
+			case *catalog.Step:
+				out = append(out, x)
+				if q := o.additions[x.ID]; q != nil {
+					for _, s := range q.steps {
+						lane(s.hop.from)
+						lane(s.hop.to)
+						step := s.step()
+						step.Note = "Seen in " + plural(s.traces, "recording") + " of " + plural(o.traces, "trace") + "; the code does not declare this hop."
+						out = append(out, step)
+					}
+				}
+			case *catalog.Parallel:
+				for i := range x.Branches {
+					x.Branches[i] = after(x.Branches[i])
+				}
+				out = append(out, x)
+			case *catalog.Alt:
+				for i := range x.Branches {
+					x.Branches[i].Steps = after(x.Branches[i].Steps)
+				}
+				out = append(out, x)
+			case *catalog.Loop:
+				x.Steps = after(x.Steps)
+				out = append(out, x)
+			default:
+				out = append(out, node)
+			}
+		}
+
+		return out
+	}
+	o.flow.Steps = after(o.flow.Steps)
+	o.flow.Participants = lanes
+}
+
 // observedFlow writes a sequence nobody declared down as a flow of its own.
-func (v *verifier) observedFlow(o *observed) catalog.Flow {
+func (v *verifier) observedFlow(o *observed, limit int) catalog.Flow {
 	var lanes []catalog.Participant
 	lane := func(p catalog.Participant) string {
 		for _, existing := range lanes {
@@ -641,13 +831,14 @@ func (v *verifier) observedFlow(o *observed) catalog.Flow {
 	}
 
 	steps := catalog.FlowNodes{}
-	for i, h := range o.hops {
-		from := lane(h.from)
-		to := lane(h.to)
-		steps = append(steps, &catalog.Step{
-			Type: "step", ID: "s" + strconv.Itoa(i+1), From: from, To: to,
-			Kind: h.kind, Ref: h.ref, Label: h.label, Status: h.status,
-		})
+	for _, s := range o.steps.steps {
+		lane(s.hop.from)
+		lane(s.hop.to)
+		step := s.step()
+		if s.traces < o.traces {
+			step.Note = "Seen in " + plural(s.traces, "recording") + " of " + plural(o.traces, "trace") + "."
+		}
+		steps = append(steps, step)
 	}
 
 	files := make([]string, 0, len(o.files))
@@ -668,6 +859,7 @@ func (v *verifier) observedFlow(o *observed) catalog.Flow {
 		Owner:        contextOf(svc.ID),
 		Participants: lanes,
 		Steps:        steps,
+		Examples:     pickExamples(o.examples, limit),
 	}
 }
 

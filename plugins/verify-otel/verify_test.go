@@ -192,8 +192,20 @@ func TestATraceRaisesTheHopsItShows(t *testing.T) {
 	if !strings.Contains(first.Note, "telemetry/traces.jsonl") {
 		t.Errorf("note = %q, want the recording named", first.Note)
 	}
-	if len(login.Participants) != 4 {
-		t.Errorf("participants changed: %+v", login.Participants)
+	if first.Seen == nil || first.Seen.Traces != 1 {
+		t.Errorf("seen = %+v, want the one recording counted", first.Seen)
+	}
+	// The two calls the trace showed and the code did not declare are in
+	// the flow now, after the rpc they followed, on the lane the second one
+	// needed. The SELECT is not: the code's ByEmail is the better word.
+	var order []string
+	walkSteps(login.Steps, func(s *catalog.Step) { order = append(order, s.ID+":"+s.Label) })
+	wantOrder := strings.Join([]string{"s1:login", "s2:ByEmail", "s3:Assess", "seen1:getUser", "seen2:GET /v1/profiles/42", "s5:SessionEnded", "s6:SessionStarted"}, " ")
+	if strings.Join(order, " ") != wantOrder {
+		t.Errorf("steps = %v\nwant    %s", order, wantOrder)
+	}
+	if lanes := len(login.Participants); lanes != 5 || login.Participants[4].ID != "profile" {
+		t.Errorf("participants = %+v, want the four declared and the host the trace called", login.Participants)
 	}
 	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, "no service in the catalog") && !strings.Contains(d.Message, "billing") && !strings.Contains(d.Message, "profile") {

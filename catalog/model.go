@@ -862,6 +862,48 @@ type Flow struct {
 	// Participants order is significant: it is the lane order.
 	Participants []Participant `json:"participants"`
 	Steps        FlowNodes     `json:"steps"`
+	// Examples are recordings of this flow running: one per trace a verifier
+	// kept, each naming the steps it showed with what the spans said about
+	// them. They are examples of data, not evidence - the evidence is the
+	// status on the step.
+	Examples []FlowExample `json:"examples,omitempty"`
+}
+
+// FlowExample is one recorded run of a flow, read from one trace.
+type FlowExample struct {
+	// ID is "<recording>#<trace id>": unique within the flow, stable across
+	// runs of the same files.
+	ID string `json:"id"`
+	// Recording is the file the trace was read from, relative to the step's
+	// input root - where the verifier was pointed, which is where an uploaded
+	// recording is kept.
+	Recording string `json:"recording"`
+	TraceID   string `json:"traceId"`
+	// RecordedAt is when the root span started, RFC 3339 in UTC; absent when
+	// the recording carries no clock.
+	RecordedAt string `json:"recordedAt,omitempty"`
+	// DurationMs is root start to the last end the trace shows.
+	DurationMs float64 `json:"durationMs"`
+	// Steps are the steps this trace showed, in the order it showed them,
+	// with what an allowlist of span attributes said about each.
+	Steps []ExampleStep `json:"steps"`
+}
+
+// ExampleStep is what one span said about one step: how long it took and
+// the names it carried. Values that could be somebody's data - a query text,
+// a header, a path with an id in it - are not carried; see verify-otel.
+type ExampleStep struct {
+	Step       string            `json:"step"`
+	Label      string            `json:"label,omitempty"`
+	DurationMs float64           `json:"durationMs"`
+	Attributes map[string]string `json:"attributes,omitempty"`
+}
+
+// StepSeen says how many recordings showed a step. On a declared step it
+// accompanies the raised status; on a step the code does not declare it is
+// the reason the step is in the flow at all.
+type StepSeen struct {
+	Traces int `json:"traces"`
 }
 
 type FlowTrigger struct {
@@ -1000,6 +1042,9 @@ type Step struct {
 	// enriched with its Redis operation and key family after store fragments
 	// have been merged into the catalog.
 	StoreAccess *FlowStoreAccess `json:"storeAccess,omitempty"`
+	// Seen counts the recordings that showed this hop. A verifier sets it;
+	// on a step no source declares, it is what put the step here.
+	Seen *StepSeen `json:"seen,omitempty"`
 }
 
 func (*Step) NodeType() string { return "step" }

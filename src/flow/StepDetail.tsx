@@ -1,7 +1,8 @@
 import { RelationEvidencePanel } from "../components/RelationEvidence";
 import { stepRelationEvidence } from "./evidence";
+import { exampleRowsFor, formatMs } from "./examples";
 import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Link } from "react-router";
 import { AlertTriangle, FileCode2 } from "lucide-react";
 import { allRepos, stepFrames } from "../catalog";
@@ -717,6 +718,53 @@ function StoreCallDetail({ step, flow }: { step: Step; flow: Flow }) {
   );
 }
 
+/**
+ * What the recordings said about this step: each trace that showed it, how
+ * long the span took, and the names it carried. Examples of the step running,
+ * next to the step - the recording itself is on the flow page.
+ */
+function StepExamples({ step, flow }: { step: Step; flow: Flow }) {
+  const rows = exampleRowsFor(flow, step);
+  if (!flow.examples?.length) return null;
+
+  return (
+    <>
+      <Label>
+        Recorded{step.seen ? ` · seen in ${step.seen.traces} ${step.seen.traces === 1 ? "trace" : "traces"}` : ""}
+      </Label>
+      {rows.length === 0 ? (
+        <div className="mono text-muted">not shown in any recording kept as an example</div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {rows.map(({ example, shown }) => {
+            const attrs = Object.entries(shown.attributes ?? {}).sort(([a], [b]) => a.localeCompare(b));
+            return (
+              <div key={example.id} className="border px-2 py-1.5 border-line">
+                <div className="mono flex flex-wrap items-baseline gap-x-2 text-muted">
+                  <span className="text-ink" title={example.recording}>{example.traceId}</span>
+                  {shown.durationMs ? <span>{formatMs(shown.durationMs)}</span> : null}
+                  {example.recordedAt ? <span>{example.recordedAt.slice(0, 19).replace("T", " ")}Z</span> : null}
+                </div>
+                {shown.label && shown.label !== step.label ? <div className="mono mt-0.5 text-muted">{shown.label}</div> : null}
+                {attrs.length ? (
+                  <dl className="mono mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                    {attrs.map(([key, value]) => (
+                      <Fragment key={key}>
+                        <dt className="text-faint">{key}</dt>
+                        <dd className="truncate text-ink" title={value}>{value}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   const decisions = step.ref ? (index.adrsByEvent.get(step.ref) ?? []) : [];
 
@@ -724,6 +772,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
     <>
       <ExecutionContext step={step} flow={flow} />
       <RelationEvidencePanel items={stepRelationEvidence(index, step)} renderSource={(where) => <SourceWhere where={where} flow={flow} structured />} />
+      <StepExamples step={step} flow={flow} />
 
       {/* A decision that names this step's event is the reason the step
           looks the way it does. It belongs next to the step, not three

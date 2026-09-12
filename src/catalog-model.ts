@@ -1052,6 +1052,47 @@ export interface Flow {
   owner: string;
   participants: Participant[]; // order is significant - it is the lane order
   steps: FlowNode[];
+  /**
+   * Recordings of this flow running: one per trace a verifier kept, each
+   * naming the steps it showed with what the spans said about them. Examples
+   * of data, not evidence - the evidence is the status on the step.
+   */
+  examples?: FlowExample[];
+}
+/** One recorded run of a flow, read from one trace. */
+export interface FlowExample {
+  /** "<recording>#<trace id>": unique within the flow, stable across runs. */
+  id: string;
+  /**
+   * The file the trace was read from, relative to the verify step's input
+   * root - where an uploaded recording is kept.
+   */
+  recording: string;
+  traceId: string;
+  /** When the root span started, RFC 3339 UTC; absent when the recording has no clock. */
+  recordedAt?: string;
+  /** Root start to the last end the trace shows. */
+  durationMs: number;
+  /** The steps this trace showed, in the order it showed them. */
+  steps: ExampleStep[];
+}
+/**
+ * What one span said about one step. Only an allowlist of attributes is
+ * carried: names, verbs, routes, status codes - never a query text, a header
+ * or a path with an id in it.
+ */
+export interface ExampleStep {
+  step: string;
+  label?: string;
+  durationMs: number;
+  attributes?: Record<string, string>;
+}
+/**
+ * How many recordings showed a step. On a declared step it accompanies the
+ * raised status; on a step no source declares it is why the step is there.
+ */
+export interface StepSeen {
+  traces: number;
 }
 export interface FlowTrigger {
   kind:
@@ -1108,6 +1149,8 @@ export interface Step {
   handoff?: FlowHandoff;
   /** Repository call resolved to a concrete store operation after merge. */
   storeAccess?: FlowStoreAccess;
+  /** Recordings that showed this hop; set by a verifier. */
+  seen?: StepSeen;
 }
 export interface HTTPResponse {
   status?: number;

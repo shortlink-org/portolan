@@ -48,3 +48,17 @@ sequenceDiagram
 <a id="step-s5"></a>
 5. **shop.oms** → **bus** — OrderPlaced
    [`shop.oms.order.OrderPlaced`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `9fa8b3540bf975f37448bdd06ea893f2`
+- **Recorded:** 2026-09-04T19:48:27.103931Z
+- **Duration:** 25.826 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](oms-place-order-on-basket-checked-out.md#step-s1) | `consume cart.BasketCheckedOut` | 25.826 ms | `event.name=cart.BasketCheckedOut` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=process` `messaging.system=nats` |
+| [s5](oms-place-order-on-basket-checked-out.md#step-s5) | `publish oms.OrderPlaced` | 0.766 ms | `event.name=oms.OrderPlaced` `messaging.destination.name=shop.oms.order` `messaging.operation.type=publish` `messaging.system=outbox` |

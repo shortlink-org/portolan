@@ -24,6 +24,7 @@ type span struct {
 	kind     int
 	service  string
 	start    uint64
+	end      uint64
 	attrs    map[string]string
 	file     string
 }
@@ -96,6 +97,7 @@ type otlpSpan struct {
 	Name              string          `json:"name"`
 	Kind              json.RawMessage `json:"kind"`
 	StartTimeUnixNano string          `json:"startTimeUnixNano"`
+	EndTimeUnixNano   string          `json:"endTimeUnixNano"`
 	Attributes        []otlpAttr      `json:"attributes"`
 }
 
@@ -124,6 +126,7 @@ func parseOTLP(data []byte, file string) ([]span, error) {
 			for _, ss := range rs.ScopeSpans {
 				for _, s := range ss.Spans {
 					start, _ := strconv.ParseUint(s.StartTimeUnixNano, 10, 64)
+					end, _ := strconv.ParseUint(s.EndTimeUnixNano, 10, 64)
 					out = append(out, span{
 						traceID:  s.TraceID,
 						spanID:   s.SpanID,
@@ -132,6 +135,7 @@ func parseOTLP(data []byte, file string) ([]span, error) {
 						kind:     spanKind(s.Kind),
 						service:  service,
 						start:    start,
+						end:      end,
 						attrs:    attrs(s.Attributes),
 						file:     file,
 					})

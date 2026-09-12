@@ -40,3 +40,17 @@ sequenceDiagram
 <a id="step-s3"></a>
 3. **shop.cart** → **bus** — BasketItemRemoved
    [`shop.cart.basket.BasketItemRemoved`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemremoved) · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `3c49f023e542942e99703a2140223327`
+- **Recorded:** 2026-09-04T18:33:36.59Z
+- **Duration:** 3.887 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-remove-item.md#step-s1) | `DELETE /v1/baskets/:basketId/items/:sku` | 3.887 ms | `http.request.method=DELETE` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/items/:sku` `server.address=localhost` `server.port=8081` |
+| [s3](cart-remove-item.md#step-s3) | `publish cart.BasketItemRemoved` | 0.35 ms | `event.name=cart.BasketItemRemoved` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |

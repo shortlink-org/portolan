@@ -162,6 +162,14 @@ Decided in portolan.0002.
 **Status.** Whether the estate stands behind a fact: verified, declared or
 unresolved, best first.
 
+**Recording.** A file of traces kept beside a project, under
+`telemetry/recordings/`, that a verifier reads on every run. One is added
+from the page or by hand; either way it is a file in the repository, so the
+next regeneration verifies the same hops. A recording is also kept as an
+**example** of each flow it showed: which steps ran, how long each took, the
+names the spans carried - never a query text, a header or a path with an id
+in it.
+
 **Step.** One move in a flow: from a participant to a participant, an rpc, an
 event or a call, carrying a status. The manifest borrows the word for one
 plugin run on one input, and the host keys the files it wrote by that; the

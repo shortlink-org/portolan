@@ -56,3 +56,18 @@ sequenceDiagram
 <a id="step-s6"></a>
 6. **shop.cart** → **bus** — BasketCheckedOut
    [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L57) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `36045570eefa6f10a37183eb49945732`
+- **Recorded:** 2026-09-04T18:33:36.657Z
+- **Duration:** 4.541 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-checkout.md#step-s1) | `POST /v1/baskets/:basketId/checkout` | 4.541 ms | `http.request.method=POST` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/checkout` `server.address=localhost` `server.port=8081` |
+| [s2](cart-checkout.md#step-s2) | `GET` | 0.768 ms | `http.request.method=GET` `http.response.status_code=200` `server.address=localhost` `server.port=8080` |
+| [s6](cart-checkout.md#step-s6) | `publish cart.BasketCheckedOut` | 0.391 ms | `event.name=cart.BasketCheckedOut` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |

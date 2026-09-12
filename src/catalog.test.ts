@@ -86,6 +86,22 @@ describe("validateCatalog", () => {
     expect(() => validateCatalog(bad)).toThrow(/expected 1.1 or 1.2/);
   });
 
+  it("rejects an example that shows a step the flow does not have, and one carried twice", () => {
+    const bad = clone();
+    const checkout = bad.flows.find((f) => f.slug === "checkout") as Flow;
+    const first = walkSteps(checkout.steps)[0];
+    if (!first) throw new Error("fixture has no steps");
+    const example = { id: "t.jsonl#1", recording: "t.jsonl", traceId: "1", durationMs: 1, steps: [{ step: first.id, durationMs: 1 }] };
+    checkout.examples = [example];
+    expect(() => validateCatalog(bad)).not.toThrow();
+
+    checkout.examples = [{ ...example, steps: [{ step: "nope", durationMs: 1 }] }];
+    expect(() => validateCatalog(bad)).toThrowError(/flow "checkout" example "t.jsonl#1" shows unknown step "nope"/);
+
+    checkout.examples = [example, example];
+    expect(() => validateCatalog(bad)).toThrowError(/carries example "t.jsonl#1" twice/);
+  });
+
   it("rejects a step whose participant was never declared, naming flow and step", () => {
     const bad = clone();
     const checkout = bad.flows.find((f) => f.slug === "checkout") as Flow;

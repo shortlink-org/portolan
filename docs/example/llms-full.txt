@@ -6316,6 +6316,20 @@ sequenceDiagram
 5. **auth.auth** → **bus** — PasswordChanged
    [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · Seen running in telemetry/traces.jsonl (1 trace).
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `fc0d47a555b03d7af44a85259857c04e`
+- **Recorded:** 2026-09-05T20:47:00.207552Z
+- **Duration:** 41.39 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-change-password.md#step-s1) | `POST /v1/users/me/password` | 41.39 ms | `http.request.method=POST` `http.response.status_code=204` `http.route=/v1/users/me/password` `server.address=localhost` `server.port=8080` |
+| [s5](auth-change-password.md#step-s5) | `publish auth.PasswordChanged` | 0.002 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/auth-get-user.md -->
 
 # Get user
@@ -6356,6 +6370,37 @@ sequenceDiagram
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByID
    status: declared · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22)
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `11892613b4650af0870b876205a89fe5`
+- **Recorded:** 2026-09-05T20:47:00.06401Z
+- **Duration:** 1.845 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 1.845 ms | `http.request.method=GET` `http.response.status_code=404` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `81bc03dd8efa5caad98d84087bf15f84`
+- **Recorded:** 2026-09-05T20:47:00.077493Z
+- **Duration:** 0.729 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 0.729 ms | `http.request.method=GET` `http.response.status_code=404` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `233c6f00d7a0373ee63a2e9c7bbc1f2e`
+- **Recorded:** 2026-09-05T20:47:06.335468Z
+- **Duration:** 0.992 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-get-user.md#step-s1) | `GET /v1/users/{userId}` | 0.992 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/users/{userId}` `server.address=localhost` `server.port=8080` |
 
 <!-- flows/auth-login.md -->
 
@@ -6490,6 +6535,30 @@ sequenceDiagram
 18. **auth.auth** → **bus** — SessionStarted
    [`auth.auth.session.SessionStarted`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionstarted) · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · Seen running in telemetry/traces.jsonl (2 traces).
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `4ad5c108c2cddcec5041e0563c9b79ca`
+- **Recorded:** 2026-09-05T20:47:00.132546Z
+- **Duration:** 26.738 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 26.738 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
+| [s20](auth-login.md#step-s20) | `publish auth.SessionStarted` | 0.003 ms | `event.name=auth.SessionStarted` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `ec6f863cfcaa33835afdde517f205f1b`
+- **Recorded:** 2026-09-05T20:47:00.167488Z
+- **Duration:** 23.918 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-login.md#step-s1) | `POST /v1/sessions` | 23.918 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/sessions` `server.address=localhost` `server.port=8080` |
+| [s20](auth-login.md#step-s20) | `publish auth.SessionStarted` | 0.002 ms | `event.name=auth.SessionStarted` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/auth-logout.md -->
 
 # Logout
@@ -6540,6 +6609,20 @@ sequenceDiagram
 <a id="step-s4"></a>
 4. **auth.auth** → **bus** — SessionEnded
    [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `81580abd0bc8ab1c73813a0cab33f499`
+- **Recorded:** 2026-09-05T20:47:06.282783Z
+- **Duration:** 4.452 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-logout.md#step-s1) | `DELETE /v1/sessions/current` | 4.452 ms | `http.request.method=DELETE` `http.response.status_code=204` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s4](auth-logout.md#step-s4) | `publish auth.SessionEnded` | 0.003 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/auth-register-user.md -->
 
@@ -6592,6 +6675,30 @@ sequenceDiagram
 4. **auth.auth** → **bus** — UserRegistered
    [`auth.auth.user.UserRegistered`](../auth/auth/aggregates/user.md#event-auth-auth-user-userregistered) · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53) · Seen running in telemetry/traces.jsonl (2 traces).
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `2b90c7968845189e6fe599f929f78d3e`
+- **Recorded:** 2026-09-05T20:47:00.094859Z
+- **Duration:** 29.607 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-register-user.md#step-s1) | `POST /v1/users` | 29.607 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/users` `server.address=localhost` `server.port=8080` |
+| [s4](auth-register-user.md#step-s4) | `publish auth.UserRegistered` | 0.001 ms | `event.name=auth.UserRegistered` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `3b9423e32e2b098574b290b3efc43687`
+- **Recorded:** 2026-09-05T20:47:06.298264Z
+- **Duration:** 28.56 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-register-user.md#step-s1) | `POST /v1/users` | 28.56 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/users` `server.address=localhost` `server.port=8080` |
+| [s4](auth-register-user.md#step-s4) | `publish auth.UserRegistered` | 0.002 ms | `event.name=auth.UserRegistered` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/auth-revoke-sessions-on-password-change.md -->
 
 # Revoke sessions on password change
@@ -6619,6 +6726,7 @@ sequenceDiagram
     participant p0 as bus
     participant p1 as auth.auth
     p0-)p1: PasswordChanged
+    p1-)p0: SessionEnded
 ```
 
 ## Steps
@@ -6626,6 +6734,23 @@ sequenceDiagram
 <a id="step-s1"></a>
 1. **bus** → **auth.auth** — PasswordChanged
    [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-seen1"></a>
+2. **auth.auth** → **bus** — SessionEnded
+   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · Seen in 1 recording of 1 trace; the code does not declare this hop.
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `fc0d47a555b03d7af44a85259857c04e`
+- **Recorded:** 2026-09-05T20:47:00.381452Z
+- **Duration:** 5.252 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-revoke-sessions-on-password-change.md#step-s1) | `consume auth.PasswordChanged` | 5.252 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=process` `messaging.system=inproc` |
+| [seen1](auth-revoke-sessions-on-password-change.md#step-seen1) | `publish auth.SessionEnded` | 0.009 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/auth-validate-session.md -->
 
@@ -6667,6 +6792,28 @@ sequenceDiagram
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `37f66f3381772c818c4de1df0b16c00f`
+- **Recorded:** 2026-09-05T20:47:00.198653Z
+- **Duration:** 1.724 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 1.724 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `9007e50cfd5638f2516100d48d14e46c`
+- **Recorded:** 2026-09-05T20:47:06.269111Z
+- **Duration:** 2.133 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-validate-session.md#step-s1) | `GET /v1/sessions/current` | 2.133 ms | `http.request.method=GET` `http.response.status_code=401` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
 
 <!-- flows/bff-mutation-add-item.md -->
 
@@ -7540,6 +7687,40 @@ sequenceDiagram
 3. **shop.cart** → **bus** — BasketItemAdded
    [`shop.cart.basket.BasketItemAdded`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemadded) · [`examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts#L27) · Seen running in telemetry/traces.jsonl (3 traces).
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `ab232acad1a6ecd0ba9d3568ce81942a`
+- **Recorded:** 2026-09-04T18:33:36.566Z
+- **Duration:** 5.486 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-add-item.md#step-s1) | `POST /v1/baskets/:basketId/items` | 5.486 ms | `http.request.method=POST` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/items` `server.address=localhost` `server.port=8081` |
+| [s3](cart-add-item.md#step-s3) | `publish cart.BasketItemAdded` | 0.328 ms | `event.name=cart.BasketItemAdded` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `874884def44a7a6fd5e0d32de295ddfe`
+- **Recorded:** 2026-09-04T18:33:36.579Z
+- **Duration:** 4.235 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-add-item.md#step-s1) | `POST /v1/baskets/:basketId/items` | 4.235 ms | `http.request.method=POST` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/items` `server.address=localhost` `server.port=8081` |
+| [s3](cart-add-item.md#step-s3) | `publish cart.BasketItemAdded` | 0.317 ms | `event.name=cart.BasketItemAdded` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `d045ed886eeebd471a745f089f1150a6`
+- **Recorded:** 2026-09-04T18:33:36.622Z
+- **Duration:** 3.558 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-add-item.md#step-s1) | `POST /v1/baskets/:basketId/items` | 3.558 ms | `http.request.method=POST` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/items` `server.address=localhost` `server.port=8081` |
+| [s3](cart-add-item.md#step-s3) | `publish cart.BasketItemAdded` | 0.431 ms | `event.name=cart.BasketItemAdded` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/cart-checkout.md -->
 
 # Checkout
@@ -7601,6 +7782,21 @@ sequenceDiagram
 6. **shop.cart** → **bus** — BasketCheckedOut
    [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L57) · Seen running in telemetry/traces.jsonl (1 trace).
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `36045570eefa6f10a37183eb49945732`
+- **Recorded:** 2026-09-04T18:33:36.657Z
+- **Duration:** 4.541 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-checkout.md#step-s1) | `POST /v1/baskets/:basketId/checkout` | 4.541 ms | `http.request.method=POST` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/checkout` `server.address=localhost` `server.port=8081` |
+| [s2](cart-checkout.md#step-s2) | `GET` | 0.768 ms | `http.request.method=GET` `http.response.status_code=200` `server.address=localhost` `server.port=8080` |
+| [s6](cart-checkout.md#step-s6) | `publish cart.BasketCheckedOut` | 0.391 ms | `event.name=cart.BasketCheckedOut` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/cart-create-basket.md -->
 
 # Create basket
@@ -7646,6 +7842,30 @@ sequenceDiagram
 3. **shop.cart** → **bus** — BasketCreated
    [`shop.cart.basket.BasketCreated`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcreated) · [`examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts#L22) · Seen running in telemetry/traces.jsonl (2 traces).
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `80014f01019ea7c7254374b2317de1d3`
+- **Recorded:** 2026-09-04T18:33:36.548Z
+- **Duration:** 4.357 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-create-basket.md#step-s1) | `POST /v1/baskets` | 4.357 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/baskets` `server.address=localhost` `server.port=8081` |
+| [s3](cart-create-basket.md#step-s3) | `publish cart.BasketCreated` | 0.632 ms | `event.name=cart.BasketCreated` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `ec15cc6a983573be3a056364aa22acef`
+- **Recorded:** 2026-09-04T18:33:36.609Z
+- **Duration:** 2.524 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-create-basket.md#step-s1) | `POST /v1/baskets` | 2.524 ms | `http.request.method=POST` `http.response.status_code=201` `http.route=/v1/baskets` `server.address=localhost` `server.port=8081` |
+| [s3](cart-create-basket.md#step-s3) | `publish cart.BasketCreated` | 0.395 ms | `event.name=cart.BasketCreated` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/cart-get-basket.md -->
 
 # Get basket
@@ -7678,6 +7898,28 @@ sequenceDiagram
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — getBasket → Basket
    [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L38) · Seen running in telemetry/traces.jsonl (2 traces).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `4997ef8e00085dbb06d43f5f7bf37ee9`
+- **Recorded:** 2026-09-04T18:33:36.448Z
+- **Duration:** 4.395 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-get-basket.md#step-s1) | `GET /v1/baskets/:basketId` | 4.395 ms | `http.request.method=GET` `http.response.status_code=404` `http.route=/v1/baskets/:basketId` `server.address=localhost` `server.port=8081` |
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `6ec632f40403e66bf6b0cb4d6ef57508`
+- **Recorded:** 2026-09-04T18:33:36.601Z
+- **Duration:** 1.337 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-get-basket.md#step-s1) | `GET /v1/baskets/:basketId` | 1.337 ms | `http.request.method=GET` `http.response.status_code=200` `http.route=/v1/baskets/:basketId` `server.address=localhost` `server.port=8081` |
 
 <!-- flows/cart-merge-baskets.md -->
 
@@ -7746,6 +7988,23 @@ sequenceDiagram
 8. **shop.cart** → **bus** — BasketMerged
    [`shop.cart.basket.BasketMerged`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketmerged) · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L47) · Seen running in telemetry/traces.jsonl (1 trace).
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `2f1e3fbc117e7892a3d2dc7365ff06c7`
+- **Recorded:** 2026-09-04T18:33:36.633Z
+- **Duration:** 14.668 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-merge-baskets.md#step-s1) | `POST /v1/baskets/:basketId/merge` | 14.668 ms | `http.request.method=POST` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/merge` `server.address=localhost` `server.port=8081` |
+| [s2](cart-merge-baskets.md#step-s2) | `GET` | 4.518 ms | `http.request.method=GET` `http.response.status_code=200` `server.address=localhost` `server.port=8080` |
+| [s6](cart-merge-baskets.md#step-s6) | `publish cart.BasketItemAdded` | 0.326 ms | `event.name=cart.BasketItemAdded` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s5](cart-merge-baskets.md#step-s5) | `publish cart.BasketCreated` | 0.281 ms | `event.name=cart.BasketCreated` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+| [s8](cart-merge-baskets.md#step-s8) | `publish cart.BasketMerged` | 0.281 ms | `event.name=cart.BasketMerged` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/cart-remove-item.md -->
 
 # Remove item
@@ -7790,6 +8049,20 @@ sequenceDiagram
 <a id="step-s3"></a>
 3. **shop.cart** → **bus** — BasketItemRemoved
    [`shop.cart.basket.BasketItemRemoved`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemremoved) · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/cart/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl)
+- **Trace:** `3c49f023e542942e99703a2140223327`
+- **Recorded:** 2026-09-04T18:33:36.59Z
+- **Duration:** 3.887 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](cart-remove-item.md#step-s1) | `DELETE /v1/baskets/:basketId/items/:sku` | 3.887 ms | `http.request.method=DELETE` `http.response.status_code=200` `http.route=/v1/baskets/:basketId/items/:sku` `server.address=localhost` `server.port=8081` |
+| [s3](cart-remove-item.md#step-s3) | `publish cart.BasketItemRemoved` | 0.35 ms | `event.name=cart.BasketItemRemoved` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/core-close-route.md -->
 
@@ -8772,6 +9045,20 @@ sequenceDiagram
 5. **shop.oms** → **oms-pg** — by_id
    status: declared · [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L42)
 
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `b23aa3f8bb39a65d8b5000d5741081aa`
+- **Recorded:** 2026-09-04T19:48:30.544095Z
+- **Duration:** 6.374 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](oms-cancel-order.md#step-s1) | `shop.v1.OrderService/CancelOrder` | 6.374 ms | `rpc.method=CancelOrder` `rpc.service=shop.v1.OrderService` `rpc.system=grpc` |
+| [s4](oms-cancel-order.md#step-s4) | `publish oms.OrderCancelled` | 0.285 ms | `event.name=oms.OrderCancelled` `messaging.destination.name=shop.oms.order` `messaging.operation.type=publish` `messaging.system=outbox` |
+
 <!-- flows/oms-get-order.md -->
 
 # Get order
@@ -8812,6 +9099,28 @@ sequenceDiagram
 <a id="step-s2"></a>
 2. **shop.oms** → **oms-pg** — by_id
    status: declared · [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L42)
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `a7416708d5eeef4f1559ce68e301d420`
+- **Recorded:** 2026-09-04T19:48:30.53394Z
+- **Duration:** 3.226 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](oms-get-order.md#step-s1) | `shop.v1.OrderService/GetOrder` | 3.226 ms | `rpc.method=GetOrder` `rpc.service=shop.v1.OrderService` `rpc.system=grpc` |
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `bd903650a50496ad991b1a24134f00d9`
+- **Recorded:** 2026-09-04T19:48:30.557266Z
+- **Duration:** 0.794 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](oms-get-order.md#step-s1) | `shop.v1.OrderService/GetOrder` | 0.794 ms | `rpc.method=GetOrder` `rpc.service=shop.v1.OrderService` `rpc.system=grpc` |
 
 <!-- flows/oms-place-order-on-basket-checked-out.md -->
 
@@ -8865,6 +9174,20 @@ sequenceDiagram
 <a id="step-s5"></a>
 5. **shop.oms** → **bus** — OrderPlaced
    [`shop.oms.order.OrderPlaced`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31) · Seen running in telemetry/traces.jsonl (1 trace).
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `9fa8b3540bf975f37448bdd06ea893f2`
+- **Recorded:** 2026-09-04T19:48:27.103931Z
+- **Duration:** 25.826 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](oms-place-order-on-basket-checked-out.md#step-s1) | `consume cart.BasketCheckedOut` | 25.826 ms | `event.name=cart.BasketCheckedOut` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=process` `messaging.system=nats` |
+| [s5](oms-place-order-on-basket-checked-out.md#step-s5) | `publish oms.OrderPlaced` | 0.766 ms | `event.name=oms.OrderPlaced` `messaging.destination.name=shop.oms.order` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/pricing-archive-price-list.md -->
 

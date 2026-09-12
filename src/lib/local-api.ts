@@ -130,13 +130,60 @@ export interface ProjectTrial {
   previewError?: string;
 }
 
+/** One flow the verifier wrote after reading an uploaded recording. */
+export interface TraceTrialFlow {
+  id: string;
+  slug: string;
+  name: string;
+  owner: string;
+  kind: "declared" | "observed";
+  /** Whether the uploaded recording itself showed this flow. */
+  inRecording: boolean;
+  /** Traces in the uploaded recording that showed it. */
+  traces: number;
+  verified: number;
+  unresolved: number;
+  /** Hops the recordings showed that the code does not declare. */
+  added: number;
+  /** Distinct steps the uploaded recording showed. */
+  shown: number;
+  steps: number;
+  examples: number;
+}
+
+export interface TraceTrialWarning {
+  kind: "service" | "event" | "route" | "call" | "channel" | "other";
+  /** The name the verifier could not place, for a service or an event. */
+  name?: string;
+  message: string;
+}
+
+/** What a trial run said about an uploaded recording. */
+export interface TraceTrial {
+  project: string;
+  /** Where the recording lands, relative to the project root. */
+  recording: string;
+  /** Whether keeping it adds or widens the project's verify step. */
+  stepAdded: boolean;
+  /** What keeping it does to portolan.json: a new verify step, one more glob on the step it has, or nothing. */
+  stepChange: "added" | "widened" | "none";
+  status: SetupRunStepStatus;
+  spans: number;
+  flows: TraceTrialFlow[];
+  warnings: TraceTrialWarning[];
+  mappings: { services: Record<string, string>; events: Record<string, string> };
+}
+
+export type RunMode = "write" | "check" | "preview" | "project-preview" | "trace-preview";
+
 export type RunEvent =
-  | { type: "run-started"; at: string; runId: string; mode: "write" | "check" | "preview" | "project-preview" }
+  | { type: "run-started"; at: string; runId: string; mode: RunMode }
   | { type: "pipeline-ready"; at: string; stepCount: number }
   | { type: "step-started"; at: string; ordinal: number; phase: SetupPhase; plugin: string; input?: string; output: string }
   | { type: "step-finished"; at: string; ordinal: number; phase: SetupPhase; plugin: string; status: SetupRunStepStatus; durationMs: number; fileCount: number; changedCount: number; changes: Array<{ kind: "added" | "changed" | "removed"; path: string }>; files: string[]; warnings?: string[]; diagnostics?: SetupDiagnostic[]; message?: string }
   | { type: "preview-ready"; at: string; files: GeneratedFileDiff[]; totalFiles: number; truncated: boolean }
   | ({ type: "project-trial-ready"; at: string } & ProjectTrial)
+  | ({ type: "trace-trial-ready"; at: string } & TraceTrial)
   | { type: "run-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "process-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "log"; at: string; stream: "stdout" | "stderr"; message: string };
@@ -178,7 +225,7 @@ export class LocalApiError extends Error {
   }
 }
 
-export async function localStatus(): Promise<{ local: true; workspace: string; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" | "preview" } | null }> {
+export async function localStatus(): Promise<{ local: true; workspace: string; setup: SetupInfo; activeRun: { id: string; mode: RunMode } | null }> {
   return json("/status");
 }
 
@@ -253,6 +300,37 @@ export async function applyProjectTrial(runId: string, generate: boolean): Promi
 
 export async function disposeProjectTrial(runId: string): Promise<void> {
   await json(`/projects/trials/${encodeURIComponent(runId)}/dispose`, { method: "POST", headers: LOCAL_HEADER, body: "{}" });
+}
+
+/**
+ * Uploads a recording and runs the generator over a copy of the workspace
+ * with it in place. The bytes go as they are; the project and the file's
+ * name go as headers, because a JSON envelope around 30 MB of spans is a
+ * copy nobody wants.
+ */
+export async function startTraceTrial(file: File, projectId: string): Promise<{ runId: string; mode: "trace-preview"; recording: string; project: string; stepAdded: boolean; spans: number }> {
+  const response = await fetch(`${ROOT}/traces/trials`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-Portolan-Local": "1",
+      "X-Portolan-Project": projectId,
+      "X-Portolan-Filename": encodeURIComponent(file.name),
+    },
+    body: file,
+  });
+  const value = await response.json() as { runId: string; mode: "trace-preview"; recording: string; project: string; stepAdded: boolean; spans: number; error?: string };
+  if (!response.ok) throw new LocalApiError(value.error || `Local API returned ${response.status}.`, { status: response.status });
+  return value;
+}
+
+/** Keeps the recording beside the project, with the names mapped, and regenerates when asked. */
+export async function applyTraceTrial(runId: string, options: { generate: boolean; services?: Record<string, string>; events?: Record<string, string> }): Promise<{ recording: string; project: string; stepAdded: boolean; manifestChanged: boolean; undoToken: string | null; setup: SetupInfo; run: { runId: string; mode: "write" } | null }> {
+  return json(`/traces/trials/${encodeURIComponent(runId)}/apply`, { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(options) });
+}
+
+export async function disposeTraceTrial(runId: string): Promise<void> {
+  await json(`/traces/trials/${encodeURIComponent(runId)}/dispose`, { method: "POST", headers: LOCAL_HEADER, body: "{}" });
 }
 
 export async function startGeneration(mode: "write" | "check" | "preview" = "preview", previewRunId?: string): Promise<{ runId: string; mode: "write" | "check" | "preview" }> {
