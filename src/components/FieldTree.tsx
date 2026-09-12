@@ -22,6 +22,7 @@ import type { Scope, Shape } from "../lib/shape";
 import { blockPath, enumPath } from "../routes";
 import { Ident } from "./Ident";
 import { KindIcon } from "./kind";
+import { RuleMarks } from "./RuleMarks";
 
 /** The words the type chip uses for what `parseType` found. */
 const CARDINALITY: Record<"many" | "map", string> = {
@@ -31,8 +32,9 @@ const CARDINALITY: Record<"many" | "map", string> = {
 
 /**
  * The type of a field, as a reader wants it: the raw spelling to copy, a
- * word for the wrapper it is in, and a way to the page of the shape it
- * names. Shared by the table cell and the tree row so both say it the same.
+ * word for the wrapper it is in, what the source says the value must
+ * satisfy, and a way to the page of the shape it names. Shared by the table
+ * cell and the tree row so both say it the same.
  */
 export function TypeCell({
   field,
@@ -70,6 +72,7 @@ export function TypeCell({
           optional
         </span>
       ) : null}
+      <RuleMarks field={field} />
       {page && shape ? (
         <Link
           to={page}

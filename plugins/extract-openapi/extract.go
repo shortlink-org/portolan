@@ -302,14 +302,93 @@ func schemaMessageName(doc *document, ref string) string {
 	return ""
 }
 
+// schemaFields is the shape as the catalog carries it. Which fields must be
+// sent is the first thing a caller needs, and it is the field's own flag;
+// a field the document does not list as required carries nothing, which is
+// what the document means.
 func schemaFields(doc *document, node *yaml.Node) []catalog.Field {
 	fields, required := schemaShape(doc, node, map[string]bool{})
 	for i := range fields {
-		if !required[fields[i].Name] {
-			fields[i].Doc = strings.TrimSpace("Optional. " + fields[i].Doc)
-		}
+		fields[i].Required = required[fields[i].Name]
 	}
 	return fields
+}
+
+// A JSON Schema keyword and the catalog's word for it. `format` is not here:
+// it is part of the type already, `string (uuid)`. `enum` likewise.
+var schemaRules = []struct{ keyword, rule string }{
+	{"const", "const"},
+	{"minLength", "min_len"},
+	{"maxLength", "max_len"},
+	{"pattern", "pattern"},
+	{"minimum", "gte"},
+	{"maximum", "lte"},
+	{"exclusiveMinimum", "gt"},
+	{"exclusiveMaximum", "lt"},
+	{"multipleOf", "multiple_of"},
+	{"minItems", "min_items"},
+	{"maxItems", "max_items"},
+	{"uniqueItems", "unique"},
+	{"minProperties", "min_pairs"},
+	{"maxProperties", "max_pairs"},
+}
+
+// rulesOf reads the validation keywords of a property into rules, in the
+// order the keywords are listed above. A property that is a `$ref` carries
+// the target's keywords, since that is where the author put them; what an
+// array holds is read one level down under `items.`.
+func rulesOf(doc *document, node *yaml.Node) []catalog.FieldRule {
+	if ref := text(child(node, "$ref")); ref != "" {
+		if targetDoc, target, _, ok := doc.resolve(ref); ok {
+			doc, node = targetDoc, target
+		}
+	}
+
+	var rules []catalog.FieldRule
+	for _, r := range schemaRules {
+		value := text(child(node, r.keyword))
+		if value == "" {
+			continue
+		}
+		switch r.keyword {
+		case "uniqueItems":
+			if value != "true" {
+				continue
+			}
+			value = ""
+		case "exclusiveMinimum", "exclusiveMaximum":
+			// OpenAPI 3.0 spells these as a bool beside the bound; the bound is
+			// then strict, and the flag on its own says nothing.
+			if value == "true" || value == "false" {
+				if value == "true" {
+					rules = strictBound(rules, r.rule)
+				}
+
+				continue
+			}
+		}
+		rules = append(rules, catalog.FieldRule{Name: r.rule, Value: value})
+	}
+	if items := child(node, "items"); items != nil {
+		for _, rule := range rulesOf(doc, items) {
+			rules = append(rules, catalog.FieldRule{Name: "items." + rule.Name, Value: rule.Value})
+		}
+	}
+
+	return rules
+}
+
+// strictBound turns the `gte` already read into `gt` (or `lte` into `lt`)
+// when the 3.0-style exclusive flag says the bound is not included.
+func strictBound(rules []catalog.FieldRule, strict string) []catalog.FieldRule {
+	inclusive := strict + "e"
+	for i := range rules {
+		if rules[i].Name == inclusive {
+			rules[i].Name = strict
+		}
+	}
+
+	return rules
 }
 
 // schemaShape flattens object composition into the field model the catalog
@@ -358,7 +437,12 @@ func schemaShape(doc *document, node *yaml.Node, resolving map[string]bool) ([]c
 		required[name] = true
 	}
 	for _, property := range entries(child(node, "properties")) {
-		fields = append(fields, catalog.Field{Name: property.key, Type: typeOf(doc, property.value), Doc: text(child(property.value, "description"))})
+		fields = append(fields, catalog.Field{
+			Name:  property.key,
+			Type:  typeOf(doc, property.value),
+			Doc:   text(child(property.value, "description")),
+			Rules: rulesOf(doc, property.value),
+		})
 	}
 
 	for _, branch := range itemsOf(child(node, "allOf")) {

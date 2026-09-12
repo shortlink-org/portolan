@@ -6,6 +6,7 @@ package extractproto
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -304,4 +305,77 @@ func messages(notes []Note) []string {
 	}
 
 	return out
+}
+
+// Field options arrive in every shape the text format allows, and each leaf
+// is one option: the aggregate flattened under the extension's name, a list
+// joined, a nested message body one level deeper. None of it is a note.
+func TestFieldOptionShapes(t *testing.T) {
+	src := `syntax = "proto3";
+package shop.v1;
+import "buf/validate/validate.proto";
+option (acme.file) = { owner: "shop" tags: ["a", "b"] };
+
+message Quote {
+  string basket_id = 1 [(buf.validate.field).required = true, (buf.validate.field).string.uuid = true];
+  string currency = 2 [(buf.validate.field).string = { len: 3, in: ["USD", "EUR"], pattern: "^[A-Z]{3}$" }];
+  repeated Item items = 3 [(buf.validate.field).repeated = { min_items: 1, items: { cel: [{ id: "sku", expression: "this.sku != ''" }] } }];
+  int64 total = 4 [(buf.validate.field).int64.gte = -1, json_name = "totalMinor"];
+  string note = 5 [(acme.pii) = true, deprecated = true];
+  map<string, int32> counts = 6 [(buf.validate.field).map = { keys { string { min_len: 1 } } values: { int32: { gte: 0 } } }];
+}
+message Item { string sku = 1; }`
+
+	file, notes, err := Parse("quote.proto", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Errorf("option bodies are read, not noted: %+v", notes)
+	}
+
+	want := map[string][]Option{
+		"basket_id": {
+			{Name: "(buf.validate.field).required", Value: "true"},
+			{Name: "(buf.validate.field).string.uuid", Value: "true"},
+		},
+		"currency": {
+			{Name: "(buf.validate.field).string.len", Value: "3"},
+			{Name: "(buf.validate.field).string.in", Value: "USD, EUR"},
+			{Name: "(buf.validate.field).string.pattern", Value: "^[A-Z]{3}$"},
+		},
+		"items": {
+			{Name: "(buf.validate.field).repeated.min_items", Value: "1"},
+			{Name: "(buf.validate.field).repeated.items.cel.id", Value: "sku"},
+			{Name: "(buf.validate.field).repeated.items.cel.expression", Value: "this.sku != ''"},
+		},
+		"total": {
+			{Name: "(buf.validate.field).int64.gte", Value: "-1"},
+			{Name: "json_name", Value: "totalMinor"},
+		},
+		"note": {
+			{Name: "(acme.pii)", Value: "true"},
+			{Name: "deprecated", Value: "true"},
+		},
+		"counts": {
+			{Name: "(buf.validate.field).map.keys.string.min_len", Value: "1"},
+			{Name: "(buf.validate.field).map.values.int32.gte", Value: "0"},
+		},
+	}
+	quote := messageNamed(t, file, "Quote")
+	for _, f := range quote.Fields {
+		got := make([]Option, len(f.Options))
+		for i, o := range f.Options {
+			got[i] = Option{Name: o.Name, Value: o.Value}
+		}
+		if !reflect.DeepEqual(got, want[f.Name]) {
+			t.Errorf("%s options:\n got %+v\nwant %+v", f.Name, got, want[f.Name])
+		}
+	}
+	if note := quote.Fields[4]; !note.Deprecated {
+		t.Error("deprecated beside a custom option is still lifted onto the field")
+	}
+	if len(file.Options) != 2 || file.Options[0].Name != "(acme.file).owner" || file.Options[1].Value != "a, b" {
+		t.Errorf("a file option with an aggregate value is one option per leaf: %+v", file.Options)
+	}
 }

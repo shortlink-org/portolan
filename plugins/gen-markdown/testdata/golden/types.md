@@ -9,7 +9,7 @@ refers to one of these is knowably the same shape everywhere it appears.
 
 ## Money
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `amountMinor` | `int64` | Amount in the minor unit. |
-| `currency` | `string` | ISO 4217, upper case. |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `amountMinor` | `int64` | `required`, `gte 0` | Amount in the minor unit. |
+| `currency` | `string` | `len 3`, `in USD, EUR`, `unique` | ISO 4217, upper case. |

@@ -128,71 +128,71 @@ mocks from each feature slice's `.mockery.yml`.
 <a id="message-changepasswordrequest"></a>
 <details><summary>ChangePasswordRequest</summary>
 
-| Field | Type |
-| --- | --- |
-| `currentPassword` | `string (password)` |
-| `newPassword` | `string (password)` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `currentPassword` | `string (password)` | `required` |
+| `newPassword` | `string (password)` | `required`, `min_len 8`, `max_len 32` |
 
 </details>
 
 <a id="message-error"></a>
 <details><summary>Error</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
-| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `message` | `string` | `required` | One sentence, always present. A client that shows the user a single line shows this one. |
+| `reasons` | `[]string` | — | One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
 
 </details>
 
 <a id="message-loginrequest"></a>
 <details><summary>LoginRequest</summary>
 
-| Field | Type |
-| --- | --- |
-| `email` | `string (email)` |
-| `password` | `string (password)` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `email` | `string (email)` | `required` |
+| `password` | `string (password)` | `required` |
 
 </details>
 
 <a id="message-registerrequest"></a>
 <details><summary>RegisterRequest</summary>
 
-| Field | Type |
-| --- | --- |
-| `email` | `string (email)` |
-| `password` | `string (password)` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `email` | `string (email)` | `required` |
+| `password` | `string (password)` | `required`, `min_len 8`, `max_len 32` |
 
 </details>
 
 <a id="message-session"></a>
 <details><summary>Session</summary>
 
-| Field | Type |
-| --- | --- |
-| `token` | `string` |
-| `expiresAt` | `string (date-time)` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `token` | `string` | `required` |
+| `expiresAt` | `string (date-time)` | `required` |
 
 </details>
 
 <a id="message-sessioninfo"></a>
 <details><summary>SessionInfo</summary>
 
-| Field | Type |
-| --- | --- |
-| `userId` | `string` |
-| `expiresAt` | `string (date-time)` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `userId` | `string` | `required` |
+| `expiresAt` | `string (date-time)` | `required` |
 
 </details>
 
 <a id="message-user"></a>
 <details><summary>User</summary>
 
-| Field | Type |
-| --- | --- |
-| `userId` | `string` |
-| `email` | `string (email)` |
-| `createdAt` | `string (date-time)` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `userId` | `string` | `required` |
+| `email` | `string (email)` | `required` |
+| `createdAt` | `string (date-time)` | `required` |
 
 </details>
 

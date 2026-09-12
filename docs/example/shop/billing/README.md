@@ -83,49 +83,49 @@ celery -A config worker -Q billing,billing.mail
 <a id="message-drawuprequest"></a>
 <details><summary>DrawUpRequest</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `orderId` | `string (uuid)` | — |
-| `customerId` | `string (uuid)` | — |
-| `currency` | `string` | ISO 4217. |
-| `taxRate` | `string` | A decimal, as a string, so nothing rounds on the way in. |
-| `lines` | `[]Line` | — |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `orderId` | `string (uuid)` | `required` | — |
+| `customerId` | `string (uuid)` | `required` | — |
+| `currency` | `string` | `required` | ISO 4217. |
+| `taxRate` | `string` | `required` | A decimal, as a string, so nothing rounds on the way in. |
+| `lines` | `[]Line` | `required` | — |
 
 </details>
 
 <a id="message-invoice"></a>
 <details><summary>Invoice</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `invoiceId` | `string (uuid)` | Optional. |
-| `orderId` | `string (uuid)` | Optional. |
-| `number` | `string` | Optional. |
-| `currency` | `string` | Optional. |
-| `totalMinor` | `integer (int64)` | Optional. |
-| `status` | `string enum(draft \| issued \| paid \| void)` | Optional. |
-| `lines` | `[]Line` | Optional. |
+| Field | Type |
+| --- | --- |
+| `invoiceId` | `string (uuid)` |
+| `orderId` | `string (uuid)` |
+| `number` | `string` |
+| `currency` | `string` |
+| `totalMinor` | `integer (int64)` |
+| `status` | `string enum(draft \| issued \| paid \| void)` |
+| `lines` | `[]Line` |
 
 </details>
 
 <a id="message-invoiceid"></a>
 <details><summary>InvoiceId</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `invoiceId` | `string (uuid)` | Optional. |
-| `number` | `string` | Optional. |
+| Field | Type |
+| --- | --- |
+| `invoiceId` | `string (uuid)` |
+| `number` | `string` |
 
 </details>
 
 <a id="message-line"></a>
 <details><summary>Line</summary>
 
-| Field | Type |
-| --- | --- |
-| `sku` | `string` |
-| `quantity` | `integer` |
-| `unitPriceMinor` | `integer (int64)` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `sku` | `string` | `required` |
+| `quantity` | `integer` | `required` |
+| `unitPriceMinor` | `integer (int64)` | `required` |
 
 </details>
 

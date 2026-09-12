@@ -59,27 +59,32 @@
                     {
                       "name": "orderId",
                       "type": "string (uuid)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "customerId",
                       "type": "string (uuid)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": "ISO 4217."
+                      "doc": "ISO 4217.",
+                      "required": true
                     },
                     {
                       "name": "taxRate",
                       "type": "string",
-                      "doc": "A decimal, as a string, so nothing rounds on the way in."
+                      "doc": "A decimal, as a string, so nothing rounds on the way in.",
+                      "required": true
                     },
                     {
                       "name": "lines",
                       "type": "[]Line",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -89,12 +94,12 @@
                     {
                       "name": "invoiceId",
                       "type": "string (uuid)",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "number",
                       "type": "string",
-                      "doc": "Optional."
+                      "doc": ""
                     }
                   ]
                 },
@@ -104,37 +109,37 @@
                     {
                       "name": "invoiceId",
                       "type": "string (uuid)",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "orderId",
                       "type": "string (uuid)",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "number",
                       "type": "string",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "totalMinor",
                       "type": "integer (int64)",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "status",
                       "type": "string enum(draft | issued | paid | void)",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "lines",
                       "type": "[]Line",
-                      "doc": "Optional."
+                      "doc": ""
                     }
                   ]
                 },
@@ -144,17 +149,20 @@
                     {
                       "name": "sku",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "quantity",
                       "type": "integer",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "unitPriceMinor",
                       "type": "integer (int64)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 }

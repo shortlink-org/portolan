@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package shop.v1;
 
+import "buf/validate/validate.proto";
+
 option go_package = "github.com/shortlink-org/portolan/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/gen/shop/v1;pricingv1";
 
 // What a basket costs, and for how long.
@@ -17,14 +19,17 @@ service Pricing {
 }
 
 message IssueQuoteRequest {
-  string basket_id = 1;
-  string currency = 2;
-  repeated Item items = 3;
+  // The basket being priced. Pricing never invents one.
+  string basket_id = 1 [(buf.validate.field).required = true, (buf.validate.field).string.min_len = 1];
+  // ISO 4217, upper case: the shop quotes in one currency per basket.
+  string currency = 2 [(buf.validate.field).string = { len: 3, pattern: "^[A-Z]{3}$" }];
+  // An empty basket has no price to promise.
+  repeated Item items = 3 [(buf.validate.field).repeated.min_items = 1];
 }
 
 message Item {
-  string sku = 1;
-  int32 quantity = 2;
+  string sku = 1 [(buf.validate.field).string.min_len = 1];
+  int32 quantity = 2 [(buf.validate.field).int32.gt = 0];
 }
 
 message IssueQuoteResponse {

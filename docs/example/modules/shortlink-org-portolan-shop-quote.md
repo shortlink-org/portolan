@@ -29,7 +29,7 @@
 
 ### shop.v1.Pricing
 
-- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto#L11)
+- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto#L13)
 - **Module:** [buf.build/shortlink-org/portolan-shop-quote](shortlink-org-portolan-shop-quote.md)
 
 | Method | Request | Response | Doc |
@@ -64,11 +64,11 @@
 <a id="message-issuequoterequest"></a>
 <details><summary>IssueQuoteRequest</summary>
 
-| Field | Type |
-| --- | --- |
-| `basket_id` | `string` |
-| `currency` | `string` |
-| `items` | `[]Item` |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `basket_id` | `string` | `required`, `min_len 1` | The basket being priced. Pricing never invents one. |
+| `currency` | `string` | `len 3`, `pattern ^[A-Z]{3}$` | ISO 4217, upper case: the shop quotes in one currency per basket. |
+| `items` | `[]Item` | `min_items 1` | An empty basket has no price to promise. |
 
 </details>
 
@@ -87,9 +87,9 @@
 <a id="message-item"></a>
 <details><summary>Item</summary>
 
-| Field | Type |
-| --- | --- |
-| `sku` | `string` |
-| `quantity` | `int32` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `sku` | `string` | `min_len 1` |
+| `quantity` | `int32` | `gt 0` |
 
 </details>

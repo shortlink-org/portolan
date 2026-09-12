@@ -70,8 +70,8 @@ func Parse(path, src string) (*File, []Note, error) {
 		case "import":
 			file.Imports = append(file.Imports, p.parseImport())
 		case "option":
-			if o, ok := p.parseOption(); ok {
-				file.Options = append(file.Options, o)
+			if options, ok := p.parseOption(); ok {
+				file.Options = append(file.Options, options...)
 			}
 		case "message":
 			if m := p.parseMessage(); m != nil {
@@ -124,16 +124,18 @@ func (p *parser) parseImport() Import {
 	return imp
 }
 
-func (p *parser) parseOption() (Option, bool) {
+// parseOption reads `option name = value;`. An aggregate value is one option
+// per leaf, so `option (x) = { a: 1, b: 2 };` comes back as `(x).a` and `(x).b`.
+func (p *parser) parseOption() ([]Option, bool) {
 	tok := p.take() // "option"
 	name := p.optionName()
 	if !p.expect("=") {
-		return Option{}, false
+		return nil, false
 	}
-	value := p.optionValue()
+	options := p.optionValues(name, tok.line)
 	p.expect(";")
 
-	return Option{Name: name, Value: value, Line: tok.line}, true
+	return options, true
 }
 
 // optionName reads a name that may be parenthesised and dotted:
@@ -144,54 +146,153 @@ func (p *parser) optionName() string {
 		switch {
 		case p.peek().is("("):
 			p.take()
-			b.WriteString("(")
-			b.WriteString(p.qualified())
+			b.WriteString("(" + p.qualified() + ")")
 			if p.peek().is(")") {
 				p.take()
 			}
-			b.WriteString(")")
 		case p.peek().kind == tokIdent:
 			b.WriteString(p.take().text)
-		case p.peek().is("."):
-			p.take()
-			b.WriteString(".")
 		default:
 			return b.String()
 		}
 		if !p.peek().is(".") {
 			return b.String()
 		}
+		p.take()
+		b.WriteString(".")
 	}
 }
 
-// optionValue reads a scalar value, or skips an aggregate `{ ... }` body.
-func (p *parser) optionValue() string {
-	tok := p.peek()
-	if tok.is("{") {
-		// A custom option body is arbitrary and modelled by nothing here.
-		p.note(tok.line, "an aggregate option value is not read")
-		p.skipBlock()
+// optionValues reads what follows `name =` and returns it as options named
+// from the leaf up.
+//
+// A scalar is one option. An aggregate `{ min_len: 1, max_len: 64 }` is one
+// option per leaf, the key joined to the name with a dot, however deep the
+// body nests: `(buf.validate.field).string.min_len`. A list `[a, b]` of
+// scalars is one option whose value is the elements, comma-separated; a list
+// of aggregates is each aggregate flattened under the same name, and a
+// reader of the options merges the repeats.
+//
+// This is the text format's own shape, and it is what Protovalidate and every
+// other custom option is written in; keeping the leaves is what lets a rule
+// on a field reach the catalog instead of a note saying it was skipped.
+func (p *parser) optionValues(name string, line int) []Option {
+	switch {
+	case p.peek().is("{"):
+		return p.aggregate(name, line)
+	case p.peek().is("["):
+		return p.optionList(name, line)
+	default:
+		value, _ := p.constant()
 
-		return ""
+		return []Option{{Name: name, Value: value, Line: line}}
 	}
-	if tok.is("[") {
-		p.skipBrackets()
+}
 
-		return ""
-	}
-
-	var b strings.Builder
-	for !p.done() && !p.peek().is(";") && !p.peek().is(",") && !p.peek().is("]") {
-		t := p.take()
-		if t.kind == tokString {
-			b.WriteString(t.text)
+// aggregate reads a text-format message body: `key: value` pairs, separated
+// by commas, semicolons or nothing, a message value with or without the colon.
+func (p *parser) aggregate(prefix string, line int) []Option {
+	p.take() // "{"
+	var out []Option
+	for !p.done() && !p.peek().is("}") {
+		if p.peek().is(",") || p.peek().is(";") {
+			p.take()
 
 			continue
 		}
-		b.WriteString(t.text)
+		key, ok := p.aggregateKey()
+		if !ok {
+			p.note(p.peek().line, fmt.Sprintf("unexpected %q in an option body; skipped", p.peek().text))
+			p.take()
+
+			continue
+		}
+		if p.peek().is(":") {
+			p.take()
+		}
+		out = append(out, p.optionValues(prefix+"."+key, line)...)
+	}
+	p.expect("}")
+
+	return out
+}
+
+// aggregateKey is a field name, or an extension in brackets: `[acme.pii]`,
+// spelled `(acme.pii)` on the way out to match how an option names one.
+func (p *parser) aggregateKey() (string, bool) {
+	if p.peek().kind == tokIdent {
+		return p.take().text, true
+	}
+	if !p.peek().is("[") {
+		return "", false
+	}
+	p.take()
+	name := p.qualified()
+	if p.peek().is("]") {
+		p.take()
 	}
 
-	return b.String()
+	return "(" + name + ")", name != ""
+}
+
+// optionList reads `[ ... ]`: scalars into one comma-joined value, aggregates
+// each flattened under the list's own name.
+func (p *parser) optionList(name string, line int) []Option {
+	p.take() // "["
+	var out []Option
+	var scalars []string
+	for !p.done() && !p.peek().is("]") {
+		if p.peek().is(",") {
+			p.take()
+
+			continue
+		}
+		if p.peek().is("{") {
+			out = append(out, p.aggregate(name, line)...)
+
+			continue
+		}
+		value, ok := p.constant()
+		if !ok {
+			p.note(p.peek().line, fmt.Sprintf("unexpected %q in an option list; skipped", p.peek().text))
+			p.take()
+
+			continue
+		}
+		scalars = append(scalars, value)
+	}
+	p.expect("]")
+	if len(scalars) > 0 {
+		out = append([]Option{{Name: name, Value: strings.Join(scalars, ", "), Line: line}}, out...)
+	}
+
+	return out
+}
+
+// constant reads one value as the grammar allows it: a signed number, a
+// string (adjacent literals concatenated), a bool, or an identifier that may
+// be dotted. Quotes are not kept; a sign is. Not ok when the next token
+// cannot start a value, in which case nothing is read and the caller decides
+// what to skip; an empty string literal is a value, and ok.
+func (p *parser) constant() (string, bool) {
+	var b strings.Builder
+	if p.peek().is("-") || p.peek().is("+") {
+		b.WriteString(p.take().text)
+	}
+	switch p.peek().kind {
+	case tokString:
+		for p.peek().kind == tokString {
+			b.WriteString(p.take().text)
+		}
+	case tokNumber:
+		b.WriteString(p.take().text)
+	case tokIdent:
+		b.WriteString(p.qualified())
+	default:
+		return b.String(), b.Len() > 0
+	}
+
+	return b.String(), true
 }
 
 func (p *parser) parseMessage() *Message {
@@ -337,23 +438,26 @@ func (p *parser) parseField(oneof string) *Field {
 	return f
 }
 
-// fieldOptions reads `[deprecated = true, default = "x"]`. Only the two the
-// catalog can say anything about are kept; the rest are read past so they
-// cannot desynchronise the parser.
+// fieldOptions reads `[deprecated = true, (buf.validate.field).string = {
+// min_len: 1 }]`. Every option is kept, one per leaf; the two protobuf's own
+// that the catalog has a place for are lifted onto the field as well.
 func (p *parser) fieldOptions(f *Field) {
-	p.take() // "["
+	tok := p.take() // "["
 	for !p.done() && !p.peek().is("]") {
 		name := p.optionName()
 		if !p.expect("=") {
 			break
 		}
-		value := p.optionValue()
-		switch name {
-		case "deprecated":
-			f.Deprecated = value == "true"
-		case "default":
-			f.Default = value
+		options := p.optionValues(name, tok.line)
+		for _, o := range options {
+			switch o.Name {
+			case "deprecated":
+				f.Deprecated = o.Value == "true"
+			case "default":
+				f.Default = o.Value
+			}
 		}
+		f.Options = append(f.Options, options...)
 		if p.peek().is(",") {
 			p.take()
 		}
@@ -492,9 +596,11 @@ func (p *parser) parseMethod() *Method {
 		p.take()
 		for !p.done() && !p.peek().is("}") {
 			if p.peek().is("option") {
-				o, ok := p.parseOption()
-				if ok && o.Name == "deprecated" && o.Value == "true" {
-					m.Deprecated = true
+				options, _ := p.parseOption()
+				for _, o := range options {
+					if o.Name == "deprecated" && o.Value == "true" {
+						m.Deprecated = true
+					}
 				}
 
 				continue

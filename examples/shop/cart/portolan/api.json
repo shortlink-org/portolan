@@ -76,12 +76,14 @@
                     {
                       "name": "basketId",
                       "type": "string (uuid)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "token",
                       "type": "string",
-                      "doc": "The capability to change this basket; sent back as X-Basket-Token."
+                      "doc": "The capability to change this basket; sent back as X-Basket-Token.",
+                      "required": true
                     }
                   ]
                 },
@@ -91,37 +93,41 @@
                     {
                       "name": "basketId",
                       "type": "string (uuid)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "customerId",
                       "type": "string",
-                      "doc": "Optional. Present once the basket belongs to a signed-in customer."
+                      "doc": "Present once the basket belongs to a signed-in customer."
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": "Optional. Set by the first line; absent while the basket is empty."
+                      "doc": "Set by the first line; absent while the basket is empty."
                     },
                     {
                       "name": "status",
                       "type": "string enum(open | checked-out | abandoned | merged)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "items",
                       "type": "[]LineItem",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "subtotal",
                       "type": "Money",
-                      "doc": "Optional."
+                      "doc": ""
                     },
                     {
                       "name": "touchedAt",
                       "type": "string (date-time)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -131,7 +137,8 @@
                     {
                       "name": "message",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -141,17 +148,30 @@
                     {
                       "name": "sku",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "quantity",
                       "type": "integer",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "1"
+                        },
+                        {
+                          "name": "lte",
+                          "value": "99"
+                        }
+                      ]
                     },
                     {
                       "name": "unitPrice",
                       "type": "Money",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -161,12 +181,14 @@
                     {
                       "name": "fromBasketId",
                       "type": "string (uuid)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "fromToken",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -176,17 +198,20 @@
                     {
                       "name": "basketId",
                       "type": "string (uuid)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "quoteId",
                       "type": "string",
-                      "doc": "The quote pricing issued; the order is placed against it."
+                      "doc": "The quote pricing issued; the order is placed against it.",
+                      "required": true
                     },
                     {
                       "name": "total",
                       "type": "Money",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -196,17 +221,30 @@
                     {
                       "name": "sku",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "quantity",
                       "type": "integer",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "1"
+                        },
+                        {
+                          "name": "lte",
+                          "value": "99"
+                        }
+                      ]
                     },
                     {
                       "name": "unitPrice",
                       "type": "Money",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -216,12 +254,14 @@
                     {
                       "name": "amountMinor",
                       "type": "integer (int64)",
-                      "doc": "Amount in the minor unit of the currency."
+                      "doc": "Amount in the minor unit of the currency.",
+                      "required": true
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": "ISO 4217 code"
+                      "doc": "ISO 4217 code",
+                      "required": true
                     }
                   ]
                 }

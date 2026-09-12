@@ -30,7 +30,7 @@
                   "response": "GetQuoteResponse"
                 }
               ],
-              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:11",
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:13",
               "messages": [
                 {
                   "name": "IssueQuoteRequest",
@@ -38,20 +38,43 @@
                     {
                       "name": "basket_id",
                       "type": "string",
-                      "doc": "",
-                      "number": 1
+                      "doc": "The basket being priced. Pricing never invents one.",
+                      "number": 1,
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": "",
-                      "number": 2
+                      "doc": "ISO 4217, upper case: the shop quotes in one currency per basket.",
+                      "number": 2,
+                      "rules": [
+                        {
+                          "name": "len",
+                          "value": "3"
+                        },
+                        {
+                          "name": "pattern",
+                          "value": "^[A-Z]{3}$"
+                        }
+                      ]
                     },
                     {
                       "name": "items",
                       "type": "[]Item",
-                      "doc": "",
-                      "number": 3
+                      "doc": "An empty basket has no price to promise.",
+                      "number": 3,
+                      "rules": [
+                        {
+                          "name": "min_items",
+                          "value": "1"
+                        }
+                      ]
                     }
                   ]
                 },
@@ -149,13 +172,25 @@
                       "name": "sku",
                       "type": "string",
                       "doc": "",
-                      "number": 1
+                      "number": 1,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
                     },
                     {
                       "name": "quantity",
                       "type": "int32",
                       "doc": "",
-                      "number": 2
+                      "number": 2,
+                      "rules": [
+                        {
+                          "name": "gt",
+                          "value": "0"
+                        }
+                      ]
                     }
                   ]
                 }

@@ -55,7 +55,7 @@
                   "deprecated": true
                 }
               ],
-              "source": "testdata/estate/proto/shop/v1/orders.proto:16",
+              "source": "testdata/estate/proto/shop/v1/orders.proto:17",
               "messages": [
                 {
                   "name": "PlaceOrderRequest",
@@ -64,19 +64,50 @@
                       "name": "customer_id",
                       "type": "string",
                       "doc": "Who is buying.",
-                      "number": 1
+                      "number": 1,
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
                     },
                     {
                       "name": "items",
                       "type": "[]LineItem",
                       "doc": "",
-                      "number": 2
+                      "number": 2,
+                      "rules": [
+                        {
+                          "name": "min_items",
+                          "value": "1"
+                        },
+                        {
+                          "name": "max_items",
+                          "value": "200"
+                        }
+                      ]
                     },
                     {
                       "name": "coupon",
                       "type": "string",
                       "doc": "",
-                      "number": 3
+                      "number": 3,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "16"
+                        },
+                        {
+                          "name": "pattern",
+                          "value": "^[A-Z0-9]+$"
+                        },
+                        {
+                          "name": "(acme.pii)",
+                          "value": "true"
+                        }
+                      ]
                     },
                     {
                       "name": "metadata",
@@ -214,13 +245,29 @@
                       "name": "currency",
                       "type": "string",
                       "doc": "",
-                      "number": 1
+                      "number": 1,
+                      "rules": [
+                        {
+                          "name": "len",
+                          "value": "3"
+                        },
+                        {
+                          "name": "in",
+                          "value": "USD, EUR"
+                        }
+                      ]
                     },
                     {
                       "name": "amount_minor",
                       "type": "int64",
                       "doc": "",
-                      "number": 2
+                      "number": 2,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "0"
+                        }
+                      ]
                     }
                   ]
                 },
@@ -380,13 +427,29 @@
           "name": "currency",
           "type": "string",
           "doc": "",
-          "number": 1
+          "number": 1,
+          "rules": [
+            {
+              "name": "len",
+              "value": "3"
+            },
+            {
+              "name": "in",
+              "value": "USD, EUR"
+            }
+          ]
         },
         {
           "name": "amount_minor",
           "type": "int64",
           "doc": "",
-          "number": 2
+          "number": 2,
+          "rules": [
+            {
+              "name": "gte",
+              "value": "0"
+            }
+          ]
         }
       ]
     }

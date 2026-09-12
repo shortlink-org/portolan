@@ -7,12 +7,21 @@
         {
           "name": "amountMinor",
           "type": "int64",
-          "doc": "Amount in the minor unit."
+          "doc": "Amount in the minor unit.",
+          "required": true,
+          "rules": [
+            { "name": "gte", "value": "0" }
+          ]
         },
         {
           "name": "currency",
           "type": "string",
-          "doc": "ISO 4217, upper case."
+          "doc": "ISO 4217, upper case.",
+          "rules": [
+            { "name": "len", "value": "3" },
+            { "name": "in", "value": "USD, EUR" },
+            { "name": "unique" }
+          ]
         }
       ]
     }

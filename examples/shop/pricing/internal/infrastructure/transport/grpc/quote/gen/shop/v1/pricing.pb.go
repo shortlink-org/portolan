@@ -7,6 +7,7 @@
 package pricingv1
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -22,10 +23,13 @@ const (
 )
 
 type IssueQuoteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BasketId      string                 `protobuf:"bytes,1,opt,name=basket_id,json=basketId,proto3" json:"basket_id,omitempty"`
-	Currency      string                 `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
-	Items         []*Item                `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The basket being priced. Pricing never invents one.
+	BasketId string `protobuf:"bytes,1,opt,name=basket_id,json=basketId,proto3" json:"basket_id,omitempty"`
+	// ISO 4217, upper case: the shop quotes in one currency per basket.
+	Currency string `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
+	// An empty basket has no price to promise.
+	Items         []*Item `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -341,14 +345,16 @@ var File_shop_v1_pricing_proto protoreflect.FileDescriptor
 
 const file_shop_v1_pricing_proto_rawDesc = "" +
 	"\n" +
-	"\x15shop/v1/pricing.proto\x12\ashop.v1\"q\n" +
-	"\x11IssueQuoteRequest\x12\x1b\n" +
-	"\tbasket_id\x18\x01 \x01(\tR\bbasketId\x12\x1a\n" +
-	"\bcurrency\x18\x02 \x01(\tR\bcurrency\x12#\n" +
-	"\x05items\x18\x03 \x03(\v2\r.shop.v1.ItemR\x05items\"4\n" +
-	"\x04Item\x12\x10\n" +
-	"\x03sku\x18\x01 \x01(\tR\x03sku\x12\x1a\n" +
-	"\bquantity\x18\x02 \x01(\x05R\bquantity\"\x8b\x01\n" +
+	"\x15shop/v1/pricing.proto\x12\ashop.v1\x1a\x1bbuf/validate/validate.proto\"\x9d\x01\n" +
+	"\x11IssueQuoteRequest\x12'\n" +
+	"\tbasket_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bbasketId\x120\n" +
+	"\bcurrency\x18\x02 \x01(\tB\x14\xbaH\x11r\x0f2\n" +
+	"^[A-Z]{3}$\x98\x01\x03R\bcurrency\x12-\n" +
+	"\x05items\x18\x03 \x03(\v2\r.shop.v1.ItemB\b\xbaH\x05\x92\x01\x02\b\x01R\x05items\"F\n" +
+	"\x04Item\x12\x19\n" +
+	"\x03sku\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03sku\x12#\n" +
+	"\bquantity\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\bquantity\"\x8b\x01\n" +
 	"\x12IssueQuoteResponse\x12\x19\n" +
 	"\bquote_id\x18\x01 \x01(\tR\aquoteId\x12\x1f\n" +
 	"\vtotal_minor\x18\x02 \x01(\x03R\n" +

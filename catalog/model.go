@@ -676,6 +676,30 @@ type Field struct {
 	// Number is the protobuf field number when the source carries one. Other
 	// schema and domain extractors leave it absent.
 	Number int `json:"number,omitempty"`
+	// Required is set when the source says the field must be sent: a
+	// Protovalidate `required`, a name in a JSON Schema `required` list.
+	// Absent means the source does not say, which in proto3 and OpenAPI alike
+	// means it may be left out.
+	Required bool `json:"required,omitempty"`
+	// Rules is what the source says a value must satisfy, in the order it
+	// said it.
+	Rules []FieldRule `json:"rules,omitempty"`
+}
+
+// FieldRule is one constraint on a field's value, in the catalog's own
+// vocabulary so a Protovalidate `min_len` and a JSON Schema `minLength` are
+// one rule: `min_len`, `max_len`, `len`, `pattern`, `prefix`, `suffix`,
+// `contains`, `not_contains`, `format`, `gt`, `gte`, `lt`, `lte`, `const`,
+// `in`, `not_in`, `multiple_of`, `min_items`, `max_items`, `unique`,
+// `min_pairs`, `max_pairs`, `defined_only`, `lt_now`, `gt_now`, `cel`. A rule
+// on what a list holds is prefixed `items.`; on a map's keys or values,
+// `keys.` or `values.`. A custom option the catalog has no word for keeps the
+// name the source gave it, `(acme.pii)`, so it is shown rather than lost.
+type FieldRule struct {
+	Name string `json:"name"`
+	// Value is the bound as the source wrote it, text so a 64-bit number
+	// survives; absent for a bare flag such as `unique`.
+	Value string `json:"value,omitempty"`
 }
 
 type TypeDef struct {

@@ -84,7 +84,7 @@ func TestProtoServiceBecomesAnInterface(t *testing.T) {
 	if orders.ID != "shop.v1.Orders" {
 		t.Errorf("interface id: %q", orders.ID)
 	}
-	if orders.Source != "testdata/estate/proto/shop/v1/orders.proto:16" {
+	if orders.Source != "testdata/estate/proto/shop/v1/orders.proto:17" {
 		t.Errorf("source must name the file and the line: %q", orders.Source)
 	}
 	if orders.Module != "buf.build/acme/shop" {

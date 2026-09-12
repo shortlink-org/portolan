@@ -72,6 +72,12 @@ type Field struct {
 	Oneof      string
 	Deprecated bool
 	Default    string
+
+	// Options is everything in the brackets after the number, one per leaf:
+	// `[(buf.validate.field).string = { min_len: 1 }]` is the option
+	// `(buf.validate.field).string.min_len` with value `1`. Deprecated and
+	// Default above are the two of these the wire format defines itself.
+	Options []Option
 }
 
 type Oneof struct {

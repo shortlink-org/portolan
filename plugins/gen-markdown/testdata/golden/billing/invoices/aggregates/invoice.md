@@ -27,10 +27,10 @@ An amount in one currency.
 
 Shared type [`Money`](../../../types.md#type-money).
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `amountMinor` | `int64` | Amount in the minor unit. |
-| `currency` | `string` | ISO 4217, upper case. |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `amountMinor` | `int64` | `required`, `gte 0` | Amount in the minor unit. |
+| `currency` | `string` | `len 3`, `in USD, EUR`, `unique` | ISO 4217, upper case. |
 
 ## Enums
 

@@ -81,87 +81,87 @@ Docker the tests that need Postgres or NATS are skipped.
 <a id="message-additemrequest"></a>
 <details><summary>AddItemRequest</summary>
 
-| Field | Type |
-| --- | --- |
-| `sku` | `string` |
-| `quantity` | `integer` |
-| `unitPrice` | `Money` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `sku` | `string` | `required` |
+| `quantity` | `integer` | `required`, `gte 1`, `lte 99` |
+| `unitPrice` | `Money` | `required` |
 
 </details>
 
 <a id="message-basket"></a>
 <details><summary>Basket</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `basketId` | `string (uuid)` | — |
-| `customerId` | `string` | Optional. Present once the basket belongs to a signed-in customer. |
-| `currency` | `string` | Optional. Set by the first line; absent while the basket is empty. |
-| `status` | `string enum(open \| checked-out \| abandoned \| merged)` | — |
-| `items` | `[]LineItem` | — |
-| `subtotal` | `Money` | Optional. |
-| `touchedAt` | `string (date-time)` | — |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `basketId` | `string (uuid)` | `required` | — |
+| `customerId` | `string` | — | Present once the basket belongs to a signed-in customer. |
+| `currency` | `string` | — | Set by the first line; absent while the basket is empty. |
+| `status` | `string enum(open \| checked-out \| abandoned \| merged)` | `required` | — |
+| `items` | `[]LineItem` | `required` | — |
+| `subtotal` | `Money` | — | — |
+| `touchedAt` | `string (date-time)` | `required` | — |
 
 </details>
 
 <a id="message-basketcreated"></a>
 <details><summary>BasketCreated</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `basketId` | `string (uuid)` | — |
-| `token` | `string` | The capability to change this basket; sent back as X-Basket-Token. |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `basketId` | `string (uuid)` | `required` | — |
+| `token` | `string` | `required` | The capability to change this basket; sent back as X-Basket-Token. |
 
 </details>
 
 <a id="message-checkedout"></a>
 <details><summary>CheckedOut</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `basketId` | `string (uuid)` | — |
-| `quoteId` | `string` | The quote pricing issued; the order is placed against it. |
-| `total` | `Money` | — |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `basketId` | `string (uuid)` | `required` | — |
+| `quoteId` | `string` | `required` | The quote pricing issued; the order is placed against it. |
+| `total` | `Money` | `required` | — |
 
 </details>
 
 <a id="message-error"></a>
 <details><summary>Error</summary>
 
-| Field | Type |
-| --- | --- |
-| `message` | `string` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `message` | `string` | `required` |
 
 </details>
 
 <a id="message-lineitem"></a>
 <details><summary>LineItem</summary>
 
-| Field | Type |
-| --- | --- |
-| `sku` | `string` |
-| `quantity` | `integer` |
-| `unitPrice` | `Money` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `sku` | `string` | `required` |
+| `quantity` | `integer` | `required`, `gte 1`, `lte 99` |
+| `unitPrice` | `Money` | `required` |
 
 </details>
 
 <a id="message-mergerequest"></a>
 <details><summary>MergeRequest</summary>
 
-| Field | Type |
-| --- | --- |
-| `fromBasketId` | `string (uuid)` |
-| `fromToken` | `string` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `fromBasketId` | `string (uuid)` | `required` |
+| `fromToken` | `string` | `required` |
 
 </details>
 
 <a id="message-money"></a>
 <details><summary>Money</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `amountMinor` | `integer (int64)` | Amount in the minor unit of the currency. |
-| `currency` | `string` | ISO 4217 code |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `amountMinor` | `integer (int64)` | `required` | Amount in the minor unit of the currency. |
+| `currency` | `string` | `required` | ISO 4217 code |
 
 </details>
 

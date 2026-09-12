@@ -24,56 +24,56 @@ The card network the ledger moves money through. Nobody in the estate provides i
 <a id="message-api-errors"></a>
 <details><summary>api_errors</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `type` | `string enum(api_error \| card_error \| idempotency_error \| invalid_request_error)` | The type of error returned. One of `api_error`, `card_error`, `idempotency_error`, or `invalid_request_error` |
-| `code` | `string` | Optional. For some errors that could be handled programmatically, a short string indicating the [error code](https://docs.stripe.com/error-codes) reported. |
-| `decline_code` | `string` | Optional. For card errors resulting from a card issuer decline, a short string indicating the [card issuer's reason for the decline](https://docs.stripe.com/declines#issuer-declines) if they provide one. |
-| `message` | `string` | Optional. A human-readable message providing more details about the error. For card errors, these messages can be shown to your users. |
-| `param` | `string` | Optional. If the error is parameter-specific, the parameter related to the error. For example, you can use this to display a message near the correct form field. |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `type` | `string enum(api_error \| card_error \| idempotency_error \| invalid_request_error)` | `required` | The type of error returned. One of `api_error`, `card_error`, `idempotency_error`, or `invalid_request_error` |
+| `code` | `string` | `max_len 5000` | For some errors that could be handled programmatically, a short string indicating the [error code](https://docs.stripe.com/error-codes) reported. |
+| `decline_code` | `string` | `max_len 5000` | For card errors resulting from a card issuer decline, a short string indicating the [card issuer's reason for the decline](https://docs.stripe.com/declines#issuer-declines) if they provide one. |
+| `message` | `string` | `max_len 40000` | A human-readable message providing more details about the error. For card errors, these messages can be shown to your users. |
+| `param` | `string` | `max_len 5000` | If the error is parameter-specific, the parameter related to the error. For example, you can use this to display a message near the correct form field. |
 
 </details>
 
 <a id="message-error"></a>
 <details><summary>error</summary>
 
-| Field | Type |
-| --- | --- |
-| `error` | `api_errors` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `error` | `api_errors` | `required` |
 
 </details>
 
 <a id="message-payment-intent"></a>
 <details><summary>payment_intent</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Unique identifier for the object. |
-| `object` | `string enum(payment_intent)` | String representing the object's type. Objects of the same type share the same value. |
-| `amount` | `integer` | Optional. Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or [equivalent in charge currency](https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts). The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99). |
-| `amount_capturable` | `integer` | Optional. Amount that can be captured from this PaymentIntent. |
-| `amount_received` | `integer` | Optional. Amount that this PaymentIntent collects. |
-| `capture_method` | `string enum(automatic \| automatic_async \| manual)` | Optional. Controls when the funds will be captured from the customer's account. |
-| `currency` | `string (currency)` | Optional. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies). |
-| `description` | `string \| null` | Optional. An arbitrary string attached to the object. Often useful for displaying to users. |
-| `metadata` | `map[string]string` | Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Learn more about [storing information in metadata](https://docs.stripe.com/payments/payment-intents/creating-payment-intents#storing-information-in-metadata). |
-| `status` | `string enum(canceled \| processing \| requires_action \| requires_capture \| requires_confirmation \| requires_payment_method \| succeeded)` | Status of this PaymentIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `requires_capture`, `canceled`, or `succeeded`. Read more about each PaymentIntent [status](https://docs.stripe.com/payments/intents#intent-statuses). |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `id` | `string` | `required`, `max_len 5000` | Unique identifier for the object. |
+| `object` | `string enum(payment_intent)` | `required` | String representing the object's type. Objects of the same type share the same value. |
+| `amount` | `integer` | — | Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or [equivalent in charge currency](https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts). The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99). |
+| `amount_capturable` | `integer` | — | Amount that can be captured from this PaymentIntent. |
+| `amount_received` | `integer` | — | Amount that this PaymentIntent collects. |
+| `capture_method` | `string enum(automatic \| automatic_async \| manual)` | — | Controls when the funds will be captured from the customer's account. |
+| `currency` | `string (currency)` | — | Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies). |
+| `description` | `string \| null` | `max_len 5000` | An arbitrary string attached to the object. Often useful for displaying to users. |
+| `metadata` | `map[string]string` | — | Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Learn more about [storing information in metadata](https://docs.stripe.com/payments/payment-intents/creating-payment-intents#storing-information-in-metadata). |
+| `status` | `string enum(canceled \| processing \| requires_action \| requires_capture \| requires_confirmation \| requires_payment_method \| succeeded)` | `required` | Status of this PaymentIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `requires_capture`, `canceled`, or `succeeded`. Read more about each PaymentIntent [status](https://docs.stripe.com/payments/intents#intent-statuses). |
 
 </details>
 
 <a id="message-refund"></a>
 <details><summary>refund</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Unique identifier for the object. |
-| `object` | `string enum(refund)` | String representing the object's type. Objects of the same type share the same value. |
-| `amount` | `integer` | Amount, in cents (or local equivalent). |
-| `currency` | `string (currency)` | Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies). |
-| `metadata` | `map[string]string \| null` | Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. |
-| `payment_intent` | `string \| payment_intent \| null` | Optional. ID of the PaymentIntent that's refunded. |
-| `reason` | `string enum(duplicate \| expired_uncaptured_charge \| fraudulent \| requested_by_customer) \| null` | Optional. Reason for the refund, which is either user-provided (`duplicate`, `fraudulent`, or `requested_by_customer`) or generated by Stripe internally (`expired_uncaptured_charge`). |
-| `status` | `string \| null` | Optional. Status of the refund. This can be `pending`, `requires_action`, `succeeded`, `failed`, or `canceled`. Learn more about [failed refunds](https://docs.stripe.com/refunds#failed-refunds). |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `id` | `string` | `required`, `max_len 5000` | Unique identifier for the object. |
+| `object` | `string enum(refund)` | `required` | String representing the object's type. Objects of the same type share the same value. |
+| `amount` | `integer` | `required` | Amount, in cents (or local equivalent). |
+| `currency` | `string (currency)` | `required` | Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies). |
+| `metadata` | `map[string]string \| null` | — | Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. |
+| `payment_intent` | `string \| payment_intent \| null` | — | ID of the PaymentIntent that's refunded. |
+| `reason` | `string enum(duplicate \| expired_uncaptured_charge \| fraudulent \| requested_by_customer) \| null` | — | Reason for the refund, which is either user-provided (`duplicate`, `fraudulent`, or `requested_by_customer`) or generated by Stripe internally (`expired_uncaptured_charge`). |
+| `status` | `string \| null` | `max_len 5000` | Status of the refund. This can be `pending`, `requires_action`, `succeeded`, `failed`, or `canceled`. Learn more about [failed refunds](https://docs.stripe.com/refunds#failed-refunds). |
 
 </details>
 

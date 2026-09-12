@@ -77,12 +77,24 @@
                     {
                       "name": "email",
                       "type": "string (email)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "password",
                       "type": "string (password)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "8"
+                        },
+                        {
+                          "name": "max_len",
+                          "value": "32"
+                        }
+                      ]
                     }
                   ]
                 },
@@ -92,17 +104,20 @@
                     {
                       "name": "userId",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "email",
                       "type": "string (email)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "createdAt",
                       "type": "string (date-time)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -112,12 +127,13 @@
                     {
                       "name": "message",
                       "type": "string",
-                      "doc": "One sentence, always present. A client that shows the user a single\nline shows this one."
+                      "doc": "One sentence, always present. A client that shows the user a single\nline shows this one.",
+                      "required": true
                     },
                     {
                       "name": "reasons",
                       "type": "[]string",
-                      "doc": "Optional. One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
+                      "doc": "One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
                     }
                   ]
                 },
@@ -127,12 +143,24 @@
                     {
                       "name": "currentPassword",
                       "type": "string (password)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "newPassword",
                       "type": "string (password)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "8"
+                        },
+                        {
+                          "name": "max_len",
+                          "value": "32"
+                        }
+                      ]
                     }
                   ]
                 },
@@ -142,12 +170,14 @@
                     {
                       "name": "email",
                       "type": "string (email)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "password",
                       "type": "string (password)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -157,12 +187,14 @@
                     {
                       "name": "token",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "expiresAt",
                       "type": "string (date-time)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 },
@@ -172,12 +204,14 @@
                     {
                       "name": "userId",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "expiresAt",
                       "type": "string (date-time)",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 }

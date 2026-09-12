@@ -5,6 +5,7 @@ package shop.v1;
 
 import "shop/v1/money.proto";
 import public "shop/v1/common.proto";
+import "buf/validate/validate.proto";
 
 option go_package = "github.com/acme/shop/gen/shop/v1;shopv1";
 
@@ -33,9 +34,9 @@ service Orders {
 
 message PlaceOrderRequest {
   // Who is buying.
-  string customer_id = 1;
-  repeated LineItem items = 2;
-  optional string coupon = 3;
+  string customer_id = 1 [(buf.validate.field).required = true, (buf.validate.field).string.uuid = true];
+  repeated LineItem items = 2 [(buf.validate.field).repeated = { min_items: 1, max_items: 200 }];
+  optional string coupon = 3 [(buf.validate.field).string = { max_len: 16, pattern: "^[A-Z0-9]+$" }, (acme.pii) = true];
   map<string, string> metadata = 4;
   Money total = 5;
 

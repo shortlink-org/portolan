@@ -4,6 +4,10 @@ version: v2
 modules:
   - path: .
     name: buf.build/shortlink-org/portolan-shop-quote
+# The rules on a request are Protovalidate annotations; the module they live
+# in is a dependency like any other.
+deps:
+  - buf.build/bufbuild/protovalidate
 lint:
   use:
     - STANDARD

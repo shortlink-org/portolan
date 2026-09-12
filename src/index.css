@@ -1504,6 +1504,11 @@
     color: var(--fg-faint);
     background: var(--surface-2);
   }
+  /* A rule on the value - "≥ 1 chars", "matches ^[A-Z]{3}$" - in the same
+     tone. A pattern can run long; the tooltip carries the whole of it. */
+  .rule-mark {
+    @apply max-w-[18ch] truncate;
+  }
 }
 
 /* ---------------------------------------------------------------------------

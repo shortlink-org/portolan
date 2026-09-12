@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -161,16 +162,16 @@ func TestFieldTypesAndOptionality(t *testing.T) {
 	if got := fields["customerId"].Type; got != "string (uuid)" {
 		t.Errorf("format belongs in the type, got %q", got)
 	}
-	if got := fields["customerId"].Doc; got != "Who is being billed." {
-		t.Errorf("a required field carries its description alone, got %q", got)
+	if got := fields["customerId"]; !got.Required || got.Doc != "Who is being billed." {
+		t.Errorf("a required field is flagged and carries its description alone, got %+v", got)
 	}
 	if got := fields["lines"].Type; got != "[]Line" {
 		t.Errorf("an array of refs, got %q", got)
 	}
-	// Which fields must be sent is the first thing a caller needs, and the
-	// catalog has nowhere else to put it.
-	if got := fields["lines"].Doc; !strings.HasPrefix(got, "Optional.") {
-		t.Errorf("an optional field should say so, got %q", got)
+	// A field the document does not require carries no flag and no prefix:
+	// its description is its own.
+	if got := fields["lines"]; got.Required || strings.HasPrefix(got.Doc, "Optional.") {
+		t.Errorf("an optional field carries nothing but its description, got %+v", got)
 	}
 }
 
@@ -207,13 +208,13 @@ components:
 		fields[field.Name] = field
 	}
 
-	if fields["id"].Type != "string (uuid)" || strings.HasPrefix(fields["id"].Doc, "Optional.") {
+	if fields["id"].Type != "string (uuid)" || !fields["id"].Required {
 		t.Errorf("allOf required field = %+v", fields["id"])
 	}
-	if fields["labels"].Type != "map[string]string" || strings.HasPrefix(fields["labels"].Doc, "Optional.") {
+	if fields["labels"].Type != "map[string]string" || !fields["labels"].Required {
 		t.Errorf("map field = %+v", fields["labels"])
 	}
-	if fields["state"].Type != "string enum(active | disabled)" || !strings.HasPrefix(fields["state"].Doc, "Optional.") {
+	if fields["state"].Type != "string enum(active | disabled)" || fields["state"].Required {
 		t.Errorf("enum field = %+v", fields["state"])
 	}
 	if fields["contact"].Type != "string (email) | string (phone) | null" {
@@ -580,5 +581,58 @@ paths:
 `), "fleet.v1", "test.yaml", b)
 	if len(b.Warnings) != 0 {
 		t.Errorf("a fully named document warned: %+v", b.Warnings)
+	}
+}
+
+// The validation keywords of a property become rules in the catalog's own
+// words, the same words a Protovalidate rule arrives in; a `$ref` property
+// carries the target's keywords; what an array holds is read under `items.`.
+func TestPropertyKeywordsBecomeRules(t *testing.T) {
+	doc := testDocument(t, `
+components:
+  schemas:
+    Currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      pattern: '^[A-Z]{3}$'
+    Quote:
+      type: object
+      required: [currency]
+      properties:
+        currency:
+          $ref: '#/components/schemas/Currency'
+        total:
+          type: integer
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 9007199254740993
+        skus:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {type: string, maxLength: 64}
+        note:
+          type: string
+`)
+	quote := child(doc.root, "components", "schemas", "Quote")
+	fields := map[string]catalog.Field{}
+	for _, field := range schemaFields(doc, quote) {
+		fields[field.Name] = field
+	}
+
+	want := map[string][]catalog.FieldRule{
+		"currency": {{Name: "min_len", Value: "3"}, {Name: "max_len", Value: "3"}, {Name: "pattern", Value: "^[A-Z]{3}$"}},
+		"total":    {{Name: "gt", Value: "0"}, {Name: "lte", Value: "9007199254740993"}},
+		"skus":     {{Name: "min_items", Value: "1"}, {Name: "unique"}, {Name: "items.max_len", Value: "64"}},
+		"note":     nil,
+	}
+	for name, rules := range want {
+		if got := fields[name].Rules; !reflect.DeepEqual(got, rules) {
+			t.Errorf("%s rules:\n got %+v\nwant %+v", name, got, rules)
+		}
+	}
+	if !fields["currency"].Required || fields["note"].Required {
+		t.Errorf("required: currency=%v note=%v", fields["currency"].Required, fields["note"].Required)
 	}
 }

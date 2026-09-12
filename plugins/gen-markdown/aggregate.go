@@ -326,10 +326,31 @@ func (s *site) fieldTable(from string, fields []catalog.Field) string {
 		if field.Ref != "" {
 			typ = s.defRef(from, field.Ref)
 		}
-		rows = append(rows, []string{code(field.Name), typ, field.Doc})
+		rows = append(rows, []string{code(field.Name), typ, fieldRules(field), field.Doc})
 	}
 
-	return table([]string{"Field", "Type", "Doc"}, rows)
+	// The rules column is dropped by table() when no field has any, which is
+	// most tables: a source that states no rules gets no column of dashes.
+	return table([]string{"Field", "Type", "Rules", "Doc"}, rows)
+}
+
+// fieldRules is what the source says the value must satisfy, `required`
+// first, then each rule as `name value`, the way the fragment carries them.
+func fieldRules(field *catalog.Field) string {
+	var parts []string
+	if field.Required {
+		parts = append(parts, code("required"))
+	}
+	for _, rule := range field.Rules {
+		if rule.Value == "" {
+			parts = append(parts, code(rule.Name))
+
+			continue
+		}
+		parts = append(parts, code(rule.Name+" "+rule.Value))
+	}
+
+	return strings.Join(parts, ", ")
 }
 
 // defRef links a shared type to its entry on the types page. Shared types have

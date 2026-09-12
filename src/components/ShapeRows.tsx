@@ -10,6 +10,7 @@ import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Field, RpcEnum } from "../catalog";
 import { parseType } from "../lib/shape";
+import { RuleMarks } from "./RuleMarks";
 
 /**
  * The enum a field's type names, among the ones the interface declares. By
@@ -91,26 +92,29 @@ export function ShapeRows({
                 primitive, so a reader can tell which names are worth following
                 without the row becoming a link it is not. */}
             <td className="mono py-0.5 pr-3 whitespace-nowrap text-muted">
-              {set ? (
-                <button
-                  type="button"
-                  onClick={() => toggle(field.name)}
-                  aria-expanded={shown}
-                  className="inline-flex items-center gap-1 rounded-control hover:text-ink"
-                  title={`${set.name}: ${set.values.length} values — click to ${shown ? "hide" : "show"} them`}
-                >
-                  {shown ? (
-                    <ChevronDown size={11} aria-hidden />
-                  ) : (
-                    <ChevronRight size={11} aria-hidden />
-                  )}
-                  {field.type}
-                </button>
-              ) : field.ref ? (
-                `${field.type} →`
-              ) : (
-                field.type
-              )}
+              <span className="inline-flex items-center gap-1.5">
+                {set ? (
+                  <button
+                    type="button"
+                    onClick={() => toggle(field.name)}
+                    aria-expanded={shown}
+                    className="inline-flex items-center gap-1 rounded-control hover:text-ink"
+                    title={`${set.name}: ${set.values.length} values — click to ${shown ? "hide" : "show"} them`}
+                  >
+                    {shown ? (
+                      <ChevronDown size={11} aria-hidden />
+                    ) : (
+                      <ChevronRight size={11} aria-hidden />
+                    )}
+                    {field.type}
+                  </button>
+                ) : field.ref ? (
+                  `${field.type} →`
+                ) : (
+                  field.type
+                )}
+                <RuleMarks field={field} />
+              </span>
             </td>
             <td className="py-0.5 text-muted">{field.doc}</td>
           </tr>
