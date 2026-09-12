@@ -1,4 +1,4 @@
-export type RuleSubject = "service" | "event" | "channel" | "table" | "deployment" | "call";
+export type RuleSubject = "service" | "event" | "channel" | "table" | "deployment" | "flow" | "aggregate" | "call";
 
 export type RuleSeverity = "error" | "warning";
 

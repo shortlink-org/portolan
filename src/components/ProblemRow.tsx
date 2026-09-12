@@ -15,7 +15,9 @@ import { staggerStyle } from "../lib/motion";
 import { useProblemRules } from "../lib/problem-rules";
 import type { ProblemRule, RuleSubject } from "../lib/problem-rules";
 import {
+  aggregatePath,
   eventPath,
+  flowPath,
   paths,
   servicePath,
   storePath,
@@ -33,6 +35,8 @@ const ICON_OF: Record<RuleSubject, Kind> = {
   channel: "event",
   table: "table",
   deployment: "service",
+  flow: "flow",
+  aggregate: "aggregate",
 };
 
 /** Where the near end of a problem lives, by what kind of edge it is. */
@@ -94,6 +98,10 @@ function subjectPath(over: RuleSubject, problem: Problem): string | null {
       return eventPath(problem.id);
     case "table":
       return relationPath(problem.id);
+    case "flow":
+      return flowPath(problem.id);
+    case "aggregate":
+      return aggregatePath(problem.id);
     case "service":
     case "call":
     case "channel":

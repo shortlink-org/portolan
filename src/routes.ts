@@ -275,6 +275,12 @@ export function adrPath(adrId: string): string | null {
   return adr ? paths.adr(adr.slug) : null;
 }
 
+/** Path to a flow's page, or null if the id is not a catalog flow. */
+export function flowPath(flowId: string): string | null {
+  const flow = index.catalog.flows.find((candidate) => candidate.id === flowId);
+  return flow ? paths.flow(flow.slug) : null;
+}
+
 /** Path to an aggregate page, or null if the id is not a catalog aggregate. */
 export function aggregatePath(aggregateId: string): string | null {
   const aggregate = index.aggregateById.get(aggregateId);

@@ -125,7 +125,7 @@ severity, what it looks for and what to do about a row - and **Settings →
 Rules** lists them with the rows each produces now. A rule can be switched off
 or re-graded in `portolan.json`, with a reason, and a rule of your own is
 written there in CEL over one subject - a service, an event, a channel, a
-table, a deployment or a call - and runs in the page the moment it is saved:
+table, a deployment, a flow, an aggregate or a call - and runs in the page the moment it is saved:
 
 ```json
 {

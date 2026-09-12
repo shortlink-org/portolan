@@ -3418,7 +3418,7 @@ next sources to map, onto these names.
 - **Date:** 2026-09-12
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0016-a-problem-is-a-rule-with-a-passport-and-a-new-one-is-written-in-cel-over-one-subject.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0016-a-problem-is-a-rule-with-a-passport-and-a-new-one-is-written-in-cel-over-one-subject.md)
-- **Committed:** Victor Login, 2026-09-12 (`87e8c1e`)
+- **Committed:** Victor Login, 2026-09-12 (`d4edf2f`)
 
 ### Context and Problem Statement
 
@@ -3460,7 +3460,7 @@ them is a fact worth a fragment.
    the file and the readers' kinds equal. `problemRules` in the manifest
    switches or re-grades a built-in rule by id, with a reason, or declares a
    rule of its own: `over` names a subject - service, event, channel, table,
-   deployment, call - and `when` and `message` are CEL over a flat, typed
+   deployment, flow, aggregate, call - and `when` and `message` are CEL over a flat, typed
    view of one such row and `estate`, the names the catalog answers to. The
    expressions are type-checked when the manifest is read and again in the
    page, by one module. The Settings page lists every rule with the rows it
@@ -3494,7 +3494,8 @@ sidebar's badge, the overview and the landing subscribe to the rules in
 force, so a switch flipped on the Settings page is visible on the next
 render and nothing is rebuilt.
 
-A rule of the manifest's own reads one subject as a flat record - strings,
+A rule of the manifest's own reads one subject - a service, an event, a
+channel, a table, a deployment, a flow, an aggregate or a call - as a flat record - strings,
 ints, bools and lists of strings, the fields listed in
 `src/lib/problem-rules-cel.mjs` - and `estate`, so `call.peer in
 estate.services` is a rule and `event.consumers.exists(c, c in

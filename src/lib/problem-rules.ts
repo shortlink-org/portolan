@@ -21,8 +21,8 @@ import { create } from "zustand";
 
 import builtinJson from "../../rules/builtin.json";
 import manifestJson from "../../portolan.json";
-import type { Catalog, CatalogIndex, Event, Service, Table } from "../catalog";
-import { allDeployments, deploys } from "../catalog";
+import type { Aggregate, Catalog, CatalogIndex, Event, Flow, Service, Table } from "../catalog";
+import { allDeployments, deploys, enumsOf, walkSteps } from "../catalog";
 import { compileExpression, SUBJECT_NAMES } from "./problem-rules-cel.mjs";
 import type { RuleSeverity, RuleSubject } from "./problem-rules-cel.mjs";
 import type { Finding, Problem } from "./derive";
@@ -204,6 +204,74 @@ function tableSubject(index: CatalogIndex, table: Table, store: { id: string; ki
   };
 }
 
+function flowSubject(catalog: Catalog, flow: Flow): Subject {
+  const steps = walkSteps(flow.steps);
+  const participants = flow.participants.filter((participant) => participant.kind === "service").map((participant) => participant.id);
+  const contexts = [...new Set(flow.participants.flatMap((participant) => (participant.context ? [participant.context] : [])))];
+  // The near end of a flow's row is the service that owns its first lane,
+  // which is where the flow's page says it starts; the owner is a context.
+  const first = participants[0] ?? "";
+  return {
+    id: flow.id,
+    context: flow.owner,
+    service: catalog.contexts.some((context) => context.services.some((service) => service.id === first)) ? first : "",
+    source: flow.source,
+    row: {
+      id: flow.id,
+      slug: flow.slug,
+      name: flow.name,
+      owner: flow.owner,
+      trigger: flow.trigger?.kind ?? "",
+      triggerConfidence: flow.trigger?.confidence ?? "",
+      participants,
+      contexts,
+      crossContext: contexts.length > 1,
+      steps: int(steps.length),
+      verifiedSteps: int(steps.filter((step) => step.status === "verified").length),
+      declaredSteps: int(steps.filter((step) => step.status === "declared").length),
+      unresolvedSteps: int(steps.filter((step) => step.status === "unresolved").length),
+      seenSteps: int(steps.filter((step) => step.seen !== undefined).length),
+      events: [...new Set(steps.filter((step) => step.kind === "event" && step.ref).map((step) => step.ref!))],
+      stores: [...new Set(steps.flatMap((step) => (step.storeAccess ? [step.storeAccess.store] : [])))],
+      examples: int(flow.examples?.length ?? 0),
+      source: flow.source ?? "",
+    },
+  };
+}
+
+function aggregateSubject(catalog: Catalog, index: CatalogIndex, aggregate: Aggregate): Subject {
+  const owner = index.aggregateOwner.get(aggregate.id);
+  const tables = (catalog.stores ?? []).flatMap((store) =>
+    store.tables.filter((table) => table.persists?.aggregate === aggregate.id).map((table) => table.id),
+  );
+  return {
+    id: aggregate.id,
+    context: contextOf(index, owner),
+    service: owner?.id ?? "",
+    source: undefined,
+    row: {
+      id: aggregate.id,
+      slug: aggregate.slug,
+      name: aggregate.name,
+      root: aggregate.root,
+      modelGroup: aggregate.kind === "model-group",
+      service: owner?.id ?? "",
+      context: contextOf(index, owner),
+      entities: int(aggregate.entities.length),
+      valueObjects: int(aggregate.valueObjects.length),
+      enums: int(enumsOf(aggregate).length),
+      commands: int(aggregate.operations.filter((operation) => operation.kind === "command").length),
+      queries: int(aggregate.operations.filter((operation) => operation.kind === "query").length),
+      exposedOperations: int(aggregate.operations.filter((operation) => (operation.exposedBy?.length ?? 0) > 0).length),
+      deprecatedOperations: int(aggregate.operations.filter((operation) => operation.deprecated).length),
+      events: aggregate.events.map((event) => event.id),
+      states: aggregate.lifecycle?.states ?? [],
+      transitions: int(aggregate.lifecycle?.transitions.length ?? 0),
+      tables,
+    },
+  };
+}
+
 /** Every row of one subject kind in the catalog, in catalog order. */
 export function subjectsOf(catalog: Catalog, index: CatalogIndex, over: RuleSubject): Subject[] {
   const services = catalog.contexts.flatMap((context) => context.services.map((service) => ({ context, service })));
@@ -290,6 +358,10 @@ export function subjectsOf(catalog: Catalog, index: CatalogIndex, over: RuleSubj
           },
         };
       });
+    case "flow":
+      return catalog.flows.map((flow) => flowSubject(catalog, flow));
+    case "aggregate":
+      return services.flatMap(({ service }) => service.aggregates.map((aggregate) => aggregateSubject(catalog, index, aggregate)));
     case "call":
       return services.flatMap(({ context, service }) =>
         service.consumes.map((call) => {

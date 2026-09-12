@@ -153,6 +153,29 @@ describe("a CEL rule", () => {
     expect(estateOf(catalog).services).toContain("shop.cart");
   });
 
+  it("runs over flows and aggregates, and lands on the page each has", () => {
+    const flows = runCustomRule(
+      custom({ id: "team.unproven-flow", over: "flow", when: "flow.verifiedSteps == 0 && flow.steps > 0", message: "flow.name + ' has never been seen running'" }),
+      catalog,
+      index,
+    );
+    expect(flows.failure).toBeUndefined();
+    const unproven = subjectsOf(catalog, index, "flow").filter((subject) => subject.row.verifiedSteps === 0n && (subject.row.steps as bigint) > 0n);
+    expect(flows.problems.length).toBe(unproven.length);
+    expect(flows.problems.length).toBeGreaterThan(0);
+    expect(flows.problems[0]!.context).toBe(unproven[0]!.row.owner);
+
+    const aggregates = runCustomRule(
+      custom({ id: "team.silent-aggregate", over: "aggregate", when: "size(aggregate.events) == 0 && !aggregate.modelGroup", message: "aggregate.name + ' raises no event'", peer: "aggregate.service" }),
+      catalog,
+      index,
+    );
+    expect(aggregates.failure).toBeUndefined();
+    const silent = subjectsOf(catalog, index, "aggregate").filter((subject) => (subject.row.events as string[]).length === 0 && subject.row.modelGroup === false);
+    expect(aggregates.problems.length).toBe(silent.length);
+    for (const problem of aggregates.problems) expect(index.aggregateById.has(problem.id), problem.id).toBe(true);
+  });
+
   it("refuses a field the subject does not have, before any row", () => {
     const { problems, failure } = runCustomRule(custom({ id: "a", when: "event.nme == 'x'", message: "'m'" }), catalog, index);
     expect(problems).toEqual([]);
