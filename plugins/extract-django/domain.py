@@ -16,6 +16,7 @@ from typing import Dict, List, Optional
 import catalog
 from apps import App
 from ids import aggregate_id, block_id, pascal, singular, slug
+from rules import rules_of
 from source import (
     Module,
     Project,
@@ -315,7 +316,7 @@ def read_aggregates(
                     slug(model.name),
                     model.name,
                     doc(model.node),
-                    [catalog.field(f.name, f.type(), f.help()) for f in model.fields],
+                    [catalog.field(f.name, f.type(), f.help(), **rules_of(f, model)) for f in model.fields],
                 )
             )
         for module, node in value_objects(app):

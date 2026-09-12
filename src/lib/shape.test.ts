@@ -211,6 +211,38 @@ describe("schemaChanges", () => {
     expect(removed.map((f) => f.name)).toEqual(["gone"]);
   });
 
+  it("a field whose rules moved is changed, with the rules it had", () => {
+    const rules = {
+      id: "x.y.R",
+      versions: [
+        {
+          version: "v1",
+          fields: [
+            { name: "code", type: "string", doc: "", rules: [{ name: "min_len", value: "8" }] },
+            { name: "who", type: "string", doc: "" },
+            { name: "same", type: "string", doc: "", rules: [{ name: "in", value: "a, b" }, { name: "unique" }] },
+            { name: "both", type: "int32", doc: "", required: true },
+          ],
+        },
+        {
+          version: "v2",
+          fields: [
+            { name: "code", type: "string", doc: "", rules: [{ name: "min_len", value: "12" }] },
+            { name: "who", type: "string", doc: "", required: true, rules: [{ name: "format", value: "uuid" }] },
+            // The same rules in another order are the same rules.
+            { name: "same", type: "string", doc: "", rules: [{ name: "unique" }, { name: "in", value: "a, b" }] },
+            { name: "both", type: "int64", doc: "" },
+          ],
+        },
+      ],
+    } as unknown as Event;
+    const { byField } = schemaChanges(rules, "v2");
+    expect(byField.get("code")).toEqual({ change: "changed", rulesFrom: "≥ 8 chars" });
+    expect(byField.get("who")).toEqual({ change: "changed", rulesFrom: "" });
+    expect(byField.get("same")).toBeUndefined();
+    expect(byField.get("both")).toEqual({ change: "changed", from: "int32", rulesFrom: "required" });
+  });
+
   it("agrees with the fixture: OrderPlaced v2 added channel", () => {
     const placed = eventById("shop.oms.order.OrderPlaced");
     const { byField, removed } = schemaChanges(placed, "v2");

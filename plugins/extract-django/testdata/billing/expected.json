@@ -102,42 +102,90 @@
                     {
                       "name": "id",
                       "type": "UUIDField",
-                      "doc": ""
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
                     },
                     {
                       "name": "order_id",
                       "type": "UUIDField",
-                      "doc": "The order this invoice is drawn up for."
+                      "doc": "The order this invoice is drawn up for.",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
                     },
                     {
                       "name": "customer_id",
                       "type": "UUIDField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
                     },
                     {
                       "name": "number",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "32"
+                        },
+                        {
+                          "name": "unique"
+                        }
+                      ]
                     },
                     {
                       "name": "currency",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "3"
+                        }
+                      ]
                     },
                     {
                       "name": "total_minor",
                       "type": "BigIntegerField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "tax_rate",
                       "type": "DecimalField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "status",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "16"
+                        },
+                        {
+                          "name": "in",
+                          "value": "draft, issued, paid, void"
+                        }
+                      ]
                     },
                     {
                       "name": "issued_at",
@@ -160,22 +208,38 @@
                     {
                       "name": "invoice",
                       "type": "ForeignKey[Invoice]",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "sku",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "64"
+                        }
+                      ]
                     },
                     {
                       "name": "quantity",
                       "type": "PositiveIntegerField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "0"
+                        }
+                      ]
                     },
                     {
                       "name": "unit_price_minor",
                       "type": "BigIntegerField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 }
@@ -376,27 +440,44 @@
                     {
                       "name": "reference",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "64"
+                        }
+                      ]
                     },
                     {
                       "name": "tags",
                       "type": "ArrayField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "modes",
                       "type": "MultiSelectField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "32"
+                        }
+                      ]
                     },
                     {
                       "name": "audit_code",
                       "type": "ForeignKey[AuditRecord]",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "owner",
                       "type": "ForeignKey[auth.User]",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "audits",
@@ -424,12 +505,23 @@
                     {
                       "name": "code",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "12"
+                        },
+                        {
+                          "name": "unique"
+                        }
+                      ]
                     },
                     {
                       "name": "note",
                       "type": "TextField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     }
                   ]
                 }

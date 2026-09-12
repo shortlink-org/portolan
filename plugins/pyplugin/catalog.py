@@ -13,10 +13,33 @@ DECLARED = "declared"
 UNRESOLVED = "unresolved"
 
 
-def field(name: str, type_: str, doc: str = "", ref: str = "") -> Dict[str, Any]:
+def field(
+    name: str,
+    type_: str,
+    doc: str = "",
+    ref: str = "",
+    required: bool = False,
+    rules: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, Any]:
+    """A field. `required` is written only when true and `rules` only when
+    there are any: a source that says nothing about a value leaves nothing."""
     out = {"name": name, "type": type_, "doc": doc}
     if ref:
         out["ref"] = ref
+    if required:
+        out["required"] = True
+    if rules:
+        out["rules"] = rules
+    return out
+
+
+def rule(name: str, value: str = "") -> Dict[str, str]:
+    """One rule on a value, in the catalog's vocabulary (portolan.0015):
+    `min_len`, `pattern`, `in`, `format`, `gte`... The value is text, as the
+    source wrote it; a bare flag such as `unique` has none."""
+    out = {"name": name}
+    if value:
+        out["value"] = value
     return out
 
 

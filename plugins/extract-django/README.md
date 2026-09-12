@@ -61,8 +61,19 @@ the matching extraction step. Regenerate to apply it; other options are kept.
 **Field.** Each model attribute assigned a field, with the type as written:
 `CharField`, `DateTimeField`, and a relation as `ForeignKey[Invoice]`. The doc
 is the field's own `help_text`, which is the one place a Django model already
-writes down what a column means. Value objects are the frozen dataclasses in
-`values.py`, their fields the annotations as written.
+writes down what a column means. What the field call says a value must
+satisfy is read into the catalog's own words (portolan.0015): `max_length`
+is `max_len`, `unique=True` is `unique`, `choices` is `in` with the stored
+values — read off a `Choices` class, a literal list of pairs or a module-level
+constant, and left out when they come from a call — an `EmailField`,
+`URLField` or `UUIDField` is `format`, a `PositiveIntegerField` is `gte 0`,
+and `MinValueValidator`, `MaxValueValidator`, `MinLengthValidator`,
+`MaxLengthValidator` and `RegexValidator` are the bounds they were given. The
+model is the source of truth for `required`: a field must be given unless
+the model fills it (`default`, `auto_now`, an auto id) or excuses it (`blank`,
+`null`); what a serializer adds is that layer's word and is not read here.
+Value objects are the frozen dataclasses in `values.py`, their fields the
+annotations as written.
 
 **Event.** `events.py`, in either of the two ways a Django project says it. A
 dataclass with `name = "billing.InvoiceIssued"` is an event, its payload the

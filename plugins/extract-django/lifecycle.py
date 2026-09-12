@@ -15,8 +15,9 @@ from dataclasses import dataclass, field as dc_field
 from typing import Dict, List, Optional, Tuple
 
 import catalog
+from choices import choice_tables
 from domain import Aggregate, ModelDef
-from source import assigned, bases, const_str, dotted, inner_class, keyword, methods
+from source import assigned, const_str, dotted, keyword, methods
 
 
 @dataclass
@@ -26,25 +27,6 @@ class Move:
     emits: str
     source: str
     sources: List[str] = dc_field(default_factory=list)  # the states it may be made from, when the decorator says
-
-
-def choices_of(model: ModelDef, name: str) -> Dict[str, str]:
-    """A TextChoices class, as member name to the value stored in the column."""
-    node = inner_class(model.node, name)
-    if node is None:
-        for other in model.module.classes():
-            if other.name == name:
-                node = other
-                break
-    if node is None or not any(b.split(".")[-1].endswith("Choices") for b in bases(node)):
-        return {}
-    out = {}
-    for member, value, _ in assigned(node):
-        if isinstance(value, ast.Constant) and isinstance(value.value, str):
-            out[member] = value.value
-        elif isinstance(value, ast.Tuple) and value.elts and isinstance(value.elts[0], ast.Constant):
-            out[member] = value.elts[0].value
-    return out
 
 
 def state_of(node: ast.AST, choices: Dict[str, Dict[str, str]]) -> str:
@@ -69,14 +51,6 @@ def status_field(model: ModelDef) -> Optional[str]:
         if value is not None and dotted(value):
             return f.name
     return "status" if model.field("status") else None
-
-
-def choice_tables(model: ModelDef) -> Dict[str, Dict[str, str]]:
-    out = {}
-    for node in list(model.node.body) + list(model.module.tree.body):
-        if isinstance(node, ast.ClassDef) and any(b.split(".")[-1].endswith("Choices") for b in bases(node)):
-            out[node.name] = choices_of(model, node.name)
-    return out
 
 
 def declared_table(model: ModelDef, choices: Dict[str, Dict[str, str]]) -> Dict[str, List[str]]:

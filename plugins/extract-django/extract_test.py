@@ -303,6 +303,19 @@ class Reading(unittest.TestCase):
         self.assertEqual([b["name"] for b in self.aggregate["entities"]], ["Invoice", "InvoiceLine"])
         self.assertEqual([b["name"] for b in self.aggregate["valueObjects"]], ["Money"])
 
+    def test_a_model_field_states_its_rules_and_whether_it_must_be_given(self):
+        invoice = next(b for b in self.aggregate["entities"] if b["name"] == "Invoice")
+        fields = {f["name"]: f for f in invoice["fields"]}
+        self.assertEqual(fields["number"].get("rules"), [{"name": "max_len", "value": "32"}, {"name": "unique"}])
+        self.assertNotIn("required", fields["number"])  # null=True: the model lets it be absent
+        self.assertEqual(fields["currency"], {"name": "currency", "type": "CharField", "doc": "", "required": True, "rules": [{"name": "max_len", "value": "3"}]})
+        self.assertEqual(
+            fields["status"].get("rules"),
+            [{"name": "max_len", "value": "16"}, {"name": "in", "value": "draft, issued, paid, void"}],
+        )
+        self.assertNotIn("required", fields["status"])  # a default fills it
+        self.assertEqual(fields["id"].get("rules"), [{"name": "format", "value": "uuid"}])
+
     def test_a_service_function_is_an_operation_and_a_write_makes_it_a_command(self):
         kinds = {o["id"]: o["kind"] for o in self.aggregate["operations"]}
         self.assertEqual(kinds["IssueInvoice"], "command")

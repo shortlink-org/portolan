@@ -20,30 +20,30 @@ two ends of its life, and a correction is a new invoice.
 
 What a customer owes for one order, and where it is in its life.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `UUIDField` | — |
-| `order_id` | `UUIDField` | The order this invoice is drawn up for. |
-| `customer_id` | `UUIDField` | Opaque, and only ever as good as the session auth vouched for. |
-| `number` | `CharField` | What the customer quotes. A draft has none. |
-| `currency` | `CharField` | ISO 4217, frozen when the first line is drawn up. |
-| `total_minor` | `BigIntegerField` | The sum of the lines, in the minor unit of the currency. |
-| `tax_rate` | `DecimalField` | The rate the total was taxed at. |
-| `status` | `CharField` | — |
-| `drawn_up_at` | `DateTimeField` | — |
-| `issued_at` | `DateTimeField` | — |
-| `settled_at` | `DateTimeField` | When it was paid or voided; null while it is neither. |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `id` | `UUIDField` | `format uuid` | — |
+| `order_id` | `UUIDField` | `required`, `format uuid` | The order this invoice is drawn up for. |
+| `customer_id` | `UUIDField` | `required`, `format uuid` | Opaque, and only ever as good as the session auth vouched for. |
+| `number` | `CharField` | `max_len 32`, `unique` | What the customer quotes. A draft has none. |
+| `currency` | `CharField` | `required`, `max_len 3` | ISO 4217, frozen when the first line is drawn up. |
+| `total_minor` | `BigIntegerField` | `required` | The sum of the lines, in the minor unit of the currency. |
+| `tax_rate` | `DecimalField` | `required` | The rate the total was taxed at. |
+| `status` | `CharField` | `max_len 16`, `in draft, issued, paid, void` | — |
+| `drawn_up_at` | `DateTimeField` | `required` | — |
+| `issued_at` | `DateTimeField` | — | — |
+| `settled_at` | `DateTimeField` | — | When it was paid or voided; null while it is neither. |
 
 ### InvoiceLine
 
 One line of an invoice: what was bought, and what it was sold at.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `invoice` | `ForeignKey[Invoice]` | — |
-| `sku` | `CharField` | — |
-| `quantity` | `PositiveIntegerField` | — |
-| `unit_price_minor` | `BigIntegerField` | Captured when the line is drawn up, never recomputed. |
+| Field | Type | Rules | Doc |
+| --- | --- | --- | --- |
+| `invoice` | `ForeignKey[Invoice]` | `required` | — |
+| `sku` | `CharField` | `required`, `max_len 64` | — |
+| `quantity` | `PositiveIntegerField` | `required`, `gte 0` | — |
+| `unit_price_minor` | `BigIntegerField` | `required` | Captured when the line is drawn up, never recomputed. |
 
 ## Value objects
 

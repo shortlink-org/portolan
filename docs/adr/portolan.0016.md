@@ -7,6 +7,7 @@
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0016-a-problem-is-a-rule-with-a-passport-and-a-new-one-is-written-in-cel-over-one-subject.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0016-a-problem-is-a-rule-with-a-passport-and-a-new-one-is-written-in-cel-over-one-subject.md)
 - **Committed:** Victor Login, 2026-09-12 (`d4edf2f`)
+- **Revised:** Victor Login, 2026-09-12 (`2e17e4f`)
 
 ### Context and Problem Statement
 

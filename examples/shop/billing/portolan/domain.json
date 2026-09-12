@@ -102,47 +102,96 @@
                     {
                       "name": "id",
                       "type": "UUIDField",
-                      "doc": ""
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
                     },
                     {
                       "name": "order_id",
                       "type": "UUIDField",
-                      "doc": "The order this invoice is drawn up for."
+                      "doc": "The order this invoice is drawn up for.",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
                     },
                     {
                       "name": "customer_id",
                       "type": "UUIDField",
-                      "doc": "Opaque, and only ever as good as the session auth vouched for."
+                      "doc": "Opaque, and only ever as good as the session auth vouched for.",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
                     },
                     {
                       "name": "number",
                       "type": "CharField",
-                      "doc": "What the customer quotes. A draft has none."
+                      "doc": "What the customer quotes. A draft has none.",
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "32"
+                        },
+                        {
+                          "name": "unique"
+                        }
+                      ]
                     },
                     {
                       "name": "currency",
                       "type": "CharField",
-                      "doc": "ISO 4217, frozen when the first line is drawn up."
+                      "doc": "ISO 4217, frozen when the first line is drawn up.",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "3"
+                        }
+                      ]
                     },
                     {
                       "name": "total_minor",
                       "type": "BigIntegerField",
-                      "doc": "The sum of the lines, in the minor unit of the currency."
+                      "doc": "The sum of the lines, in the minor unit of the currency.",
+                      "required": true
                     },
                     {
                       "name": "tax_rate",
                       "type": "DecimalField",
-                      "doc": "The rate the total was taxed at."
+                      "doc": "The rate the total was taxed at.",
+                      "required": true
                     },
                     {
                       "name": "status",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "16"
+                        },
+                        {
+                          "name": "in",
+                          "value": "draft, issued, paid, void"
+                        }
+                      ]
                     },
                     {
                       "name": "drawn_up_at",
                       "type": "DateTimeField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "issued_at",
@@ -165,22 +214,38 @@
                     {
                       "name": "invoice",
                       "type": "ForeignKey[Invoice]",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "sku",
                       "type": "CharField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "64"
+                        }
+                      ]
                     },
                     {
                       "name": "quantity",
                       "type": "PositiveIntegerField",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "0"
+                        }
+                      ]
                     },
                     {
                       "name": "unit_price_minor",
                       "type": "BigIntegerField",
-                      "doc": "Captured when the line is drawn up, never recomputed."
+                      "doc": "Captured when the line is drawn up, never recomputed.",
+                      "required": true
                     }
                   ]
                 }

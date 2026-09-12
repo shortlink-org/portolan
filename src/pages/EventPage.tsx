@@ -48,6 +48,8 @@ interface SchemaRow extends Field {
   change?: Change;
   /** The type the previous version gave the field, when this one changed it. */
   from?: string;
+  /** The rules the previous version gave the field, when this one changed them; "" for none. */
+  rulesFrom?: string;
 }
 
 /** What the change column says, and in what colour. */
@@ -60,7 +62,7 @@ const CHANGE: Record<Change, { label: string; className: string; title: string }
   changed: {
     label: "changed",
     className: "text-declared",
-    title: "type changed in this version",
+    title: "changed in this version",
   },
   removed: {
     label: "removed",
@@ -69,13 +71,21 @@ const CHANGE: Record<Change, { label: string; className: string; title: string }
   },
 };
 
+/**
+ * What the previous version had, for the tooltip of a changed row: the type
+ * when it moved, the rules when they did. What the row has now is the row.
+ */
+function wasBefore(row: SchemaRow): string | null {
+  const parts: string[] = [];
+  if (row.from) parts.push(`was ${row.from}`);
+  if (row.rulesFrom !== undefined) parts.push(`rules were ${row.rulesFrom || "none"}`);
+  return parts.length ? `${parts.join(", ")} in the previous version` : null;
+}
+
 function ChangeMark({ row }: { row: SchemaRow }) {
   if (!row.change) return null;
   const mark = CHANGE[row.change];
-  const title =
-    row.change === "changed" && row.from
-      ? `was ${row.from} in the previous version`
-      : mark.title;
+  const title = (row.change === "changed" && wasBefore(row)) || mark.title;
   return (
     <span
       className={`mono inline-flex items-center gap-1 ${mark.className}`}

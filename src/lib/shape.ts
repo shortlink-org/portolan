@@ -26,6 +26,7 @@ import type {
 } from "../catalog";
 import { aggregateBlocks, blockFields, enumsOf } from "../catalog";
 import type { DefUsage } from "./derive";
+import { ruleMarks } from "./rules";
 
 /** How many of the base type a field holds. */
 export type Cardinality = "one" | "many" | "map";
@@ -336,13 +337,19 @@ export interface FieldChange {
   change: Change;
   /** The type the field had in the previous version, when it changed. */
   from?: string;
+  /**
+   * The rules the field had in the previous version, as the marks read -
+   * "required, ≤ 8 chars" - when this version changed them; "" when it had
+   * none. The row itself shows what they are now.
+   */
+  rulesFrom?: string;
 }
 
 /**
  * What a version did to the schema: the fields it added, the ones whose
- * type it changed, and - by name, since they are no longer in the version's
- * own list - the ones it dropped. The first version changes nothing: there
- * is nothing before it to differ from.
+ * type or rules it changed, and - by name, since they are no longer in the
+ * version's own list - the ones it dropped. The first version changes
+ * nothing: there is nothing before it to differ from.
  */
 export function schemaChanges(
   event: Event,
@@ -360,14 +367,31 @@ export function schemaChanges(
   const now = new Set(current.fields.map((f) => f.name));
   for (const field of current.fields) {
     const was = before.get(field.name);
-    if (!was) byField.set(field.name, { change: "new" });
-    else if (was.type !== field.type)
-      byField.set(field.name, { change: "changed", from: was.type });
+    if (!was) {
+      byField.set(field.name, { change: "new" });
+      continue;
+    }
+    const change: FieldChange = { change: "changed" };
+    if (was.type !== field.type) change.from = was.type;
+    if (!sameRules(was, field)) change.rulesFrom = ruleMarks(was).map((m) => m.text).join(", ");
+    if (change.from !== undefined || change.rulesFrom !== undefined) byField.set(field.name, change);
   }
   for (const field of prev.fields) {
     if (!now.has(field.name)) removed.push(field);
   }
   return { byField, removed };
+}
+
+/**
+ * Whether two versions of a field ask the same of its value. The order the
+ * rules are listed in is the source's, not a fact about the value, so it
+ * is not a difference.
+ */
+function sameRules(a: Field, b: Field): boolean {
+  if (Boolean(a.required) !== Boolean(b.required)) return false;
+  const key = (field: Field) =>
+    (field.rules ?? []).map((r) => `${r.name}=${r.value ?? ""}`).sort().join("\n");
+  return key(a) === key(b);
 }
 
 // ---------------------------------------------------------------------------
