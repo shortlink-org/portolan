@@ -890,6 +890,31 @@ describe("a second source that has seen the flow run", () => {
     expect(out.examples).toEqual([example]);
   });
 
+  it("takes a frame where the recordings parted, and not a frame the code did not write", () => {
+    const seenStep = (id: string, label: string) => ({ ...step(id, "verified" as const), label, seen: { traces: 1 } });
+    const frame = {
+      type: "alt" as const,
+      id: "seen-alt1",
+      branches: [
+        { title: "getUser", steps: [seenStep("seen1", "getUser")], seen: { traces: 1 } },
+        { title: "otherwise", steps: [], seen: { traces: 1 } },
+      ],
+    };
+    const merged = mergeCatalogs([
+      source("a.json", { flows: [flow([step("s1", "declared"), step("s2", "declared")])] }),
+      source("b.json", { flows: [flow([step("s1", "verified"), frame, step("s2", "declared")])] }),
+    ]);
+    expect(merged.conflicts).toEqual([]);
+    expect(merged.catalog.flows[0]?.steps.map((s) => s.id)).toEqual(["s1", "seen-alt1", "s2"]);
+
+    const unseen = { ...frame, branches: [{ title: "x", steps: [step("x1", "verified")] }] };
+    const refused = mergeCatalogs([
+      source("a.json", { flows: [flow([step("s1", "declared")])] }),
+      source("b.json", { flows: [flow([step("s1", "verified"), unseen])] }),
+    ]);
+    expect(refused.conflicts).toHaveLength(1);
+  });
+
   it("is still a conflict when a lane the code declared is missing or a declared step is", () => {
     const fewerLanes = mergeCatalogs([
       source("a.json", { flows: [flow([step("s1", "declared")])] }),

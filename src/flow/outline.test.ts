@@ -198,6 +198,34 @@ describe("buildOutline", () => {
     expect(outlineSteps(rows).every((r) => !r.offPath)).toBe(true);
   });
 
+  it("gives a counted branch a row even with nothing in it, and says how many went that way", () => {
+    const seen = (id: string) => ({ type: "step" as const, id, from: "client", to: "auth.auth", kind: "rpc" as const, label: id, status: "verified" as const, seen: { traces: 1 } });
+    const parted: Flow = {
+      ...checkout,
+      steps: [
+        seen("s1"),
+        {
+          type: "alt",
+          id: "seen-alt1",
+          branches: [
+            { title: "getUser", steps: [seen("seen1")], seen: { traces: 1 } },
+            { title: "otherwise", steps: [], seen: { traces: 2 } },
+          ],
+        },
+        {
+          type: "alt",
+          id: "alt2",
+          branches: [
+            { title: "blocked", steps: [seen("s9")] },
+            { title: "otherwise", steps: [] },
+          ],
+        },
+      ],
+    };
+    const titles = frames(buildOutline(parted, NO_FILTER)).map((f) => `${f.keyword} ${f.title}`);
+    expect(titles).toEqual(["alt getUser · 1 recording", "else otherwise · 2 recordings", "alt blocked"]);
+  });
+
   it("emits nothing but steps for a flow with no frames", () => {
     const flat = catalog.flows.find(
       (f) =>

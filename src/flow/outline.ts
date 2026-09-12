@@ -125,13 +125,18 @@ export function buildOutline(
           let opened = false;
           bodies.forEach((body, i) => {
             const branch = node.branches[i];
-            if (body.length === 0 || !branch) return;
+            // A declared branch with nothing in it is the code's way of
+            // saying "or not", and needs no row. A counted one - the
+            // recordings that went no further - is a fact worth a row.
+            if (!branch || (body.length === 0 && !branch.seen)) return;
             rows.push({
               type: "frame",
               key: `${node.id}:${i}`,
               depth,
               keyword: opened ? "else" : "alt",
-              title: branch.title,
+              title: branch.seen
+                ? `${branch.title} · ${branch.seen.traces} ${branch.seen.traces === 1 ? "recording" : "recordings"}`
+                : branch.title,
               terminal: branch.terminal,
               offPath: false,
             });

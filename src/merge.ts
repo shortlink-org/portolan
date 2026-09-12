@@ -997,13 +997,30 @@ export function overlayFlow(existing: Flow, incoming: Flow): Flow | undefined {
   return out;
 }
 
-/** A step the second declaration added: seen in a recording, unknown to the code. */
+/**
+ * A node the second declaration added: a step seen in a recording and
+ * unknown to the code, or a frame where the recordings parted - an `alt`
+ * whose every step carries `seen` and whose every branch is counted. Its
+ * id is not one the first declaration has, which is how it is told from a
+ * declared node that moved.
+ */
 function isSeenAddition(node: FlowNode, against: FlowNode | undefined): boolean {
-  return (
-    node.type === "step" &&
-    node.seen !== undefined &&
-    (against === undefined || against.id !== node.id)
-  );
+  if (against !== undefined && against.id === node.id) return false;
+  if (node.type === "step") return node.seen !== undefined;
+  if (node.type !== "alt") return false;
+  let steps = 0;
+  const allSeen = (nodes: FlowNode[]): boolean =>
+    nodes.every((inner) => {
+      if (inner.type === "step") {
+        steps += 1;
+
+        return inner.seen !== undefined;
+      }
+
+      return inner.type === "alt" && inner.branches.every((b) => b.seen !== undefined && allSeen(b.steps));
+    });
+
+  return node.branches.every((b) => b.seen !== undefined && allSeen(b.steps)) && steps > 0;
 }
 
 function overlayNodes(

@@ -76,12 +76,10 @@ type overlay struct {
 	traces int
 	file   string
 
-	keys      map[string]string    // hop key -> declared step id
-	seen      map[string]int       // hop key -> recordings that showed it
-	additions map[string]*sequence // declared step id -> hops seen after it
-	added     map[string]*seenStep // hop key -> the addition, wherever it hangs
-	next      int
-	examples  []*example
+	keys     map[string]string  // hop key -> declared step id
+	seen     map[string]int     // hop key -> recordings that showed it
+	routes   map[string][]route // declared step id -> what each recording showed after it
+	examples []*example
 }
 
 // observed is a sequence nobody declared, laid over across every recording
@@ -89,7 +87,7 @@ type overlay struct {
 type observed struct {
 	svc      *catalog.Service
 	root     hop
-	steps    sequence
+	routes   []route // one per recording, the opening included
 	traces   int
 	files    map[string]bool
 	examples []*example
@@ -260,7 +258,7 @@ func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 		o = &overlay{
 			flow: copyFlow(flow), svc: v.l.services[opening.to.ID], file: opening.file,
 			keys: declaredKeys(flow), seen: map[string]int{},
-			additions: map[string]*sequence{}, added: map[string]*seenStep{},
+			routes: map[string][]route{},
 		}
 		v.overlays[flow.ID] = o
 	}
@@ -268,6 +266,11 @@ func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 
 	ex := newExample(v.root, root)
 	counted := map[string]bool{}
+	// What this recording showed after each declared step it matched: a
+	// route per anchor, empty when it showed nothing there, because "went
+	// no further" is what the branch count is made of.
+	after := map[string]route{}
+	var anchors []string
 	anchor := ""
 	for i, h := range hops {
 		hopKey := h.key()
@@ -277,6 +280,10 @@ func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 				o.seen[hopKey]++
 			}
 			anchor = id
+			if _, reached := after[id]; !reached {
+				after[id] = route{}
+				anchors = append(anchors, id)
+			}
 			ex.add(id, h.span)
 
 			continue
@@ -287,23 +294,10 @@ func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 		if h.kind == catalog.StepCall || (i > 0 && (h.entry || h.consume)) || anchor == "" {
 			continue
 		}
-		s := o.added[hopKey]
-		if s == nil {
-			o.next++
-			s = &seenStep{hop: h, id: "seen" + strconv.Itoa(o.next)}
-			o.added[hopKey] = s
-			q := o.additions[anchor]
-			if q == nil {
-				q = &sequence{}
-				o.additions[anchor] = q
-			}
-			q.steps = append(q.steps, s)
-		}
-		if !counted[hopKey] {
-			counted[hopKey] = true
-			s.traces++
-		}
-		ex.add(s.id, h.span)
+		after[anchor] = append(after[anchor], visit{h: h, ex: ex, at: ex.reserve(h.span)})
+	}
+	for _, id := range anchors {
+		o.routes[id] = append(o.routes[id], after[id])
 	}
 	o.examples = append(o.examples, ex)
 
@@ -353,7 +347,11 @@ func (v *verifier) observe(hops []hop, root *span) {
 	o.traces++
 	o.files[first.file] = true
 	ex := newExample(v.root, root)
-	o.steps.absorb(hops, ex)
+	r := make(route, 0, len(hops))
+	for _, h := range hops {
+		r = append(r, visit{h: h, ex: ex, at: ex.reserve(h.span)})
+	}
+	o.routes = append(o.routes, r)
 	o.examples = append(o.examples, ex)
 }
 
@@ -762,7 +760,7 @@ func raise(o *overlay) {
 // flow gains when it has to. The merge accepts them because they say where
 // they came from: `seen` on a step with an id the code never gave.
 func enrich(o *overlay) {
-	if len(o.additions) == 0 {
+	if len(o.routes) == 0 {
 		return
 	}
 	lanes := o.flow.Participants
@@ -776,6 +774,12 @@ func enrich(o *overlay) {
 			lanes = append(lanes, p)
 		}
 	}
+	mint := &ids{step: "seen", frame: "seen-alt"}
+	note := func(seen, total int) string {
+		return "Seen in " + plural(seen, "recording") + " of " + plural(total, "trace") + "; the code does not declare this hop."
+	}
+	// The added steps are walked in flow order so that their ids read in
+	// flow order too, whatever order the anchors were matched in.
 	var after func(nodes catalog.FlowNodes) catalog.FlowNodes
 	after = func(nodes catalog.FlowNodes) catalog.FlowNodes {
 		out := catalog.FlowNodes{}
@@ -783,14 +787,17 @@ func enrich(o *overlay) {
 			switch x := node.(type) {
 			case *catalog.Step:
 				out = append(out, x)
-				if q := o.additions[x.ID]; q != nil {
-					for _, s := range q.steps {
-						lane(s.hop.from)
-						lane(s.hop.to)
-						step := s.step()
-						step.Note = "Seen in " + plural(s.traces, "recording") + " of " + plural(o.traces, "trace") + "; the code does not declare this hop."
-						out = append(out, step)
+				if routes := o.routes[x.ID]; len(routes) > 0 {
+					added := build(routes, mint, note)
+					walkSteps(added, func(s *catalog.Step) {
+						if s.Note == "" {
+							s.Note = "Seen in " + plural(len(routes), "recording") + "; the code does not declare this hop."
+						}
+					})
+					for _, p := range lanesOf(added, routes) {
+						lane(p)
 					}
+					out = append(out, added...)
 				}
 			case *catalog.Parallel:
 				for i := range x.Branches {
@@ -818,28 +825,10 @@ func enrich(o *overlay) {
 
 // observedFlow writes a sequence nobody declared down as a flow of its own.
 func (v *verifier) observedFlow(o *observed, limit int) catalog.Flow {
-	var lanes []catalog.Participant
-	lane := func(p catalog.Participant) string {
-		for _, existing := range lanes {
-			if existing.ID == p.ID {
-				return p.ID
-			}
-		}
-		lanes = append(lanes, p)
-
-		return p.ID
-	}
-
-	steps := catalog.FlowNodes{}
-	for _, s := range o.steps.steps {
-		lane(s.hop.from)
-		lane(s.hop.to)
-		step := s.step()
-		if s.traces < o.traces {
-			step.Note = "Seen in " + plural(s.traces, "recording") + " of " + plural(o.traces, "trace") + "."
-		}
-		steps = append(steps, step)
-	}
+	steps := build(o.routes, &ids{step: "s", frame: "alt"}, func(seen, total int) string {
+		return "Seen in " + plural(seen, "recording") + " of " + plural(total, "trace") + "."
+	})
+	lanes := lanesOf(steps, o.routes)
 
 	files := make([]string, 0, len(o.files))
 	for f := range o.files {

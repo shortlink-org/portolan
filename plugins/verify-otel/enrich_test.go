@@ -92,16 +92,33 @@ func TestTwoRecordingsOfOneFlowAreLaidOverEachOther(t *testing.T) {
 	}
 }
 
-// Two recordings that open the same undeclared way are one observed flow,
-// with the hop only one of them showed after the hop it followed.
+// Two recordings that open the same undeclared way are one observed flow.
+// Where they part - one published after its query, one did not - is a
+// frame with a branch for each way, the way that went no further included.
 func TestObservedRecordingsThatOpenAlikeAreOneFlow(t *testing.T) {
 	out, _ := runVerify(t, recording+"\n"+second, Options{})
 
 	health := flowNamed(t, out, "observed-auth-get-v1-health")
-	var order []string
-	walkSteps(health.Steps, func(s *catalog.Step) { order = append(order, s.Label) })
-	if strings.Join(order, " ") != "GET /v1/health SELECT SessionStarted" {
-		t.Errorf("steps = %v", order)
+	if len(health.Steps) != 3 {
+		t.Fatalf("steps = %+v", health.Steps)
+	}
+	var labels []string
+	for _, node := range health.Steps[:2] {
+		labels = append(labels, node.(*catalog.Step).Label)
+	}
+	if strings.Join(labels, " ") != "GET /v1/health SELECT" {
+		t.Errorf("shared steps = %v", labels)
+	}
+	frame, ok := health.Steps[2].(*catalog.Alt)
+	if !ok || frame.ID != "alt1" || len(frame.Branches) != 2 {
+		t.Fatalf("where the recordings part should be a frame: %+v", health.Steps[2])
+	}
+	first, second := frame.Branches[0], frame.Branches[1]
+	if first.Title != "otherwise" || len(first.Steps) != 0 || first.Seen == nil || first.Seen.Traces != 1 {
+		t.Errorf("the recording that stopped after the query: %+v", first)
+	}
+	if second.Title != "SessionStarted" || len(second.Steps) != 1 || second.Seen == nil || second.Seen.Traces != 1 {
+		t.Errorf("the recording that published: %+v", second)
 	}
 	seen := seenOf(health)
 	if seen["s1"] != 2 || seen["s2"] != 2 || seen["s3"] != 1 {
@@ -109,6 +126,47 @@ func TestObservedRecordingsThatOpenAlikeAreOneFlow(t *testing.T) {
 	}
 	if !strings.Contains(health.Summary, "2 traces") {
 		t.Errorf("summary = %q", health.Summary)
+	}
+}
+
+// Where recordings of a declared flow part after a declared step, what they
+// showed there is a frame hung after it: the login that was let through
+// called two more services, the login that was refused called none.
+func TestRecordingsThatPartAfterADeclaredStepAreAFrame(t *testing.T) {
+	out, _ := runVerify(t, recording+"\n"+second, Options{})
+
+	login := flowNamed(t, out, "auth-login")
+	var frame *catalog.Alt
+	for i, node := range login.Steps {
+		if a, ok := node.(*catalog.Alt); ok && strings.HasPrefix(a.ID, "seen-alt") {
+			frame = a
+			if prev, ok := login.Steps[i-1].(*catalog.Step); !ok || prev.ID != "s3" {
+				t.Errorf("the frame hangs after the step the recordings parted at, not %+v", login.Steps[i-1])
+			}
+		}
+	}
+	if frame == nil || len(frame.Branches) != 2 {
+		t.Fatalf("no frame for the two ways the recordings went: %+v", login.Steps)
+	}
+	through, refused := frame.Branches[0], frame.Branches[1]
+	if through.Title != "getUser" || len(through.Steps) != 2 || through.Seen.Traces != 1 {
+		t.Errorf("the way through: %+v", through)
+	}
+	if refused.Title != "otherwise" || len(refused.Steps) != 0 || refused.Seen.Traces != 1 {
+		t.Errorf("the way refused: %+v", refused)
+	}
+	var ids []string
+	walkSteps(login.Steps, func(s *catalog.Step) { ids = append(ids, s.ID) })
+	if strings.Join(ids, " ") != "s1 s2 s3 seen1 seen2 s5 s6" {
+		t.Errorf("ids = %v", ids)
+	}
+	// The example of the refused login names no step inside the frame.
+	for _, ex := range login.Examples {
+		for _, s := range ex.Steps {
+			if s.Step == "" {
+				t.Errorf("example %s has a step with no id: %+v", ex.ID, s)
+			}
+		}
 	}
 }
 

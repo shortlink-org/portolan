@@ -70,7 +70,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.FlowStoreAccess{}):  "store method operation keyspace source",
 	reflect.TypeOf(catalog.Parallel{}):         "type id title branches",
 	reflect.TypeOf(catalog.Alt{}):              "type id branches",
-	reflect.TypeOf(catalog.AltBranch{}):        "title steps terminal",
+	reflect.TypeOf(catalog.AltBranch{}):        "title steps terminal seen",
 	reflect.TypeOf(catalog.Loop{}):             "type id title steps",
 	reflect.TypeOf(catalog.AdrScope{}):         "kind context service",
 	reflect.TypeOf(catalog.Adr{}):              "id slug number title status date scope body note supersededBy supersedes relates source created revised",

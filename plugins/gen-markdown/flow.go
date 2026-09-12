@@ -263,6 +263,9 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 				if branch.Terminal {
 					title += " — *ends the flow*"
 				}
+				if branch.Seen != nil {
+					title += " — seen in " + plural(branch.Seen.Traces, "recording")
+				}
 				inner.WriteString("\n*" + title + "*\n\n")
 				inner.WriteString(s.stepList(self, flow, branch.Steps, counter))
 			}

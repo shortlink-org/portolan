@@ -1206,6 +1206,12 @@ export interface AltBranch {
   steps: FlowNode[];
   /** True when the flow stops here instead of continuing past the alt. */
   terminal?: boolean;
+  /**
+   * Recordings that went this way, on a frame a verifier wrote where the
+   * recordings parted. A branch with no steps and a count is the recordings
+   * that went no further.
+   */
+  seen?: StepSeen;
 }
 export interface Loop {
   type: "loop";

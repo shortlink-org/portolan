@@ -5,7 +5,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -77,6 +76,15 @@ func (e *example) add(stepID string, s *span) {
 		DurationMs: millis(s.start, s.end),
 		Attributes: stepAttrs(s),
 	})
+}
+
+// reserve records what a span said about a step whose id is not known yet
+// - one the recordings put into the flow, named once they are laid over
+// each other - and says where the id goes.
+func (e *example) reserve(s *span) int {
+	e.add("", s)
+
+	return len(e.steps) - 1
 }
 
 func (e *example) id() string {
@@ -154,66 +162,4 @@ func millis(start, end uint64) float64 {
 	}
 
 	return math.Round(float64(end-start)/1e3) / 1e3
-}
-
-// seenStep is a hop a recording showed, counted across recordings, on its
-// way to becoming a step: an addition to a declared flow, or a step of an
-// observed one.
-type seenStep struct {
-	hop    hop
-	traces int
-	id     string
-}
-
-func (s *seenStep) step() *catalog.Step {
-	h := s.hop
-
-	return &catalog.Step{
-		Type: "step", ID: s.id, From: h.from.ID, To: h.to.ID,
-		Kind: h.kind, Ref: h.ref, Label: h.label, Status: h.status,
-		Seen: &catalog.StepSeen{Traces: s.traces},
-	}
-}
-
-// sequence is hops laid over each other across recordings: a hop already
-// held is counted, a new one is put after the last hop matched, so that two
-// recordings that differ in the middle read as one order.
-type sequence struct {
-	steps []*seenStep
-	next  int
-}
-
-// absorb lays one recording's hops over the sequence, counting each hop
-// once per recording, and tells the example which step each span became.
-func (q *sequence) absorb(hops []hop, ex *example) {
-	counted := map[string]bool{}
-	at := -1
-	for _, h := range hops {
-		key := h.key()
-		found := -1
-		for j, s := range q.steps {
-			if s.hop.key() == key {
-				found = j
-
-				break
-			}
-		}
-		if found < 0 {
-			q.next++
-			s := &seenStep{hop: h, id: "s" + strconv.Itoa(q.next)}
-			at++
-			rest := append([]*seenStep{s}, q.steps[at:]...)
-			q.steps = append(q.steps[:at], rest...)
-			found = at
-		} else {
-			at = found
-		}
-		if !counted[key] {
-			counted[key] = true
-			q.steps[found].traces++
-		}
-		if ex != nil {
-			ex.add(q.steps[found].id, h.span)
-		}
-	}
 }

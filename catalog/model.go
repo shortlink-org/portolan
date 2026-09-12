@@ -1104,6 +1104,10 @@ type AltBranch struct {
 	// Without it, the steps drawn after the alt read as if they follow this
 	// branch too.
 	Terminal bool `json:"terminal,omitempty"`
+	// Seen counts the recordings that went this way, on a frame a verifier
+	// wrote where recordings parted. A branch with no steps and a count is
+	// the recordings that went no further.
+	Seen *StepSeen `json:"seen,omitempty"`
 }
 
 type Loop struct {

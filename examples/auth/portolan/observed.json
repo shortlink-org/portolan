@@ -1711,7 +1711,7 @@
           "ref": "auth.auth.session.SessionEnded",
           "label": "SessionEnded",
           "status": "verified",
-          "note": "Seen in 1 recording of 1 trace; the code does not declare this hop.",
+          "note": "Seen in 1 recording; the code does not declare this hop.",
           "seen": {
             "traces": 1
           }

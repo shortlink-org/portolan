@@ -1284,12 +1284,21 @@ the declared step it followed, as a step with an id the code never gave
 (`seen1`, `seen2`) and a note saying in how many recordings; a lane such a
 hop needed is added after the declared ones. A store call is never added -
 the code's word on which repository method ran is the better one - and a
-consumer met on the way belongs to the flow it opens. Two observed
-recordings that open the same way are one flow, each step counting the
-recordings that showed it, so a happy path and a refusal read as one
-sequence with two ends. The merge takes all of this from a second
-declaration of a flow because it says where it came from: `seen` on a step
-the first declaration does not have.
+consumer met on the way belongs to the flow it opens.
+
+Where recordings part, the flow says so. What every recording showed after
+a step is a run of plain steps; where they went different ways is an `alt`
+(`seen-alt1`, or `alt1` in an observed flow) with a branch for each way,
+titled by the hop it starts with and counting the recordings that went it,
+each branch laid over the same way inside; what they all showed again
+after parting comes after the frame, once. A recording that went no
+further where others went on is the branch titled `otherwise`, with no
+steps and its count, so that a reader sees the hop is not always taken.
+Two observed recordings that open the same way are one flow built this
+way, so a happy path and a refusal read as one sequence that parts. The
+merge takes all of this from a second declaration of a flow because it
+says where it came from: `seen` on a step the first declaration does not
+have, or a frame whose every step and branch carries it.
 
 A recording is also kept as an example of each flow it showed, under
 `examples` on the flow: the recording and trace it came from, when it ran,
