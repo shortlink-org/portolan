@@ -802,6 +802,13 @@ export interface EventConsumer {
   /** Set when the consumer was derived from a flow step rather than declared. */
   via?: EdgeVia;
 }
+/** The protobuf contract that defines one version of an event payload. */
+export interface EventSchemaRef {
+  /** The schema module that owns the message, by `ProtoModule.id`. */
+  module: string;
+  /** Fully-qualified protobuf message name, for example `shop.events.v2.OrderPlaced`. */
+  message: string;
+}
 export interface EventVersion {
   version: string;
   doc: string;
@@ -809,6 +816,8 @@ export interface EventVersion {
   deprecated?: boolean;
   source: string;
   fields: Field[];
+  /** Registry-backed protobuf contract for this exact event version. */
+  schema?: EventSchemaRef;
 }
 export interface Field {
   name: string;

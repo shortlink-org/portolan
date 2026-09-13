@@ -164,6 +164,11 @@ export function packageAnchor(name: string): string {
   return `pkg-${name}`;
 }
 
+/** One message row on a module's Types tab. */
+export function messageAnchor(interfaceId: string, message: string): string {
+  return `msg-${interfaceId}-${message}`.replace(/[^A-Za-z0-9_.:-]/g, "-");
+}
+
 /** The section anchors on a value object or entity page. */
 export const BLOCK_ANCHOR = {
   shape: "bl-shape",
@@ -242,6 +247,12 @@ export function eventPath(eventId: string): string | null {
     owner.aggregate.slug,
     event.slug,
   );
+}
+
+/** Path to one version of an event schema. */
+export function eventVersionPath(eventId: string, version: string): string | null {
+  const to = eventPath(eventId);
+  return to ? `${to}?version=${encodeURIComponent(version)}` : null;
 }
 
 /** Path to an enum page, or null if the id is not in the catalog. */

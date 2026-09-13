@@ -8,7 +8,13 @@ import { TabButton, TabCount, TabRow } from "../components/TabRow";
 import { KindIcon } from "../components/kind";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { RowActions } from "../components/RowActions";
-import { MODULE_ANCHOR, packageAnchor, paths, servicePath } from "../routes";
+import {
+  eventVersionPath,
+  MODULE_ANCHOR,
+  packageAnchor,
+  paths,
+  servicePath,
+} from "../routes";
 import { plural } from "../lib/format";
 import {
   callsThrough,
@@ -16,6 +22,7 @@ import {
   countsOf,
   dependenciesOf,
   dependentsOf,
+  eventsUsingModule,
   interfacesOf,
   packagesOf,
   registryUrl,
@@ -63,6 +70,7 @@ export function ModulePage() {
   const deps = dependenciesOf(index, module);
   const dependents = dependentsOf(catalog, module);
   const calls = callsThrough(catalog, module);
+  const eventSchemas = eventsUsingModule(catalog, module);
   const owner = module.owner ? index.serviceById.get(module.owner) : undefined;
   const url = registryUrl(module);
 
@@ -218,6 +226,47 @@ export function ModulePage() {
                   </div>
                 )}
               </div>
+
+              {eventSchemas.length > 0 ? (
+                <div className="mt-3">
+                  <SectionTitle>Event schemas</SectionTitle>
+                  <div className="rows">
+                    {eventSchemas.map(({ event, version }) => {
+                      const to = eventVersionPath(event.id, version.version);
+                      const content = (
+                        <>
+                          <span className="min-w-0 flex-1 truncate">
+                            {event.id}
+                          </span>
+                          <span className="chip shrink-0">
+                            {version.version}
+                          </span>
+                          <span className="mono max-w-[45%] truncate text-muted">
+                            {version.schema?.message}
+                          </span>
+                        </>
+                      );
+
+                      return to ? (
+                        <Link
+                          key={`${event.id}@${version.version}`}
+                          to={to}
+                          className="row mono hover:text-ink"
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <div
+                          key={`${event.id}@${version.version}`}
+                          className="row mono text-muted"
+                        >
+                          {content}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </section>
 
             <section className="mt-section max-w-table">

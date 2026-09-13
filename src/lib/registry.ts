@@ -13,12 +13,15 @@
 import type {
   Catalog,
   CatalogIndex,
+  Event,
+  EventVersion,
   InterfaceOwner,
   ProtoModule,
   RpcCall,
+  RpcMessage,
   Service,
 } from "../catalog";
-import { allModules } from "../catalog";
+import { allEvents, allModules } from "../catalog";
 
 export function modules(catalog: Catalog): ProtoModule[] {
   return allModules(catalog);
@@ -43,6 +46,67 @@ export function interfacesOf(
   module: ProtoModule,
 ): InterfaceOwner[] {
   return index.interfacesByModule.get(module.id) ?? [];
+}
+
+export interface ModuleMessage extends InterfaceOwner {
+  message: RpcMessage;
+  /** Fully-qualified protobuf name used by `EventVersion.schema`. */
+  name: string;
+}
+
+/** The canonical protobuf name of a message carried by an interface. */
+export function qualifiedMessageName(
+  interfaceId: string,
+  messageName: string,
+): string {
+  const name = messageName.replace(/^\./, "");
+  if (name.includes(".")) return name;
+  const pkg = packageOf(interfaceId);
+  return pkg ? `${pkg}.${name}` : name;
+}
+
+/** Every message declared in a module, with the interface that exposes it. */
+export function messagesOf(
+  index: CatalogIndex,
+  module: ProtoModule,
+): ModuleMessage[] {
+  return interfacesOf(index, module).flatMap(({ service, provided }) =>
+    (provided.messages ?? []).map((message) => ({
+      service,
+      provided,
+      message,
+      name: qualifiedMessageName(provided.id, message.name),
+    })),
+  );
+}
+
+/** Resolve the fully-qualified message named by an event schema reference. */
+export function messageOf(
+  index: CatalogIndex,
+  module: ProtoModule,
+  name: string,
+): ModuleMessage | undefined {
+  const normalized = name.replace(/^\./, "");
+  return messagesOf(index, module).find(
+    (message) => message.name === normalized,
+  );
+}
+
+export interface EventSchemaUsage {
+  event: Event;
+  version: EventVersion;
+}
+
+/** Event versions whose payload contract lives in this module. */
+export function eventsUsingModule(
+  catalog: Catalog,
+  module: ProtoModule,
+): EventSchemaUsage[] {
+  return allEvents(catalog).flatMap((event) =>
+    event.versions
+      .filter((version) => version.schema?.module === module.id)
+      .map((version) => ({ event, version })),
+  );
 }
 
 /** Every service that publishes the module, vendors it, or calls into it. */
@@ -138,10 +202,9 @@ export function countsOf(
   // Messages are counted by NAME across the module's interfaces: two
   // interfaces both moving a `Money` are moving one type, and counting it
   // twice would say the module holds more than it does.
-  const messages = new Set<string>();
-  for (const { provided } of declared) {
-    for (const message of provided.messages ?? []) messages.add(message.name);
-  }
+  const messages = new Set(
+    messagesOf(index, module).map((message) => message.name),
+  );
 
   return {
     packages: module.packages.length,
@@ -206,3 +269,17 @@ export function registryUrl(module: ProtoModule): string | null {
   return `https://${module.registry}/${module.name}${at}`;
 }
 
+/** The registry documentation page for one protobuf message. */
+export function registryMessageUrl(
+  module: ProtoModule,
+  message: string,
+): string | null {
+  if (!module.registry) return null;
+  const normalized = message.replace(/^\./, "");
+  const at = normalized.lastIndexOf(".");
+  const pkg = at < 0 ? "" : normalized.slice(0, at);
+  if (!pkg) return registryUrl(module);
+  const ref = module.commit ?? "main";
+
+  return `https://${module.registry}/${module.name}/docs/${ref}:${pkg}#${normalized}`;
+}

@@ -1066,6 +1066,52 @@ describe("validateCatalog: interfaces and modules", () => {
       index.servicesUsingModule.get("buf.build/acme/shop")?.map((s) => s.id),
     ).toEqual([service.id]);
   });
+
+  it("accepts an event version linked to a message in its module", () => {
+    const good = withModule(clone());
+    const service = good.contexts[0]?.services[0];
+    const provided = service?.provides[0];
+    const message = provided?.messages?.[0];
+    const event = service?.aggregates[0]?.events[0];
+    const version = event?.versions[0];
+    if (!provided || !message || !version) throw new Error("nothing to link");
+    provided.module = "buf.build/acme/shop";
+    const pkg = provided.id.slice(0, provided.id.lastIndexOf("."));
+    version.schema = {
+      module: "buf.build/acme/shop",
+      message: `${pkg}.${message.name}`,
+    };
+
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
+  it("rejects an event schema naming a module outside the catalog", () => {
+    const bad = clone();
+    const version =
+      bad.contexts[0]?.services[0]?.aggregates[0]?.events[0]?.versions[0];
+    if (!version) throw new Error("nothing to break");
+    version.schema = {
+      module: "buf.build/acme/nowhere",
+      message: "shop.events.v1.OrderPlaced",
+    };
+
+    expect(() => validateCatalog(bad)).toThrow(/not in this catalog/);
+  });
+
+  it("rejects an event schema naming a message absent from its module", () => {
+    const bad = withModule(clone());
+    const provided = bad.contexts[0]?.services[0]?.provides[0];
+    const version =
+      bad.contexts[0]?.services[0]?.aggregates[0]?.events[0]?.versions[0];
+    if (!provided || !version) throw new Error("nothing to break");
+    provided.module = "buf.build/acme/shop";
+    version.schema = {
+      module: "buf.build/acme/shop",
+      message: "shop.events.v1.Missing",
+    };
+
+    expect(() => validateCatalog(bad)).toThrow(/does not declare/);
+  });
 });
 
 /**

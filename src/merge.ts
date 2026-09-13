@@ -27,6 +27,7 @@ import type {
   BoundedContext,
   Catalog,
   Channel,
+  Event,
   External,
   Field,
   Flow,
@@ -888,22 +889,40 @@ function mergeAggregates(
     for (const event of incoming.events) {
       const known = events.get(event.id);
       if (!known) {
-        const copy = { ...event, consumers: [...event.consumers] };
+        const copy = copyEvent(event);
         existing.events.push(copy);
         events.set(copy.id, copy);
 
         continue;
       }
       appendNew(known.consumers, event.consumers, (c) => c.service, raise);
+      const versions = new Map(known.versions.map((version) => [version.version, version]));
+      for (const offered of event.versions) {
+        const held = versions.get(offered.version);
+        if (held && held.schema === undefined && offered.schema !== undefined) {
+          held.schema = { ...offered.schema };
+        }
+      }
     }
   }
+}
+
+function copyEvent(event: Event): Event {
+  return {
+    ...event,
+    consumers: [...event.consumers],
+    versions: event.versions.map((version) => ({
+      ...version,
+      ...(version.schema ? { schema: { ...version.schema } } : {}),
+    })),
+  };
 }
 
 /** A copy deep enough that unioning into it never writes into a source. */
 function copyAggregate(aggregate: Aggregate): Aggregate {
   return {
     ...aggregate,
-    events: aggregate.events.map((e) => ({ ...e, consumers: [...e.consumers] })),
+    events: aggregate.events.map(copyEvent),
     ...(aggregate.enums ? { enums: [...aggregate.enums] } : {}),
   };
 }

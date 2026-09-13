@@ -929,6 +929,50 @@ function validateModules(catalog: Catalog): void {
       }
     }
   }
+
+  // Event schemas name a fully-qualified message rather than merely a module:
+  // a module can hold hundreds of payloads, and a link to its root would not
+  // prove which one defines this version. Messages use their interface's proto
+  // package because the stored message name is intentionally short.
+  const messagesByModule = new Map<string, Set<string>>();
+  for (const service of allServices(catalog)) {
+    for (const provided of service.provides) {
+      if (provided.module === undefined) continue;
+      const at = provided.id.lastIndexOf(".");
+      const pkg = at < 0 ? "" : provided.id.slice(0, at);
+      const messages =
+        messagesByModule.get(provided.module) ?? new Set<string>();
+      for (const message of provided.messages ?? []) {
+        const name = message.name.replace(/^\./, "");
+        messages.add(name.includes(".") || !pkg ? name : `${pkg}.${name}`);
+      }
+      messagesByModule.set(provided.module, messages);
+    }
+  }
+
+  for (const event of allAggregates(catalog).flatMap(
+    (aggregate) => aggregate.events,
+  )) {
+    for (const version of event.versions) {
+      if (version.schema === undefined) continue;
+      const where = `event "${event.id}" version "${version.version}"`;
+      const path = `event ${event.id}@${version.version}`;
+      if (!version.schema.module) {
+        fail(`${where} has a schema with no module`, path);
+      }
+      if (!version.schema.message) {
+        fail(`${where} has a schema with no message`, path);
+      }
+      refers(version.schema.module, where, path);
+      const message = version.schema.message.replace(/^\./, "");
+      if (!messagesByModule.get(version.schema.module)?.has(message)) {
+        fail(
+          `${where} names protobuf message "${version.schema.message}", which module "${version.schema.module}" does not declare`,
+          path,
+        );
+      }
+    }
+  }
 }
 
 /**

@@ -19,6 +19,7 @@ import type {
 } from "../catalog";
 import { catalog } from "../data";
 import { streamingKind } from "../lib/api";
+import { messageAnchor } from "../routes";
 import { Ident } from "./Ident";
 import { RowActions } from "./RowActions";
 import { ShapeRows } from "./ShapeRows";
@@ -292,7 +293,11 @@ export function MessageList({
         const shown = open.has(id);
 
         return (
-          <div key={id} className="border-t border-line last:border-b-0">
+          <div
+            key={id}
+            id={messageAnchor(provided.id, message.name)}
+            className="border-t border-line last:border-b-0 target:bg-raised"
+          >
             <button
               type="button"
               onClick={() => onToggle(id)}

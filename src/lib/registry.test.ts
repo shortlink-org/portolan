@@ -7,12 +7,16 @@ import {
   countsOf,
   dependenciesOf,
   dependentsOf,
+  eventsUsingModule,
   interfacesOf,
+  messageOf,
+  messagesOf,
   moduleBySlug,
   modules,
   packageOf,
   packagesOf,
   registryUrl,
+  registryMessageUrl,
   servicesUsing,
 } from "./registry";
 
@@ -61,11 +65,25 @@ describe("modules", () => {
     );
   });
 
+  it("links directly to a message in the registry docs at the pinned commit", () => {
+    expect(
+      registryMessageUrl(shop(), "shop.events.v1.OrderPlaced"),
+    ).toBe(
+      "https://buf.build/acme/shop/docs/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6:shop.events.v1#shop.events.v1.OrderPlaced",
+    );
+  });
+
   // A module never published to a registry has nowhere to link to, and a
   // dead link would be worse than none.
   it("has no link for a module that was never published", () => {
     expect(
       registryUrl({ ...shop(), registry: undefined, commit: undefined }),
+    ).toBeNull();
+    expect(
+      registryMessageUrl(
+        { ...shop(), registry: undefined, commit: undefined },
+        "shop.events.v1.OrderPlaced",
+      ),
     ).toBeNull();
   });
 });
@@ -102,16 +120,17 @@ describe("what a module holds", () => {
     ).toEqual([]);
   });
 
-  it("counts a message moved by two interfaces once", () => {
+  it("counts same short message names in different packages separately", () => {
     const counts = countsOf(index, shop());
 
-    // Both interfaces list Message1..N, so the union is smaller than the sum.
+    // Protobuf identity is package-qualified: shop.v1.Message2 and
+    // shop.events.v1.Message2 are two different types.
     const declared = interfacesOf(index, shop());
     const total = declared.reduce(
       (n, d) => n + (d.provided.messages?.length ?? 0),
       0,
     );
-    expect(counts.messages).toBeLessThan(total);
+    expect(counts.messages).toBe(total);
     expect(counts.interfaces).toBe(2);
     expect(counts.methods).toBe(8);
     expect(counts.packages).toBe(2);
@@ -121,9 +140,30 @@ describe("what a module holds", () => {
     expect(packageOf("shop.v1.Orders")).toBe("shop.v1");
     expect(packageOf("Orders")).toBe("");
   });
+
+  it("resolves a protobuf message by its fully-qualified name", () => {
+    const message = messageOf(index, shop(), "shop.events.v1.OrderPlaced");
+
+    expect(message?.provided.id).toBe("shop.events.v1.Feed");
+    expect(message?.message.name).toBe("OrderPlaced");
+    expect(messagesOf(index, shop()).map((item) => item.name)).toContain(
+      "shop.events.v1.OrderPlaced",
+    );
+  });
 });
 
 describe("who uses a module", () => {
+  it("finds event versions whose payload contract lives in it", () => {
+    const usages = eventsUsingModule(catalog, shop());
+
+    expect(usages).toHaveLength(1);
+    expect(usages[0]?.event.name).toBe("OrderPlaced");
+    expect(usages[0]?.version.version).toBe("v1");
+    expect(usages[0]?.version.schema?.message).toBe(
+      "shop.events.v1.OrderPlaced",
+    );
+  });
+
   it("finds a service through what it publishes and what it calls", () => {
     expect(servicesUsing(index, huge()).map((s) => s.id)).toEqual([
       "shop.oms",
@@ -204,6 +244,8 @@ describe("a catalog with no modules at all", () => {
     expect(dependentsOf(bare, nothing)).toEqual([]);
     expect(callsThrough(bare, nothing)).toEqual([]);
     expect(packagesOf(empty, nothing)).toEqual([]);
+    expect(messagesOf(empty, nothing)).toEqual([]);
+    expect(eventsUsingModule(bare, nothing)).toEqual([]);
   });
 
   it("counts nothing", () => {

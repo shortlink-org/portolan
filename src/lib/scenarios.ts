@@ -483,6 +483,15 @@ export function registryCatalog(): Catalog {
     source: "vendor/proto/acme/huge",
   };
 
+  const orders = rpcService("shop.v1.Orders", shopModule.id, 6);
+  const eventFeed = rpcService("shop.events.v1.Feed", shopModule.id, 2);
+  if (eventFeed.messages?.[0]) eventFeed.messages[0].name = "OrderPlaced";
+  const orderPlaced = event("shop.oms.order", "OrderPlaced");
+  orderPlaced.versions[0]!.schema = {
+    module: shopModule.id,
+    message: "shop.events.v1.OrderPlaced",
+  };
+
   const oms: Service = {
     id: "shop.oms",
     slug: "oms",
@@ -490,10 +499,7 @@ export function registryCatalog(): Catalog {
     repo: "git@example.com:shop/oms.git",
     path: "/shop/oms",
     readme: "",
-    provides: [
-      rpcService("shop.v1.Orders", shopModule.id, 6),
-      rpcService("shop.events.v1.Feed", shopModule.id, 2),
-    ],
+    provides: [orders, eventFeed],
     consumes: [
       {
         id: "huge.v1.Svc1/Method1",
@@ -503,7 +509,7 @@ export function registryCatalog(): Catalog {
         module: hugeModule.id,
       },
     ],
-    aggregates: [],
+    aggregates: [aggregate("shop.oms", "order", "Order", [orderPlaced])],
     modules: [shopModule.id, hugeModule.id],
   };
 

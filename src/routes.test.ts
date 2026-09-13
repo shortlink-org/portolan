@@ -6,6 +6,7 @@ import {
   allCatalogPaths,
   blockPath,
   eventPath,
+  eventVersionPath,
   isLandingPath,
   isRoutable,
   paths,
@@ -114,8 +115,15 @@ describe("routes", () => {
   it("returns null rather than a broken link for unknown ids", () => {
     expect(servicePath("analytics-sink")).toBeNull();
     expect(eventPath("nope.nope.Nope")).toBeNull();
+    expect(eventVersionPath("nope.nope.Nope", "v1")).toBeNull();
     expect(adrPath("shop.oms.0099")).toBeNull();
     expect(blockPath("shop.oms.order.doubloons")).toBeNull();
+  });
+
+  it("links to one exact event schema version", () => {
+    expect(eventVersionPath("shop.oms.order.OrderPlaced", "v1")).toBe(
+      "/c/shop/oms/order/order-placed?version=v1",
+    );
   });
 
   it("routes every decision record, by slug rather than by id", () => {

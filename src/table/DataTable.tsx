@@ -53,6 +53,7 @@ import type { ReactNode } from "react";
 import { useDensity } from "../app/density";
 import { useToastStore } from "../app/toast";
 import { useUiStore } from "../app/ui-store";
+import { m, transitions, useReducedMotion } from "../lib/motion";
 import { useSelectionStore } from "../selection/store";
 import { toClipboard } from "../lib/clipboard";
 import { comparatorFor } from "./compare";
@@ -135,6 +136,11 @@ export interface DataTableProps<T extends RowData> {
   rowActions?: (row: T) => ReactNode;
   /** Page-specific row treatment, derived from the row's own data. */
   rowClassName?: (row: T) => string | undefined;
+  /**
+   * Changed values remount and enter; undefined keeps a row completely still.
+   * The page owns the key because only it knows what constitutes a new state.
+   */
+  rowMotionKey?: (row: T) => string | number | undefined;
   /** The catalog id this row is, so the global selection can light it up. */
   selectionId?: (row: T) => string | null | undefined;
   /**
@@ -171,6 +177,7 @@ export function DataTable<T extends RowData>({
   rowLink,
   rowActions,
   rowClassName,
+  rowMotionKey,
   selectionId,
   subRow,
   toolbarAt = 8,
@@ -186,6 +193,7 @@ export function DataTable<T extends RowData>({
   const toggleZebra = useUiStore((s) => s.toggleZebra);
   const selection = useSelectionStore((s) => s.selection);
   const say = useToastStore((s) => s.say);
+  const reducedMotion = useReducedMotion();
 
   const tableRef = useRef<HTMLTableElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -524,12 +532,17 @@ export function DataTable<T extends RowData>({
     const link = rowLink?.(original) ?? null;
     const active = selectedRowId !== null && row.id === selectedRowId;
     const pageClassName = rowClassName?.(original) ?? "";
+    const motionKey = rowMotionKey?.(original);
+    const moves = motionKey !== undefined && !reducedMotion;
     const row_ = (
-      <tr
-        key={row.id}
+      <m.tr
+        key={motionKey === undefined ? row.id : `${row.id}:${motionKey}`}
         data-row={row.id}
         data-even={parity[index] ?? undefined}
         data-selected={active || undefined}
+        initial={moves ? { opacity: 0.55, x: -4 } : false}
+        animate={moves ? { opacity: 1, x: 0 } : undefined}
+        transition={moves ? transitions.micro : undefined}
         style={virtual ? { height: rowHeight } : undefined}
         className={`${active ? "bg-surface" : ""} ${pageClassName}`.trim() || undefined}
         onClick={
@@ -594,7 +607,7 @@ export function DataTable<T extends RowData>({
             {rowActions(original)}
           </td>
         ) : null}
-      </tr>
+      </m.tr>
     );
 
     const detail = subRow?.(original) ?? null;

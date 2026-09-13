@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BoundedContext, Catalog } from "./catalog";
+import type { BoundedContext, Catalog, Event } from "./catalog";
 import { mergeCatalogs } from "./merge";
 import type { CatalogSource, SourceCatalog } from "./merge";
 
@@ -272,7 +272,7 @@ describe("mergeCatalogs", () => {
       operations: [],
       events,
     });
-    const event = (name: string, consumers: { service: string; status: "declared" | "verified"; note?: string }[]) => ({
+    const event = (name: string, consumers: { service: string; status: "declared" | "verified"; note?: string }[]): Event => ({
       id: `shop.oms.order.${name}`,
       slug: name.toLowerCase(),
       name,
@@ -285,12 +285,17 @@ describe("mergeCatalogs", () => {
       aggregate([event("OrderPlaced", [{ service: "payments.ledger", status: "declared", note: "first" }])]),
     ];
     const overlay = context("shop", ["shop.oms"]);
+    const overlaidPlaced = event("OrderPlaced", [
+      { service: "payments.ledger", status: "verified", note: "second" },
+      { service: "delivery.core", status: "declared" },
+    ]);
+    overlaidPlaced.versions[0]!.schema = {
+      module: "buf.build/acme/shop-events",
+      message: "shop.events.v1.OrderPlaced",
+    };
     overlay.services[0]!.aggregates = [
       aggregate([
-        event("OrderPlaced", [
-          { service: "payments.ledger", status: "verified", note: "second" },
-          { service: "delivery.core", status: "declared" },
-        ]),
+        overlaidPlaced,
         event("OrderCancelled", []),
       ]),
     ];
@@ -313,6 +318,10 @@ describe("mergeCatalogs", () => {
       { service: "payments.ledger", status: "verified", note: "first" },
       { service: "delivery.core", status: "declared" },
     ]);
+    expect(events?.[0]?.versions[0]?.schema).toEqual({
+      module: "buf.build/acme/shop-events",
+      message: "shop.events.v1.OrderPlaced",
+    });
     // The union never writes into a source.
     expect(JSON.stringify([producer, overlay])).toBe(before);
   });

@@ -5,7 +5,7 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { Check, ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
 import { catalog, index } from "../data";
 import { plural } from "../lib/format";
@@ -23,10 +23,12 @@ import type { Change, Scope } from "../lib/shape";
 import {
   EVENT_ANCHOR,
   LINKS_HERE,
+  messageAnchor,
   paths,
   servicePath,
   tablePath,
 } from "../routes";
+import { messageOf, registryMessageUrl } from "../lib/registry";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { ShapeBody, TypeCell } from "../components/FieldTree";
@@ -323,13 +325,31 @@ export function EventPage() {
     aggregate: aggSlug,
     event: eventSlug,
   } = useParams();
+  const [params, setParams] = useSearchParams();
   const context = catalog.contexts.find((c) => c.id === contextId);
   const service = context?.services.find((s) => s.slug === serviceSlug);
   const aggregate = service?.aggregates.find((a) => a.slug === aggSlug);
   const event = aggregate?.events.find((e) => e.slug === eventSlug);
 
   const latest = event?.versions[event.versions.length - 1]?.version ?? "";
-  const [version, setVersion] = useState(latest);
+  const requestedVersion = params.get("version");
+  const version = event?.versions.some((item) => item.version === requestedVersion)
+    ? requestedVersion ?? latest
+    : latest;
+  const setVersion = useCallback(
+    (next: string) => {
+      setParams(
+        (current) => {
+          const updated = new URLSearchParams(current);
+          if (next === latest) updated.delete("version");
+          else updated.set("version", next);
+          return updated;
+        },
+        { replace: true },
+      );
+    },
+    [latest, setParams],
+  );
   // Dotted paths of the rows opened, at every depth: "items", then
   // "items.unitPrice". Kept across versions on purpose - a reader comparing
   // v1 to v2 wants the same fields open in both.
@@ -400,6 +420,24 @@ export function EventPage() {
 
   const outbox = outboxOfService(index, service.id);
   const outboxTo = outbox ? tablePath(outbox.table.id) : null;
+  const schemaModule = selected.schema
+    ? index.moduleById.get(selected.schema.module)
+    : undefined;
+  const schemaMessage =
+    selected.schema && schemaModule
+      ? messageOf(index, schemaModule, selected.schema.message)
+      : undefined;
+  const schemaTo =
+    schemaModule && schemaMessage
+      ? `${paths.module(schemaModule.slug)}?tab=types#${messageAnchor(
+          schemaMessage.provided.id,
+          schemaMessage.message.name,
+        )}`
+      : null;
+  const schemaRegistryUrl =
+    schemaModule && selected.schema
+      ? registryMessageUrl(schemaModule, selected.schema.message)
+      : null;
 
   // The four things there are to know about an event, in the order a reader
   // asks them: what shape is it, how did it get that shape, who listens, and
@@ -504,6 +542,38 @@ export function EventPage() {
             ) : null}
           </div>
         ) : null}
+        {selected.schema && schemaModule ? (
+          <div className="meta mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>Schema:</span>
+            {schemaTo ? (
+              <Link
+                to={schemaTo}
+                className="mono rounded-control text-accent hover:underline"
+              >
+                {selected.schema.message}
+              </Link>
+            ) : (
+              <span className="mono text-ink">{selected.schema.message}</span>
+            )}
+            <span>in</span>
+            <Link
+              to={paths.module(schemaModule.slug)}
+              className="mono rounded-control text-accent hover:underline"
+            >
+              {schemaModule.name}
+            </Link>
+            {schemaRegistryUrl ? (
+              <a
+                href={schemaRegistryUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mono rounded-control text-muted hover:text-ink"
+              >
+                {schemaModule.registry} ↗
+              </a>
+            ) : null}
+          </div>
+        ) : null}
         {/* How this event actually leaves the service. It is a fact about the
             publisher, not about the schema, but it belongs here: a consumer
             reading this page wants to know whether the event is committed with
@@ -586,6 +656,11 @@ export function EventPage() {
                 rowId={(row) => row.name}
                 rowClassName={(row) =>
                   row.change ? `schema-diff-${row.change}` : undefined
+                }
+                rowMotionKey={(row) =>
+                  row.change
+                    ? `${selected.version}:${row.name}:${row.change}`
+                    : undefined
                 }
                 subRow={(row) => {
                   if (row.change === "removed" || !open.has(row.name)) return null;

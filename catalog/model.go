@@ -661,11 +661,20 @@ type EventConsumer struct {
 	Via *EdgeVia `json:"via,omitempty"`
 }
 
+// EventSchemaRef is the protobuf contract that defines one version of an
+// event payload. Message is fully qualified, for example
+// "shop.events.v2.OrderPlaced".
+type EventSchemaRef struct {
+	Module  string `json:"module"`
+	Message string `json:"message"`
+}
+
 type EventVersion struct {
-	Version string  `json:"version"`
-	Doc     string  `json:"doc"`
-	Source  string  `json:"source"`
-	Fields  []Field `json:"fields"`
+	Version string          `json:"version"`
+	Doc     string          `json:"doc"`
+	Source  string          `json:"source"`
+	Fields  []Field         `json:"fields"`
+	Schema  *EventSchemaRef `json:"schema,omitempty"`
 }
 
 type Field struct {
