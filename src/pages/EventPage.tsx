@@ -1,9 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+} from "@headlessui/react";
 import { Link, useParams } from "react-router";
-import { ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
 import { catalog, index } from "../data";
 import { plural } from "../lib/format";
-import type { Field } from "../catalog";
+import type { EventVersion, Field } from "../catalog";
 import { backlinkCount, stepsInto } from "../lib/backlinks";
 import { outboxOfService } from "../lib/data-model";
 import { ctxStyle } from "../lib/context-color";
@@ -22,7 +28,6 @@ import {
   tablePath,
 } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
-import { Select } from "../components/Select";
 import { Ident } from "../components/Ident";
 import { ShapeBody, TypeCell } from "../components/FieldTree";
 import { RowActions } from "../components/RowActions";
@@ -207,6 +212,110 @@ function changeSummary(rows: SchemaRow[]): string {
     .join("");
 }
 
+/** A compact version picker whose menu has room to explain each choice. */
+function VersionPicker({
+  versions,
+  value,
+  latest,
+  onChange,
+}: {
+  versions: readonly EventVersion[];
+  value: string;
+  latest: string;
+  onChange: (value: string) => void;
+}) {
+  const current = versions.find((item) => item.version === value);
+
+  return (
+    <Listbox value={value} onChange={onChange}>
+      <ListboxButton
+        aria-label="Schema version"
+        title="Which version of this event's schema the page shows"
+        className={({ open }) =>
+          `group flex min-w-28 items-center justify-between gap-2 rounded-control border bg-canvas px-2 py-1 shadow-xs outline-none transition-colors ${
+            open
+              ? "border-accent text-ink"
+              : "border-line text-muted hover:border-line-strong hover:bg-surface"
+          }`
+        }
+      >
+        {({ open }) => (
+          <>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="text-ink">{current?.version ?? value}</span>
+              {value === latest ? (
+                <span className="rounded-control bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                  latest
+                </span>
+              ) : null}
+            </span>
+            <ChevronDown
+              size={13}
+              aria-hidden
+              className="shrink-0 transition-transform"
+              style={{ transform: open ? "rotate(180deg)" : "none" }}
+            />
+          </>
+        )}
+      </ListboxButton>
+
+      <ListboxOptions
+        aria-label="Schema version"
+        anchor={{ to: "bottom end", gap: 6, padding: 8 }}
+        className="palette-in z-50 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-card border bg-canvas p-1.5 border-line-strong shadow-md focus:outline-none"
+      >
+        {[...versions].reverse().map((item) => (
+          <ListboxOption
+            key={item.version}
+            value={item.version}
+            className={({ focus }) =>
+              `group flex cursor-pointer items-start gap-2.5 rounded-control px-2.5 py-2 outline-none ${
+                focus ? "bg-raised" : ""
+              }`
+            }
+          >
+            {({ selected: on }) => (
+              <>
+                <span
+                  aria-hidden
+                  className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                    on
+                      ? "border-accent bg-accent"
+                      : "border-line-strong text-transparent"
+                  }`}
+                >
+                  <Check
+                    size={10}
+                    strokeWidth={3}
+                    style={on ? { color: "var(--bg)" } : undefined}
+                  />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className={on ? "text-accent" : "text-ink"}>
+                      {item.version}
+                    </span>
+                    {item.version === latest ? (
+                      <span className="rounded-control bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                        latest
+                      </span>
+                    ) : null}
+                  </span>
+                  {item.doc ? (
+                    <span className="mt-0.5 block whitespace-normal text-muted">
+                      {item.doc}
+                    </span>
+                  ) : null}
+                </span>
+              </>
+            )}
+          </ListboxOption>
+        ))}
+      </ListboxOptions>
+    </Listbox>
+  );
+}
+
 export function EventPage() {
   const {
     context: contextId,
@@ -348,18 +457,11 @@ export function EventPage() {
               </span>
             ) : null}
             version
-            <Select
+            <VersionPicker
+              versions={event.versions}
               value={selected.version}
+              latest={latest}
               onChange={setVersion}
-              label="Schema version"
-              title="Which version of this event's schema the page shows"
-              menuWidth={260}
-              options={[...event.versions].reverse().map((v) => ({
-                value: v.version,
-                label:
-                  v.version === latest ? `${v.version} (latest)` : v.version,
-                note: v.doc,
-              }))}
             />
           </span>
         }
@@ -553,9 +655,6 @@ export function EventPage() {
                         {v.doc}
                       </span>
                     </button>
-                    <span className="mono shrink-0 text-muted">
-                      {v.fields.length}f
-                    </span>
                     <RowActions
                       copy={`${event.id}@${v.version}`}
                       label={`${event.name} ${v.version}`}
