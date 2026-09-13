@@ -63,13 +63,20 @@ export function ShapeRows({
     });
 
   return (
-    <table className="w-full">
+    <table className={`w-full${showHeader ? " table-fixed" : ""}`}>
+      {showHeader ? (
+        <colgroup>
+          <col className="w-[32%]" />
+          <col className="w-[40%]" />
+          <col className="w-[28%]" />
+        </colgroup>
+      ) : null}
       {showHeader ? (
         <thead>
           <tr className="label border-b border-line text-left">
-            <th className="pb-1 pr-3 font-normal">Field</th>
-            <th className="pb-1 pr-3 font-normal">Type</th>
-            <th className="pb-1 font-normal">Description</th>
+            <th className="py-1.5 pr-4 font-normal">Field</th>
+            <th className="py-1.5 pr-4 font-normal">Type</th>
+            <th className="py-1.5 font-normal">Description</th>
           </tr>
         </thead>
       ) : null}
@@ -79,11 +86,11 @@ export function ShapeRows({
           const shown = set !== null && open.has(field.name);
           return (
           <Fragment key={field.name}>
-          <tr className="align-top">
+          <tr className={`align-top${showHeader ? " border-b border-line last:border-b-0" : ""}`}>
             {/* Struck through rather than chipped: an aside has no room for a
                 badge, and the doc beside it says why. */}
             <td
-              className={`mono py-0.5 pr-3 whitespace-nowrap${field.deprecated ? " line-through" : ""}`}
+              className={`mono pr-4${showHeader ? " break-words py-1.5" : " whitespace-nowrap py-0.5"}${field.deprecated ? " line-through" : ""}`}
               title={field.deprecated ? "deprecated" : undefined}
             >
               {field.name}
@@ -91,14 +98,14 @@ export function ShapeRows({
             {/* An arrow marks a type that is a shared definition rather than a
                 primitive, so a reader can tell which names are worth following
                 without the row becoming a link it is not. */}
-            <td className="mono py-0.5 pr-3 whitespace-nowrap text-muted">
-              <span className="inline-flex items-center gap-1.5">
+            <td className={`mono pr-4 text-muted${showHeader ? " break-words py-1.5" : " whitespace-nowrap py-0.5"}`}>
+              <span className={`${showHeader ? "flex min-w-0 max-w-full flex-wrap break-words" : "inline-flex"} items-center gap-1.5`}>
                 {set ? (
                   <button
                     type="button"
                     onClick={() => toggle(field.name)}
                     aria-expanded={shown}
-                    className="inline-flex items-center gap-1 rounded-control hover:text-ink"
+                    className={`inline-flex items-center gap-1 rounded-control hover:text-ink${showHeader ? " min-w-0 max-w-full whitespace-normal break-words text-left" : ""}`}
                     title={`${set.name}: ${set.values.length} values — click to ${shown ? "hide" : "show"} them`}
                   >
                     {shown ? (
@@ -106,17 +113,22 @@ export function ShapeRows({
                     ) : (
                       <ChevronRight size={11} aria-hidden />
                     )}
-                    {field.type}
+                    <span className={showHeader ? "min-w-0 break-all" : undefined}>
+                      {field.type}
+                    </span>
                   </button>
-                ) : field.ref ? (
-                  `${field.type} →`
                 ) : (
-                  field.type
+                  <span className={showHeader ? "min-w-0 break-all" : undefined}>
+                    {field.type}
+                    {field.ref ? " →" : ""}
+                  </span>
                 )}
                 <RuleMarks field={field} />
               </span>
             </td>
-            <td className="py-0.5 text-muted">{field.doc}</td>
+            <td className={`${showHeader ? "break-words py-1.5" : "py-0.5"} text-muted`}>
+              {field.doc}
+            </td>
           </tr>
           {shown && set ? (
             <tr>

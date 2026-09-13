@@ -303,7 +303,7 @@ export function ModulePage() {
                     {pkg.interfaces.map(({ provided, service }) => (
                       <div
                         key={provided.id}
-                        className="rounded-card border border-line"
+                        className="min-w-0 overflow-hidden rounded-card border border-line"
                       >
                         <div className="mono flex flex-wrap items-center gap-x-3 border-b px-3 py-1.5 border-line bg-surface">
                           <KindIcon kind="endpoint" />
@@ -343,7 +343,7 @@ export function ModulePage() {
               provided.messages?.length ? (
                 <div
                   key={provided.id}
-                  className="rounded-card border border-line"
+                  className="min-w-0 overflow-hidden rounded-card border border-line"
                 >
                   <div className="mono border-b px-3 py-1.5 border-line bg-surface">
                     <Ident value={provided.id} className="text-ink" />

@@ -315,9 +315,13 @@ export function MessageList({
               </span>
             </button>
             {shown ? (
-              <div className="px-3 pb-3">
+              <div className="min-w-0 px-3 pb-3">
                 <DiscriminatorRows discriminator={message.discriminator} />
-                <ShapeRows fields={message.fields} enums={provided.enums} />
+                <ShapeRows
+                  fields={message.fields}
+                  enums={provided.enums}
+                  showHeader
+                />
               </div>
             ) : null}
           </div>
