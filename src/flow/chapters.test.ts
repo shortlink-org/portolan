@@ -89,6 +89,32 @@ describe("buildChapters", () => {
     expect(chapters).toHaveLength(1);
     expect(chapters[0]?.kind).toBe("steps");
   });
+
+  it("splits composed fragments into named chapters", () => {
+    const composed: Flow = {
+      id: "flow.composed",
+      slug: "composed",
+      name: "Composed",
+      summary: "",
+      owner: "shop",
+      participants: [
+        { id: "shop.cart", kind: "service", context: "shop" },
+        { id: "shop.billing", kind: "service", context: "shop" },
+      ],
+      includes: ["billing-worker"],
+      composition: [{
+        flow: "billing-worker",
+        seam: { afterStep: "request", kind: "entrypoint", target: "billing.work", basis: "exact source entrypoint", confidence: "high" },
+      }],
+      steps: [
+        { type: "step", id: "request", from: "shop.cart", to: "shop.billing", kind: "rpc", label: "issue", status: "declared" },
+        { type: "step", id: "continuation-billing-worker-request-work", from: "shop.billing", to: "shop.billing", kind: "call", label: "work", status: "declared" },
+      ],
+    };
+    const chapters = buildChapters(composed);
+    expect(chapters).toHaveLength(2);
+    expect(chapters[1]).toMatchObject({ origin: "billing-worker", title: "billing-worker · work" });
+  });
 });
 
 describe("groupRows", () => {

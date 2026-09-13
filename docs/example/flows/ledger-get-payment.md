@@ -10,11 +10,11 @@ Reads one payment, for whoever is asking what happened to the money.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
 
 ## Sequence
 

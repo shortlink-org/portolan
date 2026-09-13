@@ -524,6 +524,26 @@ function storeBacklinks(
       via: `persisted in ${table.name}`,
     });
   }
+  for (const flow of catalog.flows) {
+    const storeLanes = new Set(
+      flow.participants
+        .filter((participant) => participant.entityRef === storeId)
+        .map((participant) => participant.id),
+    );
+    walkSteps(flow.steps).forEach((step, index) => {
+      const direct = step.storeAccess?.store === storeId;
+      const throughLane = storeLanes.has(step.from) || storeLanes.has(step.to);
+      if (!direct && !throughLane) return;
+      const operation = step.storeAccess?.operation?.toUpperCase();
+      out.push(
+        flowLink(
+          flow,
+          `${operation ? `${operation} · ` : ""}step ${index + 1}`,
+          step.id,
+        ),
+      );
+    });
+  }
   return out;
 }
 

@@ -6275,12 +6275,12 @@ Replaces the password of a user, given the current one.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `auth-pg` | store | [auth](../auth/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `auth-pg` | store | [auth](../auth/README.md) | [auth.auth.pg](../auth/auth/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -6302,19 +6302,19 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — changePassword → 204
-   [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · Seen running in telemetry/traces.jsonl (2 traces). · evidence: call-site · source-expression · `changePassword` · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
-   status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
+   status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/validate:UseCase.Handle` · [`examples/auth/internal/session/application/validate/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L28) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
 <a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — ByID
-   status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:32`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L32)
+   status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:32`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L32) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByID` · evidence: function · source-function · `examples/auth/internal/user/application/change_password:UseCase.Handle` · [`examples/auth/internal/user/application/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L31) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/change_password/usecase.go:32`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L32) · evidence: call-site · source-expression · `ByID` · [`examples/auth/internal/user/application/change_password/usecase.go:32`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L32)
 <a id="step-s4"></a>
 4. **auth.auth** → **auth-pg** — Save
-   status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
+   status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/user/application/change_password:UseCase.Handle` · [`examples/auth/internal/user/application/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L31) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
 <a id="step-s5"></a>
 5. **auth.auth** → **bus** — PasswordChanged
-   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · Seen running in telemetry/traces.jsonl (2 traces). · evidence: function · source-function · `examples/auth/internal/user/application/change_password:UseCase.Handle` · [`examples/auth/internal/user/application/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L31) · evidence: call-site · source-expression · `PasswordChanged` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
 
 ## Recordings
 
@@ -6353,11 +6353,11 @@ Reads a user by id.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `auth-pg` | store | [auth](../auth/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `auth-pg` | store | [auth](../auth/README.md) | [auth.auth.pg](../auth/auth/stores/pg.md) |
 
 ## Sequence
 
@@ -6375,10 +6375,10 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — getUser → User
-   [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11) · Seen running in telemetry/traces.jsonl (3 traces).
+   [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11) · Seen running in telemetry/traces.jsonl (3 traces). · evidence: call-site · source-expression · `getUser` · [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByID
-   status: declared · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22)
+   status: declared · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByID` · evidence: function · source-function · `examples/auth/internal/user/application/get:UseCase.Handle` · [`examples/auth/internal/user/application/get/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L21) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22) · evidence: call-site · source-expression · `ByID` · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22)
 
 ## Recordings
 
@@ -6425,13 +6425,13 @@ Turns credentials into a session.
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `auth.auth` | service | [auth](../auth/README.md) | — |
-| `auth-pg` | store | [auth](../auth/README.md) | — |
-| `bus` | broker | — | — |
-| `risk-v1` | unknown | — | risk.v1 |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `client` | actor | — | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — | — |
+| `auth-pg` | store | [auth](../auth/README.md) | [auth.auth.pg](../auth/auth/stores/pg.md) | — |
+| `bus` | broker | — | — | — |
+| `risk-v1` | unknown | — | — | risk.v1 |
 
 ## Sequence
 
@@ -6475,19 +6475,19 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — login → Session
-   [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11) · Seen running in telemetry/traces.jsonl (10 traces).
+   [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11) · Seen running in telemetry/traces.jsonl (10 traces). · evidence: call-site · source-expression · `login` · [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11)
 <a id="step-s2"></a>
 2. **auth.auth** ↺ **auth.auth** — CheckCredentials
-   status: declared · [`examples/auth/internal/session/application/login/usecase.go:57`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L57) · Port `Authenticator`, bound at assembly to the CheckCredentials use case.
+   status: declared · [`examples/auth/internal/session/application/login/usecase.go:57`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L57) · Port `Authenticator`, bound at assembly to the CheckCredentials use case. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: binding · provider-signature · `NewAuthenticator` · [`examples/auth/internal/session/infrastructure/identity/adapter.go:19`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/identity/adapter.go#L19) · evidence: call-site · source-expression · `CheckCredentials` · [`examples/auth/internal/session/application/login/usecase.go:57`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L57)
 <a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — ByEmail
-   status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:42`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L42)
+   status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:42`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L42) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByEmail` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/check_credentials/usecase.go:42`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L42) · evidence: call-site · source-expression · `ByEmail` · [`examples/auth/internal/user/application/check_credentials/usecase.go:42`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L42)
 <a id="step-s4"></a>
 4. **auth.auth** ↺ **auth.auth** — Check
-   status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L50) · Port `Lockout`, bound at assembly to the Check use case.
+   status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L50) · Port `Lockout`, bound at assembly to the Check use case. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: binding · provider-signature · `New` · [`examples/auth/internal/user/infrastructure/lockout/adapter.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/lockout/adapter.go#L21) · evidence: call-site · source-expression · `Check` · [`examples/auth/internal/user/application/check_credentials/usecase.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L50)
 <a id="step-s5"></a>
 5. **auth.auth** → **auth-pg** — ByUserID
-   status: declared · [`examples/auth/internal/lockout/application/check/usecase.go:26`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/check/usecase.go#L26)
+   status: declared · [`examples/auth/internal/lockout/application/check/usecase.go:26`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/check/usecase.go#L26) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByUserID` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: function · source-function · `examples/auth/internal/lockout/application/check:UseCase.Handle` · [`examples/auth/internal/lockout/application/check/usecase.go:25`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/check/usecase.go#L25) · evidence: binding · domain-port-convention · `lockout.Repository` · [`examples/auth/internal/lockout/application/check/usecase.go:26`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/check/usecase.go#L26) · evidence: call-site · source-expression · `ByUserID` · [`examples/auth/internal/lockout/application/check/usecase.go:26`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/check/usecase.go#L26)
 
 > **One of**
 >
@@ -6495,31 +6495,31 @@ sequenceDiagram
 >
 > <a id="step-s6"></a>
 > 6. **auth.auth** ↺ **auth.auth** — RecordFailure
->    status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:59`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L59) · Port `Lockout`, bound at assembly to the RecordFailure use case.
+>    status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:59`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L59) · Port `Lockout`, bound at assembly to the RecordFailure use case. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: binding · provider-signature · `New` · [`examples/auth/internal/user/infrastructure/lockout/adapter.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/lockout/adapter.go#L21) · evidence: call-site · source-expression · `RecordFailure` · [`examples/auth/internal/user/application/check_credentials/usecase.go:59`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L59)
 > <a id="step-s7"></a>
 > 7. **auth.auth** → **auth-pg** — ByUserID
->    status: declared · [`examples/auth/internal/lockout/application/record_failure/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L36) · inside a loop over `retries`.
+>    status: declared · [`examples/auth/internal/lockout/application/record_failure/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L36) · inside a loop over `retries`. · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByUserID` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: function · source-function · `examples/auth/internal/lockout/application/record_failure:UseCase.Handle` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L34) · evidence: binding · domain-port-convention · `lockout.Repository` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L36) · evidence: call-site · source-expression · `ByUserID` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L36)
 > <a id="step-s8"></a>
 > 8. **auth.auth** → **auth-pg** — Save
->    status: declared · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`.
+>    status: declared · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`. · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: function · source-function · `examples/auth/internal/lockout/application/record_failure:UseCase.Handle` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L34) · evidence: binding · domain-port-convention · `lockout.Repository` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53)
 > <a id="step-s9"></a>
 > 9. **auth.auth** → **bus** — AccountLocked
->    [`auth.auth.lockout.AccountLocked`](../auth/auth/aggregates/lockout.md#event-auth-auth-lockout-accountlocked) · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`.
+>    [`auth.auth.lockout.AccountLocked`](../auth/auth/aggregates/lockout.md#event-auth-auth-lockout-accountlocked) · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: function · source-function · `examples/auth/internal/lockout/application/record_failure:UseCase.Handle` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L34) · evidence: call-site · source-expression · `AccountLocked` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53)
 >
 > *otherwise*
 
 <a id="step-s11"></a>
 10. **auth.auth** ↺ **auth.auth** — RecordSuccess
-   status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:68`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L68) · Port `Lockout`, bound at assembly to the RecordSuccess use case.
+   status: declared · [`examples/auth/internal/user/application/check_credentials/usecase.go:68`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L68) · Port `Lockout`, bound at assembly to the RecordSuccess use case. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: binding · provider-signature · `New` · [`examples/auth/internal/user/infrastructure/lockout/adapter.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/lockout/adapter.go#L21) · evidence: call-site · source-expression · `RecordSuccess` · [`examples/auth/internal/user/application/check_credentials/usecase.go:68`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L68)
 <a id="step-s12"></a>
 11. **auth.auth** → **auth-pg** — ByUserID
-   status: declared · [`examples/auth/internal/lockout/application/record_success/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L31) · inside a loop over `retries`.
+   status: declared · [`examples/auth/internal/lockout/application/record_success/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L31) · inside a loop over `retries`. · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByUserID` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: function · source-function · `examples/auth/internal/lockout/application/record_success:UseCase.Handle` · [`examples/auth/internal/lockout/application/record_success/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L29) · evidence: binding · domain-port-convention · `lockout.Repository` · [`examples/auth/internal/lockout/application/record_success/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L31) · evidence: call-site · source-expression · `ByUserID` · [`examples/auth/internal/lockout/application/record_success/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L31)
 <a id="step-s13"></a>
 12. **auth.auth** → **auth-pg** — Save
-   status: declared · [`examples/auth/internal/lockout/application/record_success/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L43) · inside a loop over `retries`.
+   status: declared · [`examples/auth/internal/lockout/application/record_success/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L43) · inside a loop over `retries`. · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: function · source-function · `examples/auth/internal/lockout/application/record_success:UseCase.Handle` · [`examples/auth/internal/lockout/application/record_success/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L29) · evidence: binding · domain-port-convention · `lockout.Repository` · [`examples/auth/internal/lockout/application/record_success/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L43) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/lockout/application/record_success/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_success/usecase.go#L43)
 <a id="step-s14"></a>
 13. **auth.auth** → **risk-v1** — Assess
-   `risk.v1.RiskService/Assess` · status: unresolved · [`examples/auth/internal/session/application/login/usecase.go:62`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L62)
+   `risk.v1.RiskService/Assess` · status: unresolved · [`examples/auth/internal/session/application/login/usecase.go:62`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L62) · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: contract · generated-client-method · `risk.v1.RiskService/Assess` · [`examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go) · evidence: call-site · source-expression · `Assess` · [`examples/auth/internal/session/application/login/usecase.go:62`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L62)
 
 > **One of**
 >
@@ -6527,22 +6527,22 @@ sequenceDiagram
 >
 > <a id="step-s15"></a>
 > 14. **auth.auth** → **auth-pg** — ByUserID
->    status: declared · [`examples/auth/internal/session/application/login/usecase.go:91`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L91)
+>    status: declared · [`examples/auth/internal/session/application/login/usecase.go:91`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L91) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByUserID` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.endAll` · [`examples/auth/internal/session/application/login/usecase.go:90`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L90) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/login/usecase.go:91`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L91) · evidence: call-site · source-expression · `ByUserID` · [`examples/auth/internal/session/application/login/usecase.go:91`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L91)
 > <a id="step-s16"></a>
 > 15. **auth.auth** → **auth-pg** — Save
->    status: declared · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101) · inside a loop over `sessions`.
+>    status: declared · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101) · inside a loop over `sessions`. · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.endAll` · [`examples/auth/internal/session/application/login/usecase.go:90`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L90) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101)
 > <a id="step-s17"></a>
 > 16. **auth.auth** → **bus** — SessionEnded
->    [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · status: declared · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101) · inside a loop over `sessions`.
+>    [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · status: declared · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101) · inside a loop over `sessions`. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.endAll` · [`examples/auth/internal/session/application/login/usecase.go:90`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L90) · evidence: call-site · source-expression · `SessionEnded` · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101)
 >
 > *otherwise*
 
 <a id="step-s19"></a>
 17. **auth.auth** → **auth-pg** — Save
-   status: declared · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77)
+   status: declared · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77)
 <a id="step-s20"></a>
 18. **auth.auth** → **bus** — SessionStarted
-   [`auth.auth.session.SessionStarted`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionstarted) · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · Seen running in telemetry/traces.jsonl (10 traces).
+   [`auth.auth.session.SessionStarted`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionstarted) · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · Seen running in telemetry/traces.jsonl (10 traces). · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: call-site · source-expression · `SessionStarted` · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77)
 
 ## Recordings
 
@@ -6611,12 +6611,12 @@ Ends the session behind a token.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `auth-pg` | store | [auth](../auth/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `auth-pg` | store | [auth](../auth/README.md) | [auth.auth.pg](../auth/auth/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -6637,16 +6637,16 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — logout → 204
-   [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15) · Seen running in telemetry/traces.jsonl (1 trace). · evidence: call-site · source-expression · `logout` · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
-   status: declared · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34)
+   status: declared · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34)
 <a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — Save
-   status: declared · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
+   status: declared · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
 <a id="step-s4"></a>
 4. **auth.auth** → **bus** — SessionEnded
-   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · Seen running in telemetry/traces.jsonl (1 trace). · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: call-site · source-expression · `SessionEnded` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
 
 ## Recordings
 
@@ -6676,12 +6676,12 @@ Creates a user from an email address and a password.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `auth-pg` | store | [auth](../auth/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `auth-pg` | store | [auth](../auth/README.md) | [auth.auth.pg](../auth/auth/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -6702,16 +6702,16 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — registerUser → User
-   [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16) · Seen running in telemetry/traces.jsonl (2 traces). · evidence: call-site · source-expression · `registerUser` · [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByEmail
-   status: declared · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36)
+   status: declared · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByEmail` · evidence: function · source-function · `examples/auth/internal/user/application/register:UseCase.Handle` · [`examples/auth/internal/user/application/register/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L31) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36) · evidence: call-site · source-expression · `ByEmail` · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36)
 <a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — Save
-   status: declared · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53)
+   status: declared · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/user/application/register:UseCase.Handle` · [`examples/auth/internal/user/application/register/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L31) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53)
 <a id="step-s4"></a>
 4. **auth.auth** → **bus** — UserRegistered
-   [`auth.auth.user.UserRegistered`](../auth/auth/aggregates/user.md#event-auth-auth-user-userregistered) · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`auth.auth.user.UserRegistered`](../auth/auth/aggregates/user.md#event-auth-auth-user-userregistered) · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53) · Seen running in telemetry/traces.jsonl (2 traces). · evidence: function · source-function · `examples/auth/internal/user/application/register:UseCase.Handle` · [`examples/auth/internal/user/application/register/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L31) · evidence: call-site · source-expression · `UserRegistered` · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53)
 
 ## Recordings
 
@@ -6751,10 +6751,10 @@ Ends the sessions issued against a password that has just been replaced.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `auth.auth` | service | [auth](../auth/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
 
 ## Sequence
 
@@ -6771,7 +6771,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **bus** → **auth.auth** — PasswordChanged
-   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47) · Seen running in telemetry/traces.jsonl (1 trace). · evidence: call-site · source-expression · `PasswordChanged` · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47)
 <a id="step-seen1"></a>
 2. **auth.auth** → **bus** — SessionEnded
    [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · Seen in 1 recording; the code does not declare this hop.
@@ -6804,11 +6804,11 @@ Resolves a token to a live session: who is calling, and how long the answer stay
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `auth-pg` | store | [auth](../auth/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `auth-pg` | store | [auth](../auth/README.md) | [auth.auth.pg](../auth/auth/stores/pg.md) |
 
 ## Sequence
 
@@ -6826,10 +6826,10 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — validateSession → SessionInfo
-   [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12) · Seen running in telemetry/traces.jsonl (2 traces). · evidence: call-site · source-expression · `validateSession` · [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
-   status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
+   status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/validate:UseCase.Handle` · [`examples/auth/internal/session/application/validate/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L28) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
 
 ## Recordings
 
@@ -6867,11 +6867,11 @@ Add a line. The price travels as the customer was shown it; the cart captures it
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.cart` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -6908,11 +6908,11 @@ Cancel an order. Whether it is too late to is the order service's judgement and 
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.oms` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -6949,11 +6949,11 @@ Freeze the basket and hand it on.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.cart` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -6988,11 +6988,11 @@ sequenceDiagram
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.cart` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -7029,11 +7029,11 @@ The basket as the cart has it, in the storefront's words.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.cart` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -7068,11 +7068,11 @@ sequenceDiagram
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.oms` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -7107,11 +7107,11 @@ sequenceDiagram
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
 
 ## Sequence
 
@@ -7148,11 +7148,11 @@ Who the request belongs to. Auth is asked on every call rather than a token bein
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `auth.auth` | service | [auth](../auth/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
 
 ## Sequence
 
@@ -7189,10 +7189,10 @@ Every move of one order, for as long as somebody is watching it.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
 
 ## Sequence
 
@@ -7226,11 +7226,17 @@ Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and 
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `shop.billing` | service | [shop](../shop/README.md) | — |
-| `celery-billing` | broker | — | Celery · billing |
-| `billing-pg` | store | [shop](../shop/README.md) | — |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `shop.billing` | service | [shop](../shop/README.md) | — | — |
+| `celery-billing` | broker | — | — | Celery · billing |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) | — |
+
+## Composition
+
+| Fragment | After step | Seam | Target | Evidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| `billing-celery-body-invoices-tasks-remind-unpaid-invoice` | [work](billing-celery-remind-unpaid-invoice.md#step-work) | `entrypoint` | `python:invoices.tasks:remind_unpaid_invoice` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 
@@ -7249,10 +7255,10 @@ sequenceDiagram
 
 <a id="step-enqueue"></a>
 1. **shop.billing** → **celery-billing** — enqueue remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · Enqueued after the transaction commits, for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid.
+   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · Enqueued after the transaction commits, for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid. · handoff: send · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-work"></a>
 2. **celery-billing** → **shop.billing** — remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. · continues at `python:invoices.tasks:remind_unpaid_invoice` · handoff: receive · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-continuation-billing-celery-body-invoices-tasks-remind-unpaid-invoice-work-s1"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.filter
    status: declared · [`examples/shop/billing/invoices/tasks.py:32`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L32)
@@ -7273,11 +7279,17 @@ Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` an
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `shop.billing` | service | [shop](../shop/README.md) | — |
-| `celery-billing-mail` | broker | — | Celery · billing.mail |
-| `billing-pg` | store | [shop](../shop/README.md) | — |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `shop.billing` | service | [shop](../shop/README.md) | — | — |
+| `celery-billing-mail` | broker | — | — | Celery · billing.mail |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) | — |
+
+## Composition
+
+| Fragment | After step | Seam | Target | Evidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| `billing-celery-body-invoices-tasks-send-invoice-email` | [work](billing-celery-send-invoice-email.md#step-work) | `entrypoint` | `python:invoices.tasks:send_invoice_email` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 
@@ -7296,10 +7308,10 @@ sequenceDiagram
 
 <a id="step-enqueue"></a>
 1. **shop.billing** → **celery-billing-mail** — enqueue send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay.
+   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay. · handoff: send · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-work"></a>
 2. **celery-billing-mail** → **shop.billing** — send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. · continues at `python:invoices.tasks:send_invoice_email` · handoff: receive · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-continuation-billing-celery-body-invoices-tasks-send-invoice-email-work-s1"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · [`examples/shop/billing/invoices/tasks.py:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L20)
@@ -7318,11 +7330,11 @@ Closes the invoice for an order once the ledger says the money arrived.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) |
 
 ## Sequence
 
@@ -7367,11 +7379,11 @@ Draws up a draft invoice for an order, with a line for each thing sold.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) |
 
 ## Sequence
 
@@ -7412,12 +7424,12 @@ Ends an invoice nobody is going to pay.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -7463,15 +7475,24 @@ Confirms the session, freezes the invoice and asks the customer to pay. Source-b
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `shop.billing` | service | [shop](../shop/README.md) | — |
-| `auth.auth` | service | [auth](../auth/README.md) | — |
-| `billing-pg` | store | [shop](../shop/README.md) | — |
-| `celery-billing-mail` | broker | — | Celery · billing.mail |
-| `celery-billing` | broker | — | Celery · billing |
-| `bus` | broker | — | — |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `client` | actor | — | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) | — |
+| `celery-billing-mail` | broker | — | — | Celery · billing.mail |
+| `celery-billing` | broker | — | — | Celery · billing |
+| `bus` | broker | — | — | — |
+
+## Composition
+
+| Fragment | After step | Seam | Target | Evidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| [billing-celery-send-invoice-email](billing-celery-send-invoice-email.md) | [s5](billing-invoice-issue.md#step-s5) | `handoff` | `celery:billing.mail:invoices.tasks.send_invoice_email` | high · exact asynchronous handoff | [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py) |
+| `billing-celery-body-invoices-tasks-send-invoice-email` | [continuation-billing-celery-send-invoice-email-s5-work](billing-invoice-issue.md#step-continuation-billing-celery-send-invoice-email-s5-work) | `entrypoint` | `python:invoices.tasks:send_invoice_email` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
+| [billing-celery-remind-unpaid-invoice](billing-celery-remind-unpaid-invoice.md) | [s6](billing-invoice-issue.md#step-s6) | `handoff` | `celery:billing:invoices.tasks.remind_unpaid_invoice` | high · exact asynchronous handoff | [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py) |
+| `billing-celery-body-invoices-tasks-remind-unpaid-invoice` | [continuation-billing-celery-remind-unpaid-invoice-s6-work](billing-invoice-issue.md#step-continuation-billing-celery-remind-unpaid-invoice-s6-work) | `entrypoint` | `python:invoices.tasks:remind_unpaid_invoice` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 
@@ -7514,19 +7535,19 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/services.py:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L46) · in one transaction.
 <a id="step-s5"></a>
 5. **shop.billing** → **celery-billing-mail** — enqueue send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · in one transaction, after the transaction commits.
+   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · in one transaction, after the transaction commits. · handoff: send · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-continuation-billing-celery-send-invoice-email-s5-work"></a>
 6. **celery-billing-mail** → **shop.billing** — send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. · continues at `python:invoices.tasks:send_invoice_email` · handoff: receive · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-continuation-billing-celery-send-invoice-email-s5-continuation-billing-celery-body-invoices-tasks-send-invoice-email-work-s1"></a>
 7. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · [`examples/shop/billing/invoices/tasks.py:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L20)
 <a id="step-s6"></a>
 8. **shop.billing** → **celery-billing** — enqueue remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · in one transaction, after the transaction commits.
+   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · in one transaction, after the transaction commits. · handoff: send · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-continuation-billing-celery-remind-unpaid-invoice-s6-work"></a>
 9. **celery-billing** → **shop.billing** — remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. · continues at `python:invoices.tasks:remind_unpaid_invoice` · handoff: receive · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-continuation-billing-celery-remind-unpaid-invoice-s6-continuation-billing-celery-body-invoices-tasks-remind-unpaid-invoice-work-s1"></a>
 10. **shop.billing** → **billing-pg** — Invoice.objects.filter
    status: declared · [`examples/shop/billing/invoices/tasks.py:32`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L32)
@@ -7548,10 +7569,10 @@ Invoices over HTTP. Every action here runs one function of services.py.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -7583,10 +7604,10 @@ Invoices over HTTP. Every action here runs one function of services.py.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -7618,11 +7639,11 @@ Reads one invoice and the lines it is made of.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) |
 
 ## Sequence
 
@@ -7659,10 +7680,10 @@ Invoices over HTTP. Every action here runs one function of services.py.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -7692,12 +7713,12 @@ sequenceDiagram
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.cart` | service | [shop](../shop/README.md) |
-| `cart-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
+| `cart-pg` | store | [shop](../shop/README.md) | [shop.cart.pg](../shop/cart/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -7771,14 +7792,14 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.cart` | service | [shop](../shop/README.md) |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `cart-pg` | store | [shop](../shop/README.md) |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `cart-pg` | store | [shop](../shop/README.md) | [shop.cart.pg](../shop/cart/stores/pg.md) |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -7847,12 +7868,12 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.cart` | service | [shop](../shop/README.md) |
-| `cart-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
+| `cart-pg` | store | [shop](../shop/README.md) | [shop.cart.pg](../shop/cart/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -7916,10 +7937,10 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.cart` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -7971,13 +7992,13 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.cart` | service | [shop](../shop/README.md) |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `cart-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `cart-pg` | store | [shop](../shop/README.md) | [shop.cart.pg](../shop/cart/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8055,12 +8076,12 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.cart` | service | [shop](../shop/README.md) |
-| `cart-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
+| `cart-pg` | store | [shop](../shop/README.md) | [shop.cart.pg](../shop/cart/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8116,12 +8137,12 @@ Ends the day, whatever is left undone.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8167,13 +8188,13 @@ One shipment, for whoever is asking about an order.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8248,11 +8269,11 @@ One route, as the depot reads it.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
 
 ## Sequence
 
@@ -8289,11 +8310,11 @@ One shipment, for whoever is asking about an order.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
 
 ## Sequence
 
@@ -8330,12 +8351,12 @@ Builds a van's day out of the shipments waiting to go out.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8389,12 +8410,12 @@ Ends a shipment at the door.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8440,12 +8461,12 @@ Writes down that a parcel was seen somewhere.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8507,11 +8528,11 @@ Nothing leaves the warehouse before the money has moved (ADR core.0002).
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
 
 ## Sequence
 
@@ -8560,12 +8581,12 @@ The van is out.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8611,11 +8632,11 @@ What the customer sees when they paste a tracking code.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
 
 ## Sequence
 
@@ -8652,14 +8673,14 @@ Asks the gateway to hold the money for an order, and records either that it agre
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `bus` | broker | — |
-| `stripe` | external | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `bus` | broker | — | — |
+| `stripe` | external | — | — |
 
 ## Sequence
 
@@ -8759,13 +8780,13 @@ Moves the money the gateway was holding, writes the pair of postings for it, and
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
-| `stripe` | external | — |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
+| `stripe` | external | — | — |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8816,11 +8837,11 @@ Reads one payment, for whoever is asking what happened to the money.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
 
 ## Sequence
 
@@ -8857,13 +8878,13 @@ Sends money back against a captured payment, in full or in part.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
-| `stripe` | external | — |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
+| `stripe` | external | — | — |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -8938,11 +8959,11 @@ Every refund against one payment, newest first.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
 
 ## Sequence
 
@@ -8979,12 +9000,12 @@ Gives back what was held once the order it was held for is gone.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
-| `stripe` | external | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
+| `stripe` | external | — | — |
 
 ## Sequence
 
@@ -9030,12 +9051,12 @@ Reads one order by id.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `oms-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -9111,11 +9132,11 @@ Reads one order by id.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `oms-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
 
 ## Sequence
 
@@ -9174,11 +9195,11 @@ Places the order the basket was checked out for (ADR oms.0002). The order takes 
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `oms-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
 
 ## Sequence
 
@@ -9241,11 +9262,11 @@ Package archive_price_list takes a price list out of use without losing it.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -9264,13 +9285,13 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ArchivePriceList → ArchivePriceListResponse
-   `shop.v1.PriceLists/ArchivePriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
+   `shop.v1.PriceLists/ArchivePriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50) · evidence: call-site · source-expression · `ArchivePriceList` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — ByID
-   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22)
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `ByID` · evidence: function · source-function · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list:UseCase.Handle` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L21) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22) · evidence: call-site · source-expression · `ByID` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22)
 <a id="step-s3"></a>
 3. **shop.pricing** → **pricing-pg** — Save
-   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28)
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `Save` · evidence: function · source-function · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list:UseCase.Handle` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L21) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28) · evidence: call-site · source-expression · `Save` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28)
 
 <!-- flows/pricing-expire-quote-on-checkout.md -->
 
@@ -9286,11 +9307,11 @@ Ends the promise once the basket it priced is checked out.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -9310,16 +9331,16 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **bus** → **shop.pricing** — BasketCheckedOut
-   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L35)
+   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L35) · evidence: call-site · source-expression · `BasketCheckedOut` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L35)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — ByBasket
-   status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L41)
+   status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L41) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `ByBasket` · evidence: function · source-function · `examples/shop/pricing/internal/application/policy:ExpireQuoteOnCheckout.Handle` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L35) · evidence: binding · domain-port-convention · `quote.Repository` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L41) · evidence: call-site · source-expression · `ByBasket` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L41)
 <a id="step-s3"></a>
 3. **shop.pricing** → **pricing-pg** — Save
-   status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55)
+   status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `Save` · evidence: function · source-function · `examples/shop/pricing/internal/application/policy:ExpireQuoteOnCheckout.Handle` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L35) · evidence: binding · domain-port-convention · `quote.Repository` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55) · evidence: call-site · source-expression · `Save` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55)
 <a id="step-s4"></a>
 4. **shop.pricing** → **bus** — QuoteExpired
-   [`shop.pricing.quote.QuoteExpired`](../shop/pricing/aggregates/quote.md#event-shop-pricing-quote-quoteexpired) · status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55)
+   [`shop.pricing.quote.QuoteExpired`](../shop/pricing/aggregates/quote.md#event-shop-pricing-quote-quoteexpired) · status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55) · evidence: function · source-function · `examples/shop/pricing/internal/application/policy:ExpireQuoteOnCheckout.Handle` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L35) · evidence: call-site · source-expression · `QuoteExpired` · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55)
 
 <!-- flows/pricing-get-quote.md -->
 
@@ -9335,11 +9356,11 @@ Package get_quote reads one quote.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -9361,7 +9382,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — GetQuote → GetQuoteResponse
-   `shop.v1.Pricing/GetQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52)
+   `shop.v1.Pricing/GetQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52) · evidence: call-site · source-expression · `GetQuote` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52)
 
 > **One of**
 >
@@ -9369,13 +9390,13 @@ sequenceDiagram
 >
 > <a id="step-s2"></a>
 > 2. **shop.pricing** → **pricing-pg** — ByID
->    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27)
+>    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `ByID` · evidence: function · source-function · `examples/shop/pricing/internal/application/quote/usecases/get_quote:UseCase.Handle` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L21) · evidence: binding · domain-port-convention · `quote.Repository` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27) · evidence: call-site · source-expression · `ByID` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27)
 >
 > *otherwise*
 >
 > <a id="step-s3"></a>
 > 3. **shop.pricing** → **pricing-pg** — ByBasket
->    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29)
+>    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `ByBasket` · evidence: function · source-function · `examples/shop/pricing/internal/application/quote/usecases/get_quote:UseCase.Handle` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L21) · evidence: binding · domain-port-convention · `quote.Repository` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29) · evidence: call-site · source-expression · `ByBasket` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29)
 
 <!-- flows/pricing-import-price-list.md -->
 
@@ -9391,11 +9412,11 @@ Package import_price_list takes in a whole price list.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -9413,10 +9434,10 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ImportPriceList → ImportPriceListResponse
-   `shop.v1.PriceLists/ImportPriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
+   `shop.v1.PriceLists/ImportPriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30) · evidence: call-site · source-expression · `ImportPriceList` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Save
-   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43)
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `Save` · evidence: function · source-function · `examples/shop/pricing/internal/application/price_list/usecases/import_price_list:UseCase.Handle` · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L24) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43) · evidence: call-site · source-expression · `Save` · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43)
 
 <!-- flows/pricing-issue-quote.md -->
 
@@ -9432,12 +9453,12 @@ Package issue_quote prices a basket and promises the price for a while.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -9458,16 +9479,16 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — IssueQuote → IssueQuoteResponse
-   `shop.v1.Pricing/IssueQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28)
+   `shop.v1.Pricing/IssueQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28) · evidence: call-site · source-expression · `IssueQuote` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Current
-   status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L35)
+   status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L35) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `Current` · evidence: function · source-function · `examples/shop/pricing/internal/application/quote/usecases/issue_quote:UseCase.Handle` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L34) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L35) · evidence: call-site · source-expression · `Current` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L35)
 <a id="step-s3"></a>
 3. **shop.pricing** → **pricing-pg** — Save
-   status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55)
+   status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `Save` · evidence: function · source-function · `examples/shop/pricing/internal/application/quote/usecases/issue_quote:UseCase.Handle` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L34) · evidence: binding · domain-port-convention · `quote.Repository` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55) · evidence: call-site · source-expression · `Save` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55)
 <a id="step-s4"></a>
 4. **shop.pricing** → **bus** — QuoteIssued
-   [`shop.pricing.quote.QuoteIssued`](../shop/pricing/aggregates/quote.md#event-shop-pricing-quote-quoteissued) · status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55)
+   [`shop.pricing.quote.QuoteIssued`](../shop/pricing/aggregates/quote.md#event-shop-pricing-quote-quoteissued) · status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55) · evidence: function · source-function · `examples/shop/pricing/internal/application/quote/usecases/issue_quote:UseCase.Handle` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L34) · evidence: call-site · source-expression · `QuoteIssued` · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55)
 
 <!-- flows/pricing-list-price-lists.md -->
 
@@ -9483,11 +9504,11 @@ Package list_price_lists reads every price list there is.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -9505,10 +9526,10 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ListPriceLists → ListPriceListsResponse
-   `shop.v1.PriceLists/ListPriceLists` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L60)
+   `shop.v1.PriceLists/ListPriceLists` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L60) · evidence: call-site · source-expression · `ListPriceLists` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L60)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — All
-   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go#L22)
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go#L22) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `All` · evidence: function · source-function · `examples/shop/pricing/internal/application/price_list/usecases/list_price_lists:UseCase.Handle` · [`examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go#L21) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go#L22) · evidence: call-site · source-expression · `All` · [`examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go#L22)
 
 <!-- adr/README.md -->
 

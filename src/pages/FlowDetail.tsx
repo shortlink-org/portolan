@@ -425,7 +425,8 @@ export function FlowDetail() {
    * answering is worse than one that admits it cannot.
    */
   const pairingBroken =
-    allSteps.length > 0 && flowPairing(flow, crossOnly).edgeOf.size === 0;
+    allSteps.length - hiddenCount > 0 &&
+    flowPairing(flow, crossOnly).edgeOf.size === 0;
 
   const cycle = (delta: number): void => {
     if (matches.length === 0) return;
@@ -502,9 +503,18 @@ export function FlowDetail() {
           {flow.includes && flow.includes.length > 0 ? (
             <span
               className="chip mono"
-              title={`Composed from:\n${flow.includes.join("\n")}`}
+              title={
+                flow.composition?.length
+                  ? `Composition seams:\n${flow.composition
+                      .map(
+                        (item) =>
+                          `${item.flow} after ${item.seam.afterStep} · ${item.seam.kind} · ${item.seam.target} · ${item.seam.confidence}`,
+                      )
+                      .join("\n")}`
+                  : `Composed from:\n${flow.includes.join("\n")}`
+              }
             >
-              cross-protocol · {flow.includes.length + 1} fragments
+              composed · {flow.includes.length + 1} fragments
             </span>
           ) : null}
           {/* The file the flow was read out of, spelled in full rather than

@@ -10,11 +10,11 @@ Places the order the basket was checked out for (ADR oms.0002). The order takes 
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `oms-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
 
 ## Sequence
 

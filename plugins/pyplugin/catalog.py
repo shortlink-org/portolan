@@ -132,10 +132,12 @@ def rpc_call(id_: str, peer: str, status: str, source: str, note: str = "") -> D
     return out
 
 
-def participant(id_: str, kind: str, context: Optional[str], label: str = "") -> Dict[str, Any]:
+def participant(id_: str, kind: str, context: Optional[str], label: str = "", entity_ref: str = "") -> Dict[str, Any]:
     out: Dict[str, Any] = {"id": id_, "kind": kind, "context": context}
     if label:
         out["label"] = label
+    if entity_ref:
+        out["entityRef"] = entity_ref
     return out
 
 
@@ -151,6 +153,12 @@ def step(
     line: str = "",
     continues_at: str = "",
     handoff: Optional[Dict[str, str]] = None,
+    reaches: Optional[List[str]] = None,
+    store_access: Optional[Dict[str, Any]] = None,
+    evidence: Optional[List[Dict[str, Any]]] = None,
+    destination: Optional[Dict[str, Any]] = None,
+    reply_to: str = "",
+    http: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     out: Dict[str, Any] = {"type": "step", "id": id_, "from": from_, "to": to, "kind": kind}
     if label:
@@ -166,6 +174,18 @@ def step(
         out["continuesAt"] = continues_at
     if handoff:
         out["handoff"] = handoff
+    if reaches:
+        out["reaches"] = reaches
+    if store_access:
+        out["storeAccess"] = store_access
+    if evidence:
+        out["evidence"] = evidence
+    if destination:
+        out["destination"] = destination
+    if reply_to:
+        out["replyTo"] = reply_to
+    if http:
+        out["http"] = http
     return out
 
 
@@ -191,6 +211,9 @@ def flow(
     steps: List[Dict[str, Any]],
     trigger: Optional[Dict[str, str]] = None,
     entrypoint: str = "",
+    includes: Optional[List[str]] = None,
+    composition: Optional[List[Dict[str, Any]]] = None,
+    examples: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     out: Dict[str, Any] = {
         "id": id_,
@@ -203,9 +226,15 @@ def flow(
         out["trigger"] = trigger
     if entrypoint:
         out["entrypoint"] = entrypoint
+    if includes:
+        out["includes"] = includes
+    if composition:
+        out["composition"] = composition
     out["owner"] = owner
     out["participants"] = participants
     out["steps"] = steps
+    if examples:
+        out["examples"] = examples
     return out
 
 

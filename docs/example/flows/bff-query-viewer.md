@@ -10,11 +10,11 @@ Who the request belongs to. Auth is asked on every call rather than a token bein
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `auth.auth` | service | [auth](../auth/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
 
 ## Sequence
 

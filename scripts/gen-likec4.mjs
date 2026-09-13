@@ -2,8 +2,8 @@
 //
 // Everything LikeC4 renders is DECLARED here: the C4 views — the estate at
 // level 1, its containers at level 2 as one picture and one per context, two
-// per service — and one dynamic view per flow (plus a cross-context-only
-// twin). Nothing in the app draws these pictures itself.
+// per service — and two dynamic views per flow: full plus bounded-context
+// crossings. Nothing in the app draws these pictures itself.
 //
 //   node scripts/gen-likec4.mjs
 
@@ -139,9 +139,16 @@ const contextColorName = (contextId) => {
 const serviceIds = new Set(
   catalog.contexts.flatMap((c) => c.services.map((s) => s.id)),
 );
+const storeIds = new Set((catalog.stores ?? []).map((store) => store.id));
+const externalIds = new Set((catalog.externals ?? []).map((external) => external.id));
+const participantEntityRef = new Map();
 const rootParticipants = new Map(); // id -> kind
 for (const flow of catalog.flows) {
   for (const p of flow.participants) {
+    if (p.entityRef) participantEntityRef.set(p.id, p.entityRef);
+    // A nested Store cannot be an actor in a LikeC4 dynamic view. Keep its
+    // readable root lane here; entityRef still powers UI links/backlinks.
+    if (p.entityRef && (serviceIds.has(p.entityRef) || externalIds.has(p.entityRef))) continue;
     if (serviceIds.has(p.id)) continue;
     rootParticipants.set(p.id, { kind: p.kind, label: p.label ?? p.id });
   }
@@ -184,8 +191,12 @@ for (const [id, meta] of rootParticipants)
 // A dot means containment only for catalog services. Root participants are
 // declared as one safe identifier, so a broker named `river.orders` must be
 // referenced as `river_orders`, not as an undeclared `orders` inside `river`.
-const participantRef = (id) =>
-  rootParticipants.has(id) && !serviceIds.has(id) ? safeId(id) : fqn(id);
+const participantRef = (id) => {
+  const entity = participantEntityRef.get(id) ?? id;
+  if (storeIds.has(entity)) return safeId(id);
+  if (externalIds.has(entity)) return safeId(entity);
+  return rootParticipants.has(entity) && !serviceIds.has(entity) ? safeId(entity) : fqn(entity);
+};
 function peerParticipant(peer) {
   if (serviceIds.has(peer) || rootParticipants.has(peer)) return peer;
   return participantByLabel.get(peer);
@@ -650,17 +661,7 @@ function contractOf(step) {
   return null;
 }
 
-function emitSyntheticResponse(out, indent, node, response) {
-  out.push(
-    `${indent}${participantRef(node.to)} -> ${participantRef(node.from)} ${q(response)} {`,
-  );
-  out.push(
-    `${indent}  color ${node.status}  line dashed  head ${KIND_HEAD.response}`,
-  );
-  out.push(`${indent}}`);
-}
-
-function emitSteps(nodes, out, indent, replied, deferredResponseId) {
+function emitSteps(nodes, out, indent, replied) {
   for (const node of nodes) {
     if (node.type === "step") {
       const contract = contractOf(node);
@@ -670,11 +671,16 @@ function emitSteps(nodes, out, indent, replied, deferredResponseId) {
         node.storeAccess?.operation && node.storeAccess?.keyspace
           ? `${node.storeAccess.operation.toUpperCase()} ${node.storeAccess.keyspace}`
           : "";
-      const label =
+      const requestLabel =
         storeLabel ||
         (node.kind === "rpc" && request
           ? request
           : node.label || node.ref || node.kind);
+      // A synchronous request and its contract response are one catalog hop.
+      // Keep them on one LikeC4 relation too, so the diagram and rail share
+      // one step number. An explicit response step remains a separate edge:
+      // it is source-backed execution, not a contract annotation.
+      const label = response ? `${requestLabel} → ${response}` : requestLabel;
       const attrs = [
         `color ${node.http?.outcome === "error" ? "response_error" : node.status}`,
         `line ${node.kind === "response" ? "dashed" : "solid"}`,
@@ -693,21 +699,18 @@ function emitSteps(nodes, out, indent, replied, deferredResponseId) {
       if (notes.length > 0)
         out.push(`${indent}  notes ${q(notes.join(" — "))}`);
       out.push(`${indent}}`);
-      if (response && node.id !== deferredResponseId) {
-        emitSyntheticResponse(out, indent, node, response);
-      }
       continue;
     }
     if (node.type === "parallel") {
       out.push(`${indent}par ${node.title ? `${q(node.title)} ` : ""}{`);
       for (const branch of node.branches)
-        emitSteps(branch, out, `${indent}  `, replied, deferredResponseId);
+        emitSteps(branch, out, `${indent}  `, replied);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "loop") {
       out.push(`${indent}loop ${q(node.title)} {`);
-      emitSteps(node.steps, out, `${indent}  `, replied, deferredResponseId);
+      emitSteps(node.steps, out, `${indent}  `, replied);
       out.push(`${indent}}`);
       continue;
     }
@@ -723,7 +726,6 @@ function emitSteps(nodes, out, indent, replied, deferredResponseId) {
             out,
             `${indent}      `,
             replied,
-            deferredResponseId,
           );
           out.push(`${indent}    }`);
         } else {
@@ -732,7 +734,6 @@ function emitSteps(nodes, out, indent, replied, deferredResponseId) {
             out,
             `${indent}    `,
             replied,
-            deferredResponseId,
           );
         }
         out.push(`${indent}  }`);
@@ -749,7 +750,7 @@ function crossContextOnly(nodes, contextOf) {
     if (step.from === step.to) return false;
     const a = contextOf(step.from);
     const b = contextOf(step.to);
-    return !(a !== null && a === b);
+    return a !== null && b !== null && a !== b;
   };
   const walk = (list) => {
     const out = [];
@@ -1013,34 +1014,15 @@ views.push("");
 for (const flow of catalog.flows) {
   const contexts = new Map(flow.participants.map((p) => [p.id, p.context]));
   const contextOf = (id) => contexts.get(id) ?? null;
-  const actorIds = new Set(
-    flow.participants.filter((p) => p.kind === "actor").map((p) => p.id),
-  );
   const replied = new Set();
   walkFlowSteps(flow.steps, (step) => {
     if (step.kind === "response" && step.replyTo) replied.add(step.replyTo);
   });
-  let deferredResponse = null;
-  walkFlowSteps(flow.steps, (step) => {
-    if (deferredResponse || step.kind !== "rpc" || !actorIds.has(step.from))
-      return;
-    const response = replied.has(step.id) ? "" : (contractOf(step)?.response ?? "");
-    if (response) deferredResponse = { step, response };
-  });
-
   views.push(`  dynamic view ${flowViewId(flow)} {`);
   views.push(`    title ${q(flow.name)}`);
   views.push(`    description ${q(flow.summary)}`);
   const body = [];
-  emitSteps(flow.steps, body, "    ", replied, deferredResponse?.step.id);
-  if (deferredResponse) {
-    emitSyntheticResponse(
-      body,
-      "    ",
-      deferredResponse.step,
-      deferredResponse.response,
-    );
-  }
+  emitSteps(flow.steps, body, "    ", replied);
   views.push(...body);
   views.push("  }");
   views.push("");
@@ -1049,17 +1031,7 @@ for (const flow of catalog.flows) {
   views.push(`  dynamic view ${flowCrossViewId(flow)} {`);
   views.push(`    title ${q(`${flow.name} — crossings only`)}`);
   const crossBody = [];
-  const crossStepIds = new Set();
-  walkFlowSteps(cross, (step) => crossStepIds.add(step.id));
-  emitSteps(cross, crossBody, "    ", replied, deferredResponse?.step.id);
-  if (deferredResponse && crossStepIds.has(deferredResponse.step.id)) {
-    emitSyntheticResponse(
-      crossBody,
-      "    ",
-      deferredResponse.step,
-      deferredResponse.response,
-    );
-  }
+  emitSteps(cross, crossBody, "    ", replied);
   if (crossBody.length === 0) {
     // A flow with no crossing at all still needs a renderable view.
     const first = flow.participants[0];

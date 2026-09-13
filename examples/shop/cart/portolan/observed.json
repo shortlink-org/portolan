@@ -50,7 +50,8 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.cart.pg"
         },
         {
           "id": "bus",
@@ -224,7 +225,8 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.cart.pg"
         },
         {
           "id": "shop.pricing",
@@ -381,7 +383,8 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.cart.pg"
         },
         {
           "id": "bus",
@@ -603,7 +606,8 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.cart.pg"
         },
         {
           "id": "bus",
@@ -806,7 +810,8 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.cart.pg"
         },
         {
           "id": "bus",

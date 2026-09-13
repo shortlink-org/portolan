@@ -12,11 +12,17 @@ Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` an
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `shop.billing` | service | [shop](../shop/README.md) | — |
-| `celery-billing-mail` | broker | — | Celery · billing.mail |
-| `billing-pg` | store | [shop](../shop/README.md) | — |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `shop.billing` | service | [shop](../shop/README.md) | — | — |
+| `celery-billing-mail` | broker | — | — | Celery · billing.mail |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) | — |
+
+## Composition
+
+| Fragment | After step | Seam | Target | Evidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| `billing-celery-body-invoices-tasks-send-invoice-email` | [work](billing-celery-send-invoice-email.md#step-work) | `entrypoint` | `python:invoices.tasks:send_invoice_email` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 
@@ -35,10 +41,10 @@ sequenceDiagram
 
 <a id="step-enqueue"></a>
 1. **shop.billing** → **celery-billing-mail** — enqueue send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay.
+   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay. · handoff: send · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-work"></a>
 2. **celery-billing-mail** → **shop.billing** — send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. · continues at `python:invoices.tasks:send_invoice_email` · handoff: receive · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-continuation-billing-celery-body-invoices-tasks-send-invoice-email-work-s1"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · [`examples/shop/billing/invoices/tasks.py:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L20)

@@ -10,11 +10,11 @@ Nothing leaves the warehouse before the money has moved (ADR core.0002).
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
 
 ## Sequence
 

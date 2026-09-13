@@ -10,11 +10,11 @@ One route, as the depot reads it.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
 
 ## Sequence
 

@@ -675,6 +675,25 @@ function flowSubject(catalog: Catalog, flow: Flow): Subject {
   // The near end of a flow's row is the service that owns its first lane,
   // which is where the flow's page says it starts; the owner is a context.
   const first = participants[0] ?? "";
+  const participantContext = new Map(
+    flow.participants.map((participant) => [participant.id, participant.context]),
+  );
+  const uncontractedCrossings = steps.filter((step) => {
+    const from = participantContext.get(step.from) ?? null;
+    const to = participantContext.get(step.to) ?? null;
+    const contracted =
+      ((step.kind === "rpc" || step.kind === "event") &&
+        Boolean(step.ref) &&
+        step.status !== "unresolved") ||
+      (step.kind === "response" && Boolean(step.replyTo));
+    return (
+      from !== null &&
+      to !== null &&
+      from !== to &&
+      !contracted
+    );
+  }).length;
+  const seenSteps = steps.filter((step) => step.seen !== undefined).length;
   return {
     id: flow.id,
     context: flow.owner,
@@ -684,17 +703,20 @@ function flowSubject(catalog: Catalog, flow: Flow): Subject {
       id: flow.id,
       slug: flow.slug,
       name: flow.name,
+      summary: flow.summary.trim(),
       owner: flow.owner,
       trigger: flow.trigger?.kind ?? "",
       triggerConfidence: flow.trigger?.confidence ?? "",
       participants,
       contexts,
       crossContext: contexts.length > 1,
+      uncontractedCrossings: int(uncontractedCrossings),
       steps: int(steps.length),
       verifiedSteps: int(steps.filter((step) => step.status === "verified").length),
       declaredSteps: int(steps.filter((step) => step.status === "declared").length),
       unresolvedSteps: int(steps.filter((step) => step.status === "unresolved").length),
-      seenSteps: int(steps.filter((step) => step.seen !== undefined).length),
+      seenSteps: int(seenSteps),
+      observedCoverage: int(steps.length === 0 ? 0 : Math.floor((seenSteps * 100) / steps.length)),
       events: unique(steps.filter((step) => step.kind === "event" && step.ref).map((step) => step.ref!)),
       stores: unique(steps.flatMap((step) => (step.storeAccess ? [step.storeAccess.store] : []))),
       examples: int(flow.examples?.length ?? 0),

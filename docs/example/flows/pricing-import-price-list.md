@@ -10,11 +10,11 @@ Package import_price_list takes in a whole price list.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -32,7 +32,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ImportPriceList → ImportPriceListResponse
-   `shop.v1.PriceLists/ImportPriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
+   `shop.v1.PriceLists/ImportPriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30) · evidence: call-site · source-expression · `ImportPriceList` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Save
-   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43)
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `Save` · evidence: function · source-function · `examples/shop/pricing/internal/application/price_list/usecases/import_price_list:UseCase.Handle` · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L24) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43) · evidence: call-site · source-expression · `Save` · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43)

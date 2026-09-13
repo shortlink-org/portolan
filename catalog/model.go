@@ -879,6 +879,8 @@ type Flow struct {
 	// Includes names source-backed flow fragments composed into this root flow.
 	// It makes composition idempotent and leaves visible provenance for readers.
 	Includes []string `json:"includes,omitempty"`
+	// Composition records the evidence-backed seam for every inserted fragment.
+	Composition []FlowComposition `json:"composition,omitempty"`
 	// Owner is the bounded context the flow belongs to. The extractor knows it
 	// - it read the service's own tree to find the flow - so it says so rather
 	// than leaving a reader to work it back out of a path.
@@ -954,6 +956,22 @@ type Participant struct {
 	// absence - hence a pointer that marshals to null, not an empty string.
 	Context *string `json:"context"`
 	Label   string  `json:"label,omitempty"`
+	// EntityRef is the canonical Service, Store or External represented by this lane.
+	EntityRef string `json:"entityRef,omitempty"`
+}
+
+type FlowComposition struct {
+	Flow   string              `json:"flow"`
+	Source string              `json:"source,omitempty"`
+	Seam   FlowCompositionSeam `json:"seam"`
+}
+
+type FlowCompositionSeam struct {
+	AfterStep  string `json:"afterStep"`
+	Kind       string `json:"kind"`
+	Target     string `json:"target"`
+	Basis      string `json:"basis"`
+	Confidence string `json:"confidence"`
 }
 
 // FlowNode is one entry in a flow: a step, or one of the three shapes that

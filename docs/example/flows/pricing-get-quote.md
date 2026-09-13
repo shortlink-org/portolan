@@ -10,11 +10,11 @@ Package get_quote reads one quote.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -36,7 +36,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — GetQuote → GetQuoteResponse
-   `shop.v1.Pricing/GetQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52)
+   `shop.v1.Pricing/GetQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52) · evidence: call-site · source-expression · `GetQuote` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52)
 
 > **One of**
 >
@@ -44,10 +44,10 @@ sequenceDiagram
 >
 > <a id="step-s2"></a>
 > 2. **shop.pricing** → **pricing-pg** — ByID
->    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27)
+>    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `ByID` · evidence: function · source-function · `examples/shop/pricing/internal/application/quote/usecases/get_quote:UseCase.Handle` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L21) · evidence: binding · domain-port-convention · `quote.Repository` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27) · evidence: call-site · source-expression · `ByID` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27)
 >
 > *otherwise*
 >
 > <a id="step-s3"></a>
 > 3. **shop.pricing** → **pricing-pg** — ByBasket
->    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29)
+>    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `ByBasket` · evidence: function · source-function · `examples/shop/pricing/internal/application/quote/usecases/get_quote:UseCase.Handle` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L21) · evidence: binding · domain-port-convention · `quote.Repository` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29) · evidence: call-site · source-expression · `ByBasket` · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29)

@@ -8,14 +8,14 @@
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.cart` | service | [shop](../shop/README.md) |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `cart-pg` | store | [shop](../shop/README.md) |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `cart-pg` | store | [shop](../shop/README.md) | [shop.cart.pg](../shop/cart/stores/pg.md) |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `bus` | broker | — | — |
 
 ## Sequence
 

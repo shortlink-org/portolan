@@ -10,11 +10,11 @@ Reads one invoice and the lines it is made of.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) |
 
 ## Sequence
 

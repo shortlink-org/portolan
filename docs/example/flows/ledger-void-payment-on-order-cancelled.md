@@ -10,12 +10,12 @@ Gives back what was held once the order it was held for is gone.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
-| `stripe` | external | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
+| `stripe` | external | — | — |
 
 ## Sequence
 

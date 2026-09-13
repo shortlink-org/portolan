@@ -22,6 +22,7 @@ import type {
   EdgeVia,
   EventConsumer,
   Flow,
+  FlowComposition,
   FlowNode,
   RpcCall,
   HTTPDestination,
@@ -60,8 +61,10 @@ export function enrichCatalog(input: Catalog): Enriched {
   // everything below - and every consumer derived from it - sees the event
   // rather than the name.
   const catalog = resolveForeignKeys(
-    resolveStoreAccesses(
-      composeExecutionContinuations(resolveWireNames(resolveHTTPCalls(input))),
+    linkFlowParticipants(
+      resolveStoreAccesses(
+        composeExecutionContinuations(resolveWireNames(resolveHTTPCalls(input))),
+      ),
     ),
   );
 
@@ -566,6 +569,61 @@ function resolveStoreAccesses(input: Catalog): Catalog {
 }
 
 /**
+ * Gives flow-local lane ids an explicit route back to catalog entities.
+ * Extractors may emit it directly; this pass fills only relationships the
+ * merged catalog proves exactly, most importantly store aliases whose step
+ * already carries a canonical storeAccess.store.
+ */
+function linkFlowParticipants(input: Catalog): Catalog {
+  const stores = new Set((input.stores ?? []).map((store) => store.id));
+  const storesByOwner = new Map<string, string[]>();
+  for (const store of input.stores ?? []) {
+    const owned = storesByOwner.get(store.owner) ?? [];
+    owned.push(store.id);
+    storesByOwner.set(store.owner, owned);
+  }
+  let changed = false;
+  const flows = input.flows.map((flow) => {
+    const steps = walkSteps(flow.steps);
+    const participants = flow.participants.map((participant) => {
+      if (participant.entityRef) return participant;
+      let entityRef: string | undefined;
+      if (participant.kind === "store") {
+        const accessed = unique(
+          steps.flatMap((step) =>
+            (step.from === participant.id || step.to === participant.id) && step.storeAccess
+              ? [step.storeAccess.store]
+              : [],
+          ),
+        );
+        if (accessed.length === 1 && stores.has(accessed[0]!)) entityRef = accessed[0];
+        else if (stores.has(participant.id)) entityRef = participant.id;
+        else {
+          const adjacentServices = unique(
+            steps.flatMap((step) => {
+              if (step.from === participant.id) return [step.to];
+              if (step.to === participant.id) return [step.from];
+              return [];
+            }),
+          );
+          const candidates = unique(
+            adjacentServices.flatMap((service) => storesByOwner.get(service) ?? []),
+          );
+          if (candidates.length === 1) entityRef = candidates[0];
+        }
+      }
+      if (!entityRef) return participant;
+      changed = true;
+      return { ...participant, entityRef };
+    });
+    return participants.some((participant, index) => participant !== flow.participants[index])
+      ? { ...flow, participants }
+      : flow;
+  });
+  return changed ? { ...input, flows } : input;
+}
+
+/**
  * Composes independently extracted protocol fragments into root-oriented
  * execution flows.
  *
@@ -649,6 +707,10 @@ function composeExecutionContinuations(input: Catalog): Catalog {
         flow.summary.replace(/\s*$/, "") +
         " Source-backed cross-protocol continuations are included.",
       includes: unique([...(flow.includes ?? []), ...expansion.includes]),
+      composition: uniqueComposition([
+        ...(flow.composition ?? []),
+        ...expansion.composition,
+      ]),
       participants,
       steps,
     };
@@ -669,6 +731,7 @@ interface ExecutionExpansion {
   nodes: FlowNode[];
   includes: string[];
   fragments: Flow[];
+  composition: FlowComposition[];
 }
 
 function expandExecution(
@@ -684,6 +747,7 @@ function expandExecution(
   const out: FlowNode[] = [];
   const includes: string[] = [];
   const fragments: Flow[] = [];
+  const composition: FlowComposition[] = [];
   for (const node of nodes) {
     switch (node.type) {
       case "step": {
@@ -724,6 +788,26 @@ function expandExecution(
             ...nested.includes,
           );
           fragments.push(continuation, ...nested.fragments);
+          composition.push({
+            flow: continuation.slug,
+            ...(continuation.source ? { source: continuation.source } : {}),
+            seam: {
+              afterStep: node.id,
+              kind: continuationMatch.kind,
+              target: continuationMatch.target,
+              basis: continuationMatch.basis,
+              confidence: continuationMatch.confidence,
+            },
+          });
+          composition.push(
+            ...nested.composition.map((item) => ({
+              ...item,
+              seam: {
+                ...item.seam,
+                afterStep: `${prefix}-${item.seam.afterStep}`,
+              },
+            })),
+          );
           if (
             continuation.entrypoint &&
             (!continuation.trigger || continuation.trigger.kind === "unproven")
@@ -761,6 +845,7 @@ function expandExecution(
             );
             includes.push(...expanded.includes);
             fragments.push(...expanded.fragments);
+            composition.push(...expanded.composition);
             return { ...branch, steps: expanded.nodes };
           });
           out.push({
@@ -784,6 +869,7 @@ function expandExecution(
             );
             includes.push(...expanded.includes);
             fragments.push(...expanded.fragments);
+            composition.push(...expanded.composition);
             return expanded.nodes;
           });
           out.push({
@@ -806,6 +892,7 @@ function expandExecution(
           );
           includes.push(...expanded.includes);
           fragments.push(...expanded.fragments);
+          composition.push(...expanded.composition);
           out.push({
             ...node,
             steps: expanded.nodes,
@@ -818,12 +905,17 @@ function expandExecution(
     nodes: out,
     includes: unique(includes),
     fragments: uniqueFlows(fragments),
+    composition: uniqueComposition(composition),
   };
 }
 
 interface ContinuationMatch {
   flow: Flow;
   synchronous: boolean;
+  kind: FlowComposition["seam"]["kind"];
+  target: string;
+  basis: string;
+  confidence: FlowComposition["seam"]["confidence"];
 }
 
 function continuationsFor(
@@ -839,11 +931,26 @@ function continuationsFor(
   for (const entry of sourceEntries) {
     const continuation = byEntry.get(entry);
     if (!continuation || continuation.owner !== root.owner) continue;
-    found.push({ flow: continuation, synchronous: true });
+    const direct = step.continuesAt === entry;
+    found.push({
+      flow: continuation,
+      synchronous: true,
+      kind: direct ? "entrypoint" : "reachability",
+      target: entry,
+      basis: direct ? "exact source entrypoint" : "source reachability",
+      confidence: "high",
+    });
   }
   if (step.handoff?.direction === "send") {
     const continuation = byHandoff.get(handoffKey(step.handoff));
-    if (continuation) found.push({ flow: continuation, synchronous: false });
+    if (continuation) found.push({
+      flow: continuation,
+      synchronous: false,
+      kind: "handoff",
+      target: `${step.handoff.transport}:${step.handoff.channel}${step.handoff.message ? `:${step.handoff.message}` : ""}`,
+      basis: "exact asynchronous handoff",
+      confidence: "high",
+    });
   }
   const matches = new Map<string, ContinuationMatch>();
   for (const match of found) {
@@ -879,6 +986,16 @@ function uniqueFlows(flows: Flow[]): Flow[] {
   return flows.filter((flow) => {
     if (seen.has(flow.slug)) return false;
     seen.add(flow.slug);
+    return true;
+  });
+}
+
+function uniqueComposition(items: FlowComposition[]): FlowComposition[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.flow}\u0000${item.seam.afterStep}\u0000${item.seam.kind}\u0000${item.seam.target}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }

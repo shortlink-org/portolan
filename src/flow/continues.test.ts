@@ -58,6 +58,7 @@ describe("continuationsOf", () => {
   it("finds the flow a step's event opens", () => {
     const hits = continuationsOf(step("s2", "shop.oms.Order.Placed"), emits, flows);
     expect(hits.map((h) => h.slug)).toEqual(["opens"]);
+    expect(hits[0]).toMatchObject({ kind: "event", confidence: "medium" });
   });
 
   it("ignores an event another flow merely mentions in its middle", () => {
@@ -74,6 +75,20 @@ describe("continuationsOf", () => {
 
   it("says nothing for a step that carries no ref", () => {
     expect(continuationsOf(step("s1"), emits, flows)).toEqual([]);
+  });
+
+  it("does not infer continuations from a shared rpc ref", () => {
+    const request = { ...step("rpc", "shop.v1.Cart/Get"), kind: "rpc" as const };
+    const receiver = makeFlow("receiver", [{ ...request, id: "open" }]);
+    expect(continuationsOf(request, emits, [emits, receiver])).toEqual([]);
+  });
+
+  it("prefers a proven source entrypoint", () => {
+    const sending = { ...step("send"), continuesAt: "billing.issue" };
+    const receiver = { ...makeFlow("worker", [step("open")]), entrypoint: "billing.issue" };
+    expect(continuationsOf(sending, emits, [emits, receiver])).toEqual([
+      expect.objectContaining({ kind: "entrypoint", confidence: "high" }),
+    ]);
   });
 });
 

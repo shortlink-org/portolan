@@ -10,12 +10,12 @@ An invoice is raised, and paid or written off.
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `operator` | actor | — | — |
-| `billing.invoices` | service | [billing](../billing/README.md) | — |
-| `bus` | broker | — | — |
-| `psp-gateway` | external | — | psp-gateway (external) |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `operator` | actor | — | — | — |
+| `billing.invoices` | service | [billing](../billing/README.md) | — | — |
+| `bus` | broker | — | — | — |
+| `psp-gateway` | external | — | — | psp-gateway (external) |
 
 ## Sequence
 

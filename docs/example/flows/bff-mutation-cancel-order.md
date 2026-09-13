@@ -10,11 +10,11 @@ Cancel an order. Whether it is too late to is the order service's judgement and 
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.oms` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 

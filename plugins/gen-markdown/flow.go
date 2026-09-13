@@ -84,9 +84,41 @@ func (s *site) renderFlow(flow *catalog.Flow) {
 		if p.Context != nil {
 			context = s.ref(self, *p.Context, *p.Context)
 		}
-		participants = append(participants, []string{code(p.ID), string(p.Kind), context, p.Label})
+		entity := "—"
+		if p.EntityRef != "" {
+			entity = s.ref(self, p.EntityRef, p.EntityRef)
+		}
+		participants = append(participants, []string{code(p.ID), string(p.Kind), context, entity, p.Label})
 	}
-	section(&b, "Participants", table([]string{"Participant", "Kind", "Context", "Label"}, participants))
+	section(&b, "Participants", table([]string{"Participant", "Kind", "Context", "Entity", "Label"}, participants))
+
+	if len(flow.Composition) > 0 {
+		rows := make([][]string, 0, len(flow.Composition))
+		for _, item := range flow.Composition {
+			fragment := code(item.Flow)
+			for i := range s.cat.Flows {
+				if s.cat.Flows[i].Slug == item.Flow {
+					fragment = s.ref(self, s.cat.Flows[i].ID, item.Flow)
+					break
+				}
+			}
+			source := "—"
+			if item.Source != "" {
+				source = s.source(self, item.Source, s.serviceForSource(item.Source))
+			}
+			rows = append(rows, []string{
+				fragment,
+				"[" + item.Seam.AfterStep + "](" + path.Base(self) + "#step-" + anchorID(item.Seam.AfterStep) + ")",
+				code(item.Seam.Kind),
+				code(item.Seam.Target),
+				item.Seam.Confidence + " · " + item.Seam.Basis,
+				source,
+			})
+		}
+		section(&b, "Composition", table([]string{"Fragment", "After step", "Seam", "Target", "Evidence", "Source"}, rows))
+	} else if len(flow.Includes) > 0 {
+		section(&b, "Composition", "Includes: "+strings.Join(flow.Includes, ", ")+".\n")
+	}
 
 	section(&b, "Sequence", fence("mermaid", flowmermaid.Sequence(flow, func(step *catalog.Step) string {
 		return s.flowStepLabel(flow, step)
@@ -234,6 +266,49 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 				if n.HTTP.Warning != "" {
 					notes = append(notes, "warning: "+n.HTTP.Warning)
 				}
+			}
+			if n.ContinuesAt != "" {
+				notes = append(notes, "continues at "+code(n.ContinuesAt))
+			}
+			if len(n.Reaches) > 0 {
+				notes = append(notes, "reaches "+code(strings.Join(n.Reaches, ", ")))
+			}
+			if n.Handoff != nil {
+				handoff := []string{n.Handoff.Direction, n.Handoff.Kind, n.Handoff.Transport, n.Handoff.Channel}
+				if n.Handoff.Message != "" {
+					handoff = append(handoff, n.Handoff.Message)
+				}
+				notes = append(notes, "handoff: "+strings.Join(handoff, " · "))
+			}
+			if n.StoreAccess != nil {
+				access := []string{s.ref(self, n.StoreAccess.Store, n.StoreAccess.Store)}
+				if n.StoreAccess.Operation != "" {
+					access = append(access, strings.ToUpper(string(n.StoreAccess.Operation)))
+				}
+				if n.StoreAccess.Keyspace != "" {
+					access = append(access, code(n.StoreAccess.Keyspace))
+				}
+				if n.StoreAccess.Method != "" {
+					access = append(access, code(n.StoreAccess.Method))
+				}
+				notes = append(notes, "store: "+strings.Join(access, " · "))
+			}
+			if n.Destination != nil {
+				destination := n.Destination.Method + " " + orDefault(n.Destination.FullPath, n.Destination.EndpointExpression)
+				if n.Destination.Resolution != nil {
+					destination += " → " + n.Destination.Resolution.Provider + " " + n.Destination.Resolution.Route + " (" + n.Destination.Resolution.Basis + ")"
+				}
+				notes = append(notes, "destination: "+destination)
+			}
+			for _, evidence := range n.Evidence {
+				item := "evidence: " + evidence.Kind + " · " + evidence.Rule
+				if evidence.Symbol != "" {
+					item += " · " + code(evidence.Symbol)
+				}
+				if evidence.Source != "" {
+					item += " · " + s.source(self, evidence.Source, s.serviceForSource(evidence.Source))
+				}
+				notes = append(notes, item)
 			}
 			if len(notes) > 0 {
 				// Three spaces line the continuation up under the "1. " marker.

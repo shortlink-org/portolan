@@ -97,7 +97,7 @@ describe("the LikeC4 generator", () => {
     expect(views).toContain("include platform, platform.api");
   });
 
-  it("draws synchronous requests solid and synthesized responses dashed", () => {
+  it("keeps a contract request/response on one numbered relation", () => {
     const service = (slug, provides = []) => ({
       id: `demo.${slug}`,
       slug,
@@ -215,7 +215,7 @@ describe("the LikeC4 generator", () => {
       "demo.book -> demo.api '500 · Error' {\n      color response_error  line dashed  head normal",
     );
     expect(spec).toContain("color response_error #b7646b");
-    expect(views).not.toContain("GetRequest → GetResponse");
+    expect(views).toContain("GetRequest → GetResponse");
   });
 
   it("treats dots in a root participant id as data, not containment", () => {
@@ -275,6 +275,39 @@ describe("the LikeC4 generator", () => {
     expect(model).toContain("river_order_jobs = broker 'River orders'");
     expect(views).toContain("demo.app -> river_order_jobs 'enqueue'");
     expect(views).not.toContain("river.order_jobs");
+  });
+
+  it("routes a readable store lane through its canonical entityRef", () => {
+    const service = {
+      id: "demo.api",
+      slug: "api",
+      name: "API",
+      repo: "example/demo",
+      path: "api",
+      readme: "",
+      provides: [],
+      consumes: [],
+      aggregates: [],
+    };
+    const { model, views } = generate({
+      contexts: [{ id: "demo", slug: "demo", name: "Demo", summary: "", services: [service] }],
+      stores: [{ id: "demo.api.pg", slug: "pg", name: "Postgres", kind: "postgres", owner: "demo.api", tables: [] }],
+      flows: [{
+        id: "flow.save",
+        slug: "save",
+        name: "Save",
+        summary: "",
+        owner: "demo",
+        participants: [
+          { id: "demo.api", kind: "service", context: "demo", entityRef: "demo.api" },
+          { id: "database", kind: "store", context: "demo", entityRef: "demo.api.pg" },
+        ],
+        steps: [{ type: "step", id: "save", from: "demo.api", to: "database", kind: "call", label: "save", status: "declared" }],
+      }],
+    });
+    expect(model).toContain("pg = store 'Postgres'");
+    expect(model).toContain("database = store 'database'");
+    expect(views).toContain("demo.api -> database 'save'");
   });
 
   it("draws level 2 with the bus between the boxes and one labelled edge per pair", () => {

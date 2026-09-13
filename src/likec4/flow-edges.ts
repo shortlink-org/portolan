@@ -3,8 +3,9 @@
 // id across, so the two are paired by position.
 //
 // That is sound because it is the same walk twice: the generator emits steps in
-// catalog order and this module inserts the same contract-response edges in the
-// same places. If the two lists ever differ in length the pairing is abandoned
+// catalog order. Contract request/response is one relation and therefore one
+// number; only explicit response steps add another relation. If the two lists
+// ever differ in length the pairing is abandoned
 // rather than guessed at, and the diagram simply stops highlighting.
 
 import type { Flow } from "../catalog";
@@ -92,34 +93,4 @@ export function drawnStepIds(flow: Flow, crossOnly: boolean): string[] {
   if (!crossOnly) return steps.map((s) => s.id);
   const hidden = hiddenStepIds(flow);
   return steps.filter((s) => !hidden.has(s.id)).map((s) => s.id);
-}
-
-/**
- * One step id per generated edge, including contract responses synthesized by
- * the LikeC4 generator. Nested RPCs return immediately; the actor request that
- * opened the flow returns after its final step.
- */
-export function drawnEdgeStepIds(
-  flow: Flow,
-  crossOnly: boolean,
-  responseStepIds: ReadonlySet<string>,
-): string[] {
-  const steps = walkSteps(flow.steps);
-  const actorIds = new Set(
-    flow.participants.filter((p) => p.kind === "actor").map((p) => p.id),
-  );
-  const deferred = steps.find(
-    (step) =>
-      step.kind === "rpc" &&
-      actorIds.has(step.from) &&
-      responseStepIds.has(step.id),
-  )?.id;
-  const drawn = drawnStepIds(flow, crossOnly);
-  const out: string[] = [];
-  for (const stepId of drawn) {
-    out.push(stepId);
-    if (stepId !== deferred && responseStepIds.has(stepId)) out.push(stepId);
-  }
-  if (deferred && drawn.includes(deferred)) out.push(deferred);
-  return out;
 }

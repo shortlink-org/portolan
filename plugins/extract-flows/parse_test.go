@@ -1,6 +1,7 @@
 package extractflows
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -17,14 +18,14 @@ with its outbox row.
 Every hop here is asserted.
 
 ## Participants
-- oms-db: store in shop "oms-db (postgres)"
+- oms-db: store in shop ref shop.oms.pg "oms-db (postgres)"
 - psp-gateway: external "psp-gateway (external)"
 - customer: actor
 
 ## Steps
 // the request
 customer -> shop.oms: rpc PlaceOrder [verified] @internal/oms/http/orders.go:40
-shop.oms -> oms-db: insertOrderAndOutboxRow [verified] @internal/oms/adapter/postgres/order_repo.go:141 #a1
+shop.oms -> oms-db: insertOrderAndOutboxRow [verified] @internal/oms/adapter/postgres/order_repo.go:141 via-store shop.oms.pg write orders:* #a1
   > The order row and the OrderPlaced outbox row commit in one
   > transaction.
 shop.oms -> bus: event shop.oms.order.OrderPlaced [verified]
@@ -59,6 +60,29 @@ func parsed(t *testing.T, src string) catalog.Flow {
 	return flow
 }
 
+func TestGoldenAuthoringFileParses(t *testing.T) {
+	raw, err := os.ReadFile("testdata/golden.flow.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	flow := parsed(t, string(raw))
+	if flow.Slug != "checkout-golden" || len(flow.Steps) != 6 {
+		t.Fatalf("golden flow = %+v", flow)
+	}
+	if flow.Trigger == nil || flow.Trigger.Kind != "http" || flow.Trigger.Confidence != "high" {
+		t.Fatalf("golden trigger = %+v", flow.Trigger)
+	}
+	if _, ok := flow.Steps[2].(*catalog.Alt); !ok {
+		t.Fatalf("golden step 3 is %T, want alt", flow.Steps[2])
+	}
+	if _, ok := flow.Steps[3].(*catalog.Parallel); !ok {
+		t.Fatalf("golden step 4 is %T, want parallel", flow.Steps[3])
+	}
+	if _, ok := flow.Steps[4].(*catalog.Loop); !ok {
+		t.Fatalf("golden step 5 is %T, want loop", flow.Steps[4])
+	}
+}
+
 func TestTheHeadIsReadIntoTheFlow(t *testing.T) {
 	flow := parsed(t, sample)
 	if flow.ID != "flow.order-accepted" || flow.Slug != "order-accepted" || flow.Name != "Order accepted" || flow.Owner != "shop" {
@@ -85,7 +109,7 @@ func TestLanesAreDeclaredOrInferred(t *testing.T) {
 	if strings.Join(ids, " ") != want {
 		t.Errorf("lanes = %s", strings.Join(ids, " "))
 	}
-	if store := flow.Participants[0]; store.Label != "oms-db (postgres)" || store.Context == nil || *store.Context != "shop" {
+	if store := flow.Participants[0]; store.Label != "oms-db (postgres)" || store.Context == nil || *store.Context != "shop" || store.EntityRef != "shop.oms.pg" {
 		t.Errorf("store lane = %+v", store)
 	}
 	if oms := flow.Participants[3]; oms.Context == nil || *oms.Context != "shop" {
@@ -105,6 +129,9 @@ func TestAHopCarriesEverythingWrittenAfterIt(t *testing.T) {
 	}
 	if second.Note != "The order row and the OrderPlaced outbox row commit in one transaction." {
 		t.Errorf("note = %q", second.Note)
+	}
+	if second.StoreAccess == nil || second.StoreAccess.Store != "shop.oms.pg" || second.StoreAccess.Operation != catalog.RedisOperationWrite || second.StoreAccess.Keyspace != "orders:*" {
+		t.Errorf("store access = %+v", second.StoreAccess)
 	}
 	third := flow.Steps[2].(*catalog.Step)
 	if third.ID != "s2" || third.Ref != "shop.oms.order.OrderPlaced" || third.Label != "OrderPlaced" || third.From != "shop.oms" || third.To != "bus" {

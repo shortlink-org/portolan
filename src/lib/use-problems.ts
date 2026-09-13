@@ -7,7 +7,7 @@
 // five places re-render together when a switch is flipped.
 
 import { useMemo } from "react";
-import { catalog, index } from "../data";
+import { catalog, catalogConflicts, index } from "../data";
 import { evaluateProblems } from "./all-problems";
 import type { Problem } from "./derive";
 import { useProblemRules } from "./problem-rules";
@@ -15,7 +15,10 @@ import type { RuleEvaluation } from "./problem-rules";
 
 export function useProblemEvaluation(): RuleEvaluation {
   const rules = useProblemRules();
-  return useMemo(() => evaluateProblems(catalog, index, rules), [rules]);
+  return useMemo(
+    () => evaluateProblems(catalog, index, rules, catalogConflicts),
+    [rules],
+  );
 }
 
 export function useProblems(): Problem[] {

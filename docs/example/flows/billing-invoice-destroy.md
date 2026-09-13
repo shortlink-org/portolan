@@ -10,12 +10,12 @@ Ends an invoice nobody is going to pay.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 

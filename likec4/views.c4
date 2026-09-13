@@ -223,7 +223,7 @@ views {
   dynamic view flow_auth_change_password {
     title 'Change password'
     description 'Replaces the password of a user, given the current one.'
-    client -> auth.auth 'ChangePasswordRequest' {
+    client -> auth.auth 'ChangePasswordRequest → 204' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
     }
@@ -243,30 +243,17 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/change_password/usecase.go:48'
     }
-    auth.auth -> client '204' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_auth_change_password_cross {
     title 'Change password — crossings only'
-    client -> auth.auth 'ChangePasswordRequest' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
-    }
-    auth.auth -> bus 'PasswordChanged' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/change_password/usecase.go:48'
-    }
-    auth.auth -> client '204' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_get_user {
     title 'Get user'
     description 'Reads a user by id.'
-    client -> auth.auth 'getUser' {
+    client -> auth.auth 'getUser → User' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/auth/internal/user/infrastructure/http/get.go:11'
     }
@@ -274,26 +261,17 @@ views {
       color declared  line solid  head none
       notes 'examples/auth/internal/user/application/get/usecase.go:22'
     }
-    auth.auth -> client 'User' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_auth_get_user_cross {
     title 'Get user — crossings only'
-    client -> auth.auth 'getUser' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/auth/internal/user/infrastructure/http/get.go:11'
-    }
-    auth.auth -> client 'User' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_login {
     title 'Login'
     description 'Turns credentials into a session.'
-    client -> auth.auth 'LoginRequest' {
+    client -> auth.auth 'LoginRequest → Session' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
     }
@@ -381,54 +359,17 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/application/login/usecase.go:77'
     }
-    auth.auth -> client 'Session' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_auth_login_cross {
     title 'Login — crossings only'
-    client -> auth.auth 'LoginRequest' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
-    }
-    alt {
-      when '!uc.verifier.Verify(in.Password, u.Password)' {
-        break 'ends the flow' {
-          auth.auth -> bus 'AccountLocked' {
-            color verified  line solid  head onormal
-            notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
-          }
-        }
-      }
-    }
-    auth.auth -> risk_v1 'Assess' {
-      color unresolved  line solid  head normal
-      notes 'examples/auth/internal/session/application/login/usecase.go:62'
-    }
-    alt {
-      when 'verdict == VerdictBlock' {
-        break 'ends the flow' {
-          auth.auth -> bus 'SessionEnded' {
-            color declared  line solid  head onormal
-            notes 'inside a loop over `sessions`. — examples/auth/internal/session/application/login/usecase.go:101'
-          }
-        }
-      }
-    }
-    auth.auth -> bus 'SessionStarted' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/application/login/usecase.go:77'
-    }
-    auth.auth -> client 'Session' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_logout {
     title 'Logout'
     description 'Ends the session behind a token.'
-    client -> auth.auth 'logout' {
+    client -> auth.auth 'logout → 204' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/http/logout.go:15'
     }
@@ -444,30 +385,17 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/application/logout/usecase.go:48'
     }
-    auth.auth -> client '204' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_auth_logout_cross {
     title 'Logout — crossings only'
-    client -> auth.auth 'logout' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/http/logout.go:15'
-    }
-    auth.auth -> bus 'SessionEnded' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/application/logout/usecase.go:48'
-    }
-    auth.auth -> client '204' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_register_user {
     title 'Register user'
     description 'Creates a user from an email address and a password.'
-    client -> auth.auth 'RegisterRequest' {
+    client -> auth.auth 'RegisterRequest → User' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/register.go:16'
     }
@@ -483,30 +411,17 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:53'
     }
-    auth.auth -> client 'User' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_auth_register_user_cross {
     title 'Register user — crossings only'
-    client -> auth.auth 'RegisterRequest' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/register.go:16'
-    }
-    auth.auth -> bus 'UserRegistered' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:53'
-    }
-    auth.auth -> client 'User' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_validate_session {
     title 'Validate session'
     description 'Resolves a token to a live session: who is calling, and how long the answer stays good.'
-    client -> auth.auth 'validateSession' {
+    client -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/validate.go:12'
     }
@@ -514,20 +429,11 @@ views {
       color declared  line solid  head none
       notes 'examples/auth/internal/session/application/validate/usecase.go:33'
     }
-    auth.auth -> client 'SessionInfo' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_auth_validate_session_cross {
     title 'Validate session — crossings only'
-    client -> auth.auth 'validateSession' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/validate.go:12'
-    }
-    auth.auth -> client 'SessionInfo' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_revoke_sessions_on_password_change {
@@ -545,339 +451,195 @@ views {
 
   dynamic view flow_auth_revoke_sessions_on_password_change_cross {
     title 'Revoke sessions on password change — crossings only'
-    bus -> auth.auth 'PasswordChanged' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
-    }
-    auth.auth -> bus 'SessionEnded' {
-      color verified  line solid  head onormal
-      notes 'Seen in 1 recording; the code does not declare this hop.'
-    }
+    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_bff_query_basket {
     title 'Query basket'
     description 'The basket as the cart has it, in the storefront\'s words.'
-    client -> storefront.bff 'QueryBasketArgs' {
+    client -> storefront.bff 'QueryBasketArgs → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:4'
     }
-    storefront.bff -> shop.cart 'getBasket' {
+    storefront.bff -> shop.cart 'getBasket → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:5'
-    }
-    shop.cart -> storefront.bff 'Basket' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Basket' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_query_basket_cross {
     title 'Query basket — crossings only'
-    client -> storefront.bff 'QueryBasketArgs' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:4'
-    }
-    storefront.bff -> shop.cart 'getBasket' {
+    storefront.bff -> shop.cart 'getBasket → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:5'
-    }
-    shop.cart -> storefront.bff 'Basket' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Basket' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_query_shipment {
     title 'Query shipment'
     description ''
-    client -> storefront.bff 'QueryShipmentArgs' {
+    client -> storefront.bff 'QueryShipmentArgs → Shipment' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3'
     }
-    storefront.bff -> delivery.core 'GetShipmentRequest' {
+    storefront.bff -> delivery.core 'GetShipmentRequest → GetShipmentResponse' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4'
-    }
-    delivery.core -> storefront.bff 'GetShipmentResponse' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Shipment' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_query_shipment_cross {
     title 'Query shipment — crossings only'
-    client -> storefront.bff 'QueryShipmentArgs' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3'
-    }
-    storefront.bff -> delivery.core 'GetShipmentRequest' {
+    storefront.bff -> delivery.core 'GetShipmentRequest → GetShipmentResponse' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4'
-    }
-    delivery.core -> storefront.bff 'GetShipmentResponse' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Shipment' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_query_order {
     title 'Query order'
     description ''
-    client -> storefront.bff 'QueryOrderArgs' {
+    client -> storefront.bff 'QueryOrderArgs → Order' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:3'
     }
-    storefront.bff -> shop.oms 'GetOrderRequest' {
+    storefront.bff -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:4'
-    }
-    shop.oms -> storefront.bff 'GetOrderResponse' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Order' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_query_order_cross {
     title 'Query order — crossings only'
-    client -> storefront.bff 'QueryOrderArgs' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:3'
-    }
-    storefront.bff -> shop.oms 'GetOrderRequest' {
+    storefront.bff -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:4'
-    }
-    shop.oms -> storefront.bff 'GetOrderResponse' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Order' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_query_viewer {
     title 'Query viewer'
     description 'Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one.'
-    client -> storefront.bff 'Query.viewer' {
+    client -> storefront.bff 'Query.viewer → Viewer' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8'
     }
-    storefront.bff -> auth.auth 'validateSession' {
+    storefront.bff -> auth.auth 'validateSession → SessionInfo' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9'
-    }
-    auth.auth -> storefront.bff 'SessionInfo' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Viewer' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_query_viewer_cross {
     title 'Query viewer — crossings only'
-    client -> storefront.bff 'Query.viewer' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8'
-    }
-    storefront.bff -> auth.auth 'validateSession' {
+    storefront.bff -> auth.auth 'validateSession → SessionInfo' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9'
-    }
-    auth.auth -> storefront.bff 'SessionInfo' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Viewer' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_add_item {
     title 'Mutation add item'
     description 'Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live.'
-    client -> storefront.bff 'AddItemInput' {
+    client -> storefront.bff 'AddItemInput → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8'
     }
-    storefront.bff -> shop.cart 'AddItemRequest' {
+    storefront.bff -> shop.cart 'AddItemRequest → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9'
-    }
-    shop.cart -> storefront.bff 'Basket' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Basket' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_add_item_cross {
     title 'Mutation add item — crossings only'
-    client -> storefront.bff 'AddItemInput' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8'
-    }
-    storefront.bff -> shop.cart 'AddItemRequest' {
+    storefront.bff -> shop.cart 'AddItemRequest → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9'
-    }
-    shop.cart -> storefront.bff 'Basket' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Basket' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_checkout {
     title 'Mutation checkout'
     description 'Freeze the basket and hand it on.'
-    client -> storefront.bff 'CheckoutInput' {
+    client -> storefront.bff 'CheckoutInput → Checkout' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11'
     }
-    storefront.bff -> shop.cart 'checkout' {
+    storefront.bff -> shop.cart 'checkout → CheckedOut' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12'
-    }
-    shop.cart -> storefront.bff 'CheckedOut' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Checkout' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_checkout_cross {
     title 'Mutation checkout — crossings only'
-    client -> storefront.bff 'CheckoutInput' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11'
-    }
-    storefront.bff -> shop.cart 'checkout' {
+    storefront.bff -> shop.cart 'checkout → CheckedOut' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12'
-    }
-    shop.cart -> storefront.bff 'CheckedOut' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Checkout' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_remove_item {
     title 'Mutation remove item'
     description ''
-    client -> storefront.bff 'RemoveItemInput' {
+    client -> storefront.bff 'RemoveItemInput → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3'
     }
-    storefront.bff -> shop.cart 'removeItem' {
+    storefront.bff -> shop.cart 'removeItem → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4'
-    }
-    shop.cart -> storefront.bff 'Basket' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Basket' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_remove_item_cross {
     title 'Mutation remove item — crossings only'
-    client -> storefront.bff 'RemoveItemInput' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3'
-    }
-    storefront.bff -> shop.cart 'removeItem' {
+    storefront.bff -> shop.cart 'removeItem → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4'
-    }
-    shop.cart -> storefront.bff 'Basket' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Basket' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_cancel_order {
     title 'Mutation cancel order'
     description 'Cancel an order. Whether it is too late to is the order service\'s judgement and its refusal travels back unchanged; this service does not know what dispatch means.'
-    client -> storefront.bff 'CancelOrderInput' {
+    client -> storefront.bff 'CancelOrderInput → Order' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8'
     }
-    storefront.bff -> shop.oms 'CancelOrderRequest' {
+    storefront.bff -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9'
-    }
-    shop.oms -> storefront.bff 'CancelOrderResponse' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Order' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_mutation_cancel_order_cross {
     title 'Mutation cancel order — crossings only'
-    client -> storefront.bff 'CancelOrderInput' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8'
-    }
-    storefront.bff -> shop.oms 'CancelOrderRequest' {
+    storefront.bff -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9'
-    }
-    shop.oms -> storefront.bff 'CancelOrderResponse' {
-      color declared  line dashed  head normal
-    }
-    storefront.bff -> client 'Order' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_subscription_order_status {
     title 'Subscription order status'
     description 'Every move of one order, for as long as somebody is watching it.'
-    client -> storefront.bff 'SubscriptionOrderStatusArgs' {
+    client -> storefront.bff 'SubscriptionOrderStatusArgs → OrderMoved' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11'
-    }
-    storefront.bff -> client 'OrderMoved' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_bff_subscription_order_status_cross {
     title 'Subscription order status — crossings only'
-    client -> storefront.bff 'SubscriptionOrderStatusArgs' {
-      color declared  line solid  head normal
-      notes 'examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11'
-    }
-    storefront.bff -> client 'OrderMoved' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_ledger_authorize {
     title 'Authorize'
     description 'Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.'
-    client -> payments.ledger 'AuthorizeRequest' {
+    client -> payments.ledger 'AuthorizeRequest → AuthorizeResponse' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:34'
     }
@@ -889,12 +651,9 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
     }
-    payments.ledger -> shop.oms 'GetOrderRequest' {
+    payments.ledger -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:54'
-    }
-    shop.oms -> payments.ledger 'GetOrderResponse' {
-      color declared  line dashed  head normal
     }
     alt {
       when 'orders.standing(orderId) == Orders.Standing.CANCELLED' {
@@ -912,12 +671,9 @@ views {
       else 'otherwise' {
       }
     }
-    payments.ledger -> stripe 'PostPaymentIntents' {
+    payments.ledger -> stripe 'PostPaymentIntents → payment_intent' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
-    }
-    stripe -> payments.ledger 'payment_intent' {
-      color declared  line dashed  head normal
     }
     alt {
       when '!hold.held()' {
@@ -943,64 +699,20 @@ views {
       color declared  line solid  head onormal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:71'
     }
-    payments.ledger -> client 'AuthorizeResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_ledger_authorize_cross {
     title 'Authorize — crossings only'
-    client -> payments.ledger 'AuthorizeRequest' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:34'
-    }
-    payments.ledger -> shop.oms 'GetOrderRequest' {
+    payments.ledger -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:54'
-    }
-    shop.oms -> payments.ledger 'GetOrderResponse' {
-      color declared  line dashed  head normal
-    }
-    alt {
-      when 'orders.standing(orderId) == Orders.Standing.CANCELLED' {
-        break 'ends the flow' {
-          payments.ledger -> bus 'PaymentDeclined' {
-            color declared  line solid  head onormal
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:57'
-          }
-        }
-      }
-    }
-    payments.ledger -> stripe 'PostPaymentIntents' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
-    }
-    stripe -> payments.ledger 'payment_intent' {
-      color declared  line dashed  head normal
-    }
-    alt {
-      when '!hold.held()' {
-        break 'ends the flow' {
-          payments.ledger -> bus 'PaymentDeclined' {
-            color declared  line solid  head onormal
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:66'
-          }
-        }
-      }
-    }
-    payments.ledger -> bus 'PaymentAuthorized' {
-      color declared  line solid  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:71'
-    }
-    payments.ledger -> client 'AuthorizeResponse' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_ledger_capture {
     title 'Capture'
     description 'Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.'
-    client -> payments.ledger 'CaptureRequest' {
+    client -> payments.ledger 'CaptureRequest → CaptureResponse' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53'
     }
@@ -1008,12 +720,9 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38'
     }
-    payments.ledger -> stripe 'PostPaymentIntentsIntentCapture' {
+    payments.ledger -> stripe 'PostPaymentIntentsIntentCapture → payment_intent' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43'
-    }
-    stripe -> payments.ledger 'payment_intent' {
-      color declared  line dashed  head normal
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line solid  head none
@@ -1023,37 +732,17 @@ views {
       color declared  line solid  head onormal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:45'
     }
-    payments.ledger -> client 'CaptureResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_ledger_capture_cross {
     title 'Capture — crossings only'
-    client -> payments.ledger 'CaptureRequest' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53'
-    }
-    payments.ledger -> stripe 'PostPaymentIntentsIntentCapture' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43'
-    }
-    stripe -> payments.ledger 'payment_intent' {
-      color declared  line dashed  head normal
-    }
-    payments.ledger -> bus 'PaymentCaptured' {
-      color declared  line solid  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:45'
-    }
-    payments.ledger -> client 'CaptureResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_ledger_get_payment {
     title 'Get payment'
     description 'Reads one payment, for whoever is asking what happened to the money.'
-    client -> payments.ledger 'GetPaymentRequest' {
+    client -> payments.ledger 'GetPaymentRequest → GetPaymentResponse' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68'
     }
@@ -1061,26 +750,17 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:27'
     }
-    payments.ledger -> client 'GetPaymentResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_ledger_get_payment_cross {
     title 'Get payment — crossings only'
-    client -> payments.ledger 'GetPaymentRequest' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68'
-    }
-    payments.ledger -> client 'GetPaymentResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_ledger_issue_refund {
     title 'Issue refund'
     description 'Sends money back against a captured payment, in full or in part.'
-    client -> payments.ledger 'IssueRefundRequest' {
+    client -> payments.ledger 'IssueRefundRequest → IssueRefundResponse' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29'
     }
@@ -1096,12 +776,9 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56'
     }
-    payments.ledger -> stripe 'PostRefunds' {
+    payments.ledger -> stripe 'PostRefunds → refund' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62'
-    }
-    stripe -> payments.ledger 'refund' {
-      color declared  line dashed  head normal
     }
     alt {
       when '!answer.sent()' {
@@ -1123,37 +800,17 @@ views {
       color declared  line solid  head onormal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70'
     }
-    payments.ledger -> client 'IssueRefundResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_ledger_issue_refund_cross {
     title 'Issue refund — crossings only'
-    client -> payments.ledger 'IssueRefundRequest' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29'
-    }
-    payments.ledger -> stripe 'PostRefunds' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62'
-    }
-    stripe -> payments.ledger 'refund' {
-      color declared  line dashed  head normal
-    }
-    payments.ledger -> bus 'RefundIssued' {
-      color declared  line solid  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70'
-    }
-    payments.ledger -> client 'IssueRefundResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_ledger_list_refunds {
     title 'List refunds'
     description 'Every refund against one payment, newest first.'
-    client -> payments.ledger 'ListRefundsRequest' {
+    client -> payments.ledger 'ListRefundsRequest → ListRefundsResponse' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48'
     }
@@ -1161,20 +818,11 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:27'
     }
-    payments.ledger -> client 'ListRefundsResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_ledger_list_refunds_cross {
     title 'List refunds — crossings only'
-    client -> payments.ledger 'ListRefundsRequest' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48'
-    }
-    payments.ledger -> client 'ListRefundsResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_ledger_void_payment_on_order_cancelled {
@@ -1188,12 +836,9 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:29'
     }
-    payments.ledger -> stripe 'PostPaymentIntentsIntentCancel' {
+    payments.ledger -> stripe 'PostPaymentIntentsIntentCancel → payment_intent' {
       color declared  line solid  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35'
-    }
-    stripe -> payments.ledger 'payment_intent' {
-      color declared  line dashed  head normal
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line solid  head none
@@ -1203,17 +848,7 @@ views {
 
   dynamic view flow_ledger_void_payment_on_order_cancelled_cross {
     title 'Void payment on order cancelled — crossings only'
-    bus -> payments.ledger 'OrderCancelled' {
-      color declared  line solid  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25'
-    }
-    payments.ledger -> stripe 'PostPaymentIntentsIntentCancel' {
-      color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35'
-    }
-    stripe -> payments.ledger 'payment_intent' {
-      color declared  line dashed  head normal
-    }
+    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_billing_celery_remind_unpaid_invoice {
@@ -1263,7 +898,7 @@ views {
   dynamic view flow_billing_invoice_create {
     title 'Invoice create'
     description 'Draws up a draft invoice for an order, with a line for each thing sold.'
-    client -> shop.billing 'DrawUpRequest' {
+    client -> shop.billing 'DrawUpRequest → InvoiceId' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:13'
     }
@@ -1275,26 +910,17 @@ views {
       color declared  line solid  head none
       notes 'in one transaction, for each line. — examples/shop/billing/invoices/services.py:29'
     }
-    shop.billing -> client 'InvoiceId' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_billing_invoice_create_cross {
     title 'Invoice create — crossings only'
-    client -> shop.billing 'DrawUpRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/billing/invoices/views.py:13'
-    }
-    shop.billing -> client 'InvoiceId' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_destroy {
     title 'Invoice destroy'
     description 'Ends an invoice nobody is going to pay.'
-    client -> shop.billing 'invoice_destroy' {
+    client -> shop.billing 'invoice_destroy → 204' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:34'
     }
@@ -1310,39 +936,23 @@ views {
       color declared  line solid  head onormal
       notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
     }
-    shop.billing -> client '204' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_billing_invoice_destroy_cross {
     title 'Invoice destroy — crossings only'
-    client -> shop.billing 'invoice_destroy' {
-      color declared  line solid  head normal
-      notes 'examples/shop/billing/invoices/views.py:34'
-    }
-    shop.billing -> bus 'InvoiceVoided' {
-      color declared  line solid  head onormal
-      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
-    }
-    shop.billing -> client '204' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_issue {
     title 'Invoice issue'
     description 'Confirms the session, freezes the invoice and asks the customer to pay. Source-backed cross-protocol continuations are included.'
-    client -> shop.billing 'invoice_issue' {
+    client -> shop.billing 'invoice_issue → InvoiceId' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:29'
     }
-    shop.billing -> auth.auth 'validateSession' {
+    shop.billing -> auth.auth 'validateSession → SessionInfo' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/services.py:40'
-    }
-    auth.auth -> shop.billing 'SessionInfo' {
-      color declared  line dashed  head normal
     }
     shop.billing -> billing_pg 'Invoice.objects.get' {
       color declared  line solid  head none
@@ -1380,30 +990,13 @@ views {
       color declared  line solid  head onormal
       notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:51'
     }
-    shop.billing -> client 'InvoiceId' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_billing_invoice_issue_cross {
     title 'Invoice issue — crossings only'
-    client -> shop.billing 'invoice_issue' {
-      color declared  line solid  head normal
-      notes 'examples/shop/billing/invoices/views.py:29'
-    }
-    shop.billing -> auth.auth 'validateSession' {
+    shop.billing -> auth.auth 'validateSession → SessionInfo' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/services.py:40'
-    }
-    auth.auth -> shop.billing 'SessionInfo' {
-      color declared  line dashed  head normal
-    }
-    shop.billing -> bus 'InvoiceIssued' {
-      color declared  line solid  head onormal
-      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:51'
-    }
-    shop.billing -> client 'InvoiceId' {
-      color declared  line dashed  head normal
     }
   }
 
@@ -1418,10 +1011,7 @@ views {
 
   dynamic view flow_billing_invoice_list_cross {
     title 'Invoice list — crossings only'
-    client -> shop.billing 'invoice_list' {
-      color declared  line solid  head normal
-      notes 'examples/shop/billing/invoices/views.py:10'
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_partial_update {
@@ -1435,16 +1025,13 @@ views {
 
   dynamic view flow_billing_invoice_partial_update_cross {
     title 'Invoice partial update — crossings only'
-    client -> shop.billing 'invoice_partial_update' {
-      color declared  line solid  head normal
-      notes 'examples/shop/billing/invoices/views.py:10'
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_retrieve {
     title 'Invoice retrieve'
     description 'Reads one invoice and the lines it is made of.'
-    client -> shop.billing 'invoice_retrieve' {
+    client -> shop.billing 'invoice_retrieve → Invoice' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:24'
     }
@@ -1452,20 +1039,11 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/billing/invoices/services.py:77'
     }
-    shop.billing -> client 'Invoice' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_billing_invoice_retrieve_cross {
     title 'Invoice retrieve — crossings only'
-    client -> shop.billing 'invoice_retrieve' {
-      color declared  line solid  head normal
-      notes 'examples/shop/billing/invoices/views.py:24'
-    }
-    shop.billing -> client 'Invoice' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_update {
@@ -1479,10 +1057,7 @@ views {
 
   dynamic view flow_billing_invoice_update_cross {
     title 'Invoice update — crossings only'
-    client -> shop.billing 'invoice_update' {
-      color declared  line solid  head normal
-      notes 'examples/shop/billing/invoices/views.py:10'
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_close_invoice_on_payment {
@@ -1508,20 +1083,13 @@ views {
 
   dynamic view flow_billing_close_invoice_on_payment_cross {
     title 'Close invoice on payment — crossings only'
-    bus -> shop.billing 'PaymentCaptured' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/billing/invoices/handlers.py:10'
-    }
-    shop.billing -> bus 'InvoicePaid' {
-      color declared  line solid  head onormal
-      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:62'
-    }
+    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_cart_add_item {
     title 'Add item'
     description ''
-    client -> shop.cart 'AddItemRequest' {
+    client -> shop.cart 'AddItemRequest → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
     }
@@ -1533,50 +1101,31 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
     }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_cart_add_item_cross {
     title 'Add item — crossings only'
-    client -> shop.cart 'AddItemRequest' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
-    }
-    shop.cart -> bus 'BasketItemAdded' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
-    }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_cart_checkout {
     title 'Checkout'
     description ''
-    client -> shop.cart 'checkout' {
+    client -> shop.cart 'checkout → CheckedOut' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
     }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
-    }
-    auth.auth -> shop.cart 'SessionInfo' {
-      color verified  line dashed  head normal
     }
     shop.cart -> cart_pg 'byId' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48'
     }
-    shop.cart -> shop.pricing 'GetQuoteRequest' {
+    shop.cart -> shop.pricing 'GetQuoteRequest → GetQuoteResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55'
-    }
-    shop.pricing -> shop.cart 'GetQuoteResponse' {
-      color declared  line dashed  head normal
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
@@ -1586,37 +1135,20 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
     }
-    shop.cart -> client 'CheckedOut' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_cart_checkout_cross {
     title 'Checkout — crossings only'
-    client -> shop.cart 'checkout' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
-    }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
-    }
-    auth.auth -> shop.cart 'SessionInfo' {
-      color verified  line dashed  head normal
-    }
-    shop.cart -> bus 'BasketCheckedOut' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
-    }
-    shop.cart -> client 'CheckedOut' {
-      color verified  line dashed  head normal
     }
   }
 
   dynamic view flow_cart_create_basket {
     title 'Create basket'
     description ''
-    client -> shop.cart 'createBasket' {
+    client -> shop.cart 'createBasket → BasketCreated' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
     }
@@ -1628,62 +1160,37 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
     }
-    shop.cart -> client 'BasketCreated' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_cart_create_basket_cross {
     title 'Create basket — crossings only'
-    client -> shop.cart 'createBasket' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
-    }
-    shop.cart -> bus 'BasketCreated' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
-    }
-    shop.cart -> client 'BasketCreated' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_cart_get_basket {
     title 'Get basket'
     description ''
-    client -> shop.cart 'getBasket' {
+    client -> shop.cart 'getBasket → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
-    }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
     }
   }
 
   dynamic view flow_cart_get_basket_cross {
     title 'Get basket — crossings only'
-    client -> shop.cart 'getBasket' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
-    }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_cart_merge_baskets {
     title 'Merge baskets'
     description ''
-    client -> shop.cart 'MergeRequest' {
+    client -> shop.cart 'MergeRequest → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
     }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
-    }
-    auth.auth -> shop.cart 'SessionInfo' {
-      color verified  line dashed  head normal
     }
     shop.cart -> cart_pg 'openFor' {
       color declared  line solid  head none
@@ -1709,45 +1216,20 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
     }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_cart_merge_baskets_cross {
     title 'Merge baskets — crossings only'
-    client -> shop.cart 'MergeRequest' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
-    }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
-    }
-    auth.auth -> shop.cart 'SessionInfo' {
-      color verified  line dashed  head normal
-    }
-    shop.cart -> bus 'BasketCreated' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
-    }
-    shop.cart -> bus 'BasketItemAdded' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
-    }
-    shop.cart -> bus 'BasketMerged' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
-    }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
     }
   }
 
   dynamic view flow_cart_remove_item {
     title 'Remove item'
     description ''
-    client -> shop.cart 'removeItem' {
+    client -> shop.cart 'removeItem → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
     }
@@ -1759,30 +1241,17 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
     }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_cart_remove_item_cross {
     title 'Remove item — crossings only'
-    client -> shop.cart 'removeItem' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
-    }
-    shop.cart -> bus 'BasketItemRemoved' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
-    }
-    shop.cart -> client 'Basket' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_close_route {
     title 'Close route'
     description 'Ends the day, whatever is left undone.'
-    client -> delivery.core 'CloseRouteRequest' {
+    client -> delivery.core 'CloseRouteRequest → CloseRouteResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30'
     }
@@ -1798,30 +1267,17 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:13'
     }
-    delivery.core -> client 'CloseRouteResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_close_route_cross {
     title 'Close route — crossings only'
-    client -> delivery.core 'CloseRouteRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30'
-    }
-    delivery.core -> bus 'RouteClosed' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:13'
-    }
-    delivery.core -> client 'CloseRouteResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_dispatch {
     title 'Dispatch'
     description 'One shipment, for whoever is asking about an order.'
-    client -> delivery.core 'DispatchRequest' {
+    client -> delivery.core 'DispatchRequest → DispatchResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:21'
     }
@@ -1829,12 +1285,9 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:31'
     }
-    delivery.core -> shop.oms 'GetOrderRequest' {
+    delivery.core -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32'
-    }
-    shop.oms -> delivery.core 'GetOrderResponse' {
-      color declared  line dashed  head normal
     }
     alt {
       when 'standing === "cancelled"' {
@@ -1864,47 +1317,20 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24'
     }
-    delivery.core -> client 'DispatchResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_dispatch_cross {
     title 'Dispatch — crossings only'
-    client -> delivery.core 'DispatchRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:21'
-    }
-    delivery.core -> shop.oms 'GetOrderRequest' {
+    delivery.core -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32'
-    }
-    shop.oms -> delivery.core 'GetOrderResponse' {
-      color declared  line dashed  head normal
-    }
-    alt {
-      when 'standing === "cancelled"' {
-        break 'ends the flow' {
-          delivery.core -> bus 'ShipmentLost' {
-            color declared  line solid  head onormal
-            notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:36'
-          }
-        }
-      }
-    }
-    delivery.core -> bus 'ShipmentDispatched' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:41'
-    }
-    delivery.core -> client 'DispatchResponse' {
-      color declared  line dashed  head normal
     }
   }
 
   dynamic view flow_core_get_route {
     title 'Get route'
     description 'One route, as the depot reads it.'
-    client -> delivery.core 'GetRouteRequest' {
+    client -> delivery.core 'GetRouteRequest → GetRouteResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37'
     }
@@ -1912,26 +1338,17 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22'
     }
-    delivery.core -> client 'GetRouteResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_get_route_cross {
     title 'Get route — crossings only'
-    client -> delivery.core 'GetRouteRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37'
-    }
-    delivery.core -> client 'GetRouteResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_get_shipment {
     title 'Get shipment'
     description 'One shipment, for whoever is asking about an order.'
-    client -> delivery.core 'GetShipmentRequest' {
+    client -> delivery.core 'GetShipmentRequest → GetShipmentResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48'
     }
@@ -1939,26 +1356,17 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24'
     }
-    delivery.core -> client 'GetShipmentResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_get_shipment_cross {
     title 'Get shipment — crossings only'
-    client -> delivery.core 'GetShipmentRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48'
-    }
-    delivery.core -> client 'GetShipmentResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_plan_route {
     title 'Plan route'
     description 'Builds a van\'s day out of the shipments waiting to go out.'
-    client -> delivery.core 'PlanRouteRequest' {
+    client -> delivery.core 'PlanRouteRequest → PlanRouteResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16'
     }
@@ -1982,30 +1390,17 @@ views {
       color declared  line solid  head none
       notes 'inside a loop over `shipmentIds`. — examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:39'
     }
-    delivery.core -> client 'PlanRouteResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_plan_route_cross {
     title 'Plan route — crossings only'
-    client -> delivery.core 'PlanRouteRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16'
-    }
-    delivery.core -> bus 'RoutePlanned' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:34'
-    }
-    delivery.core -> client 'PlanRouteResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_record_delivery {
     title 'Record delivery'
     description 'Ends a shipment at the door.'
-    client -> delivery.core 'RecordDeliveryRequest' {
+    client -> delivery.core 'RecordDeliveryRequest → RecordDeliveryResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36'
     }
@@ -2021,30 +1416,17 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13'
     }
-    delivery.core -> client 'RecordDeliveryResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_record_delivery_cross {
     title 'Record delivery — crossings only'
-    client -> delivery.core 'RecordDeliveryRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36'
-    }
-    delivery.core -> bus 'ShipmentDelivered' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13'
-    }
-    delivery.core -> client 'RecordDeliveryResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_record_scan {
     title 'Record scan'
     description 'Writes down that a parcel was seen somewhere.'
-    client -> delivery.core 'RecordScanRequest' {
+    client -> delivery.core 'RecordScanRequest → RecordScanResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29'
     }
@@ -2072,36 +1454,17 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:23'
     }
-    delivery.core -> client 'RecordScanResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_record_scan_cross {
     title 'Record scan — crossings only'
-    client -> delivery.core 'RecordScanRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29'
-    }
-    alt {
-      when 'moved' {
-        break 'ends the flow' {
-          delivery.core -> bus 'ShipmentInTransit' {
-            color declared  line solid  head onormal
-            notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20'
-          }
-        }
-      }
-    }
-    delivery.core -> client 'RecordScanResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_start_route {
     title 'Start route'
     description 'The van is out.'
-    client -> delivery.core 'StartRouteRequest' {
+    client -> delivery.core 'StartRouteRequest → StartRouteResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23'
     }
@@ -2117,30 +1480,17 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13'
     }
-    delivery.core -> client 'StartRouteResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_start_route_cross {
     title 'Start route — crossings only'
-    client -> delivery.core 'StartRouteRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23'
-    }
-    delivery.core -> bus 'RouteStarted' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13'
-    }
-    delivery.core -> client 'StartRouteResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_track_shipment {
     title 'Track shipment'
     description 'What the customer sees when they paste a tracking code.'
-    client -> delivery.core 'TrackShipmentRequest' {
+    client -> delivery.core 'TrackShipmentRequest → TrackShipmentResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:43'
     }
@@ -2148,20 +1498,11 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23'
     }
-    delivery.core -> client 'TrackShipmentResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_core_track_shipment_cross {
     title 'Track shipment — crossings only'
-    client -> delivery.core 'TrackShipmentRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:43'
-    }
-    delivery.core -> client 'TrackShipmentResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_release_shipment_on_payment_captured {
@@ -2191,20 +1532,13 @@ views {
 
   dynamic view flow_core_release_shipment_on_payment_captured_cross {
     title 'Release shipment on payment captured — crossings only'
-    bus -> delivery.core 'PaymentCaptured' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts:15'
-    }
-    delivery.core -> bus 'ShipmentReleased' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
-    }
+    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_oms_cancel_order {
     title 'Cancel order'
     description 'Reads one order by id.'
-    client -> shop.oms 'CancelOrderRequest' {
+    client -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
     }
@@ -2232,34 +1566,17 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42'
     }
-    shop.oms -> client 'CancelOrderResponse' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_oms_cancel_order_cross {
     title 'Cancel order — crossings only'
-    client -> shop.oms 'CancelOrderRequest' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
-    }
-    alt {
-      when 'otherwise' {
-        shop.oms -> bus 'OrderCancelled' {
-          color verified  line solid  head onormal
-          notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26'
-        }
-      }
-    }
-    shop.oms -> client 'CancelOrderResponse' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_oms_get_order {
     title 'Get order'
     description 'Reads one order by id.'
-    client -> shop.oms 'GetOrderRequest' {
+    client -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
     }
@@ -2267,20 +1584,11 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42'
     }
-    shop.oms -> client 'GetOrderResponse' {
-      color verified  line dashed  head normal
-    }
   }
 
   dynamic view flow_oms_get_order_cross {
     title 'Get order — crossings only'
-    client -> shop.oms 'GetOrderRequest' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
-    }
-    shop.oms -> client 'GetOrderResponse' {
-      color verified  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_oms_place_order_on_basket_checked_out {
@@ -2310,20 +1618,13 @@ views {
 
   dynamic view flow_oms_place_order_on_basket_checked_out_cross {
     title 'Place order on basket checked out — crossings only'
-    bus -> shop.oms 'BasketCheckedOut' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19'
-    }
-    shop.oms -> bus 'OrderPlaced' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31'
-    }
+    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_pricing_archive_price_list {
     title 'Archive price list'
     description 'Package archive_price_list takes a price list out of use without losing it.'
-    client -> shop.pricing 'ArchivePriceListRequest' {
+    client -> shop.pricing 'ArchivePriceListRequest → ArchivePriceListResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50'
     }
@@ -2335,26 +1636,17 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28'
     }
-    shop.pricing -> client 'ArchivePriceListResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_pricing_archive_price_list_cross {
     title 'Archive price list — crossings only'
-    client -> shop.pricing 'ArchivePriceListRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50'
-    }
-    shop.pricing -> client 'ArchivePriceListResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_get_quote {
     title 'Get quote'
     description 'Package get_quote reads one quote.'
-    client -> shop.pricing 'GetQuoteRequest' {
+    client -> shop.pricing 'GetQuoteRequest → GetQuoteResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52'
     }
@@ -2372,26 +1664,17 @@ views {
         }
       }
     }
-    shop.pricing -> client 'GetQuoteResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_pricing_get_quote_cross {
     title 'Get quote — crossings only'
-    client -> shop.pricing 'GetQuoteRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52'
-    }
-    shop.pricing -> client 'GetQuoteResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_import_price_list {
     title 'Import price list'
     description 'Package import_price_list takes in a whole price list.'
-    client -> shop.pricing 'ImportPriceListRequest' {
+    client -> shop.pricing 'ImportPriceListRequest → ImportPriceListResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30'
     }
@@ -2399,26 +1682,17 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43'
     }
-    shop.pricing -> client 'ImportPriceListResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_pricing_import_price_list_cross {
     title 'Import price list — crossings only'
-    client -> shop.pricing 'ImportPriceListRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30'
-    }
-    shop.pricing -> client 'ImportPriceListResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_issue_quote {
     title 'Issue quote'
     description 'Package issue_quote prices a basket and promises the price for a while.'
-    client -> shop.pricing 'IssueQuoteRequest' {
+    client -> shop.pricing 'IssueQuoteRequest → IssueQuoteResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28'
     }
@@ -2434,30 +1708,17 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55'
     }
-    shop.pricing -> client 'IssueQuoteResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_pricing_issue_quote_cross {
     title 'Issue quote — crossings only'
-    client -> shop.pricing 'IssueQuoteRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28'
-    }
-    shop.pricing -> bus 'QuoteIssued' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55'
-    }
-    shop.pricing -> client 'IssueQuoteResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_list_price_lists {
     title 'List price lists'
     description 'Package list_price_lists reads every price list there is.'
-    client -> shop.pricing 'ListPriceListsRequest' {
+    client -> shop.pricing 'ListPriceListsRequest → ListPriceListsResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60'
     }
@@ -2465,20 +1726,11 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22'
     }
-    shop.pricing -> client 'ListPriceListsResponse' {
-      color declared  line dashed  head normal
-    }
   }
 
   dynamic view flow_pricing_list_price_lists_cross {
     title 'List price lists — crossings only'
-    client -> shop.pricing 'ListPriceListsRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60'
-    }
-    shop.pricing -> client 'ListPriceListsResponse' {
-      color declared  line dashed  head normal
-    }
+    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_expire_quote_on_checkout {
@@ -2504,14 +1756,7 @@ views {
 
   dynamic view flow_pricing_expire_quote_on_checkout_cross {
     title 'Expire quote on checkout — crossings only'
-    bus -> shop.pricing 'BasketCheckedOut' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35'
-    }
-    shop.pricing -> bus 'QuoteExpired' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55'
-    }
+    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_gen {

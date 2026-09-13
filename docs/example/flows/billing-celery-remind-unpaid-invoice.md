@@ -12,11 +12,17 @@ Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and 
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `shop.billing` | service | [shop](../shop/README.md) | — |
-| `celery-billing` | broker | — | Celery · billing |
-| `billing-pg` | store | [shop](../shop/README.md) | — |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `shop.billing` | service | [shop](../shop/README.md) | — | — |
+| `celery-billing` | broker | — | — | Celery · billing |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) | — |
+
+## Composition
+
+| Fragment | After step | Seam | Target | Evidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| `billing-celery-body-invoices-tasks-remind-unpaid-invoice` | [work](billing-celery-remind-unpaid-invoice.md#step-work) | `entrypoint` | `python:invoices.tasks:remind_unpaid_invoice` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 
@@ -35,10 +41,10 @@ sequenceDiagram
 
 <a id="step-enqueue"></a>
 1. **shop.billing** → **celery-billing** — enqueue remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · Enqueued after the transaction commits, for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid.
+   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · Enqueued after the transaction commits, for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid. · handoff: send · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-work"></a>
 2. **celery-billing** → **shop.billing** — remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. · continues at `python:invoices.tasks:remind_unpaid_invoice` · handoff: receive · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-continuation-billing-celery-body-invoices-tasks-remind-unpaid-invoice-work-s1"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.filter
    status: declared · [`examples/shop/billing/invoices/tasks.py:32`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L32)

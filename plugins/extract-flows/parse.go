@@ -15,6 +15,7 @@ import (
 //	owner: shop                               the context that owns the flow
 //	source: services/oms/test/x_test.go       where it was read from; the file itself when left out
 //	slug: order-accepted                      only when the file's name is not it
+//	trigger: http high "POST /orders"          optional execution root
 //
 //	One or more paragraphs of summary.
 //
@@ -45,7 +46,7 @@ import (
 //
 // A hop is `from -> to: [call|rpc|event] label-or-ref`, `call` when no kind is
 // written, and after it in any order: `as "label"`, `[status]`, `@file:line`,
-// `#id`. An event's or rpc's label is the last segment of its ref unless `as`
+// `via-store <id> <operation> [keyspace]`, `#id`. An event's or rpc's label is the last segment of its ref unless `as`
 // says otherwise. `stop` ends the alt branch it is in - the flow does not
 // continue past the frame on that path. `else` with no condition is
 // "otherwise". Services are known by their `context.service` id, `bus` and
@@ -86,12 +87,13 @@ type frame struct {
 }
 
 var (
-	titleLine  = regexp.MustCompile(`^#\s+(.+?)\s*$`)
-	metaLine   = regexp.MustCompile(`^(owner|source|slug):\s*(.*?)\s*$`)
-	partLine   = regexp.MustCompile(`^-\s+([^\s:]+):\s*(actor|service|broker|store|external|unknown)(?:\s+in\s+([^\s"]+))?(?:\s+"([^"]*)")?\s*$`)
-	stepLine   = regexp.MustCompile(`^([^\s>]+)\s*->\s*([^\s:]+):\s*(.*)$`)
-	idSuffix   = regexp.MustCompile(`\s+#(\S+)\s*$`)
-	kindPrefix = regexp.MustCompile(`^(call|rpc|event)\s+(.*)$`)
+	titleLine   = regexp.MustCompile(`^#\s+(.+?)\s*$`)
+	metaLine    = regexp.MustCompile(`^(owner|source|slug|trigger):\s*(.*?)\s*$`)
+	triggerLine = regexp.MustCompile(`^(http|callback|event|message|job|startup|scheduled|manual|unproven)\s+(high|medium|low)(?:\s+"([^"]*)")?\s*$`)
+	partLine    = regexp.MustCompile(`^-\s+([^\s:]+):\s*(actor|service|broker|store|external|unknown)(?:\s+in\s+([^\s"]+))?(?:\s+ref\s+([^\s"]+))?(?:\s+"([^"]*)")?\s*$`)
+	stepLine    = regexp.MustCompile(`^([^\s>]+)\s*->\s*([^\s:]+):\s*(.*)$`)
+	idSuffix    = regexp.MustCompile(`\s+#(\S+)\s*$`)
+	kindPrefix  = regexp.MustCompile(`^(call|rpc|event)\s+(.*)$`)
 )
 
 func parseFlow(file, src string) (catalog.Flow, []string) {
@@ -206,6 +208,14 @@ func (p *parser) head(i int, line string, paragraph *[]string, flush func()) {
 			p.sawSource = true
 		case "slug":
 			p.flow.Slug = m[2]
+		case "trigger":
+			trigger := triggerLine.FindStringSubmatch(m[2])
+			if trigger == nil {
+				p.fail(i, "trigger is `<http|callback|event|message|job|startup|scheduled|manual|unproven> <high|medium|low> [\"label\"]`")
+
+				return
+			}
+			p.flow.Trigger = &catalog.FlowTrigger{Kind: trigger[1], Confidence: trigger[2], Label: trigger[3]}
 		}
 
 		return
@@ -219,17 +229,17 @@ func (p *parser) participant(i int, line string) {
 	}
 	m := partLine.FindStringSubmatch(line)
 	if m == nil {
-		p.fail(i, "not a participant: write `- <id>: <kind> [in <context>] [\"label\"]`, with kind one of actor, service, broker, store, external, unknown")
+		p.fail(i, "not a participant: write `- <id>: <kind> [in <context>] [ref <entity>] [\"label\"]`, with kind one of actor, service, broker, store, external, unknown")
 
 		return
 	}
-	id, kind, context, label := m[1], m[2], m[3], m[4]
+	id, kind, context, entityRef, label := m[1], m[2], m[3], m[4], m[5]
 	if _, dup := p.lanes[id]; dup {
 		p.fail(i, "participant "+id+" is declared twice")
 
 		return
 	}
-	lane := catalog.Participant{ID: id, Kind: catalog.ParticipantKind(kind), Label: label}
+	lane := catalog.Participant{ID: id, Kind: catalog.ParticipantKind(kind), Label: label, EntityRef: entityRef}
 	if kind == "service" && context == "" {
 		context, _, _ = strings.Cut(id, ".")
 	}
@@ -470,7 +480,7 @@ func (p *parser) hop(i int, rest string) *catalog.Step {
 	// The label runs up to the first trailer: ` as "`, ` [`, ` @`, ` #`.
 	head, tail := rest, ""
 	cut := len(rest)
-	for _, marker := range []string{` as "`, ` [`, ` @`, ` #`} {
+	for _, marker := range []string{` as "`, ` [`, ` @`, ` via-store `, ` #`} {
 		if at := strings.Index(rest, marker); at >= 0 && at < cut {
 			cut = at
 		}
@@ -539,10 +549,29 @@ func (p *parser) hop(i int, rest string) *catalog.Step {
 			}
 		case strings.HasPrefix(part, "@"):
 			step.Line = strings.TrimSpace(part[1:])
+		case strings.HasPrefix(part, "via-store "):
+			fields := strings.Fields(strings.TrimPrefix(part, "via-store "))
+			if len(fields) < 2 || len(fields) > 3 {
+				p.fail(i, "store access is `via-store <store-id> <read|write|delete|exists|expire|count> [keyspace]`")
+
+				return nil
+			}
+			operation := catalog.RedisOperation(fields[1])
+			switch operation {
+			case catalog.RedisOperationRead, catalog.RedisOperationWrite, catalog.RedisOperationDelete, catalog.RedisOperationExists, catalog.RedisOperationExpire, catalog.RedisOperationCount:
+			default:
+				p.fail(i, "unknown store operation "+strconv.Quote(fields[1]))
+
+				return nil
+			}
+			step.StoreAccess = &catalog.FlowStoreAccess{Store: fields[0], Operation: operation}
+			if len(fields) == 3 {
+				step.StoreAccess.Keyspace = fields[2]
+			}
 		case strings.HasPrefix(part, "#"):
 			explicit = strings.TrimSpace(part[1:])
 		default:
-			p.fail(i, "cannot read "+strconv.Quote(part)+" after the label; what may follow is as \"label\", [status], @file:line and #id")
+			p.fail(i, "cannot read "+strconv.Quote(part)+" after the label; what may follow is as \"label\", [status], @file:line, via-store <id> <operation> [keyspace] and #id")
 
 			return nil
 		}
@@ -568,7 +597,7 @@ func trailers(tail string) []string {
 	var out []string
 	for tail != "" {
 		cut := len(tail)
-		for _, marker := range []string{` as "`, ` [`, ` @`, ` #`} {
+		for _, marker := range []string{` as "`, ` [`, ` @`, ` via-store `, ` #`} {
 			if at := strings.Index(tail, marker); at >= 0 && at < cut {
 				cut = at
 			}

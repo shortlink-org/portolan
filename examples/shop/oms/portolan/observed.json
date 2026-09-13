@@ -107,7 +107,8 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.oms.pg"
         },
         {
           "id": "bus",
@@ -246,7 +247,8 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.oms.pg"
         }
       ],
       "steps": [
@@ -337,7 +339,8 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "entityRef": "shop.oms.pg"
         }
       ],
       "steps": [

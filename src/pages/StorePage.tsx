@@ -8,6 +8,7 @@
 
 import { Link, useParams } from "react-router";
 import { catalog } from "../data";
+import { walkSteps } from "../catalog";
 import { PageHeader } from "../components/PageHeader";
 import { paths } from "../routes";
 import { ContextPill } from "../components/primitives";
@@ -41,6 +42,18 @@ export function StorePage() {
   const columns = storeColumnCount(store);
   const views = storeViewCount(store);
   const keyspaces = store.keyspaces ?? [];
+  const usedIn = catalog.flows.flatMap((flow) => {
+    const lanes = new Set(
+      flow.participants
+        .filter((participant) => participant.entityRef === store.id)
+        .map((participant) => participant.id),
+    );
+    return walkSteps(flow.steps).flatMap((step, index) =>
+      step.storeAccess?.store === store.id || lanes.has(step.from) || lanes.has(step.to)
+        ? [{ flow, step, number: index + 1 }]
+        : [],
+    );
+  });
 
   return (
     <div className="flex h-full flex-col">
@@ -103,6 +116,23 @@ export function StorePage() {
       {/* The canvas takes the rest of the pane rather than a fixed height: on
           this page the schema IS the content, so it gets the room. */}
       <div className="min-h-0 flex-1 overflow-auto p-gutter">
+        {usedIn.length > 0 ? (
+          <section className="mb-section max-w-table" aria-labelledby="used-in-flows">
+            <h2 id="used-in-flows" className="label mb-2 text-faint">Used in flows</h2>
+            <div className="flex flex-wrap gap-1.5">
+              {usedIn.map(({ flow, step, number }) => (
+                <Link
+                  key={`${flow.slug}:${step.id}`}
+                  to={paths.flowStep(flow.slug, step.id)}
+                  className="chip border-line-strong hover:border-accent hover:text-accent"
+                  title={`${flow.name}, step ${number}${step.storeAccess?.method ? ` · ${step.storeAccess.method}` : ""}`}
+                >
+                  {flow.name} · {number}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
         {keyspaces.length > 0 ? (
           <RedisSchema store={store} />
         ) : (

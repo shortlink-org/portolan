@@ -1,5 +1,71 @@
 [
   {
+    "id": "merge-conflict",
+    "over": "service",
+    "severity": "error",
+    "title": "Catalog sources disagree",
+    "note": "a catalog value lost a merge conflict",
+    "description": "Two catalog sources define the same identity incompatibly. The first value is currently used, so hiding the conflict would make the rendered estate look more certain than it is.",
+    "action": "Open the losing source, reconcile it with the source named in the message, and regenerate the catalog.",
+    "when": "false",
+    "message": "''"
+  },
+  {
+    "id": "flow-trigger-missing",
+    "over": "flow",
+    "severity": "warning",
+    "title": "Flow has no trigger",
+    "note": "the execution root is not documented",
+    "description": "The flow has no source-backed or authored trigger, so a reader cannot tell what starts it.",
+    "action": "Teach the extractor to emit a trigger, or declare the authored flow's trigger explicitly.",
+    "when": "flow.trigger == ''",
+    "message": "flow.name + ' has no trigger or trigger confidence.'"
+  },
+  {
+    "id": "flow-summary-empty",
+    "over": "flow",
+    "severity": "warning",
+    "title": "Flow has no summary",
+    "note": "the flow says what happens but not why",
+    "description": "A sequence without a summary forces readers to infer its purpose from implementation-level steps.",
+    "action": "Add one deterministic sentence describing the trigger, business outcome and important boundary.",
+    "when": "flow.summary == ''",
+    "message": "flow.name + ' has an empty summary.'"
+  },
+  {
+    "id": "flow-step-unresolved",
+    "over": "flow",
+    "severity": "error",
+    "title": "Flow contains unresolved steps",
+    "note": "one or more flow hops resolve to nothing",
+    "description": "At least one step names a contract or participant the merged catalog cannot resolve.",
+    "action": "Add the missing source, correct the step ref, or intentionally model the destination as an external system.",
+    "when": "flow.unresolvedSteps > 0",
+    "message": "flow.name + ' contains ' + string(flow.unresolvedSteps) + ' unresolved step(s).'"
+  },
+  {
+    "id": "flow-crossing-uncontracted",
+    "over": "flow",
+    "severity": "error",
+    "title": "Context crossing has no contract",
+    "note": "a bounded-context crossing names no resolved contract",
+    "description": "A flow crosses from one bounded context into another without a resolved RPC or event reference.",
+    "action": "Attach the RPC method or event id to the step and include the owning contract source.",
+    "when": "flow.uncontractedCrossings > 0",
+    "message": "flow.name + ' has ' + string(flow.uncontractedCrossings) + ' context crossing(s) without a resolved contract.'"
+  },
+  {
+    "id": "flow-observed-coverage-low",
+    "over": "flow",
+    "severity": "warning",
+    "title": "Flow has low observed coverage",
+    "note": "fewer than half of the flow steps appear in recordings",
+    "description": "Static extraction describes the sequence, but recordings cover less than half of its hops.",
+    "action": "Add representative traces or verification fixtures for the uncovered path.",
+    "when": "flow.steps > 0 && flow.observedCoverage < 50",
+    "message": "flow.name + ' has ' + string(flow.observedCoverage) + '% observed step coverage.'"
+  },
+  {
     "id": "rpc",
     "over": "call",
     "severity": "error",

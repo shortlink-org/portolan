@@ -310,6 +310,17 @@ describe("validateCatalog: flow frames", () => {
     const flow = good.flows[0]!;
     const first = walkSteps(flow.steps)[0]!;
     flow.includes = ["downstream-worker"];
+    flow.composition = [{
+      flow: "downstream-worker",
+      source: "workers/email.go",
+      seam: {
+        afterStep: first.id,
+        kind: "reachability",
+        target: "jobs/email:Worker.Work",
+        basis: "source reachability",
+        confidence: "high",
+      },
+    }];
     first.reaches = ["jobs/email:Worker.Work"];
     first.handoff = {
       kind: "message",
@@ -327,6 +338,52 @@ describe("validateCatalog: flow frames", () => {
       direction: "receive",
     };
     expect(() => validateCatalog(bad)).toThrow(/job handoff with no message/);
+
+    const badSeam = clone();
+    badSeam.flows[0]!.includes = ["worker"];
+    badSeam.flows[0]!.composition = [
+      {
+        flow: "worker",
+        seam: {
+          afterStep: "missing",
+          kind: "entrypoint",
+          target: "x",
+          basis: "exact",
+          confidence: "high",
+        },
+      },
+    ];
+    expect(() => validateCatalog(badSeam)).toThrow(
+      /composition seam names unknown step/,
+    );
+
+    const emptyEvidence = clone();
+    const seamStep = walkSteps(emptyEvidence.flows[0]!.steps)[0]!;
+    emptyEvidence.flows[0]!.includes = ["worker"];
+    emptyEvidence.flows[0]!.composition = [
+      {
+        flow: "worker",
+        seam: {
+          afterStep: seamStep.id,
+          kind: "entrypoint",
+          target: " ",
+          basis: "exact",
+          confidence: "high",
+        },
+      },
+    ];
+    expect(() => validateCatalog(emptyEvidence)).toThrow(/empty seam target/);
+  });
+
+  it("validates participant entity references", () => {
+    const good = clone();
+    const participant = good.flows[0]!.participants.find((item) => item.kind === "service")!;
+    participant.entityRef = participant.id;
+    expect(() => validateCatalog(good)).not.toThrow();
+
+    const bad = clone();
+    bad.flows[0]!.participants[0]!.entityRef = "missing.entity";
+    expect(() => validateCatalog(bad)).toThrow(/refers to unknown entity/);
   });
 
   it("validates that a response reverses the rpc request it names", () => {

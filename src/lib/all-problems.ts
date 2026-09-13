@@ -11,15 +11,34 @@ import type { Catalog, CatalogIndex } from "../catalog";
 import type { Problem } from "./derive";
 import { currentRuleEntries, evaluateRules, resolveRules } from "./problem-rules";
 import type { ProblemRule, RuleEvaluation } from "./problem-rules";
+import type { MergeConflict } from "../merge";
 
 /** The rules over the catalog, with what they had to say about it. */
 export function evaluateProblems(
   catalog: Catalog,
   index: CatalogIndex,
   rules: readonly ProblemRule[] = resolveRules(currentRuleEntries()),
+  conflicts: readonly MergeConflict[] = [],
 ): RuleEvaluation {
   const evaluation = evaluateRules(catalog, index, rules);
-  return { ...evaluation, problems: bySeverity(evaluation.problems) };
+  const mergeEnabled = rules.find((rule) => rule.id === "merge-conflict")?.enabled !== false;
+  const mergeProblems: Problem[] = (mergeEnabled ? conflicts : []).map((conflict) => ({
+    rule: "merge-conflict",
+    severity: "error",
+    context: "",
+    service: "",
+    id: conflict.where,
+    peer: conflict.path,
+    note: conflict.message,
+    source: conflict.path,
+  }));
+  const matches = new Map(evaluation.matches);
+  matches.set("merge-conflict", conflicts.length);
+  return {
+    ...evaluation,
+    matches,
+    problems: bySeverity([...mergeProblems, ...evaluation.problems]),
+  };
 }
 
 export function allProblems(

@@ -715,6 +715,23 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
       "HTTP response",
     ]);
     expect(root.includes).toEqual(["void-job", "void-http"]);
+    expect(root.composition).toEqual([
+      expect.objectContaining({
+        flow: "void-job",
+        seam: expect.objectContaining({
+          afterStep: expect.any(String),
+          kind: "reachability",
+          confidence: "high",
+        }),
+      }),
+      expect.objectContaining({
+        flow: "void-http",
+        seam: expect.objectContaining({
+          kind: "entrypoint",
+          confidence: "high",
+        }),
+      }),
+    ]);
     expect(once.flows.map((item) => item.slug)).toEqual([
       "void-api",
       "void-job",
@@ -1690,6 +1707,25 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
         .branches[0]!.steps[0] as Extract<FlowNode, { type: "step" }>;
     expect(inside(once).ref).toBe(EVENT);
     expect(twice).toEqual(once);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("enrichCatalog: canonical flow participants", () => {
+  it("links a store alias when its adjacent service owns exactly one store", () => {
+    const input = estate([flow("save", [step("shop.oms", "oms-db", "call", { label: "save" })])]);
+    input.stores = [{
+      id: "shop.oms.pg",
+      slug: "pg",
+      name: "OMS database",
+      kind: "postgres",
+      owner: "shop.oms",
+      tables: [],
+    }];
+    const result = enrichCatalog(input).catalog;
+    expect(result.flows[0]!.participants.find((participant) => participant.id === "oms-db")?.entityRef).toBe("shop.oms.pg");
+    expect(enrichCatalog(result).catalog).toEqual(result);
   });
 });
 

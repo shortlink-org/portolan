@@ -10,11 +10,11 @@ Package archive_price_list takes a price list out of use without losing it.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.pricing` | service | [shop](../shop/README.md) |
-| `pricing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-pg` | store | [shop](../shop/README.md) | [shop.pricing.pg](../shop/pricing/stores/pg.md) |
 
 ## Sequence
 
@@ -33,10 +33,10 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ArchivePriceList → ArchivePriceListResponse
-   `shop.v1.PriceLists/ArchivePriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
+   `shop.v1.PriceLists/ArchivePriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50) · evidence: call-site · source-expression · `ArchivePriceList` · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — ByID
-   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22)
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `ByID` · evidence: function · source-function · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list:UseCase.Handle` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L21) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22) · evidence: call-site · source-expression · `ByID` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22)
 <a id="step-s3"></a>
 3. **shop.pricing** → **pricing-pg** — Save
-   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28)
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28) · store: [shop.pricing.pg](../shop/pricing/stores/pg.md) · `Save` · evidence: function · source-function · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list:UseCase.Handle` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L21) · evidence: binding · domain-port-convention · `price_list.Repository` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28) · evidence: call-site · source-expression · `Save` · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28)

@@ -10,11 +10,11 @@ Closes the invoice for an order once the ledger says the money arrived.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) |
 
 ## Sequence
 

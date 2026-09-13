@@ -8,11 +8,11 @@
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
 
 ## Sequence
 

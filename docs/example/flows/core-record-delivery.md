@@ -10,12 +10,12 @@ Ends a shipment at the door.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `delivery.core` | service | [delivery](../delivery/README.md) |
-| `core-pg` | store | [delivery](../delivery/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 

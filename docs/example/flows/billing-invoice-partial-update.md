@@ -10,10 +10,10 @@ Invoices over HTTP. Every action here runs one function of services.py.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 

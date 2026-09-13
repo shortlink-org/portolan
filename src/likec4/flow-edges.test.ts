@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../data";
-import type { Flow } from "../catalog";
 import { walkSteps } from "../catalog";
 import { hiddenStepIds } from "../flow/cross-context";
-import {
-  drawnEdgeStepIds,
-  drawnStepIds,
-  pairEdgesToSteps,
-} from "./flow-edges";
+import { drawnStepIds, pairEdgesToSteps } from "./flow-edges";
 
 describe("pairEdgesToSteps", () => {
   it("pairs by position, both ways", () => {
@@ -19,14 +14,10 @@ describe("pairEdgesToSteps", () => {
     expect(pairing.edgeOf.get("s3")).toBe("step-02:par.02");
   });
 
-  it("pairs a request and its generated response to the same catalog step", () => {
-    const pairing = pairEdgesToSteps(
-      ["step-01", "step-02"],
-      ["request", "request"],
-    );
-    expect(pairing.stepOf.get("step-02")).toBe("request");
-    expect(pairing.edgeOf.get("request")).toBe("step-01");
-    expect(pairing.edgesOf.get("request")).toEqual(["step-01", "step-02"]);
+  it("pairs one request/response relation to one catalog step", () => {
+    const pairing = pairEdgesToSteps(["step-01"], ["request"]);
+    expect(pairing.stepOf.get("step-01")).toBe("request");
+    expect(pairing.edgesOf.get("request")).toEqual(["step-01"]);
   });
 
   /**
@@ -63,52 +54,5 @@ describe("drawnStepIds", () => {
         walkSteps(flow.steps).length - hidden.size,
       );
     }
-  });
-});
-
-describe("drawnEdgeStepIds", () => {
-  it("returns nested RPC responses in place and the actor response at the end", () => {
-    const flow: Flow = {
-      id: "flow.checkout",
-      slug: "checkout",
-      name: "Checkout",
-      summary: "",
-      owner: "shop",
-      participants: [
-        { id: "client", kind: "actor", context: null },
-        { id: "shop.cart", kind: "service", context: "shop" },
-        { id: "auth.auth", kind: "service", context: "auth" },
-      ],
-      steps: [
-        {
-          type: "step",
-          id: "root",
-          from: "client",
-          to: "shop.cart",
-          kind: "rpc",
-          status: "declared",
-        },
-        {
-          type: "step",
-          id: "nested",
-          from: "shop.cart",
-          to: "auth.auth",
-          kind: "rpc",
-          status: "declared",
-        },
-        {
-          type: "step",
-          id: "done",
-          from: "shop.cart",
-          to: "client",
-          kind: "event",
-          status: "declared",
-        },
-      ],
-    };
-
-    expect(
-      drawnEdgeStepIds(flow, false, new Set(["root", "nested"])),
-    ).toEqual(["root", "nested", "nested", "done", "root"]);
   });
 });

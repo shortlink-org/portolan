@@ -10,11 +10,11 @@ Every refund against one payment, newest first.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
 
 ## Sequence
 

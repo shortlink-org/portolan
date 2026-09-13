@@ -10,12 +10,12 @@ Reads one order by id.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `oms-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
+| `bus` | broker | — | — |
 
 ## Sequence
 

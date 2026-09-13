@@ -10,11 +10,11 @@ The basket as the cart has it, in the storefront's words.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `storefront.bff` | service | [storefront](../storefront/README.md) |
-| `shop.cart` | service | [shop](../shop/README.md) |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `storefront.bff` | service | [storefront](../storefront/README.md) | — |
+| `shop.cart` | service | [shop](../shop/README.md) | — |
 
 ## Sequence
 

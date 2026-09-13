@@ -13,8 +13,11 @@ export function isCrossContext(
   if (step.from === step.to) return false;
   const a = contextOf(step.from);
   const b = contextOf(step.to);
-  if (a !== null && a === b) return false;
-  return true;
+  // "Cross-context" means exactly that: both ends belong to bounded
+  // contexts and those contexts differ. Actor, broker and external-system
+  // boundaries are useful, but they are a different question and must not be
+  // smuggled into this filter under a broader meaning.
+  return a !== null && b !== null && a !== b;
 }
 
 export function contextResolver(

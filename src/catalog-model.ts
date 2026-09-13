@@ -1066,6 +1066,8 @@ export interface Flow {
   entrypoint?: string;
   /** Source-backed flow fragments composed into this root flow. */
   includes?: string[];
+  /** Why and where each source-backed fragment was composed. */
+  composition?: FlowComposition[];
   /**
    * The top-level group this flow belongs to. Whatever derived the flow read
    * one component's tree to find it and therefore knows the answer, so the flow
@@ -1137,6 +1139,23 @@ export interface Participant {
   kind: "actor" | "service" | "broker" | "store" | "external" | "unknown";
   context: string | null; // null for actors and brokers
   label?: string;
+  /** Canonical Service, Store or External id represented by this lane. */
+  entityRef?: string;
+}
+export interface FlowComposition {
+  /** Slug of the fragment inserted into the root flow. */
+  flow: string;
+  /** Source file of that fragment, when known. */
+  source?: string;
+  seam: {
+    /** Step after which the fragment was inserted, in the composed flow. */
+    afterStep: string;
+    kind: "entrypoint" | "reachability" | "handoff";
+    /** Source function or transport/channel tuple that proves the seam. */
+    target: string;
+    basis: string;
+    confidence: "high" | "medium" | "low";
+  };
 }
 export type FlowNode = Step | Parallel | Alt | Loop;
 /** Source facts used to derive a relationship; not a runtime trace. */

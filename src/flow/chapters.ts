@@ -46,6 +46,8 @@ export interface Chapter {
   contexts: string[];
   /** An alt whose opening branch ends the flow rather than rejoining it. */
   terminal?: boolean;
+  /** Source fragment that contributed this episode, for composed flows. */
+  origin?: string;
 }
 
 /** A chapter and the rail rows that fall under it, in rail order. */
@@ -86,6 +88,7 @@ export function buildChapters(flow: Flow): Chapter[] {
     title: string,
     steps: Step[],
     terminal?: boolean,
+    origin?: string,
   ): void => {
     if (steps.length === 0) return;
     const status = { ...NO_STATUS };
@@ -109,11 +112,24 @@ export function buildChapters(flow: Flow): Chapter[] {
       status,
       contexts,
       ...(terminal ? { terminal: true } : {}),
+      ...(origin ? { origin } : {}),
     });
   };
 
+  const compositionPrefixes = (flow.composition ?? [])
+    .map((item) => ({
+      flow: item.flow,
+      prefix: `continuation-${item.flow}-${item.seam.afterStep}-`,
+    }))
+    .sort((a, b) => b.prefix.length - a.prefix.length);
+  const originOf = (step: Step | undefined): string | undefined =>
+    step
+      ? compositionPrefixes.find((item) => step.id.startsWith(item.prefix))?.flow
+      : undefined;
+
   /** The plain steps seen since the last frame, waiting for a name. */
   let run: Step[] = [];
+  let runOrigin: string | undefined;
   const flushRun = (): void => {
     if (run.length === 0) return;
     const first = run[0];
@@ -122,16 +138,21 @@ export function buildChapters(flow: Flow): Chapter[] {
       run = [];
       return;
     }
-    const title =
+    const baseTitle =
       run.length === 1
         ? stepTitle(first)
         : `${stepTitle(first)} → ${stepTitle(last)}`;
-    describe(`steps:${first.id}`, "steps", title, run);
+    const title = runOrigin ? `${runOrigin} · ${baseTitle}` : baseTitle;
+    describe(`steps:${first.id}`, "steps", title, run, undefined, runOrigin);
     run = [];
+    runOrigin = undefined;
   };
 
   for (const node of flow.steps as FlowNode[]) {
     if (node.type === "step") {
+      const origin = originOf(node);
+      if (run.length > 0 && origin !== runOrigin) flushRun();
+      runOrigin = origin;
       run.push(node);
       continue;
     }
@@ -149,16 +170,21 @@ export function buildChapters(flow: Flow): Chapter[] {
         opening?.title ?? "alt",
         walkSteps([node]),
         opening?.terminal,
+        originOf(walkSteps([node])[0]),
       );
       continue;
     }
 
     if (node.type === "parallel") {
-      describe(node.id, "par", node.title ?? "in parallel", walkSteps([node]));
+      const steps = walkSteps([node]);
+      const origin = originOf(steps[0]);
+      describe(node.id, "par", origin ? `${origin} · ${node.title ?? "in parallel"}` : node.title ?? "in parallel", steps, undefined, origin);
       continue;
     }
 
-    describe(node.id, "loop", node.title, walkSteps([node]));
+    const steps = walkSteps([node]);
+    const origin = originOf(steps[0]);
+    describe(node.id, "loop", origin ? `${origin} · ${node.title}` : node.title, steps, undefined, origin);
   }
 
   flushRun();

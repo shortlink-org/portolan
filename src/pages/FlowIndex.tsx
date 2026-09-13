@@ -21,6 +21,8 @@ import { FlowTrigger } from "../components/FlowTrigger";
 import { paths } from "../routes";
 
 type Sort = "contexts" | "name" | "steps" | "health";
+type Protocol = "all" | "rpc" | "event" | "call" | "response";
+const CONTROL = "mono rounded-control border border-line bg-canvas px-2 py-1 text-ink outline-none focus:border-accent";
 
 const SORTS: { key: Sort; label: string }[] = [
   { key: "contexts", label: "contexts crossed" },
@@ -42,6 +44,9 @@ export function FlowIndex() {
   useDocumentTitle("Flows");
   const [sort, setSort] = useState<Sort>("contexts");
   const [active, setActive] = useState<Set<string>>(new Set());
+  const [trigger, setTrigger] = useState("all");
+  const [protocol, setProtocol] = useState<Protocol>("all");
+  const [verification, setVerification] = useState<FlowHealth | "all">("all");
   // `?owner=` is how the sidebar's "view all n" arrives: the reader asked for
   // one context's flows, which is a different question from "flows that touch
   // this context" - the chips below answer that one - so it gets its own line
@@ -55,6 +60,16 @@ export function FlowIndex() {
   const rows = useMemo(() => {
     const built = catalog.flows
       .filter((flow) => owner === null || flowOwner(flow) === owner)
+      .filter(
+        (flow) =>
+          trigger === "all" ||
+          (flow.trigger?.kind ?? "missing") === trigger,
+      )
+      .filter(
+        (flow) =>
+          protocol === "all" ||
+          walkSteps(flow.steps).some((step) => step.kind === protocol),
+      )
       .map((flow) => ({
         flow,
         contexts: flowContexts(flow),
@@ -62,10 +77,14 @@ export function FlowIndex() {
         health: flowHealth(flow),
         counts: statusCounts(flow),
       }));
+    const verified =
+      verification === "all"
+        ? built
+        : built.filter((row) => row.health === verification);
     const filtered =
       active.size === 0
-        ? built
-        : built.filter((r) => r.contexts.some((c) => active.has(c)));
+        ? verified
+        : verified.filter((r) => r.contexts.some((c) => active.has(c)));
     // Every comparator falls through to the name, so the order is total and
     // the grid does not reshuffle between renders.
     const sorted = [...filtered];
@@ -89,7 +108,7 @@ export function FlowIndex() {
       );
     }
     return sorted;
-  }, [sort, active, owner]);
+  }, [sort, active, owner, trigger, protocol, verification]);
 
   const toggleContext = (id: string) =>
     setActive((prev) => {
@@ -118,6 +137,37 @@ export function FlowIndex() {
           className="ml-auto flex flex-wrap items-center gap-2"
           hidden={bare}
         >
+          <select
+            aria-label="Filter by owner"
+            className={CONTROL}
+            value={owner ?? "all"}
+            onChange={(event) => setOwner(event.target.value === "all" ? null : event.target.value)}
+          >
+            <option value="all">all owners</option>
+            {catalog.contexts.map((context) => (
+              <option key={context.id} value={context.id}>{context.id}</option>
+            ))}
+          </select>
+          <select aria-label="Filter by trigger" className={CONTROL} value={trigger} onChange={(event) => setTrigger(event.target.value)}>
+            <option value="all">all triggers</option>
+            <option value="missing">missing trigger</option>
+            {[...new Set(catalog.flows.flatMap((flow) => flow.trigger ? [flow.trigger.kind] : []))].sort().map((kind) => (
+              <option key={kind} value={kind}>{kind}</option>
+            ))}
+          </select>
+          <select aria-label="Filter by protocol" className={CONTROL} value={protocol} onChange={(event) => setProtocol(event.target.value as Protocol)}>
+            <option value="all">all protocols</option>
+            <option value="rpc">rpc</option>
+            <option value="event">event</option>
+            <option value="call">internal call</option>
+            <option value="response">explicit response</option>
+          </select>
+          <select aria-label="Filter by verification" className={CONTROL} value={verification} onChange={(event) => setVerification(event.target.value as FlowHealth | "all")}>
+            <option value="all">all verification</option>
+            <option value="verified">verified</option>
+            <option value="declared">declared</option>
+            <option value="unresolved">unresolved</option>
+          </select>
           {/* One filter over one list, so one border round it. A pressed
               member keeps its own context colour - that is the thing being
               filtered, and it must not collapse into a single accent. */}

@@ -10,14 +10,14 @@ Asks the gateway to hold the money for an order, and records either that it agre
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-| `ledger-pg` | store | [payments](../payments/README.md) |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `bus` | broker | — |
-| `stripe` | external | — |
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `bus` | broker | — | — |
+| `stripe` | external | — | — |
 
 ## Sequence
 

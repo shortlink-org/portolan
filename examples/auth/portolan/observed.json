@@ -92,7 +92,8 @@
         {
           "id": "auth-pg",
           "kind": "store",
-          "context": "auth"
+          "context": "auth",
+          "entityRef": "auth.auth.pg"
         },
         {
           "id": "bus",
@@ -332,7 +333,8 @@
         {
           "id": "auth-pg",
           "kind": "store",
-          "context": "auth"
+          "context": "auth",
+          "entityRef": "auth.auth.pg"
         }
       ],
       "steps": [
@@ -480,7 +482,8 @@
         {
           "id": "auth-pg",
           "kind": "store",
-          "context": "auth"
+          "context": "auth",
+          "entityRef": "auth.auth.pg"
         },
         {
           "id": "bus",
@@ -1387,7 +1390,8 @@
         {
           "id": "auth-pg",
           "kind": "store",
-          "context": "auth"
+          "context": "auth",
+          "entityRef": "auth.auth.pg"
         },
         {
           "id": "bus",
@@ -1572,7 +1576,8 @@
         {
           "id": "auth-pg",
           "kind": "store",
-          "context": "auth"
+          "context": "auth",
+          "entityRef": "auth.auth.pg"
         },
         {
           "id": "bus",
@@ -1881,7 +1886,8 @@
         {
           "id": "auth-pg",
           "kind": "store",
-          "context": "auth"
+          "context": "auth",
+          "entityRef": "auth.auth.pg"
         }
       ],
       "steps": [

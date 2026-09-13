@@ -18,29 +18,22 @@ if (!checkout) throw new Error("fixture missing checkout flow");
 
 describe("isCrossContext", () => {
   it("drops internal calls, self messages and same-context hops", () => {
-    expect([...hiddenStepIds(checkout)].sort()).toEqual([
-      "s10",
-      "s11",
-      "s13",
-      "s17",
-      "s18",
-      "s2",
-      "s23",
-      "s3",
-      "s33",
-      "s4",
-      "s41",
-      "s6",
-      "s8",
-    ]);
+    const contextOf = contextResolver(checkout);
+    const hidden = hiddenStepIds(checkout);
+    for (const step of walkSteps(checkout.steps)) {
+      const from = contextOf(step.from);
+      const to = contextOf(step.to);
+      const crossing = step.kind !== "call" && step.from !== step.to && from !== null && to !== null && from !== to;
+      expect(hidden.has(step.id), step.id).toBe(!crossing);
+    }
   });
 
-  it("keeps hops touching a null-context lane", () => {
+  it("does not call actor or broker boundaries context crossings", () => {
     const contextOf = contextResolver(checkout);
     const s12 = walkSteps(checkout.steps).find((s) => s.id === "s12");
     if (!s12) throw new Error("no s12");
     // shop.oms (shop) -> bus (null)
-    expect(isCrossContext(s12, contextOf)).toBe(true);
+    expect(isCrossContext(s12, contextOf)).toBe(false);
   });
 });
 
@@ -91,7 +84,7 @@ describe("generated LikeC4 views agree with the predicate", () => {
     for (const id of hidden) {
       const label = labelOf(id);
       if (shown.has(label)) continue;
-      expect(section, `${flow.slug}: ${label}`).not.toContain(label);
+      expect(section, `${flow.slug}: ${label}`).not.toContain(`'${label}' {`);
     }
   });
 });

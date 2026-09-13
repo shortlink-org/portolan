@@ -472,6 +472,10 @@ export function validateCatalog(catalog: Catalog): Catalog {
   );
 
   const flowGroupIds = new Set(catalog.contexts.map((c) => c.id));
+  const flowEntityKind = new Map<string, "service" | "store" | "external">();
+  for (const service of allServices(catalog)) flowEntityKind.set(service.id, "service");
+  for (const store of allStores(catalog)) flowEntityKind.set(store.id, "store");
+  for (const external of catalog.externals ?? []) flowEntityKind.set(external.id, "external");
 
   const triggerKinds = new Set<FlowTrigger["kind"]>([
     "http",
@@ -497,6 +501,21 @@ export function validateCatalog(catalog: Catalog): Catalog {
         `flow "${flow.slug}" has duplicate participant ids`,
         `flow ${flow.id}`,
       );
+    }
+    for (const participant of flow.participants) {
+      if (!participant.entityRef) continue;
+      const expected = flowEntityKind.get(participant.entityRef);
+      if (!expected) {
+        fail(
+          `flow "${flow.slug}" participant "${participant.id}" refers to unknown entity "${participant.entityRef}"`,
+          `flow ${flow.id} / participant ${participant.id}`,
+        );
+      } else if (participant.kind !== expected && participant.kind !== "unknown") {
+        fail(
+          `flow "${flow.slug}" participant "${participant.id}" is ${participant.kind} but entity "${participant.entityRef}" is ${expected}`,
+          `flow ${flow.id} / participant ${participant.id}`,
+        );
+      }
     }
     // Whatever derived the flow knew which service's tree it was reading, so
     // there is no case where the owner is unknowable. Without it the flow has
@@ -734,6 +753,58 @@ export function validateCatalog(catalog: Catalog): Catalog {
         fail(
           `flow "${flow.slug}" response "${step.id}" does not reverse request "${request.id}"`,
           `flow ${flow.id} / step ${step.id}`,
+        );
+      }
+    }
+    for (const composition of flow.composition ?? []) {
+      if (!composition.flow || composition.flow === flow.slug) {
+        fail(
+          `flow "${flow.slug}" composition names an empty or self fragment "${composition.flow}"`,
+          `flow ${flow.id} / composition ${composition.flow}`,
+        );
+      }
+      if (!stepIds.has(composition.seam.afterStep)) {
+        fail(
+          `flow "${flow.slug}" composition seam names unknown step "${composition.seam.afterStep}"`,
+          `flow ${flow.id} / composition ${composition.flow}`,
+        );
+      }
+      if (!composition.seam.target.trim()) {
+        fail(
+          `flow "${flow.slug}" composition fragment "${composition.flow}" has an empty seam target`,
+          `flow ${flow.id} / composition ${composition.flow}`,
+        );
+      }
+      if (!composition.seam.basis.trim()) {
+        fail(
+          `flow "${flow.slug}" composition fragment "${composition.flow}" has an empty seam basis`,
+          `flow ${flow.id} / composition ${composition.flow}`,
+        );
+      }
+      if (!(flow.includes ?? []).includes(composition.flow)) {
+        fail(
+          `flow "${flow.slug}" composition fragment "${composition.flow}" is absent from includes`,
+          `flow ${flow.id} / composition ${composition.flow}`,
+        );
+      }
+      if (
+        !(["entrypoint", "reachability", "handoff"] as const).includes(
+          composition.seam.kind,
+        )
+      ) {
+        fail(
+          `flow "${flow.slug}" composition has unknown seam kind "${composition.seam.kind}"`,
+          `flow ${flow.id} / composition ${composition.flow}`,
+        );
+      }
+      if (
+        !(["high", "medium", "low"] as const).includes(
+          composition.seam.confidence,
+        )
+      ) {
+        fail(
+          `flow "${flow.slug}" composition has unknown confidence "${composition.seam.confidence}"`,
+          `flow ${flow.id} / composition ${composition.flow}`,
         );
       }
     }

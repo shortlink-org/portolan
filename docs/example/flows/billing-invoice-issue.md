@@ -10,15 +10,24 @@ Confirms the session, freezes the invoice and asks the customer to pay. Source-b
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `shop.billing` | service | [shop](../shop/README.md) | — |
-| `auth.auth` | service | [auth](../auth/README.md) | — |
-| `billing-pg` | store | [shop](../shop/README.md) | — |
-| `celery-billing-mail` | broker | — | Celery · billing.mail |
-| `celery-billing` | broker | — | Celery · billing |
-| `bus` | broker | — | — |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `client` | actor | — | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — | — |
+| `billing-pg` | store | [shop](../shop/README.md) | [shop.billing.pg](../shop/billing/stores/pg.md) | — |
+| `celery-billing-mail` | broker | — | — | Celery · billing.mail |
+| `celery-billing` | broker | — | — | Celery · billing |
+| `bus` | broker | — | — | — |
+
+## Composition
+
+| Fragment | After step | Seam | Target | Evidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| [billing-celery-send-invoice-email](billing-celery-send-invoice-email.md) | [s5](billing-invoice-issue.md#step-s5) | `handoff` | `celery:billing.mail:invoices.tasks.send_invoice_email` | high · exact asynchronous handoff | [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py) |
+| `billing-celery-body-invoices-tasks-send-invoice-email` | [continuation-billing-celery-send-invoice-email-s5-work](billing-invoice-issue.md#step-continuation-billing-celery-send-invoice-email-s5-work) | `entrypoint` | `python:invoices.tasks:send_invoice_email` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
+| [billing-celery-remind-unpaid-invoice](billing-celery-remind-unpaid-invoice.md) | [s6](billing-invoice-issue.md#step-s6) | `handoff` | `celery:billing:invoices.tasks.remind_unpaid_invoice` | high · exact asynchronous handoff | [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py) |
+| `billing-celery-body-invoices-tasks-remind-unpaid-invoice` | [continuation-billing-celery-remind-unpaid-invoice-s6-work](billing-invoice-issue.md#step-continuation-billing-celery-remind-unpaid-invoice-s6-work) | `entrypoint` | `python:invoices.tasks:remind_unpaid_invoice` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 
@@ -61,19 +70,19 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/services.py:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L46) · in one transaction.
 <a id="step-s5"></a>
 5. **shop.billing** → **celery-billing-mail** — enqueue send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · in one transaction, after the transaction commits.
+   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · in one transaction, after the transaction commits. · handoff: send · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-continuation-billing-celery-send-invoice-email-s5-work"></a>
 6. **celery-billing-mail** → **shop.billing** — send_invoice_email
-   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. · continues at `python:invoices.tasks:send_invoice_email` · handoff: receive · job · celery · billing.mail · invoices.tasks.send_invoice_email
 <a id="step-continuation-billing-celery-send-invoice-email-s5-continuation-billing-celery-body-invoices-tasks-send-invoice-email-work-s1"></a>
 7. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · [`examples/shop/billing/invoices/tasks.py:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L20)
 <a id="step-s6"></a>
 8. **shop.billing** → **celery-billing** — enqueue remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · in one transaction, after the transaction commits.
+   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · in one transaction, after the transaction commits. · handoff: send · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-continuation-billing-celery-remind-unpaid-invoice-s6-work"></a>
 9. **celery-billing** → **shop.billing** — remind_unpaid_invoice
-   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue.
+   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. · continues at `python:invoices.tasks:remind_unpaid_invoice` · handoff: receive · job · celery · billing · invoices.tasks.remind_unpaid_invoice
 <a id="step-continuation-billing-celery-remind-unpaid-invoice-s6-continuation-billing-celery-body-invoices-tasks-remind-unpaid-invoice-work-s1"></a>
 10. **shop.billing** → **billing-pg** — Invoice.objects.filter
    status: declared · [`examples/shop/billing/invoices/tasks.py:32`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L32)

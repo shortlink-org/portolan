@@ -67,6 +67,11 @@ function ChapterRow({
           {chapter.kind}
         </span>
       )}
+      {chapter.origin ? (
+        <span className="mono shrink-0 rounded-[4px] border px-1 uppercase border-accent text-accent">
+          fragment
+        </span>
+      ) : null}
       <span
         className="mono min-w-0 flex-1 truncate text-ink"
         title={chapter.title}
@@ -341,10 +346,10 @@ function StepRow({
           to={paths.flow(next.slug)}
           className="mono flex items-center gap-1 py-0.5 pr-2 text-accent hover:underline"
           style={{ paddingLeft: 8 + depth * 10 + 28 }}
-          title={`this event opens ${next.name}`}
+          title={`${next.confidence}-confidence ${next.kind} continuation: ${next.basis}`}
         >
           <CornerDownRight size={9} aria-hidden className="shrink-0" />
-          continues in {next.name}
+          {next.kind === "event" ? "related event flow" : "continues"} in {next.name}
         </Link>
       ))}
     </div>

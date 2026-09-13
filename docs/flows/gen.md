@@ -12,12 +12,12 @@ In `--check` mode the same run writes nothing and fails on the first file that d
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `developer` | actor | — | — |
-| `tree` | store | [portolan](../portolan/README.md) | the tree: fragments, docs/, exports/ |
-| `portolan.host` | service | [portolan](../portolan/README.md) | — |
-| `portolan.plugins` | service | [portolan](../portolan/README.md) | — |
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `developer` | actor | — | — | — |
+| `tree` | store | [portolan](../portolan/README.md) | — | the tree: fragments, docs/, exports/ |
+| `portolan.host` | service | [portolan](../portolan/README.md) | — | — |
+| `portolan.plugins` | service | [portolan](../portolan/README.md) | — | — |
 
 ## Sequence
 
