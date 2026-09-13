@@ -1,6 +1,7 @@
 import { useDocumentTitle } from "../app/title";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { ArrowRight, ArrowLeft } from "lucide-react";
+import { ArrowRight, ArrowLeft, Pencil } from "lucide-react";
 import { index } from "../data";
 import type { Adr, AdrCommit } from "../catalog";
 import { adrNumber } from "../lib/adr";
@@ -15,6 +16,7 @@ import { eventPath, paths, servicePath } from "../routes";
 import { PinButton } from "../app/pins";
 import { NotFound } from "./NotFound";
 import { CommitLink } from "../components/CommitLink";
+import { localStatusQuery } from "../lib/queries";
 
 /**
  * The body's own H1 repeats the title in the header of this page; MADR files
@@ -159,6 +161,7 @@ export function AdrDetail() {
   const { adr: slug } = useParams();
   const adr = slug ? index.adrBySlug.get(slug) : undefined;
   useDocumentTitle(adr?.title ?? "Decision not found");
+  const local = useQuery(localStatusQuery()).isSuccess;
   if (!adr) return <NotFound kind="Decision" id={slug} />;
 
   const successor = adr.supersededBy
@@ -178,6 +181,7 @@ export function AdrDetail() {
             {adr.title}
           </h1>
           <div className="ml-auto flex items-center gap-2">
+            {local ? <Link className="tbtn" to={paths.editAdr(adr.slug)}><Pencil size={13} /> Edit</Link> : null}
             <PinButton kind="adr" id={adr.id} label={adr.title} />
             <AdrStatusChip status={adr.status} />
             <AdrScopePill scope={adr.scope} />

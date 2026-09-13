@@ -20,6 +20,7 @@ export const paths = {
     })}`,
   adrs: () => "/adrs",
   newAdr: () => "/adrs/new",
+  editAdr: (slug: string) => `/adrs/${slug}/edit`,
   /**
    * The estate's vocabulary. One page rather than one per context: the words
    * a context means by itself are only half of what a reader needs, and the
@@ -168,6 +169,11 @@ export function packageAnchor(name: string): string {
 /** One message row on a module's Types tab. */
 export function messageAnchor(interfaceId: string, message: string): string {
   return `msg-${interfaceId}-${message}`.replace(/[^A-Za-z0-9_.:-]/g, "-");
+}
+
+/** One method row on a module or service interface panel. */
+export function methodAnchor(interfaceId: string, method: string): string {
+  return `method-${interfaceId}-${method}`.replace(/[^A-Za-z0-9_.:-]/g, "-");
 }
 
 /** The section anchors on a value object or entity page. */
@@ -411,6 +417,7 @@ const ROUTES: RegExp[] = [
   /^\/settings(?:\/(?:projects|pipeline|delivery|recordings|rules|integrations|preferences|about))?$/,
   /^\/externals\/[^/]+$/,
   /^\/map$/,
+  /^\/adrs\/[^/]+\/edit$/,
   /^\/adrs\/[^/]+$/,
   /^\/c\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+$/,

@@ -131,6 +131,14 @@ function AppRoutes({
           </Suspense>
         }
       />
+      <Route
+        path="/adrs/:adr/edit"
+        element={
+          <Suspense fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
+            <AdrCreate />
+          </Suspense>
+        }
+      />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
       <Route path="/settings/*" element={<Settings />} />

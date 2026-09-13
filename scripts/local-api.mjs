@@ -47,6 +47,10 @@ const SNAPSHOT_SKIP = new Set([".git", ".portolan", "dist", "node_modules", "tar
 const PROJECT_PREVIEW_TTL_MS = 15 * 60 * 1000;
 const ADR_BODY_LIMIT = 256 * 1024;
 const ADR_STATUSES = new Set(["proposed", "accepted", "superseded", "deprecated", "rejected"]);
+const ADR_ID = /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.\d{4}$/;
+const ADR_SERVICE = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/;
+const ADR_EVENT = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*\.[A-Za-z][A-Za-z0-9]*$/;
+const ADR_FLOW = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** Remove Vite's configured base before matching a local control-plane route. */
 export function localApiPath(pathname, base = "/") {
@@ -399,6 +403,14 @@ function adrProjectDescriptor(workspace, manifest, project) {
     directory: target.directory,
     count: target.files.length,
     nextNumber: highest + 1,
+    files: target.files.map((file) => {
+      const location = safeWorkspacePath(workspace, posix.join(target.input, file), "ADR file");
+      const content = readFileSync(location.absolute, "utf8");
+      return {
+        path: location.relative,
+        revision: createHash("sha256").update(content).digest("hex"),
+      };
+    }),
     configured: adrStepFor(manifest, project) !== null,
     writable: !project.repository,
     ...(project.repository ? { reason: "This project is an imported repository snapshot. Create the ADR in its source checkout." } : {}),
@@ -422,6 +434,67 @@ function validAdrDate(value) {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
+function adrStringList(value, name, pattern) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 100) throw new Error(`${name} must be a list of at most 100 ids.`);
+  const result = [];
+  for (const raw of value) {
+    const id = String(raw ?? "").trim();
+    if (!pattern.test(id)) throw new Error(`${JSON.stringify(id)} is not a valid ${name} id.`);
+    if (!result.includes(id)) result.push(id);
+  }
+  return result;
+}
+
+function adrFields(request, id) {
+  const title = String(request.title ?? "").trim();
+  if (!title || title.length > 180 || /[\r\n\0]/.test(title)) throw new Error("ADR title must be one line between 1 and 180 characters.");
+  const status = String(request.status ?? "");
+  if (!ADR_STATUSES.has(status)) throw new Error("Choose a valid ADR status.");
+  const date = String(request.date ?? "");
+  if (!validAdrDate(date)) throw new Error("ADR date must be a real date written as YYYY-MM-DD.");
+  const body = String(request.body ?? "").replaceAll("\r\n", "\n").trim();
+  if (!body.startsWith("## ")) throw new Error("ADR body must begin with a level-two Markdown heading.");
+  if (Buffer.byteLength(body, "utf8") > ADR_BODY_LIMIT) throw new Error("ADR body is larger than 256 KB.");
+  const note = String(request.note ?? "").replace(/\s+/g, " ").trim();
+  if (note.length > 500 || /[\r\n\0]/.test(note)) throw new Error("ADR note must be one line of at most 500 characters.");
+  const supersededBy = String(request.supersededBy ?? "").trim();
+  if (supersededBy && !ADR_ID.test(supersededBy)) throw new Error("Superseded by must name an ADR id.");
+  if (status === "superseded" && !supersededBy) throw new Error("A superseded ADR must say which ADR superseded it.");
+  if (status !== "superseded" && supersededBy) throw new Error("Only a superseded ADR can name its successor.");
+  if (supersededBy === id) throw new Error("An ADR cannot supersede itself.");
+  const supersedes = adrStringList(request.supersedes, "supersedes", ADR_ID);
+  if (supersedes.includes(id)) throw new Error("An ADR cannot supersede itself.");
+  const services = adrStringList(request.relates?.services, "service", ADR_SERVICE);
+  const events = adrStringList(request.relates?.events, "event", ADR_EVENT);
+  const flows = adrStringList(request.relates?.flows, "flow", ADR_FLOW);
+  return { title, status, date, body, note, supersededBy, supersedes, relates: [...services, ...events, ...flows] };
+}
+
+function adrMarkdown({ id, scope, fields }) {
+  const metadata = [
+    `- **Status:** ${fields.status}`,
+    `- **Date:** ${fields.date}`,
+    `- **Scope:** ${scope}`,
+    ...(fields.supersededBy ? [`- **Superseded by:** ${fields.supersededBy}`] : []),
+    ...(fields.supersedes.length ? [`- **Supersedes:** ${fields.supersedes.join(", ")}`] : []),
+    ...(fields.relates.length ? [`- **Relates:** ${fields.relates.join(", ")}`] : []),
+    ...(fields.note ? [`- **Note:** ${fields.note}`] : []),
+  ];
+  return `# ${id} — ${fields.title}\n\n${metadata.join("\n")}\n\n${fields.body}\n`;
+}
+
+function writeAdrAtomically(target, markdown) {
+  const temporary = join(dirname(target), `.${basename(target)}.${randomUUID()}.tmp`);
+  try {
+    writeFileSync(temporary, markdown, { flag: "wx" });
+    renameSync(temporary, target);
+  } catch (cause) {
+    rmSync(temporary, { force: true });
+    throw cause;
+  }
+}
+
 /** Write one MADR record into the selected project's existing ADR source tree. */
 export function createProjectAdr(workspace, request) {
   const manifestPath = join(workspace, "portolan.json");
@@ -436,24 +509,15 @@ export function createProjectAdr(workspace, request) {
   if (!descriptor.writable) throw new Error(descriptor.reason);
   if (request.number !== descriptor.nextNumber) throw new Error(`The next ADR is now ${String(descriptor.nextNumber).padStart(4, "0")}. Reload the editor and try again.`);
 
-  const title = String(request.title ?? "").trim();
-  if (!title || title.length > 180 || /[\r\n\0]/.test(title)) throw new Error("ADR title must be one line between 1 and 180 characters.");
-  const status = String(request.status ?? "");
-  if (!ADR_STATUSES.has(status)) throw new Error("Choose a valid ADR status.");
-  const date = String(request.date ?? "");
-  if (!validAdrDate(date)) throw new Error("ADR date must be a real date written as YYYY-MM-DD.");
-  const body = String(request.body ?? "").replaceAll("\r\n", "\n").trim();
-  if (!body.startsWith("## ")) throw new Error("ADR body must begin with a level-two Markdown heading.");
-  if (Buffer.byteLength(body, "utf8") > ADR_BODY_LIMIT) throw new Error("ADR body is larger than 256 KB.");
-
   const number = descriptor.nextNumber;
   const padded = String(number).padStart(4, "0");
-  const titleSlug = slug(title) || "decision";
+  const id = `${descriptor.prefix}.${padded}`;
+  const fields = adrFields(request, id);
+  const titleSlug = slug(fields.title) || "decision";
   const name = `${padded}-${titleSlug}.md`;
   const target = resolve(realpathSync(workspace), descriptor.directory, name);
   const directory = dirname(target);
-  const id = `${descriptor.prefix}.${padded}`;
-  const markdown = `# ${id} — ${title}\n\n- **Status:** ${status}\n- **Date:** ${date}\n- **Scope:** ${descriptor.scope}\n\n${body}\n`;
+  const markdown = adrMarkdown({ id, scope: descriptor.scope, fields });
 
   mkdirSync(directory, { recursive: true });
   writeFileSync(target, markdown, { flag: "wx" });
@@ -477,9 +541,43 @@ export function createProjectAdr(workspace, request) {
     id,
     slug: `${id.replaceAll(".", "-")}-${titleSlug}`,
     number,
-    title,
+    title: fields.title,
     path: posix.join(descriptor.directory, name),
     manifestChanged,
+  };
+}
+
+/** Rewrites one existing MADR file only when both manifest and file revisions still match. */
+export function updateProjectAdr(workspace, request) {
+  const manifestPath = join(workspace, "portolan.json");
+  const before = readFileSync(manifestPath, "utf8");
+  const manifest = readManifestText(before, manifestPath);
+  if (request?.revision !== createHash("sha256").update(before).digest("hex")) {
+    throw new Error("portolan.json changed while this ADR was being edited. Reload the editor and try again.");
+  }
+  const project = (manifest.projects ?? []).find((candidate) => candidate.id === request.projectId);
+  if (!project) throw new Error(`Project "${String(request?.projectId ?? "")}" does not exist.`);
+  const descriptor = adrProjectDescriptor(workspace, manifest, project);
+  if (!descriptor.writable) throw new Error(descriptor.reason);
+  const source = String(request.path ?? "").replaceAll("\\", "/");
+  const file = descriptor.files.find((candidate) => candidate.path === source);
+  if (!file) throw new Error("The ADR file is not part of this project's configured ADR source tree.");
+  if (request.fileRevision !== file.revision) throw new Error("The ADR changed on disk while it was being edited. Reload the editor and try again.");
+  const number = adrFileNumber(source);
+  if (!number || number !== request.number) throw new Error("The ADR number no longer matches its source file.");
+  const padded = String(number).padStart(4, "0");
+  const id = `${descriptor.prefix}.${padded}`;
+  const fields = adrFields(request, id);
+  const location = safeWorkspacePath(workspace, source, "ADR file");
+  writeAdrAtomically(location.absolute, adrMarkdown({ id, scope: descriptor.scope, fields }));
+  const fileSlug = posix.basename(source, ".md").replace(/^\d+-/, "");
+  return {
+    id,
+    slug: `${id.replaceAll(".", "-")}-${fileSlug}`,
+    number,
+    title: fields.title,
+    path: source,
+    manifestChanged: false,
   };
 }
 
@@ -1550,6 +1648,16 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
               return send(res, 201, { ...created, run: { runId: job.id, mode: job.mode } });
             } catch (cause) {
               return send(res, 201, { ...created, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
+            }
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/adrs/update`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before updating an ADR." });
+            const updated = updateProjectAdr(workspace, input);
+            try {
+              const job = startJob(workspace, "write", null);
+              return send(res, 200, { ...updated, run: { runId: job.id, mode: job.mode } });
+            } catch (cause) {
+              return send(res, 200, { ...updated, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
             }
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/delivery-presets/install`) {

@@ -57,6 +57,7 @@ export interface AdrProject {
   directory: string;
   count: number;
   nextNumber: number;
+  files: Array<{ path: string; revision: string }>;
   configured: boolean;
   writable: boolean;
   reason?: string;
@@ -75,6 +76,15 @@ export interface CreateAdrInput {
   status: "proposed" | "accepted" | "superseded" | "deprecated" | "rejected";
   date: string;
   body: string;
+  note?: string;
+  supersededBy?: string;
+  supersedes?: string[];
+  relates?: { services?: string[]; events?: string[]; flows?: string[] };
+}
+
+export interface UpdateAdrInput extends CreateAdrInput {
+  path: string;
+  fileRevision: string;
 }
 
 export interface CreatedAdr {
@@ -278,6 +288,11 @@ export async function adrProjects(): Promise<AdrProjectsState> {
 /** Writes an ADR beside its project and starts catalog generation. */
 export async function createAdr(input: CreateAdrInput): Promise<CreatedAdr> {
   return json("/adrs", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(input) });
+}
+
+/** Rewrites one ADR using optimistic manifest and file revisions, then rebuilds. */
+export async function updateAdr(input: UpdateAdrInput): Promise<CreatedAdr> {
+  return json("/adrs/update", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(input) });
 }
 
 export interface DjangoAggregateProposals {

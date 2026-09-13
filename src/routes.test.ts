@@ -133,6 +133,10 @@ describe("routes", () => {
       expect(isRoutable(path as string)).toBe(true);
     }
     expect(isRoutable("/adrs")).toBe(true);
+    expect(paths.editAdr("shop-oms-0007-cart-reads-via-repository")).toBe(
+      "/adrs/shop-oms-0007-cart-reads-via-repository/edit",
+    );
+    expect(isRoutable(paths.editAdr("shop-oms-0007-cart-reads-via-repository"))).toBe(true);
   });
 
   it("links every supersession to a routable page", () => {

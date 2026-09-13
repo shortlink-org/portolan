@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { adrProjectsState, classifyRepositoryFailure, createProjectAdr, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, problemRulesState, readLocalSource, removeProject, saveProblemRules, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeManifest, writeProject } from "./local-api.mjs";
+import { adrProjectsState, classifyRepositoryFailure, createProjectAdr, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, problemRulesState, readLocalSource, removeProject, saveProblemRules, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, updateProjectAdr, workspaceFingerprint, writeManifest, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -86,6 +86,58 @@ describe("local ADR authoring", () => {
     expect(created).toMatchObject({ id: "billing.0004", slug: "billing-0004-keep-invoice-writes-idempotent", path: "services/billing/docs/adr/0004-keep-invoice-writes-idempotent.md", manifestChanged: false });
     expect(readFileSync(join(root, created.path), "utf8")).toContain("- **Scope:** finance.billing");
     expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8")).extract).toHaveLength(1);
+  });
+
+  it("writes catalog relationships and safely updates an existing ADR", () => {
+    const root = adrWorkspace();
+    let state = adrProjectsState(root);
+    const created = createProjectAdr(root, {
+      revision: state.revision,
+      projectId: "billing",
+      number: 4,
+      title: "Keep invoice writes idempotent",
+      status: "accepted",
+      date: "2026-09-13",
+      body: "## Context and Problem Statement\n\nRetries duplicate invoices.\n\n## Decision Outcome\n\nUse a key.\n",
+      note: "Applies to public writes.",
+      supersedes: ["billing.0003"],
+      relates: {
+        services: ["finance.billing"],
+        events: ["finance.billing.invoice.InvoiceIssued"],
+        flows: ["invoice-issue"],
+      },
+    });
+    expect(readFileSync(join(root, created.path), "utf8")).toContain("- **Relates:** finance.billing, finance.billing.invoice.InvoiceIssued, invoice-issue");
+
+    state = adrProjectsState(root);
+    const file = state.projects[0].files.find((candidate) => candidate.path === created.path);
+    const updated = updateProjectAdr(root, {
+      revision: state.revision,
+      projectId: "billing",
+      path: created.path,
+      fileRevision: file.revision,
+      number: 4,
+      title: "Keep every invoice write idempotent",
+      status: "proposed",
+      date: "2026-09-14",
+      body: "## Context and Problem Statement\n\nRetries duplicate invoices.\n\n## Decision Outcome\n\nUse one key per request.\n",
+      relates: { services: ["finance.billing"] },
+    });
+    expect(updated.path).toBe(created.path);
+    const markdown = readFileSync(join(root, created.path), "utf8");
+    expect(markdown).toContain("# billing.0004 — Keep every invoice write idempotent");
+    expect(markdown).toContain("- **Relates:** finance.billing");
+    expect(() => updateProjectAdr(root, {
+      revision: state.revision,
+      projectId: "billing",
+      path: created.path,
+      fileRevision: file.revision,
+      number: 4,
+      title: "Stale edit",
+      status: "proposed",
+      date: "2026-09-14",
+      body: "## Decision Outcome\n\nOverwrite it.\n",
+    })).toThrow(/changed on disk/);
   });
 
   it("adds one project-scoped extractor when the first ADR is written", () => {

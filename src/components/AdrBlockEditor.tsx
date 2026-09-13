@@ -1,6 +1,6 @@
 import "@blocknote/mantine/style.css";
 
-import { BlockNoteSchema, combineByGroup } from "@blocknote/core";
+import { BlockNoteEditor, BlockNoteSchema, combineByGroup } from "@blocknote/core";
 import { filterSuggestionItems } from "@blocknote/core/extensions";
 import * as locales from "@blocknote/core/locales";
 import {
@@ -18,42 +18,37 @@ import { Plus, Table2, Trash2, Workflow } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTheme } from "../app/theme";
 
-const schema = BlockNoteSchema.create().extend({
+export const adrEditorSchema = BlockNoteSchema.create().extend({
   blockSpecs: {
     diagram: createReactDiagramBlockSpec(),
   },
 });
 
-const initialContent = [
-  { type: "heading" as const, props: { level: 2 as const }, content: "Context and Problem Statement" },
-  { type: "paragraph" as const, content: "What decision needs to be made, and why now?" },
-  { type: "heading" as const, props: { level: 2 as const }, content: "Decision Drivers" },
-  { type: "bulletListItem" as const, content: "A constraint or goal that matters." },
-  { type: "heading" as const, props: { level: 2 as const }, content: "Considered Options" },
-  { type: "numberedListItem" as const, content: "First option — its relevant trade-off." },
-  { type: "numberedListItem" as const, content: "Second option — its relevant trade-off." },
-  { type: "heading" as const, props: { level: 2 as const }, content: "Decision Outcome" },
-  { type: "paragraph" as const, content: "Chosen option: First option." },
-  { type: "heading" as const, props: { level: 3 as const }, content: "Consequences" },
-  { type: "bulletListItem" as const, content: "Good: what becomes easier or safer." },
-  { type: "bulletListItem" as const, content: "Bad: what cost or limitation is accepted." },
-];
-
 type AdrBlockEditorProps = {
   disabled: boolean;
+  initialMarkdown: string;
   onChange: (markdown: string) => void;
 };
 
-export function AdrBlockEditor({ disabled, onChange }: AdrBlockEditorProps) {
+function normalizedMarkdown(editor: { blocksToMarkdownLossy: () => string }): string {
+  const markdown = editor.blocksToMarkdownLossy().trim();
+  return markdown ? `${markdown}\n` : "";
+}
+
+export function AdrBlockEditor({ disabled, initialMarkdown, onChange }: AdrBlockEditorProps) {
   const { theme } = useTheme();
   const [tableSelected, setTableSelected] = useState(false);
+  const parsed = useMemo(
+    () => BlockNoteEditor.create({ schema: adrEditorSchema }).tryParseMarkdownToBlocks(initialMarkdown),
+    [initialMarkdown],
+  );
   const editor = useCreateBlockNote({
-    schema,
+    schema: adrEditorSchema,
     dictionary: {
       ...locales.en,
       diagram: diagramLocales.en,
     },
-    initialContent,
+    initialContent: parsed,
     tables: {
       splitCells: true,
       cellBackgroundColor: true,
@@ -91,7 +86,7 @@ export function AdrBlockEditor({ disabled, onChange }: AdrBlockEditorProps) {
     if (current?.type !== "table") return;
     editor.removeBlocks([current]);
     setTableSelected(false);
-    onChange(editor.blocksToMarkdownLossy());
+    onChange(normalizedMarkdown(editor));
   }
 
   return (
@@ -129,7 +124,7 @@ export function AdrBlockEditor({ disabled, onChange }: AdrBlockEditorProps) {
         editable={!disabled}
         theme={theme}
         slashMenu={false}
-        onChange={() => onChange(editor.blocksToMarkdownLossy())}
+        onChange={() => onChange(normalizedMarkdown(editor))}
         onSelectionChange={updateSelectedBlock}
       >
         <SuggestionMenuController
