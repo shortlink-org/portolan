@@ -183,6 +183,66 @@ function serviceOf(catalog: Catalog, id: string): Service {
 
 // ---------------------------------------------------------------------------
 
+describe("enrichCatalog: flow summaries from contracts", () => {
+  const api = (methods: Service["provides"][number]["methods"]): Service =>
+    service("shop", "oms", {
+      provides: [{ id: "storefront.v1.Order", methods, source: "schema.graphql" }],
+    });
+
+  it("fills an empty resolver summary from its unique GraphQL field", () => {
+    const query = flow("query-order", [
+      step("client", "shop.oms", "rpc", { label: "Query.order" }),
+    ]);
+    const result = enrichCatalog(
+      estate(
+        [query],
+        [
+          api([
+            {
+              name: "Query.order",
+              doc: "The order, or null when none has been recorded.\n\nLong contract detail.",
+            },
+          ]),
+        ],
+      ),
+    ).catalog;
+
+    expect(result.flows[0]?.summary).toBe(
+      "The order, or null when none has been recorded.",
+    );
+    expect(enrichCatalog(result).catalog).toEqual(result);
+  });
+
+  it("does not guess when two interfaces expose the same method name", () => {
+    const query = flow("query-order", [
+      step("client", "shop.oms", "rpc", { label: "Query.order" }),
+    ]);
+    const provider = api([{ name: "Query.order", doc: "First meaning." }]);
+    provider.provides.push({
+      id: "storefront.v1.Admin",
+      methods: [{ name: "Query.order", doc: "Second meaning." }],
+      source: "admin.graphql",
+    });
+
+    expect(enrichCatalog(estate([query], [provider])).catalog.flows[0]?.summary).toBe("");
+  });
+
+  it("keeps a source-authored flow summary", () => {
+    const query = flow("query-order", [
+      step("client", "shop.oms", "rpc", { label: "Query.order" }),
+    ]);
+    query.summary = "Why this journey exists.";
+
+    expect(
+      enrichCatalog(
+        estate([query], [api([{ name: "Query.order", doc: "Contract text." }])]),
+      ).catalog.flows[0]?.summary,
+    ).toBe("Why this journey exists.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("enrichCatalog: HTTP route correlation", () => {
   function httpProvider(
     slug: string,

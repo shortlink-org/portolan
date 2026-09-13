@@ -63,7 +63,9 @@ export function enrichCatalog(input: Catalog): Enriched {
   const catalog = resolveForeignKeys(
     linkFlowParticipants(
       resolveStoreAccesses(
-        composeExecutionContinuations(resolveWireNames(resolveHTTPCalls(input))),
+        composeExecutionContinuations(
+          hydrateFlowSummaries(resolveWireNames(resolveHTTPCalls(input))),
+        ),
       ),
     ),
   );
@@ -230,6 +232,60 @@ export function enrichCatalog(input: Catalog): Enriched {
   }));
 
   return { catalog: { ...catalog, contexts }, derived };
+}
+
+/**
+ * Uses a provided operation's own documentation when an extracted flow has
+ * no summary of its own. Exact refs win; a transport label is used only when
+ * that method name occurs once on the receiving service. This lets a GraphQL
+ * resolver and its SDL complete one another without guessing from camel case.
+ */
+function hydrateFlowSummaries(input: Catalog): Catalog {
+  const exact = new Map<string, string>();
+  const byName = new Map<string, string[]>();
+
+  for (const context of input.contexts) {
+    for (const service of context.services) {
+      for (const provided of service.provides) {
+        for (const method of provided.methods) {
+          const summary = firstParagraph(method.doc ?? "");
+          if (summary) {
+            exact.set(`${service.id}|${provided.id}/${method.name}`, summary);
+          }
+          const key = `${service.id}|${method.name}`;
+          const candidates = byName.get(key) ?? [];
+          candidates.push(summary);
+          byName.set(key, candidates);
+        }
+      }
+    }
+  }
+
+  let changed = false;
+  const flows = input.flows.map((flow) => {
+    if (flow.summary.trim()) return flow;
+    const opening = walkSteps(flow.steps)[0];
+    if (!opening || opening.kind !== "rpc") return flow;
+
+    let summary = opening.ref
+      ? exact.get(`${opening.to}|${opening.ref}`)
+      : undefined;
+    if (!summary && opening.label) {
+      const candidates = byName.get(`${opening.to}|${opening.label}`) ?? [];
+      if (candidates.length === 1) summary = candidates[0];
+    }
+    if (!summary) return flow;
+    changed = true;
+    return { ...flow, summary };
+  });
+
+  return changed ? { ...input, flows } : input;
+}
+
+function firstParagraph(doc: string): string {
+  return (doc.trim().split(/\n\s*\n/, 1)[0] ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 interface HTTPProvider {

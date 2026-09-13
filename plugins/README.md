@@ -397,6 +397,12 @@ the source fragment slugs it includes, and the UI exposes that provenance as a
 standalone entry views; transport-only fragments consumed by a proven root are
 removed from the top-level flow list.
 
+After merge, an empty flow summary is filled from the first paragraph of the
+exact provided operation's documentation. A label-only match is accepted only
+when that method name occurs once on the receiving service; ambiguous matches
+remain empty and visible to the quality rule. A summary written at the flow
+source always wins.
+
 ## Flows written by hand
 
 `extract-flows` reads one human-readable `.flow.md` file per journey. The
