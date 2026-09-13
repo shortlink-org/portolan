@@ -61,3 +61,5 @@
 | [Import price list](pricing-import-price-list.md) | [shop](../shop/README.md) | Package import_price_list takes in a whole price list. |
 | [Issue quote](pricing-issue-quote.md) | [shop](../shop/README.md) | Package issue_quote prices a basket and promises the price for a while. |
 | [List price lists](pricing-list-price-lists.md) | [shop](../shop/README.md) | Package list_price_lists reads every price list there is. |
+| [oms-cdc · public.order_lines · CDC](oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.md) | [shop](../shop/README.md) | Debezium captures public.order_lines and relays it to Kafka from the connector configuration. |
+| [oms-cdc · public.orders · CDC](oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.md) | [shop](../shop/README.md) | Debezium captures public.orders and relays it to Kafka from the connector configuration. |

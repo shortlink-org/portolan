@@ -262,8 +262,10 @@ and validates the union. Nothing here draws anything.
 ## Generators
 
 A generator turns the catalog into something else. The built-in generators
-produce Markdown and LLM indexes, standalone Mermaid diagrams, and a Backstage
-Software Catalog bundle; each lives in its own directory beside the plugin.
+produce Markdown and LLM indexes, standalone Mermaid diagrams, a Backstage
+Software Catalog bundle, and a DX Software Catalog apply plan; each lives in
+its own directory beside the plugin. `fetch-dx` independently reads DX into a
+catalog fragment; neither direction requires the other.
 
 The contract is one JSON message in and one JSON message out:
 
@@ -657,6 +659,12 @@ the source fragment slugs it includes, and the UI exposes that provenance as a
 `cross-protocol` badge. Trigger-bearing job and event flows stay available as
 standalone entry views; transport-only fragments consumed by a proven root are
 removed from the top-level flow list.
+
+After merge, an empty flow summary is filled from the first paragraph of the
+exact provided operation's documentation. A label-only match is accepted only
+when that method name occurs once on the receiving service; ambiguous matches
+remain empty and visible to the quality rule. A summary written at the flow
+source always wins.
 
 ### Flows written by hand
 
@@ -1584,6 +1592,35 @@ not become a catalog `Event`. `Event.id` is `<service>.<aggregate>.<Name>` and
 this extractor knows the package, not the aggregate; a guess would collide with
 the event `extract-go` already emits, or invent a ghost aggregate that would sit
 beside the real one forever.
+
+### Debezium: the database log is a message source
+
+`extract-debezium` reads PostgreSQL Kafka Connect JSON and Strimzi
+`KafkaConnector` YAML. A connector becomes a `data-pipeline` component; an
+explicit `table.include.list` becomes one source-backed flow per table, from the
+store through Debezium to the exact Kafka topic derived from `topic.prefix`.
+`value.converter` supplies the channel encoding, and
+`ExtractNewRecordState` changes the declared wire shape from the Debezium
+`Envelope` to its flattened `Value`.
+
+An ordinary CDC record is a message, not a domain event. It says a row changed;
+it does not say which aggregate made a business decision. The Outbox Event
+Router is the deliberate exception: the application that wrote the outbox is
+kept as the logical publisher, while the connector remains visible as the relay
+in the flow. Because `route.by.field` reads a value from each row, the manifest
+supplies the finite route values and wire message names that configuration alone
+cannot enumerate.
+
+The reader is conservative at the two places a finite architecture cannot be
+proved. A regex in `table.include.list`, a custom topic naming strategy, or a
+topic-routing SMT produces a diagnostic rather than an invented channel. The
+first release reads PostgreSQL only. Live Kafka Connect state and lag are not
+configuration facts and belong in a later verifier.
+
+No connector configuration is copied into the fragment. Only topology facts
+are retained, so database, Kafka and registry credentials never enter generated
+catalog files. See `extract-debezium/README.md` for the options and an outbox
+example.
 
 ### Schema registry subjects: the same split, one topic further
 

@@ -51,6 +51,8 @@
     "ledger-list-refunds.mmd",
     "ledger-void-payment-on-order-cancelled.mmd",
     "oms-cancel-order.mmd",
+    "oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.mmd",
+    "oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.mmd",
     "oms-get-order.mmd",
     "oms-place-order-on-basket-checked-out.mmd",
     "pricing-archive-price-list.mmd",

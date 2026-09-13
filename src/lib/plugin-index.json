@@ -1509,6 +1509,109 @@
     }
   },
   {
+    "name": "debezium",
+    "plugin": "extract-debezium",
+    "summary": "Reads PostgreSQL Debezium connector JSON and Strimzi KafkaConnector manifests into source stores, Kafka channels and CDC or outbox flows.",
+    "category": "messaging",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-debezium",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Group that contains the connector data-pipeline components. Defaults to the input directory name.",
+          "examples": [
+            "data-platform"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Files or directories under the input root to inspect for Kafka Connect JSON and Strimzi KafkaConnector YAML. Left out, the whole root is walked.",
+          "examples": [
+            [
+              "deploy/connectors",
+              "clusters/prod/kafka-connect.yaml"
+            ]
+          ]
+        },
+        "broker": {
+          "type": "string",
+          "default": "kafka",
+          "description": "Transport name written on asynchronous handoffs. This identifies Kafka to flow composition without naming a live bootstrap server.",
+          "examples": [
+            "kafka"
+          ]
+        },
+        "connectors": {
+          "type": "object",
+          "description": "Estate-specific facts keyed by the connector's metadata.name or Kafka Connect name: its catalog store, the logical publisher for outbox events, and finite values used by dynamic outbox routing.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "store": {
+                "type": "string",
+                "description": "Catalog Store.id for the database whose log this connector reads.",
+                "examples": [
+                  "shop.orders.pg"
+                ]
+              },
+              "sourceService": {
+                "type": "string",
+                "description": "Service.id that logically publishes events carried through an Outbox Event Router. The channel is attached to this service, while Debezium remains the relay in the flow.",
+                "examples": [
+                  "shop.orders"
+                ]
+              },
+              "routes": {
+                "type": "array",
+                "description": "Known outbox route values and wire message names. These values live in rows, not connector configuration, so dynamic routing is not enumerable without them.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "value",
+                    "message"
+                  ],
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Value of the column selected by route.by.field, aggregatetype by default."
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Exact event name carried on the wire for this route."
+                    },
+                    "topic": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Exact Kafka topic when custom route.topic.regex logic cannot be evaluated from the route value."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "out": {
+          "type": "string",
+          "default": "debezium.json",
+          "description": "Name of the catalog fragment inside the step's output directory."
+        }
+      }
+    }
+  },
+  {
     "name": "go-nats",
     "plugin": "extract-go-nats",
     "summary": "Reads nats.go and JetStream calls, through the port that wraps them, into the subjects a service listens on and publishes to.",

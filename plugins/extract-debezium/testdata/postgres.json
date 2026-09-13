@@ -1,0 +1,14 @@
+{
+  "name": "orders-cdc",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.user": "debezium",
+    "database.password": "must-not-leak",
+    "topic.prefix": "shop",
+    "table.include.list": "public.orders,public.order_lines",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState"
+  }
+}

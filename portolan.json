@@ -235,6 +235,12 @@
       }
     },
     {
+      "name": "debezium",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "go-nats",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
@@ -985,6 +991,22 @@
         "name": "Order database",
         "repositories": "src/infrastructure/repository",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "debezium",
+      "in": ".",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "context": "shop",
+        "paths": ["examples/shop/oms/connectors/oms-cdc.yaml"],
+        "broker": "kafka",
+        "connectors": {
+          "oms-cdc": {
+            "store": "shop.oms.pg"
+          }
+        },
+        "out": "debezium.json"
       }
     },
     {

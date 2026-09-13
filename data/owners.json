@@ -116,6 +116,21 @@
           ]
         },
         {
+          "id": "shop.oms-cdc",
+          "slug": "oms-cdc",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/shop-oms",
+            "@shortlink-org/platform"
+          ]
+        },
+        {
           "id": "shop.pricing",
           "slug": "pricing",
           "name": "",

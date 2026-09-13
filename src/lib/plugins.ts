@@ -176,6 +176,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   redis: { label: "Redis", icon: { brand: "Redis" } },
   river: { label: "River", icon: { lucide: "waves" } },
   watermill: { label: "Watermill", icon: { lucide: "workflow" } },
+  debezium: { label: "Debezium", icon: { lucide: "database" } },
   "go-nats": { label: "NATS", icon: { brand: "NATS" } },
   "go-sqs": { label: "SQS", icon: { lucide: "inbox" } },
   terraform: { label: "Terraform", icon: { brand: "Terraform" } },

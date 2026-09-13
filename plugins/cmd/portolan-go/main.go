@@ -21,6 +21,7 @@ import (
 	extractasyncapi "github.com/shortlink-org/portolan/plugins/extract-asyncapi"
 	extractcommands "github.com/shortlink-org/portolan/plugins/extract-commands"
 	extractcsr "github.com/shortlink-org/portolan/plugins/extract-csr"
+	extractdebezium "github.com/shortlink-org/portolan/plugins/extract-debezium"
 	extractflows "github.com/shortlink-org/portolan/plugins/extract-flows"
 	extractglossary "github.com/shortlink-org/portolan/plugins/extract-glossary"
 	extractgo "github.com/shortlink-org/portolan/plugins/extract-go"
@@ -65,6 +66,7 @@ var Plugins = map[string]func(io.Reader, io.Writer) error{
 	"sql":           extractsql.Serve,
 	"proto":         extractproto.Serve,
 	"csr-schemas":   extractcsr.Serve,
+	"debezium":      extractdebezium.Serve,
 	"adr":           extractadr.Serve,
 	"glossary":      extractglossary.Serve,
 	"flows":         extractflows.Serve,

@@ -393,6 +393,22 @@
       "diagram": "oms-cancel-order.mmd"
     },
     {
+      "id": "shop.oms-cdc.oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope",
+      "slug": "oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope",
+      "name": "oms-cdc · public.order_lines · CDC",
+      "owner": "shop",
+      "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+      "diagram": "oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.mmd"
+    },
+    {
+      "id": "shop.oms-cdc.oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope",
+      "slug": "oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope",
+      "name": "oms-cdc · public.orders · CDC",
+      "owner": "shop",
+      "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+      "diagram": "oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.mmd"
+    },
+    {
       "id": "flow.oms-get-order",
       "slug": "oms-get-order",
       "name": "Get order",

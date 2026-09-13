@@ -9,7 +9,7 @@ views {
   view containers {
     title 'Containers'
     description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, client, risk_v1, stripe, developer
+    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, developer
     include auth.auth -> risk_v1 with { title 'Assess'  technology 'gRPC'  color unresolved  line dotted }
     include storefront.bff -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
     include storefront.bff -> shop.cart with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
@@ -49,7 +49,7 @@ views {
   view containers_example {
     title 'Example estate containers'
     description 'The services, stores and transports selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.pricing, delivery.core, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, client, risk_v1, stripe
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe
     include storefront.bff -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
     include storefront.bff -> shop.cart with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
     include storefront.bff -> delivery.core with { title 'GetShipment'  technology 'gRPC'  color declared  line dashed }
@@ -167,6 +167,14 @@ views {
   }
   view svc_shop_oms_inside of shop.oms {
     title 'Order Management — inside'
+    include *
+  }
+  view svc_shop_oms_cdc of shop.oms_cdc {
+    title 'oms-cdc — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_shop_oms_cdc_inside of shop.oms_cdc {
+    title 'oms-cdc — inside'
     include *
   }
   view svc_shop_pricing of shop.pricing {
@@ -1357,6 +1365,32 @@ views {
     delivery.core -> bus 'ShipmentReleased' {
       color declared  line solid  head onormal
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
+    }
+  }
+
+  dynamic view flow_oms_cdc_public_order_lines_shop_oms_public_order_lines_shop_oms_public_order_lines_envelope {
+    title 'oms-cdc · public.order_lines · CDC'
+    description 'Debezium captures public.order_lines and relays it to Kafka from the connector configuration.'
+    oms_cdc_source -> shop.oms_cdc 'capture public.order_lines' {
+      color declared  line solid  head none
+      notes 'The connector configuration declares this table in table.include.list. — examples/shop/oms/connectors/oms-cdc.yaml:1'
+    }
+    shop.oms_cdc -> oms_cdc_kafka 'publish shop.oms.public.order_lines.Envelope' {
+      color declared  line solid  head onormal
+      notes 'examples/shop/oms/connectors/oms-cdc.yaml:1'
+    }
+  }
+
+  dynamic view flow_oms_cdc_public_orders_shop_oms_public_orders_shop_oms_public_orders_envelope {
+    title 'oms-cdc · public.orders · CDC'
+    description 'Debezium captures public.orders and relays it to Kafka from the connector configuration.'
+    oms_cdc_source -> shop.oms_cdc 'capture public.orders' {
+      color declared  line solid  head none
+      notes 'The connector configuration declares this table in table.include.list. — examples/shop/oms/connectors/oms-cdc.yaml:1'
+    }
+    shop.oms_cdc -> oms_cdc_kafka 'publish shop.oms.public.orders.Envelope' {
+      color declared  line solid  head onormal
+      notes 'examples/shop/oms/connectors/oms-cdc.yaml:1'
     }
   }
 

@@ -11,6 +11,8 @@ model {
   celery_billing_mail = broker 'Celery · billing.mail'
   cart_pg = store 'cart-pg'
   core_pg = store 'core-pg'
+  oms_cdc_source = store 'public.orders'
+  oms_cdc_kafka = broker 'Kafka'
   oms_pg = store 'oms-pg'
   pricing_pg = store 'pricing-pg'
   developer = actor 'developer'
@@ -161,6 +163,11 @@ for: whoever moves money listens for this.'
       pg = store 'Order database' {
         technology 'postgres'
       }
+    }
+    oms_cdc = service 'oms-cdc' {
+      description 'data-pipeline · Debezium · Kafka Connect · PostgreSQL · /examples/shop/oms/connectors/oms-cdc.yaml'
+      technology 'Debezium · Kafka Connect · PostgreSQL'
+      style { color ctx3 }
     }
     pricing = service 'Pricing' {
       description 'github.com/shortlink-org/portolan/examples/shop/pricing'
@@ -316,6 +323,9 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
+  shop.oms_cdc -[reads]-> shop.oms.pg 'reads' {
+    style { color declared  line dashed  head normal }
+  }
   delivery.core -[calls]-> shop.oms 'GetOrder' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
@@ -392,6 +402,9 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color declared  line dashed  head onormal }
   }
   bus -[bus]-> delivery.core 'PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.oms_cdc -[bus]-> oms_cdc_kafka '2 events' {
     style { color declared  line dashed  head onormal }
   }
   shop.oms -[bus]-> bus '2 events' {

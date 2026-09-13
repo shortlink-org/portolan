@@ -1,0 +1,230 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.oms-cdc",
+          "slug": "oms-cdc",
+          "name": "oms-cdc",
+          "repo": "",
+          "path": "examples/shop/oms/connectors/oms-cdc.yaml",
+          "readme": "",
+          "kind": "data-pipeline",
+          "technologies": [
+            "Debezium",
+            "Kafka Connect",
+            "PostgreSQL"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.oms.pg"
+          ],
+          "channels": [
+            {
+              "address": "shop.oms.public.order_lines",
+              "kind": "message",
+              "title": "Kafka topic",
+              "doc": "Debezium change-data-capture topic.",
+              "messages": [
+                {
+                  "name": "shop.oms.public.order_lines.Envelope",
+                  "title": "Shop Oms Public Order Lines",
+                  "doc": "Row changes captured from `public.order_lines`.",
+                  "direction": "send",
+                  "encoding": "avro"
+                }
+              ],
+              "source": "examples/shop/oms/connectors/oms-cdc.yaml:1"
+            },
+            {
+              "address": "shop.oms.public.orders",
+              "kind": "message",
+              "title": "Kafka topic",
+              "doc": "Debezium change-data-capture topic.",
+              "messages": [
+                {
+                  "name": "shop.oms.public.orders.Envelope",
+                  "title": "Shop Oms Public Orders",
+                  "doc": "Row changes captured from `public.orders`.",
+                  "direction": "send",
+                  "encoding": "avro"
+                }
+              ],
+              "source": "examples/shop/oms/connectors/oms-cdc.yaml:1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "shop.oms-cdc.oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope",
+      "slug": "oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope",
+      "name": "oms-cdc · public.order_lines · CDC",
+      "summary": "Debezium captures public.order_lines and relays it to Kafka from the connector configuration.",
+      "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+      "trigger": {
+        "kind": "startup",
+        "label": "Kafka Connect task",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "oms-cdc-source",
+          "kind": "store",
+          "context": "shop",
+          "label": "public.order_lines",
+          "entityRef": "shop.oms.pg"
+        },
+        {
+          "id": "shop.oms-cdc",
+          "kind": "service",
+          "context": "shop",
+          "entityRef": "shop.oms-cdc"
+        },
+        {
+          "id": "oms-cdc-kafka",
+          "kind": "broker",
+          "context": null,
+          "label": "Kafka"
+        }
+      ],
+      "steps": [
+        {
+          "evidence": [
+            {
+              "kind": "configuration",
+              "rule": "debezium-table-include",
+              "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+              "symbol": "public.order_lines"
+            }
+          ],
+          "type": "step",
+          "id": "capture",
+          "from": "oms-cdc-source",
+          "to": "shop.oms-cdc",
+          "kind": "call",
+          "label": "capture public.order_lines",
+          "status": "declared",
+          "note": "The connector configuration declares this table in table.include.list.",
+          "line": "examples/shop/oms/connectors/oms-cdc.yaml:1"
+        },
+        {
+          "evidence": [
+            {
+              "kind": "configuration",
+              "rule": "debezium-default-topic",
+              "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+              "symbol": "shop.oms.public.order_lines"
+            }
+          ],
+          "type": "step",
+          "id": "publish",
+          "from": "shop.oms-cdc",
+          "to": "oms-cdc-kafka",
+          "kind": "event",
+          "label": "publish shop.oms.public.order_lines.Envelope",
+          "status": "declared",
+          "line": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+          "handoff": {
+            "kind": "message",
+            "transport": "kafka",
+            "channel": "shop.oms.public.order_lines",
+            "message": "shop.oms.public.order_lines.Envelope",
+            "direction": "send"
+          }
+        }
+      ]
+    },
+    {
+      "id": "shop.oms-cdc.oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope",
+      "slug": "oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope",
+      "name": "oms-cdc · public.orders · CDC",
+      "summary": "Debezium captures public.orders and relays it to Kafka from the connector configuration.",
+      "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+      "trigger": {
+        "kind": "startup",
+        "label": "Kafka Connect task",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "oms-cdc-source",
+          "kind": "store",
+          "context": "shop",
+          "label": "public.orders",
+          "entityRef": "shop.oms.pg"
+        },
+        {
+          "id": "shop.oms-cdc",
+          "kind": "service",
+          "context": "shop",
+          "entityRef": "shop.oms-cdc"
+        },
+        {
+          "id": "oms-cdc-kafka",
+          "kind": "broker",
+          "context": null,
+          "label": "Kafka"
+        }
+      ],
+      "steps": [
+        {
+          "evidence": [
+            {
+              "kind": "configuration",
+              "rule": "debezium-table-include",
+              "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+              "symbol": "public.orders"
+            }
+          ],
+          "type": "step",
+          "id": "capture",
+          "from": "oms-cdc-source",
+          "to": "shop.oms-cdc",
+          "kind": "call",
+          "label": "capture public.orders",
+          "status": "declared",
+          "note": "The connector configuration declares this table in table.include.list.",
+          "line": "examples/shop/oms/connectors/oms-cdc.yaml:1"
+        },
+        {
+          "evidence": [
+            {
+              "kind": "configuration",
+              "rule": "debezium-default-topic",
+              "source": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+              "symbol": "shop.oms.public.orders"
+            }
+          ],
+          "type": "step",
+          "id": "publish",
+          "from": "shop.oms-cdc",
+          "to": "oms-cdc-kafka",
+          "kind": "event",
+          "label": "publish shop.oms.public.orders.Envelope",
+          "status": "declared",
+          "line": "examples/shop/oms/connectors/oms-cdc.yaml:1",
+          "handoff": {
+            "kind": "message",
+            "transport": "kafka",
+            "channel": "shop.oms.public.orders",
+            "message": "shop.oms.public.orders.Envelope",
+            "direction": "send"
+          }
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

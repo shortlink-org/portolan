@@ -51,6 +51,8 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [List refunds](ledger-list-refunds.mmd) — `flow.ledger-list-refunds`
 - [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.mmd) — `flow.ledger-void-payment-on-order-cancelled`
 - [Cancel order](oms-cancel-order.mmd) — `flow.oms-cancel-order`
+- [oms-cdc · public.order_lines · CDC](oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.mmd) — `shop.oms-cdc.oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope`
+- [oms-cdc · public.orders · CDC](oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.mmd) — `shop.oms-cdc.oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope`
 - [Get order](oms-get-order.mmd) — `flow.oms-get-order`
 - [Place order on basket checked out](oms-place-order-on-basket-checked-out.mmd) — `flow.oms-place-order-on-basket-checked-out`
 - [Archive price list](pricing-archive-price-list.mmd) — `flow.pricing-archive-price-list`

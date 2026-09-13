@@ -1330,6 +1330,35 @@ this extractor knows the package, not the aggregate; a guess would collide with
 the event `extract-go` already emits, or invent a ghost aggregate that would sit
 beside the real one forever.
 
+## Debezium: the database log is a message source
+
+`extract-debezium` reads PostgreSQL Kafka Connect JSON and Strimzi
+`KafkaConnector` YAML. A connector becomes a `data-pipeline` component; an
+explicit `table.include.list` becomes one source-backed flow per table, from the
+store through Debezium to the exact Kafka topic derived from `topic.prefix`.
+`value.converter` supplies the channel encoding, and
+`ExtractNewRecordState` changes the declared wire shape from the Debezium
+`Envelope` to its flattened `Value`.
+
+An ordinary CDC record is a message, not a domain event. It says a row changed;
+it does not say which aggregate made a business decision. The Outbox Event
+Router is the deliberate exception: the application that wrote the outbox is
+kept as the logical publisher, while the connector remains visible as the relay
+in the flow. Because `route.by.field` reads a value from each row, the manifest
+supplies the finite route values and wire message names that configuration alone
+cannot enumerate.
+
+The reader is conservative at the two places a finite architecture cannot be
+proved. A regex in `table.include.list`, a custom topic naming strategy, or a
+topic-routing SMT produces a diagnostic rather than an invented channel. The
+first release reads PostgreSQL only. Live Kafka Connect state and lag are not
+configuration facts and belong in a later verifier.
+
+No connector configuration is copied into the fragment. Only topology facts
+are retained, so database, Kafka and registry credentials never enter generated
+catalog files. See `extract-debezium/README.md` for the options and an outbox
+example.
+
 ## Schema registry subjects: the same split, one topic further
 
 `fetch-csr` and `extract-csr` are the Confluent Schema Registry half of the same

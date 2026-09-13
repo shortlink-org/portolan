@@ -30,6 +30,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Billing](shop/billing/README.md): in Shop. Aggregates: Invoice
 - [Shopping Cart](shop/cart/README.md): in Shop. Aggregates: Basket
 - [Order Management](shop/oms/README.md): in Shop. Aggregates: Order
+- [oms-cdc](shop/oms-cdc/README.md): in Shop
 - [Pricing](shop/pricing/README.md): in Shop. Aggregates: PriceList, Quote
 - [Storefront BFF](storefront/bff/README.md): in Storefront
 
@@ -121,6 +122,8 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Import price list](flows/pricing-import-price-list.md): owned by [shop](shop/README.md). Package import_price_list takes in a whole price list
 - [Issue quote](flows/pricing-issue-quote.md): owned by [shop](shop/README.md). Package issue_quote prices a basket and promises the price for a while
 - [List price lists](flows/pricing-list-price-lists.md): owned by [shop](shop/README.md). Package list_price_lists reads every price list there is
+- [oms-cdc · public.order_lines · CDC](flows/oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.md): owned by [shop](shop/README.md). Debezium captures public.order_lines and relays it to Kafka from the connector configuration
+- [oms-cdc · public.orders · CDC](flows/oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.md): owned by [shop](shop/README.md). Debezium captures public.orders and relays it to Kafka from the connector configuration
 
 ## Decisions
 

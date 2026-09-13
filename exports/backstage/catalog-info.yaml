@@ -2210,6 +2210,26 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
+    name: shop-oms-cdc
+    title: oms-cdc
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms/connectors/oms-cdc.yaml
+        portolan.io/id: shop.oms-cdc
+    tags:
+        - debezium
+        - kafka-connect
+        - postgresql
+spec:
+    dependsOn:
+        - resource:default/shop-oms-pg
+    lifecycle: production
+    owner: shortlink-org/shop-oms
+    system: shop
+    type: data-pipeline
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
     name: shop-pricing
     title: Pricing
     description: Pricing

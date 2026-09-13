@@ -19,5 +19,8 @@
   ],
   "commands": [
     "commands.json"
+  ],
+  "debezium": [
+    "debezium.json"
   ]
 }
