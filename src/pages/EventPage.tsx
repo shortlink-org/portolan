@@ -584,6 +584,9 @@ export function EventPage() {
                 columns={schema}
                 rows={rows}
                 rowId={(row) => row.name}
+                rowClassName={(row) =>
+                  row.change ? `schema-diff-${row.change}` : undefined
+                }
                 subRow={(row) => {
                   if (row.change === "removed" || !open.has(row.name)) return null;
                   const shape = resolveShape(catalog, row, scope);

@@ -1249,6 +1249,19 @@
   .tbl tbody tr:hover {
     background: var(--surface);
   }
+
+  /* Schema history reads like a source diff: a narrow gutter survives table
+     sorting, sticky columns and hover without tinting the field's contents. */
+  .tbl tbody tr.schema-diff-new td:first-child {
+    box-shadow: inset 3px 0 0 var(--status-verified);
+  }
+  .tbl tbody tr.schema-diff-changed td:first-child {
+    box-shadow: inset 3px 0 0 var(--status-declared);
+  }
+  .tbl tbody tr.schema-diff-removed td:first-child {
+    box-shadow: inset 3px 0 0 var(--status-unresolved);
+  }
+
   /* The header is translucent over its own rows, and opaque where a sticky
      first column passes under it - two translucent layers stack into a smear. */
   .tbl-sticky thead th {
@@ -1855,6 +1868,116 @@ h3 {
 }
 .prose .callout > :last-child {
   margin-bottom: 0;
+}
+
+/* The ADR authoring surface is MDXEditor's UI with Portolan's tokens. The
+   editor remains a separate source-mode-capable control, but it should not
+   look like a white document embedded in the dark catalog. */
+.adr-editor.adr-editor,
+.mdxeditor-popup-container {
+  --basePageBg: var(--bg);
+  --baseBg: var(--bg);
+  --baseBgSubtle: var(--surface);
+  --baseBgHover: var(--surface-2);
+  --baseBgActive: var(--surface-2);
+  --baseLine: var(--border);
+  --baseBorder: var(--border);
+  --baseBorderHover: var(--border-strong);
+  --baseText: var(--fg-muted);
+  --baseTextContrast: var(--fg);
+  --baseSolid: var(--fg-muted);
+  --baseSolidHover: var(--fg);
+  --accentBase: var(--bg);
+  --accentBg: color-mix(in srgb, var(--accent) 8%, var(--bg));
+  --accentBgSubtle: color-mix(in srgb, var(--accent) 5%, var(--bg));
+  --accentBgHover: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  --accentBgActive: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  --accentLine: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --accentBorder: color-mix(in srgb, var(--accent) 50%, var(--border));
+  --accentBorderHover: var(--accent);
+  --accentSolid: var(--accent);
+  --accentSolidHover: var(--accent-hi);
+  --accentText: var(--accent);
+  --accentTextContrast: var(--bg);
+  --font-body: var(--font-sans);
+  --radius-medium: var(--radius-control);
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.adr-editor .mdxeditor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--surface);
+}
+
+.adr-editor .mdxeditor-toolbar :is(button, [role="radio"], [role="combobox"]) {
+  color: var(--fg-muted);
+}
+
+.adr-editor .mdxeditor-toolbar [role="radiogroup"] {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.adr-editor .mdxeditor-toolbar :is(button, [role="radio"], [role="combobox"]):not(:disabled):hover,
+.adr-editor .mdxeditor-toolbar [data-state="on"],
+.adr-editor .mdxeditor-toolbar [aria-checked="true"] {
+  color: var(--fg);
+  background: var(--surface-2);
+}
+
+.adr-editor .mdxeditor-toolbar svg {
+  color: currentColor;
+  stroke: currentColor;
+}
+
+.adr-editor-content {
+  min-height: 34rem;
+  max-width: var(--w-prose);
+  padding: var(--pad-card);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.adr-editor-content h2 {
+  margin: 1.75rem 0 0.65rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.adr-editor-content h3 {
+  margin: 1.35rem 0 0.5rem;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.adr-editor-content p,
+.adr-editor-content ul,
+.adr-editor-content ol {
+  margin: 0.65rem 0;
+}
+
+.adr-editor-content ul,
+.adr-editor-content ol {
+  padding-left: 1.5rem;
+}
+
+.adr-editor-content ul { list-style: disc; }
+.adr-editor-content ol { list-style: decimal; }
+
+.adr-editor-content code {
+  border-radius: 3px;
+  background: var(--surface-2);
+  padding: 0.08rem 0.28rem;
+  font-family: var(--font-mono);
 }
 
 /* ---------------------------------------------------------------------------

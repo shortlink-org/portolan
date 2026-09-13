@@ -133,6 +133,8 @@ export interface DataTableProps<T extends RowData> {
   rowLink?: (row: T) => string | null | undefined;
   /** Copy and reveal, per row. */
   rowActions?: (row: T) => ReactNode;
+  /** Page-specific row treatment, derived from the row's own data. */
+  rowClassName?: (row: T) => string | undefined;
   /** The catalog id this row is, so the global selection can light it up. */
   selectionId?: (row: T) => string | null | undefined;
   /**
@@ -168,6 +170,7 @@ export function DataTable<T extends RowData>({
   sortInUrl = false,
   rowLink,
   rowActions,
+  rowClassName,
   selectionId,
   subRow,
   toolbarAt = 8,
@@ -520,6 +523,7 @@ export function DataTable<T extends RowData>({
     const original = row.original;
     const link = rowLink?.(original) ?? null;
     const active = selectedRowId !== null && row.id === selectedRowId;
+    const pageClassName = rowClassName?.(original) ?? "";
     const row_ = (
       <tr
         key={row.id}
@@ -527,7 +531,7 @@ export function DataTable<T extends RowData>({
         data-even={parity[index] ?? undefined}
         data-selected={active || undefined}
         style={virtual ? { height: rowHeight } : undefined}
-        className={active ? "bg-surface" : undefined}
+        className={`${active ? "bg-surface" : ""} ${pageClassName}`.trim() || undefined}
         onClick={
           link
             ? (event) => {
