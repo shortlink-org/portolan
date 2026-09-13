@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "entityType": {
+      "type": "string",
+      "default": "service",
+      "description": "DX entity type used when no component-kind override is configured."
+    },
+    "entityTypes": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "description": "Optional mapping from Portolan component kind to DX entity type identifier."
+    },
+    "relationIdentifier": {
+      "type": "string",
+      "default": "service-depends-on-service",
+      "description": "Existing DX relation identifier receiving service dependency edges."
+    },
+    "technologyProperty": {
+      "type": "string",
+      "description": "Existing DX entity property receiving Portolan technology names."
+    },
+    "ownerTeamIds": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "description": "Mapping from a Portolan owner handle to a DX owner team ID. Unmapped handles are omitted."
+    }
+  }
+}

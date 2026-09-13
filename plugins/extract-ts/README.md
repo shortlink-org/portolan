@@ -190,9 +190,11 @@ on the page, never written down.
 **Flow, from an endpoint.** Each handler method named by an `operationId` in
 `transport/http/gen/openapi.yaml` opens a flow: `client → service : rpc
 <operationId>`, then the steps of every use case the handler runs, in the order
-it runs them. **Flow, from a policy.** Each class in `application/policy/` with
+it runs them. Its `http` trigger keeps the exact OpenAPI verb and path; gRPC and
+GraphQL roots use a `callback` trigger with the RPC or resolver identity.
+**Flow, from a policy.** Each class in `application/policy/` with
 a `handle` opens a flow on the bus: `bus → service : event <ref>`, where the
-event is what the body tests for - `event instanceof BasketCheckedOut`, `event
+`event` trigger and first step name what the body tests for - `event instanceof BasketCheckedOut`, `event
 .name === "cart.BasketCheckedOut"`, or a `switch` on `event.name`. An event
 imported from outside `src/domain` is another service's; with a line in the
 `events` option mapping the import to an aggregate id it resolves, without one

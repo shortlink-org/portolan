@@ -18,7 +18,10 @@ const FILES = [
   ] : []),
   { href: `${base}exports/mermaid/${suffix}`, label: "Mermaid", title: "Standalone sequence diagrams for every architecture flow" },
   ...(activeCatalogProfile.id === "example"
-    ? [{ href: `${base}exports/backstage/catalog-info.yaml`, label: "Backstage", title: "Components, systems, APIs and resources for a Backstage catalog" }]
+    ? [
+        { href: `${base}exports/backstage/catalog-info.yaml`, label: "Backstage", title: "Components, systems, APIs and resources for a Backstage catalog" },
+        { href: `${base}exports/dx/plan.json`, label: "DX", title: "Services and dependency edges ready for an explicit DX catalog apply" },
+      ]
     : []),
 ];
 

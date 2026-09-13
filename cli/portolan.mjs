@@ -56,6 +56,9 @@ export async function main(argv = process.argv.slice(2)) {
     case "diff":
       if (!parsed.positionals[0]) fail("diff requires a base branch, tag, or commit");
       return runScript("scripts/diff.mjs", diffArgs(parsed), workspace);
+    case "dx":
+      if (parsed.positionals[0] !== "apply" || !parsed.positionals[1]) fail("dx requires: portolan dx apply PLAN [--dry-run]");
+      return runScript("scripts/dx-apply.mjs", [parsed.positionals[1], ...(parsed.dryRun ? ["--dry-run"] : [])], workspace);
     case "comment":
       if (!parsed.positionals[0]) fail("comment requires a markdown file");
       return runScript("scripts/forge-comment.mjs", [parsed.positionals[0]], workspace);
@@ -77,6 +80,7 @@ function parse(argv) {
       if (!next) fail(`${arg} requires a value`);
       value[arg.slice(2)] = next;
     } else if (arg === "--yes" || arg === "-y") value.yes = true;
+    else if (arg === "--dry-run") value.dryRun = true;
     else if (arg.startsWith("-")) fail(`unknown option ${arg}`);
     else if (!value.command) value.command = arg;
     else value.positionals.push(arg);
@@ -104,6 +108,7 @@ Commands:
   check      fail when committed generated files are out of date
   build      build the static site
   diff BASE  describe architecture changes against BASE
+  dx apply PLAN  apply a generated DX catalog plan
   comment FILE  post or update a pull-request comment from Markdown
   doctor     check the local runtime and project configuration
   version    print the CLI version
@@ -117,6 +122,7 @@ Options:
   --head BRANCH   head branch linked from an architecture diff
   --host HOST     dev server host (default: 127.0.0.1)
   --port PORT     dev server port
+  --dry-run       validate an operation without writing externally
   --yes, -y       init without questions: take every detected default`);
 }
 

@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-close-route`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `callback` · gRPC · CloseRoute
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts)
 
 Ends the day, whatever is left undone.

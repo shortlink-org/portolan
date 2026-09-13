@@ -6,6 +6,11 @@ mod common;
 #[test]
 fn reads_the_fixture_into_the_golden_fragment() {
     let got = common::fragment();
+    if std::env::var_os("UPDATE_GOLDEN").is_some() {
+        let path = format!("{}/testdata/shop/expected.json", env!("CARGO_MANIFEST_DIR"));
+        std::fs::write(path, format!("{}\n", serde_json::to_string_pretty(&got).unwrap())).unwrap();
+        return;
+    }
     let want: serde_json::Value = serde_json::from_str(include_str!("../testdata/shop/expected.json")).expect("the golden is JSON");
     assert_eq!(got, want, "the fragment differs from testdata/shop/expected.json");
 

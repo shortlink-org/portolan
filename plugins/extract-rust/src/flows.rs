@@ -20,7 +20,7 @@ use std::path::Path;
 
 use syn::{Expr, ItemStruct, Pat, Stmt};
 
-use crate::catalog::{Alt, AltBranch, Flow, FlowNode, Participant, RpcCall, Step};
+use crate::catalog::{Alt, AltBranch, Flow, FlowNode, FlowTrigger, Participant, RpcCall, Step};
 use crate::clients::{RpcHop, adapter_calls};
 use crate::domain::AggregateRead;
 use crate::ids::{camel, event_id, sentence, slug};
@@ -235,7 +235,7 @@ impl<'a> FlowReader<'a> {
             label: None,
         });
         let me = d.lane(self.service_lane());
-        d.add(LANE_CLIENT, &me, "rpc", &endpoint.id, "declared", None, "", Some(endpoint.line.clone()));
+        d.add(LANE_CLIENT, &me, "rpc", &endpoint.id, "declared", Some(endpoint.reference.clone()), "", Some(endpoint.line.clone()));
         for key in &endpoint.use_cases {
             self.walk_use_case(&mut d, key, 0);
         }
@@ -253,6 +253,11 @@ impl<'a> FlowReader<'a> {
             name: sentence(&name),
             summary,
             source: endpoint.source.clone(),
+            trigger: FlowTrigger {
+                kind: "callback".into(),
+                label: format!("gRPC · {}", endpoint.id),
+                confidence: "high".into(),
+            },
             owner: self.opts.context.clone(),
             participants: d.lanes,
             steps: d.steps,
@@ -342,6 +347,11 @@ impl<'a> FlowReader<'a> {
                     name: sentence(&slug(&name)),
                     summary: first_paragraph(&doc_of(&st.attrs)),
                     source: (self.rel)(&src.path),
+                    trigger: FlowTrigger {
+                        kind: "event".into(),
+                        label: trigger.name,
+                        confidence: "high".into(),
+                    },
                     owner: self.opts.context.clone(),
                     participants: d.lanes,
                     steps: d.steps,
@@ -877,7 +887,11 @@ impl<'a> FlowReader<'a> {
     fn use_case_hop(&mut self, d: &mut Draft, target: &str, note: &str, line: Option<String>, depth: usize) {
         let me = self.opts.svc_id.clone();
         let label = camel(target.split('/').nth(1).unwrap_or(target));
-        d.add(&me, &me, "call", &label, "declared", None, note, line);
+        let reference = self.use_cases.iter().find(|uc| uc.key == target).and_then(|uc| {
+            self.aggregates.iter().find(|a| a.aggregate.slug == uc.aggregate)
+                .map(|a| format!("{}/{}", a.aggregate.id, camel(&uc.name)))
+        });
+        d.add(&me, &me, "call", &label, "declared", reference, note, line);
         self.walk_use_case(d, target, depth + 1);
     }
 

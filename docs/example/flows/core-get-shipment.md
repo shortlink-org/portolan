@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-get-shipment`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `callback` · gRPC · GetShipment
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts)
 
 One shipment, for whoever is asking about an order.

@@ -1,8 +1,10 @@
 # Generators
 
 A generator turns the catalog into something else. The built-in generators
-produce Markdown and LLM indexes, standalone Mermaid diagrams, and a Backstage
-Software Catalog bundle; each lives in its own directory beside the plugin.
+produce Markdown and LLM indexes, standalone Mermaid diagrams, a Backstage
+Software Catalog bundle, and a DX Software Catalog apply plan; each lives in
+its own directory beside the plugin. `fetch-dx` independently reads DX into a
+catalog fragment; neither direction requires the other.
 
 The contract is one JSON message in and one JSON message out:
 

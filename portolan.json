@@ -307,6 +307,16 @@
       }
     },
     {
+      "name": "dx-source",
+      "host": "fetch-dx"
+    },
+    {
+      "name": "dx-export",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "otel",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
@@ -1197,6 +1207,12 @@
         "lifecycle": "production",
         "sourceBaseUrl": "https://github.com/shortlink-org/portolan/blob/main"
       }
+    },
+    {
+      "plugin": "dx-export",
+      "catalog": "example",
+      "out": "exports/dx",
+      "options": {}
     }
   ]
 }

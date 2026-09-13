@@ -325,6 +325,11 @@
       "name": "Archive price list",
       "summary": "Package archive_price_list takes a price list out of use without losing it.",
       "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · ArchivePriceList",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -439,6 +444,11 @@
       "name": "Get quote",
       "summary": "Package get_quote reads one quote.",
       "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · GetQuote",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -569,6 +579,11 @@
       "name": "Import price list",
       "summary": "Package import_price_list takes in a whole price list.",
       "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · ImportPriceList",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -649,6 +664,11 @@
       "name": "Issue quote",
       "summary": "Package issue_quote prices a basket and promises the price for a while.",
       "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · IssueQuote",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -793,6 +813,11 @@
       "name": "List price lists",
       "summary": "Package list_price_lists reads every price list there is.",
       "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · ListPriceLists",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -873,6 +898,11 @@
       "name": "Expire quote on checkout",
       "summary": "Ends the promise once the basket it priced is checked out.",
       "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go",
+      "trigger": {
+        "kind": "event",
+        "label": "BasketCheckedOut",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {

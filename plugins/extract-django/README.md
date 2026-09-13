@@ -192,7 +192,9 @@ class (`@method_decorator(…, name="dispatch")`), the class's
 answers), a branch on `request.method` in the handler body, and last a project
 wrapper — a decorator or a function the handler hands `request` to — whose own
 body does one of those, followed a bounded number of levels deep. The first
-tier that speaks decides; a declaration listing several verbs makes one
+tier that speaks decides. The same evidence becomes the flow's `http` trigger,
+labelled with the exact verb and resolved URL path; incomplete route evidence is
+retained at medium confidence rather than guessed. A declaration listing several verbs makes one
 endpoint per verb, `planet_status` and `planet_status_patch`. When none of
 them speaks, the verb is not guessed: the route stays in `provides` with an
 empty `http.method`, the inferred OpenAPI document keeps the path as an item
@@ -211,7 +213,8 @@ from a custom handler read directly from code.
 
 **Flow, from a policy.** Each `@receiver` opens one on the bus: `bus → service
 : event <ref>`, where the event is the signal it is given — one of this
-service's own, or another service's placed by the manifest's `events`. A
+service's own, or another service's placed by the manifest's `events`; the same
+signal names the flow's high-confidence `event` trigger. A
 receiver on one of Django's model signals — `post_save`, `pre_delete`,
 `m2m_changed` and the rest — opens none: that is a hook on the row, not a
 policy on an event. It says nothing about what happened, and it fires for
@@ -245,8 +248,10 @@ inside them. `await` is transparent. Every step is `declared`.
 The worker receive is also a source seam. When `extract-celery` is enabled,
 its transport flow continues into the task function body read here, so one
 request flow can show `HTTP → enqueue → worker → database/API` without
-repeating the enqueue. The task-body fragment is source-backed and disappears
-as a standalone fragment once composition consumes it.
+repeating the enqueue. The source-backed task-body fragment is inserted into
+the composed path without replaying transport work. It also remains
+available as a standalone entry because it has a source-backed `job` trigger,
+labelled with the Celery queue or task name.
 
 **Project wrappers.** Some repositories deliberately put a semantic boundary
 around infrastructure or a business integration. `flowWrappers` maps that

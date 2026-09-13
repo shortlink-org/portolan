@@ -108,6 +108,8 @@ pub struct Operation {
     pub doc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exposed_by: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -158,9 +160,17 @@ pub struct Flow {
     pub name: String,
     pub summary: String,
     pub source: String,
+    pub trigger: FlowTrigger,
     pub owner: String,
     pub participants: Vec<Participant>,
     pub steps: Vec<FlowNode>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FlowTrigger {
+    pub kind: String,
+    pub label: String,
+    pub confidence: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

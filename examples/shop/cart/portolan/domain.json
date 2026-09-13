@@ -519,6 +519,11 @@
       "name": "Add item",
       "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/items",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -582,6 +587,11 @@
       "name": "Checkout",
       "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/checkout",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -687,6 +697,11 @@
       "name": "Create basket",
       "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -750,6 +765,11 @@
       "name": "Get basket",
       "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /v1/baskets/{basketId}",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -782,6 +802,11 @@
       "name": "Merge baskets",
       "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/merge",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -903,6 +928,11 @@
       "name": "Remove item",
       "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "DELETE /v1/baskets/{basketId}/items/{sku}",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {

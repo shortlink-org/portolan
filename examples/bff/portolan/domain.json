@@ -78,6 +78,11 @@
       "name": "Query basket",
       "summary": "The basket as the cart has it, in the storefront's words.",
       "source": "examples/bff/src/schema/basket/resolvers/Query/basket.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Query.basket",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -126,6 +131,11 @@
       "name": "Query shipment",
       "summary": "",
       "source": "examples/bff/src/schema/delivery/resolvers/Query/shipment.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Query.shipment",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -174,6 +184,11 @@
       "name": "Query order",
       "summary": "",
       "source": "examples/bff/src/schema/order/resolvers/Query/order.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Query.order",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -222,6 +237,11 @@
       "name": "Query viewer",
       "summary": "Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one.",
       "source": "examples/bff/src/schema/viewer/resolvers/Query/viewer.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Query.viewer",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -270,6 +290,11 @@
       "name": "Mutation add item",
       "summary": "Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live.",
       "source": "examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Mutation.addItem",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -318,6 +343,11 @@
       "name": "Mutation checkout",
       "summary": "Freeze the basket and hand it on.",
       "source": "examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Mutation.checkout",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -366,6 +396,11 @@
       "name": "Mutation remove item",
       "summary": "",
       "source": "examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Mutation.removeItem",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -414,6 +449,11 @@
       "name": "Mutation cancel order",
       "summary": "Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means.",
       "source": "examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Mutation.cancelOrder",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {
@@ -462,6 +502,11 @@
       "name": "Subscription order status",
       "summary": "Every move of one order, for as long as somebody is watching it.",
       "source": "examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "GraphQL · Subscription.orderStatus",
+        "confidence": "high"
+      },
       "owner": "storefront",
       "participants": [
         {

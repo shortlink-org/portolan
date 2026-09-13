@@ -602,6 +602,11 @@
       "name": "Authorize",
       "summary": "Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.",
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · Authorize",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -791,6 +796,11 @@
       "name": "Capture",
       "summary": "Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.",
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · Capture",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -880,6 +890,11 @@
       "name": "Get payment",
       "summary": "Reads one payment, for whoever is asking what happened to the money.",
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · GetPayment",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -927,6 +942,11 @@
       "name": "Issue refund",
       "summary": "Sends money back against a captured payment, in full or in part.",
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · IssueRefund",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -1062,6 +1082,11 @@
       "name": "List refunds",
       "summary": "Every refund against one payment, newest first.",
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · ListRefunds",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -1109,6 +1134,11 @@
       "name": "Void payment on order cancelled",
       "summary": "Gives back what was held once the order it was held for is gone.",
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java",
+      "trigger": {
+        "kind": "event",
+        "label": "OrderCancelled",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {

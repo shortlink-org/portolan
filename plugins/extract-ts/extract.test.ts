@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { Alt, Step } from "../../src/catalog.ts";
+import type { Alt, Flow, Step } from "../../src/catalog.ts";
 import { extract } from "./extract.ts";
 import { serve } from "./main.ts";
 
@@ -20,8 +20,13 @@ function fragment() {
 // a diff, which is the review worth having.
 describe("the fixture, as a whole", () => {
   it("reads to the golden fragment", () => {
+    const actual = fragment();
+    if (process.env.UPDATE_GOLDEN) {
+      writeFileSync(`${ROOT}/expected.json`, `${JSON.stringify(actual, null, 2)}\n`);
+      return;
+    }
     const golden = JSON.parse(readFileSync(`${ROOT}/expected.json`, "utf8"));
-    expect(fragment()).toEqual(golden);
+    expect(actual).toEqual(golden);
   });
 
   it("reports the operation with no handler, and nothing else", () => {
@@ -121,11 +126,16 @@ describe("the service", () => {
 });
 
 describe("the flows", () => {
-  const flows = fragment().flows as { slug: string; steps: (Step | Alt)[]; participants: { id: string; kind: string }[] }[];
+  const flows = fragment().flows as { slug: string; trigger: Flow["trigger"]; steps: (Step | Alt)[]; participants: { id: string; kind: string }[] }[];
   const bySlug = (slug: string) => flows.find((f) => f.slug === slug)!;
   const line = (s: Step | Alt) => (s.type === "step" ? `${s.from}->${s.to} ${s.kind} ${s.label}` : `alt ${s.id}`);
 
   it("opens on the endpoint and follows the use case through its ports", () => {
+    expect(bySlug("cart-add-item").trigger).toEqual({
+      kind: "http",
+      label: "POST /v1/baskets/{basketId}/items",
+      confidence: "high",
+    });
     expect(bySlug("cart-add-item").steps.map(line)).toEqual([
       "client->shop.cart rpc addItem",
       "shop.cart->cart-pg call byId",
@@ -151,6 +161,7 @@ describe("the flows", () => {
 
   it("opens a policy on the bus and draws its choices", () => {
     const policy = bySlug("cart-touch-on-checkout");
+    expect(policy.trigger).toEqual({ kind: "event", label: "BasketCheckedOut", confidence: "high" });
     expect(policy.steps[0]).toMatchObject({ from: "bus", to: "shop.cart", kind: "event", ref: "shop.cart.basket.BasketCheckedOut" });
     const alts = policy.steps.filter((s): s is Alt => s.type === "alt");
     expect(alts.map((a) => a.branches.map((b) => `${b.title}${b.terminal ? "!" : ""}:${b.steps.length}`))).toEqual([

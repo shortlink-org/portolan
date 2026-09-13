@@ -124,10 +124,11 @@ it. A method that makes two calls is the first one it makes.
 
 A call made inside the condition of an `if` is a hop before the branch it
 decides. **Flow, from an endpoint.** Each handler method opens one: `client → service :
-rpc <rpc>`, then the steps of every use case it runs, in order. **Flow, from a
+rpc <rpc>`, then the steps of every use case it runs, in order. Its `callback`
+trigger is labelled with the gRPC method identity. **Flow, from a
 policy.** Each `@ApplicationModuleListener`, `@EventListener` or
 `@DomainEventHandler` method opens one on the bus: `bus → service
-: event <ref>`, where the event is the type of its argument — one of this
+: event <ref>`, with an `event` trigger named after the argument type — one of this
 service's own, or another service's placed by the manifest's `events`.
 
 **Inside a body.** Statements are read in source order, and a chain left to

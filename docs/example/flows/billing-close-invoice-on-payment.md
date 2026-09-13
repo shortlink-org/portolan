@@ -4,6 +4,8 @@
 
 - **Id:** `flow.billing-close-invoice-on-payment`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `event` · PaymentCaptured
+- **Root confidence:** high
 - **Source:** [`examples/shop/billing/invoices/handlers.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/handlers.py)
 
 Closes the invoice for an order once the ledger says the money arrived.

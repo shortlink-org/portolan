@@ -179,6 +179,10 @@ type Service struct {
 	Technologies []string      `json:"technologies,omitempty"`
 	Provides     []RpcService  `json:"provides"`
 	Consumes     []RpcCall     `json:"consumes"`
+	// DependsOn names services this service depends on when the source knows
+	// the component relationship but not a concrete RPC, message, or store.
+	// Catalog integrations use it without inventing protocol evidence.
+	DependsOn []string `json:"dependsOn,omitempty"`
 	// Copies are interfaces read from vendored proto modules. They are kept
 	// apart from Provides because this service calls rather than implements
 	// them, but retain the shapes needed to compare the copy with its publisher.

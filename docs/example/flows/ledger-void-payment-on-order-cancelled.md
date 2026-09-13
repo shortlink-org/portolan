@@ -4,6 +4,8 @@
 
 - **Id:** `flow.ledger-void-payment-on-order-cancelled`
 - **Owner:** [payments](../payments/README.md)
+- **Trigger:** `event` · OrderCancelled
+- **Root confidence:** high
 - **Source:** [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java)
 
 Gives back what was held once the order it was held for is gone.

@@ -120,6 +120,22 @@ func TestNeutralComponentKindBecomesBackstageType(t *testing.T) {
 	}
 }
 
+func TestGenericServiceDependencyBecomesBackstageDependsOn(t *testing.T) {
+	cat := catalog.Catalog{Contexts: []catalog.BoundedContext{{
+		ID: "shop", Name: "Shop", Services: []catalog.Service{
+			{ID: "shop.cart", Name: "Cart", DependsOn: []string{"shop.pricing"}},
+			{ID: "shop.pricing", Name: "Pricing"},
+		},
+	}}}
+	resp, err := render(plugin.Request{Catalog: cat}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resp.Files[0].Contents, "component:default/shop-pricing") {
+		t.Fatal(resp.Files[0].Contents)
+	}
+}
+
 func TestNameIsASCII(t *testing.T) {
 	if got := nameOf("Оплата.API"); got != "api" {
 		t.Fatalf("%q", got)

@@ -22,7 +22,7 @@ Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` an
 
 | Fragment | After step | Seam | Target | Evidence | Source |
 | --- | --- | --- | --- | --- | --- |
-| `billing-celery-body-invoices-tasks-send-invoice-email` | [work](billing-celery-send-invoice-email.md#step-work) | `entrypoint` | `python:invoices.tasks:send_invoice_email` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
+| [billing-celery-body-invoices-tasks-send-invoice-email](billing-celery-body-invoices-tasks-send-invoice-email.md) | [work](billing-celery-send-invoice-email.md#step-work) | `entrypoint` | `python:invoices.tasks:send_invoice_email` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 

@@ -4,7 +4,8 @@ sequenceDiagram
     participant p1 as auth.auth
     participant p2 as auth-pg
     participant p3 as bus
-    p0->>p1: registerUser → User
+    p0->>p1: registerUser
     p1->>p2: ByEmail
     p1->>p2: Save
     p1-)p3: UserRegistered
+    p1-->>p0: HTTP response

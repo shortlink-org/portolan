@@ -113,7 +113,7 @@ const CHAIN_DEPTH = 4;
 export const CHAIN_BUDGET = 200;
 
 /** Enclosing alternatives, parallel branches and loops, innermost last. */
-type Arms = readonly { alt: string; arm: number; label: string }[];
+type Arms = readonly { alt: string; arm: number; label: string; terminal?: boolean }[];
 
 interface Walked {
   steps: Step[];
@@ -141,7 +141,7 @@ function walk(nodes: FlowNode[]): Walked {
           break;
         case "alt":
           node.branches.forEach((branch, arm) =>
-            visit(branch.steps, [...enclosing, { alt: node.id, arm, label: branch.title }]),
+            visit(branch.steps, [...enclosing, { alt: node.id, arm, label: branch.title, terminal: branch.terminal }]),
           );
           break;
         case "loop":
@@ -158,7 +158,7 @@ function walk(nodes: FlowNode[]): Walked {
 function sameSide(earlier: Arms, later: Arms): boolean {
   return earlier.every((frame) => {
     const other = later.find((f) => f.alt === frame.alt);
-    return other === undefined || other.arm === frame.arm;
+    return other === undefined ? !frame.terminal : other.arm === frame.arm;
   });
 }
 
@@ -371,6 +371,13 @@ function buildChain(
 
   if (command) {
     const nodes: ChainNode[] = [];
+    // A canonical RPC ref can join a caller to one extracted server entry.
+    // Repeated calls to the same method are not server implementations.
+    const implementations = executions.filter((receipt) => {
+      const step = receipt.walked.steps[receipt.index]!;
+      return receipt.index === 0 && step.kind === "rpc" && receipt.flow.source &&
+        receipt.lanes.get(step.from)?.kind === "actor";
+    });
     executions.forEach((receipt, i) => {
       if (!room(null, executions.length - i)) return;
       const step = receipt.walked.steps[receipt.index]!;
@@ -380,7 +387,25 @@ function buildChain(
         scope: receipt.walked.arms[receipt.index]!.map((arm) => arm.label),
         status: step.status, worst: step.status, children: [],
       };
-      appendPublished(node, receipt, command.service, new Set(), -1, 1);
+      const targets = step.kind === "rpc" && receipt.lanes.get(step.from)?.kind === "service"
+        ? implementations.filter((target) => target.flow.slug !== receipt.flow.slug && target.walked.steps[0]!.ref === step.ref)
+        : [];
+      if (targets.length === 1) {
+        const target = targets[0]!;
+        const entry = target.walked.steps[0]!;
+        if (room(node, 1)) {
+          const implementation: ChainNode = {
+            kind: "execution", flow: target.flow.slug, name: target.flow.name,
+            stepId: entry.id, number: 1, depth: 1,
+            status: entry.status, worst: entry.status, children: [],
+          };
+          appendPublished(implementation, target, command.service, new Set(), -1, 2);
+          settle(implementation);
+          node.children.push(implementation);
+        }
+      } else {
+        appendPublished(node, receipt, command.service, new Set(), -1, 1);
+      }
       settle(node);
       nodes.push(node);
     });

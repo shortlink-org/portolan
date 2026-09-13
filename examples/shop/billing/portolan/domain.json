@@ -475,6 +475,11 @@
       "name": "Invoice create",
       "summary": "Draws up a draft invoice for an order, with a line for each thing sold.",
       "source": "examples/shop/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/invoices/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -534,6 +539,11 @@
       "name": "Invoice destroy",
       "summary": "Ends an invoice nobody is going to pay.",
       "source": "examples/shop/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "DELETE /v1/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -608,6 +618,11 @@
       "name": "Invoice issue",
       "summary": "Confirms the session, freezes the invoice and asks the customer to pay.",
       "source": "examples/shop/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/invoices/{id}/issue/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -747,6 +762,11 @@
       "name": "Invoice list",
       "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
       "source": "examples/shop/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /v1/invoices/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -779,6 +799,11 @@
       "name": "Invoice partial update",
       "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
       "source": "examples/shop/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "PATCH /v1/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -811,6 +836,11 @@
       "name": "Invoice retrieve",
       "summary": "Reads one invoice and the lines it is made of.",
       "source": "examples/shop/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /v1/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -858,6 +888,11 @@
       "name": "Invoice update",
       "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
       "source": "examples/shop/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "PUT /v1/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -890,6 +925,11 @@
       "name": "Close invoice on payment",
       "summary": "Closes the invoice for an order once the ledger says the money arrived.",
       "source": "examples/shop/billing/invoices/handlers.py",
+      "trigger": {
+        "kind": "event",
+        "label": "PaymentCaptured",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -960,6 +1000,11 @@
       "name": "Send invoice email work",
       "summary": "Emails the customer the invoice they were asked to pay. Observable work performed by the Celery task.",
       "source": "examples/shop/billing/invoices/tasks.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · invoices.tasks.send_invoice_email",
+        "confidence": "high"
+      },
       "entrypoint": "python:invoices.tasks:send_invoice_email",
       "owner": "shop",
       "participants": [
@@ -993,6 +1038,11 @@
       "name": "Remind unpaid invoice work",
       "summary": "Nudges the customer about an invoice that has stayed unpaid. Observable work performed by the Celery task.",
       "source": "examples/shop/billing/invoices/tasks.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · invoices.tasks.remind_unpaid_invoice",
+        "confidence": "high"
+      },
       "entrypoint": "python:invoices.tasks:remind_unpaid_invoice",
       "owner": "shop",
       "participants": [

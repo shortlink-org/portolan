@@ -289,6 +289,28 @@ export function validateCatalog(catalog: Catalog): Catalog {
           names.add(name);
         }
       }
+      const dependencies = new Set<string>();
+      for (const dependency of service.dependsOn ?? []) {
+        if (!dependency.trim()) {
+          fail(
+            `service "${service.id}" has a dependency with no id`,
+            `service ${service.id}`,
+          );
+        }
+        if (dependency === service.id) {
+          fail(
+            `service "${service.id}" depends on itself`,
+            `service ${service.id}`,
+          );
+        }
+        if (dependencies.has(dependency)) {
+          fail(
+            `service "${service.id}" depends on "${dependency}" twice`,
+            `service ${service.id}`,
+          );
+        }
+        dependencies.add(dependency);
+      }
       for (const call of service.consumes) rpcIds.add(call.id);
       for (const provided of service.provides) {
         for (const method of provided.methods) {
@@ -810,6 +832,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
     }
   }
 
+  validateServiceDependencies(catalog);
   validateExternals(catalog);
   validateStores(catalog);
   validateModules(catalog);
@@ -819,6 +842,20 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateDeployments(catalog);
 
   return catalog;
+}
+
+function validateServiceDependencies(catalog: Catalog): void {
+  const ids = new Set(allServices(catalog).map((service) => service.id));
+  for (const service of allServices(catalog)) {
+    for (const dependency of service.dependsOn ?? []) {
+      if (!ids.has(dependency)) {
+        fail(
+          `service "${service.id}" depends on service "${dependency}", which is not in the catalog`,
+          `service ${service.id}`,
+        );
+      }
+    }
+  }
 }
 
 /**

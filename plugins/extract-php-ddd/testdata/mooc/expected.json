@@ -721,6 +721,11 @@
       "name": "Courses get",
       "summary": "Lists every course for the back office UI.",
       "source": "testdata/mooc/apps/backoffice/backend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -773,6 +778,11 @@
       "name": "Api courses get",
       "summary": "",
       "source": "testdata/mooc/apps/backoffice/frontend/config/routes/api_courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /api/courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -806,6 +816,11 @@
       "name": "Courses get",
       "summary": "The courses page.",
       "source": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -858,6 +873,11 @@
       "name": "Courses post",
       "summary": "The new-course form, submitted.",
       "source": "testdata/mooc/apps/backoffice/frontend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -951,6 +971,11 @@
       "name": "Courses put",
       "summary": "Creates the course with the given id.",
       "source": "testdata/mooc/apps/mooc/backend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "PUT /courses/{id}",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {
@@ -1027,6 +1052,11 @@
       "name": "Courses counter get",
       "summary": "",
       "source": "testdata/mooc/apps/mooc/backend/config/routes/courses_counter.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /courses-counter",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {
@@ -1079,6 +1109,11 @@
       "name": "Health check get",
       "summary": "Answers that the application is up.",
       "source": "testdata/mooc/apps/mooc/backend/config/routes/health-check.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /health-check",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {
@@ -1112,6 +1147,11 @@
       "name": "Store domain event on occurred",
       "summary": "Keeps a copy of every event that ever happened.",
       "source": "testdata/mooc/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php",
+      "trigger": {
+        "kind": "event",
+        "label": "RabbitMQ · acme.analytics.domain_events.store_domain_event_on_occurred",
+        "confidence": "high"
+      },
       "owner": "analytics",
       "participants": [
         {
@@ -1146,6 +1186,11 @@
       "name": "Create backoffice course on course created",
       "summary": "",
       "source": "testdata/mooc/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php",
+      "trigger": {
+        "kind": "event",
+        "label": "RabbitMQ · acme.backoffice.courses.create_backoffice_course_on_course_created",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1206,6 +1251,11 @@
       "name": "Increment courses counter on course created",
       "summary": "",
       "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php",
+      "trigger": {
+        "kind": "event",
+        "label": "RabbitMQ · acme.mooc.courses_counter.increment_courses_counter_on_course_created",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {

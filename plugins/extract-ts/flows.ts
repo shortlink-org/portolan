@@ -187,6 +187,7 @@ export class FlowReader {
       name: sentence(name),
       summary: last ? this.useCaseSummary(last) : "",
       source: endpoint.source,
+      trigger: endpoint.trigger,
       owner: this.opts.context,
       participants: d.lanes,
       steps: d.steps,
@@ -220,6 +221,11 @@ export class FlowReader {
       name: sentence(name),
       summary: resolver.doc.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "",
       source: this.rel(resolver.src.path),
+      trigger: {
+        kind: "callback",
+        label: `GraphQL · ${resolver.id}`,
+        confidence: "high",
+      },
       owner: this.opts.context,
       participants: d.lanes,
       steps: d.steps,
@@ -258,7 +264,7 @@ export class FlowReader {
         }
         this.walkBody(d, { src, key: `policy/${cls.name}`, cls, ports: new Map(cls.params.map((p) => [p.name, p.type])), vars: new Map([[paramIdent(handle.params[0]!)?.name ?? "event", { name: trigger.name, event: trigger.id }]]) }, handle.body, 0);
         const id = `${this.opts.service}-${slug(cls.name)}`;
-        out.push({ id: `flow.${id}`, slug: id, name: sentence(slug(cls.name)), summary: cls.doc.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "", source: this.rel(src.path), owner: this.opts.context, participants: d.lanes, steps: d.steps });
+        out.push({ id: `flow.${id}`, slug: id, name: sentence(slug(cls.name)), summary: cls.doc.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "", source: this.rel(src.path), trigger: { kind: "event", label: trigger.name, confidence: "high" }, owner: this.opts.context, participants: d.lanes, steps: d.steps });
       }
     }
     return out;

@@ -1170,6 +1170,32 @@ describe("validateCatalog: owners", () => {
   });
 });
 
+describe("validateCatalog: service dependencies", () => {
+  it("accepts a dependency on another catalog service", () => {
+    const good = clone();
+    const services = good.contexts.flatMap((context) => context.services);
+    services[0]!.dependsOn = [services[1]!.id];
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
+  it("rejects missing, self, and duplicate dependencies", () => {
+    const bad = clone();
+    const service = bad.contexts[0]!.services[0]!;
+
+    service.dependsOn = ["missing.service"];
+    expect(() => validateCatalog(bad)).toThrow(/not in the catalog/);
+
+    service.dependsOn = [service.id];
+    expect(() => validateCatalog(bad)).toThrow(/depends on itself/);
+
+    const peer = bad.contexts.flatMap((context) => context.services).find(
+      (candidate) => candidate.id !== service.id,
+    )!;
+    service.dependsOn = [peer.id, peer.id];
+    expect(() => validateCatalog(bad)).toThrow(/twice/);
+  });
+});
+
 describe("validateCatalog: repo pins", () => {
   it("accepts a pin for a repository no service claims to live in", () => {
     // A repository fetched for its protos before anything reads its code is a

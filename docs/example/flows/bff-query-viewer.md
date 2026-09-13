@@ -4,6 +4,8 @@
 
 - **Id:** `flow.bff-query-viewer`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Query.viewer
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts)
 
 Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one.

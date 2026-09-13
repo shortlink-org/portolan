@@ -4,6 +4,8 @@
 
 - **Id:** `flow.pricing-issue-quote`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `callback` · gRPC · IssueQuote
+- **Root confidence:** high
 - **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go)
 
 Package issue_quote prices a basket and promises the price for a while.

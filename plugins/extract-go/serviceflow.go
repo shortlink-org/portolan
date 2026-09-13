@@ -86,7 +86,7 @@ func extractServiceFlows(root string, opts Options, b *plugin.Builder, covered m
 		if endpoint.kind == "http" {
 			flow.Trigger = &catalog.FlowTrigger{Kind: "http", Label: endpoint.label, Confidence: "high"}
 		} else {
-			flow.Trigger = &catalog.FlowTrigger{Kind: "unproven", Label: endpoint.label, Confidence: "high"}
+			flow.Trigger = &catalog.FlowTrigger{Kind: "callback", Label: "gRPC · " + endpoint.label, Confidence: "high"}
 			flow.EntryPoint = endpoint.entrypoint
 		}
 		out = append(out, flow)

@@ -51,6 +51,13 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	if len(svc.Dials) > 0 {
 		rows = append(rows, []string{"Dials", codeList(svc.Dials)})
 	}
+	if len(svc.DependsOn) > 0 {
+		dependencies := make([]string, 0, len(svc.DependsOn))
+		for _, id := range svc.DependsOn {
+			dependencies = append(dependencies, s.ref(self, id, id))
+		}
+		rows = append(rows, []string{"Depends on", strings.Join(dependencies, ", ")})
+	}
 	b.WriteString(defList(rows))
 
 	// The readme is a whole document of its own, so it goes in one level down

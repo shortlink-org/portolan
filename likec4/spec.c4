@@ -51,6 +51,7 @@ specification {
 
   relationship consumes
   relationship calls
+  relationship depends_on
   relationship bus
   relationship reads
   relationship persists

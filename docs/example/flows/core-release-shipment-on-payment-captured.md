@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-release-shipment-on-payment-captured`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `event` · PaymentCaptured
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts)
 
 Nothing leaves the warehouse before the money has moved (ADR core.0002).

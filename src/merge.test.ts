@@ -570,6 +570,20 @@ describe("mergeCatalogs: owners", () => {
   });
 });
 
+describe("mergeCatalogs: generic service dependencies", () => {
+  it("unions dependencies from independent sources", () => {
+    const a = context("shop", ["shop.cart", "shop.pricing", "shop.oms"]);
+    a.services[0]!.dependsOn = ["shop.pricing"];
+    const b = context("shop", ["shop.cart"]);
+    b.services[0]!.dependsOn = ["shop.oms", "shop.pricing"];
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [a] }),
+      source("b.json", { contexts: [b] }),
+    ]);
+    expect(merged.catalog.contexts[0]?.services.find((service) => service.id === "shop.cart")?.dependsOn).toEqual(["shop.pricing", "shop.oms"]);
+  });
+});
+
 describe("mergeCatalogs: repo pins", () => {
   const shop = { repo: "github.com/acme/shop", commit: "c1d2e3f" };
 

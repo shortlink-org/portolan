@@ -544,6 +544,11 @@
       "name": "Invoice create",
       "summary": "Invoices over HTTP.",
       "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /api/invoices/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -603,6 +608,11 @@
       "name": "Invoice destroy",
       "summary": "Ends an invoice nobody is going to pay.",
       "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "DELETE /api/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -676,6 +686,11 @@
       "name": "Invoice issue",
       "summary": "Draws the lines up, freezes the invoice and asks the customer to pay.",
       "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /api/invoices/{id}/issue/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -816,6 +831,11 @@
       "name": "Invoice list",
       "summary": "Invoices over HTTP.",
       "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /api/invoices/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -875,6 +895,11 @@
       "name": "Invoice partial update",
       "summary": "Invoices over HTTP.",
       "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "PATCH /api/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -945,6 +970,11 @@
       "name": "Invoice retrieve",
       "summary": "Reads one invoice.",
       "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /api/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -993,6 +1023,11 @@
       "name": "Invoice update",
       "summary": "Invoices over HTTP.",
       "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "trigger": {
+        "kind": "http",
+        "label": "PUT /api/invoices/{id}/",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1063,6 +1098,11 @@
       "name": "Mark invoice paid",
       "summary": "Closes the invoice once the ledger says the money arrived.",
       "source": "plugins/extract-django/testdata/billing/invoices/handlers.py",
+      "trigger": {
+        "kind": "event",
+        "label": "PaymentCaptured",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1133,6 +1173,11 @@
       "name": "Send invoice email work",
       "summary": "Emails the customer the invoice they were asked to pay. Observable work performed by the Celery task.",
       "source": "plugins/extract-django/testdata/billing/invoices/tasks.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · invoices.tasks.send_invoice_email",
+        "confidence": "high"
+      },
       "entrypoint": "python:invoices.tasks:send_invoice_email",
       "owner": "shop",
       "participants": [

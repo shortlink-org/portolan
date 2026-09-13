@@ -125,6 +125,7 @@ const KIND_HEAD = {
 const RELATION_KINDS = [
   "consumes",
   "calls",
+  "depends_on",
   "bus",
   "reads",
   "persists",
@@ -360,6 +361,14 @@ for (const context of catalog.contexts) {
       relations.push(
         `  ${fqn(service.id)} -[calls]-> ${participantRef(peer)} ${q(method)}${protocol ? ` ${q(protocol)}` : ""} {\n` +
           `    style { color ${call.status}  line ${STATUS_LINE[call.status]}  head normal }\n` +
+          `  }`,
+      );
+    }
+    for (const dependency of service.dependsOn ?? []) {
+      if (!serviceIds.has(dependency)) continue;
+      relations.push(
+        `  ${fqn(service.id)} -[depends_on]-> ${fqn(dependency)} 'depends on' {\n` +
+          `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
           `  }`,
       );
     }
@@ -873,6 +882,9 @@ for (const profile of profiles) {
     }
   }
   for (const service of profileServices) {
+    for (const dependency of service.dependsOn ?? []) {
+      if (!profileServiceIds.has(dependency)) profileRoots.add(dependency);
+    }
     for (const call of service.consumes) {
       const peer = peerParticipant(call.peer);
       if (peer && !profileServiceIds.has(peer)) profileRoots.add(peer);

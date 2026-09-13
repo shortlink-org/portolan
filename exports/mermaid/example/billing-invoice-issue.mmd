@@ -18,3 +18,4 @@ sequenceDiagram
     p5->>p1: remind_unpaid_invoice
     p1->>p3: Invoice.objects.filter
     p1-)p6: InvoiceIssued
+    p1-->>p0: HTTP response

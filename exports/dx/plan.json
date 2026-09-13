@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "entities": [
+    {
+      "identifier": "auth.auth",
+      "type": "service",
+      "name": "Authentication \u0026 Sessions",
+      "description": "Authentication \u0026 Sessions",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "delivery.core",
+      "type": "service",
+      "name": "Delivery Core",
+      "description": "Delivery Core",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "payments.ledger",
+      "type": "service",
+      "name": "Ledger",
+      "description": "Ledger",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "shop.billing",
+      "type": "service",
+      "name": "Billing",
+      "description": "Billing",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "shop.cart",
+      "type": "service",
+      "name": "Shopping Cart",
+      "description": "Shopping Cart",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "shop.oms",
+      "type": "service",
+      "name": "Order Management",
+      "description": "Order Management",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "shop.oms-cdc",
+      "type": "service",
+      "name": "oms-cdc"
+    },
+    {
+      "identifier": "shop.pricing",
+      "type": "service",
+      "name": "Pricing",
+      "description": "Pricing",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "storefront.bff",
+      "type": "service",
+      "name": "Storefront BFF",
+      "description": "Storefront BFF",
+      "aliases": {
+        "github_repo": [
+          {
+            "lookup": "shortlink-org/portolan"
+          }
+        ]
+      }
+    }
+  ],
+  "relationEdges": [
+    {
+      "relation_identifier": "service-depends-on-service",
+      "edges": {
+        "delivery.core": [
+          "shop.oms"
+        ],
+        "payments.ledger": [
+          "shop.oms"
+        ],
+        "shop.billing": [
+          "auth.auth"
+        ],
+        "shop.cart": [
+          "auth.auth",
+          "shop.pricing"
+        ],
+        "storefront.bff": [
+          "auth.auth",
+          "delivery.core",
+          "shop.cart",
+          "shop.oms"
+        ]
+      }
+    }
+  ]
+}

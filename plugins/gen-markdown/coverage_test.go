@@ -19,7 +19,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.Deployment{}):          "id name project environment cluster namespace repo path chart targetRevision revision tool url service images basis drift",
 	reflect.TypeOf(catalog.DeploymentDrift{}):     "project cluster namespace path targetRevision images",
 	reflect.TypeOf(catalog.BoundedContext{}):      "id slug name summary kind classification viewId services",
-	reflect.TypeOf(catalog.Service{}):             "id slug name repo path readme kind technologies provides consumes copies aggregates stores modules channels owners commands hosts dials",
+	reflect.TypeOf(catalog.Service{}):             "id slug name repo path readme kind technologies provides consumes dependsOn copies aggregates stores modules channels owners commands hosts dials",
 	reflect.TypeOf(catalog.Command{}):             "runner name run doc body source",
 	reflect.TypeOf(catalog.RpcService{}):          "id methods source messages enums module",
 	reflect.TypeOf(catalog.RpcEnum{}):             "name doc values",

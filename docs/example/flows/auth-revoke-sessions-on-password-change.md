@@ -4,6 +4,8 @@
 
 - **Id:** `flow.auth-revoke-sessions-on-password-change`
 - **Owner:** [auth](../auth/README.md)
+- **Trigger:** `event` · PasswordChanged
+- **Root confidence:** high
 - **Source:** [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go)
 
 Ends the sessions issued against a password that has just been replaced.

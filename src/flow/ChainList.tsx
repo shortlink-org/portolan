@@ -4,7 +4,8 @@
 // or a published event links to the step it was read from.
 
 import { Link } from "react-router";
-import { CornerDownRight } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, CornerDownRight } from "lucide-react";
 
 import { statusVar } from "../components/primitives";
 import { ctxStyle } from "../lib/context-color";
@@ -12,14 +13,32 @@ import { plural } from "../lib/format";
 import { eventPath, paths, servicePath } from "../routes";
 import { CHAIN_BUDGET } from "./chain";
 import type { ChainCut, ChainNode, EventChain } from "./chain";
+import { problemBranches } from "./command-info";
 
 const indent = (depth: number) => 8 + depth * 12;
 
-export function ChainList({ chain }: { chain: EventChain }) {
+export function ChainList({ chain, collapsible = false }: { chain: EventChain; collapsible?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const [problems, setProblems] = useState(false);
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const nodes = problems ? problemBranches(chain.nodes) : chain.nodes;
+  const state = {
+    collapsible,
+    isOpen: (path: string, node: ChainNode) => overrides[path] ?? (expanded || problems || node.depth === 0 || node.kind === "execution"),
+    toggle: (path: string, node: ChainNode) => setOverrides((old) => ({
+      ...old, [path]: !(old[path] ?? (expanded || problems || node.depth === 0 || node.kind === "execution")),
+    })),
+  };
   return (
     <div className="flex flex-col" data-nav-list>
-      {chain.nodes.map((node, i) => (
-        <Row key={`${i}`} node={node} path={`${i}`} />
+      {collapsible ? <div className="mono mb-2 flex flex-wrap gap-3">
+        <button type="button" className="rounded-control text-accent" onClick={() => { setExpanded(true); setOverrides({}); }}>Expand all</button>
+        <button type="button" className="rounded-control text-accent" onClick={() => { setExpanded(false); setProblems(false); setOverrides({}); }}>Collapse branches</button>
+        <button type="button" aria-pressed={problems} className="rounded-control text-accent" onClick={() => { setProblems(!problems); setOverrides({}); }}>Only gaps / unresolved</button>
+      </div> : null}
+      {problems && !nodes.length ? <p className="mono text-muted">No gaps or unresolved links in the shown chain.</p> : null}
+      {nodes.map((node, i) => (
+        <Row key={`${chain.root}/${i}`} node={node} path={`${i}`} state={state} />
       ))}
       {chain.truncated ? (
         <div
@@ -34,14 +53,29 @@ export function ChainList({ chain }: { chain: EventChain }) {
   );
 }
 
-function Row({ node, path }: { node: ChainNode; path: string }) {
+interface BranchState {
+  collapsible: boolean;
+  isOpen: (path: string, node: ChainNode) => boolean;
+  toggle: (path: string, node: ChainNode) => void;
+}
+
+function Row({ node, path, state }: { node: ChainNode; path: string; state: BranchState }) {
+  const open = !state.collapsible || state.isOpen(path, node);
+  const label = node.kind === "consumer" ? node.service : node.name;
   return (
     <>
       <div
         className="flex items-start gap-2 py-0.5 pr-2"
         style={{ paddingLeft: indent(node.depth) }}
       >
+        {state.collapsible && node.children.length ? (
+          <button type="button" aria-expanded={open} aria-label={`${open ? "Collapse" : "Expand"} branch ${label}`}
+            className="mt-0.5 shrink-0 rounded-control text-muted hover:text-ink" onClick={() => state.toggle(path, node)}>
+            {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+          </button>
+        ) : null}
         <Label node={node} />
+        {!open && node.children.length ? <span className="mono shrink-0 text-muted">{node.children.length} below</span> : null}
         <span
           aria-hidden
           className="mt-1.5 ml-auto size-1.5 shrink-0 rounded-[1px]"
@@ -62,8 +96,8 @@ function Row({ node, path }: { node: ChainNode; path: string }) {
       {(node.kind === "execution" || node.kind === "receipt") && node.children.length === 0 && !node.cut ? (
         <Aside depth={node.depth + 1}>no subsequent publication is linked in this flow</Aside>
       ) : null}
-      {node.children.map((child, i) => (
-        <Row key={`${path}.${i}`} node={child} path={`${path}.${i}`} />
+      {open && node.children.map((child, i) => (
+        <Row key={`${path}.${i}`} node={child} path={`${path}.${i}`} state={state} />
       ))}
       {node.cut ? <Cut cut={node.cut} depth={node.depth + 1} /> : null}
     </>

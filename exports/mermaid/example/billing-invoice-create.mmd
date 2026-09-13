@@ -6,3 +6,4 @@ sequenceDiagram
     p0->>p1: invoice_create
     p1->>p2: Invoice.objects.create
     p1->>p2: InvoiceLine.objects.create
+    p1-->>p0: HTTP response

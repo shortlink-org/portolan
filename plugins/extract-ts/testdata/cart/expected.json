@@ -325,6 +325,11 @@
       "name": "Add item",
       "summary": "Adds a line, or increments one already there.",
       "source": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/items",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -398,6 +403,11 @@
       "name": "Checkout",
       "summary": "",
       "source": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/checkout",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -503,6 +513,11 @@
       "name": "Expire idle baskets",
       "summary": "Abandons every basket nobody has touched for a day.",
       "source": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/expire-idle",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -578,6 +593,11 @@
       "name": "Merge baskets",
       "summary": "Folds a visitor's basket into the customer's own, making one if there is none.",
       "source": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/merge",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -688,6 +708,11 @@
       "name": "Touch on checkout",
       "summary": "Touches the basket once it is checked out, so the sweep leaves it alone.",
       "source": "plugins/extract-ts/testdata/cart/src/application/policy/expire-quote-on-checkout.ts",
+      "trigger": {
+        "kind": "event",
+        "label": "BasketCheckedOut",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {

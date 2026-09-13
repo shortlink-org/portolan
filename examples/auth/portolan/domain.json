@@ -546,6 +546,11 @@
       "name": "Change password",
       "summary": "Replaces the password of a user, given the current one.",
       "source": "examples/auth/internal/user/infrastructure/http/change_password.go",
+      "trigger": {
+        "kind": "http",
+        "label": "changePassword",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -723,6 +728,11 @@
       "name": "Get user",
       "summary": "Reads a user by id.",
       "source": "examples/auth/internal/user/infrastructure/http/get.go",
+      "trigger": {
+        "kind": "http",
+        "label": "getUser",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -802,6 +812,11 @@
       "name": "Login",
       "summary": "Turns credentials into a session.",
       "source": "examples/auth/internal/session/infrastructure/http/login.go",
+      "trigger": {
+        "kind": "http",
+        "label": "login",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1547,6 +1562,11 @@
       "name": "Logout",
       "summary": "Ends the session behind a token.",
       "source": "examples/auth/internal/session/infrastructure/http/logout.go",
+      "trigger": {
+        "kind": "http",
+        "label": "logout",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1690,6 +1710,11 @@
       "name": "Register user",
       "summary": "Creates a user from an email address and a password.",
       "source": "examples/auth/internal/user/infrastructure/http/register.go",
+      "trigger": {
+        "kind": "http",
+        "label": "registerUser",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1833,6 +1858,11 @@
       "name": "Validate session",
       "summary": "Resolves a token to a live session: who is calling, and how long the answer stays good.",
       "source": "examples/auth/internal/session/infrastructure/http/validate.go",
+      "trigger": {
+        "kind": "http",
+        "label": "validateSession",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1912,6 +1942,11 @@
       "name": "Revoke sessions on password change",
       "summary": "Ends the sessions issued against a password that has just been replaced.",
       "source": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go",
+      "trigger": {
+        "kind": "event",
+        "label": "PasswordChanged",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {

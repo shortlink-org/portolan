@@ -396,7 +396,7 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color declared  line dashed  head onormal }
   }
   shop.cart -[bus]-> bus '5 events' {
-    style { color verified  line solid  head onormal }
+    style { color declared  line dashed  head onormal }
   }
   delivery.core -[bus]-> bus '8 events' {
     style { color declared  line dashed  head onormal }
@@ -419,9 +419,6 @@ payment was captured, and what that means for a parcel is decided here.'
   bus -[bus]-> shop.pricing 'BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
   }
-  client -[uses]-> auth.auth '6 flows' {
-    style { color verified  line solid  head normal }
-  }
   client -[uses]-> storefront.bff '9 flows' {
     style { color declared  line dashed  head normal }
   }
@@ -431,10 +428,7 @@ payment was captured, and what that means for a parcel is decided here.'
   client -[uses]-> shop.billing '7 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -[uses]-> shop.cart '6 flows' {
-    style { color verified  line solid  head normal }
-  }
-  client -[uses]-> shop.oms '2 flows' {
+  client -[uses]-> shop.oms '4 flows' {
     style { color verified  line solid  head normal }
   }
   developer -[uses]-> portolan.host 'npm run gen' {

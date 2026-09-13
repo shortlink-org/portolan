@@ -5,7 +5,7 @@ sequenceDiagram
     participant p2 as auth-pg
     participant p3 as bus
     participant p4 as risk.v1
-    p0->>p1: login → Session
+    p0->>p1: login
     p1->>p1: CheckCredentials
     p1->>p2: ByEmail
     p1->>p1: Check
@@ -15,7 +15,8 @@ sequenceDiagram
         p1->>p2: ByUserID
         p1->>p2: Save
         p1-)p3: AccountLocked
-        Note over p3: flow ends here
+        p1-->>p0: HTTP response
+        Note over p0: flow ends here
     else otherwise
     end
     p1->>p1: RecordSuccess
@@ -26,8 +27,10 @@ sequenceDiagram
         p1->>p2: ByUserID
         p1->>p2: Save
         p1-)p3: SessionEnded
-        Note over p3: flow ends here
+        p1-->>p0: HTTP response
+        Note over p0: flow ends here
     else otherwise
     end
     p1->>p2: Save
     p1-)p3: SessionStarted
+    p1-->>p0: HTTP response

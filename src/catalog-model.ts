@@ -135,6 +135,11 @@ export interface Service {
   technologies?: string[];
   provides: RpcService[];
   consumes: RpcCall[];
+  /**
+   * Services this service depends on when a catalog source knows the
+   * component relationship but not a concrete RPC, message, or store.
+   */
+  dependsOn?: string[];
   /** Interfaces read from vendored proto copies, retained for drift checks. */
   copies?: RpcService[];
   aggregates: Aggregate[];

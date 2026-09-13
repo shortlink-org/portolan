@@ -125,6 +125,11 @@ func render(req plugin.Request, opts Options) (plugin.Response, error) {
 			commands(&component.Metadata, svc, opts.SourceBaseURL)
 			reachability(&component.Metadata, svc)
 			depends := []string{}
+			for _, dependency := range svc.DependsOn {
+				if peer := serviceName[dependency]; peer != "" {
+					depends = append(depends, "component:default/"+peer)
+				}
+			}
 			consumes := []string{}
 			for _, call := range svc.Consumes {
 				if peer := serviceName[call.Peer]; peer != "" {

@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-record-scan`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `callback` · gRPC · RecordScan
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts)
 
 Writes down that a parcel was seen somewhere.

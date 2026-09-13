@@ -142,13 +142,18 @@ final class Catalog {
         return out;
     }
 
-    static Map<String, Object> flow(String id, String slug, String name, String summary, String source, String owner, List<Object> participants, List<Object> steps) {
+    static Map<String, Object> trigger(String kind, String label, String confidence) {
+        return map("kind", kind, "label", label, "confidence", confidence);
+    }
+
+    static Map<String, Object> flow(String id, String slug, String name, String summary, String source, Map<String, Object> trigger, String owner, List<Object> participants, List<Object> steps) {
         return map(
                 "id", id,
                 "slug", slug,
                 "name", name,
                 "summary", summary,
                 "source", source,
+                "trigger", trigger,
                 "owner", owner,
                 "participants", participants,
                 "steps", steps);

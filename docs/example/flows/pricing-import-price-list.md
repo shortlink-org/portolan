@@ -4,6 +4,8 @@
 
 - **Id:** `flow.pricing-import-price-list`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `callback` · gRPC · ImportPriceList
+- **Root confidence:** high
 - **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go)
 
 Package import_price_list takes in a whole price list.

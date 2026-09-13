@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
+import { Link2 } from "lucide-react";
 import { catalog, index } from "../data";
 import { allRepos, blockCounts, blockFields, enumsOf, rootEntity } from "../catalog";
 import { isStatusEnum } from "../lib/shape";
@@ -13,6 +14,9 @@ import type {
 } from "../catalog";
 import { flowsRunning, markdownOutline } from "../lib/derive";
 import { CommandConsequences } from "../flow/CommandConsequences";
+import { commandChain } from "../flow/chain";
+import { commandAnchor, commandSummary } from "../flow/command-info";
+import { anchorUrl, toClipboard } from "../lib/clipboard";
 import {
   redisKeyspacesPersisting,
   tablesPersisting,
@@ -259,11 +263,20 @@ function EnumList({
   );
 }
 
-/**
- * Commands and queries with what each one actually does. The sentence is the
- * point: a bare `CancelOrder` says nothing about when it is refused, and the
- * precondition is exactly what a reader came to this page for.
- */
+function CommandLink({ id }: { id: string }) {
+  const { pathname, search } = useLocation();
+  const hash = encodeURIComponent(commandAnchor(id));
+  return (
+    <Link to={{ pathname, search, hash: `#${hash}` }}
+      onClick={() => { void toClipboard(anchorUrl(hash)); }}
+      className="rounded-control p-1 text-muted hover:text-ink"
+      aria-label={`Copy link to command ${id}`} title={`Copy link to ${id}`}>
+      <Link2 size={12} aria-hidden />
+    </Link>
+  );
+}
+
+/** Commands and queries, their preconditions, entry points and consequences. */
 function OperationList({
   kind,
   operations,
@@ -283,16 +296,22 @@ function OperationList({
   );
   const to = servicePath(service.id);
   const pins = allRepos(catalog);
+  const chains = useMemo(() => new Map(operations.filter((op) => op.kind === "command").map((op) =>
+    [op.id, commandChain(catalog, service, aggregate, op)],
+  )), [operations, service, aggregate]);
 
   return (
     <ul className="flex flex-col gap-1">
       {operations.map((op) => {
         const runs = flowsRunning(catalog, service, aggregate, op);
+        const chain = chains.get(op.id);
+        const summary = chain ? commandSummary(chain, service.id) : null;
         const location = op.source ? sourceLocation(op.source, service, pins) : null;
         return (
         <li
           key={op.id}
-          className={`flex items-start gap-2 border-l-2 px-2 py-1.5 bg-surface ${
+          id={op.kind === "command" ? commandAnchor(op.id) : undefined}
+          className={`flex scroll-mt-12 items-start gap-2 border-l-2 px-2 py-1.5 bg-surface ${
             kind === "command" ? "border-verified" : "border-line-strong"
           }`}
         >
@@ -302,6 +321,12 @@ function OperationList({
           <div className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-2">
               <Ident block value={op.id} className={op.deprecated ? "line-through" : undefined} />
+              {summary ? (
+                <span className="mono text-muted" title="Unique events and downstream services linked in flows; not a guarantee of complete coverage">
+                  {summary.unknown ? "consequences unknown" : `${summary.events} ${plural(summary.events, "event")} · ${summary.services} ${plural(summary.services, "downstream service")}${summary.incomplete ? " · partial" : ""}`}
+                </span>
+              ) : null}
+              {op.kind === "command" ? <CommandLink id={op.id} /> : null}
               {op.deprecated ? (
                 <span className="chip" title="marked @deprecated in the source">
                   deprecated
@@ -316,7 +341,7 @@ function OperationList({
             </span>
             {op.doc ? <p className="mt-0.5 max-w-prose text-muted">{op.doc}</p> : null}
             {kind === "command" ? (
-              <CommandConsequences catalog={catalog} service={service} aggregate={aggregate} operation={op} />
+              <CommandConsequences catalog={catalog} service={service} operation={op} chain={chain!} />
             ) : null}
             {/* What the caller hands in: the message's own shape. An empty
                 list is said out loud - a query that takes nothing is a fact

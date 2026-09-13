@@ -35,9 +35,11 @@ describe("a service read through its resolvers", () => {
   // extract-graphql names the method it read out of the schema - `Query.viewer`
   // - so the two meet in the merge.
   it("opens a flow on the field", () => {
-    const [first] = flow("bff-query-viewer").steps as Step[];
+    const found = flow("bff-query-viewer");
+    const [first] = found.steps as Step[];
 
     expect(first).toMatchObject({ from: "client", to: "storefront.bff", kind: "rpc", label: "Query.viewer" });
+    expect(found.trigger).toEqual({ kind: "callback", label: "GraphQL · Query.viewer", confidence: "high" });
   });
 
   // `ctx.sessions.current(...)` is to a resolver what `this.sessions.validate(...)`

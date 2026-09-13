@@ -737,6 +737,11 @@
       "name": "Shop checkout cart index",
       "summary": "Shows the cart.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /checkout/cart",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -769,6 +774,11 @@
       "name": "Shop checkout cart store",
       "summary": "Puts a product in the cart.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /checkout/cart/add/{id}",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -840,6 +850,11 @@
       "name": "Shop checkout cart remove",
       "summary": "",
       "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "DELETE /checkout/cart/remove/{id}",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -888,6 +903,11 @@
       "name": "Shop checkout onepage index",
       "summary": "The one page the whole checkout happens on.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /checkout/onepage",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -920,6 +940,11 @@
       "name": "Shop checkout onepage orders store",
       "summary": "Places the order for the cart.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /checkout/onepage/orders",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1043,6 +1068,11 @@
       "name": "Shop checkout onepage success",
       "summary": "Thanks the customer.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Routes/checkout-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /checkout/onepage/success",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1075,6 +1105,11 @@
       "name": "Shop customer session create",
       "summary": "Logs the customer in.",
       "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /customer/login",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1123,6 +1158,11 @@
       "name": "Shop customer session destroy",
       "summary": "Logs the customer out.",
       "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "DELETE /customer/logout",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1171,6 +1211,11 @@
       "name": "Shop customer addresses index",
       "summary": "",
       "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /customer/addresses",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1203,6 +1248,11 @@
       "name": "Shop customer addresses store",
       "summary": "",
       "source": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /customer/addresses",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1235,6 +1285,11 @@
       "name": "On customer login",
       "summary": "Moves what a guest put in their cart over to the customer they turned out to be.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/CustomerEventsHandler.php",
+      "trigger": {
+        "kind": "event",
+        "label": "CustomerAfterLogin",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1268,6 +1323,11 @@
       "name": "On order canceled",
       "summary": "",
       "source": "testdata/shop/packages/Acme/Checkout/src/Providers/EventServiceProvider.php",
+      "trigger": {
+        "kind": "event",
+        "label": "SalesOrderCancelAfter",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1301,6 +1361,11 @@
       "name": "Reserve stock on order placed",
       "summary": "Takes the ordered quantities out of what is available to sell.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/ReserveStockOnOrderPlaced.php",
+      "trigger": {
+        "kind": "event",
+        "label": "OrderPlaced",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1345,6 +1410,11 @@
       "name": "Send cart reminder",
       "summary": "Reminds a customer of what they left in the cart.",
       "source": "testdata/shop/packages/Acme/Checkout/src/Jobs/SendCartReminder.php",
+      "trigger": {
+        "kind": "job",
+        "label": "Laravel queue · mail",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -1404,6 +1474,11 @@
       "name": "Index order",
       "summary": "Puts the order in the search index, so the back office finds it.",
       "source": "testdata/shop/packages/Acme/Sales/src/Jobs/IndexOrder.php",
+      "trigger": {
+        "kind": "job",
+        "label": "Laravel queue · indexing",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {

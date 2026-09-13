@@ -55,6 +55,8 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             continue;
         };
         let mut op = operation_of(uc);
+        op.source = uc.source.method("UseCase", "handle")
+            .map(|handle| uc.source.at(crate::source::span_of(&handle.sig), &rel));
         if let Some(routes) = exposed_by.get(&uc.key) {
             let mut routes = routes.clone();
             routes.sort();

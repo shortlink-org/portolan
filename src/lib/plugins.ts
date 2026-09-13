@@ -188,6 +188,8 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   markdown: { label: "Markdown", icon: { brand: "Markdown" } },
   mermaid: { label: "Mermaid", icon: { brand: "Mermaid" } },
   backstage: { label: "Backstage", icon: { brand: "Backstage" } },
+  "dx-source": { label: "DX catalog", icon: { lucide: "database" } },
+  "dx-export": { label: "DX", icon: { lucide: "share" } },
   otel: { label: "OpenTelemetry", icon: { brand: "OpenTelemetry" } },
   codeowners: { label: "CODEOWNERS", icon: { lucide: "users" } },
   adr: { label: "Decision records", icon: { lucide: "book" } },

@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-start-route`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `callback` · gRPC · StartRoute
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts)
 
 The van is out.

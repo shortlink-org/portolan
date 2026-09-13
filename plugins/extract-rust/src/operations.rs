@@ -136,6 +136,7 @@ pub fn operation_of(uc: &UseCase) -> Operation {
         kind: if is_command(uc) { "command".into() } else { "query".into() },
         doc: doc_of_use_case(uc),
         exposed_by: None,
+        source: None,
     }
 }
 

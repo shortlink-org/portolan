@@ -4,6 +4,8 @@
 
 - **Id:** `flow.ledger-authorize`
 - **Owner:** [payments](../payments/README.md)
+- **Trigger:** `callback` · gRPC · Authorize
+- **Root confidence:** high
 - **Source:** [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java)
 
 Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.

@@ -119,12 +119,14 @@
                   "doc": "Cancels an order that has not been dispatched; cancelling twice changes nothing.",
                   "exposedBy": [
                     "CancelOrder"
-                  ]
+                  ],
+                  "source": "testdata/oms/src/application/order/usecases/cancel_order/mod.rs:15"
                 },
                 {
                   "id": "ConfirmOrder",
                   "kind": "command",
-                  "doc": "Confirms an order once its payment is authorised, and says so."
+                  "doc": "Confirms an order once its payment is authorised, and says so.",
+                  "source": "testdata/oms/src/application/order/usecases/confirm_order/mod.rs:25"
                 },
                 {
                   "id": "GetOrder",
@@ -132,12 +134,14 @@
                   "doc": "Answers with the order as it is now.",
                   "exposedBy": [
                     "GetOrder"
-                  ]
+                  ],
+                  "source": "testdata/oms/src/application/order/usecases/get_order/mod.rs:12"
                 },
                 {
                   "id": "PlaceOrder",
                   "kind": "command",
-                  "doc": "Places an order from a checked-out basket, once: a second BasketCheckedOut for the same basket places nothing."
+                  "doc": "Places an order from a checked-out basket, once: a second BasketCheckedOut for the same basket places nothing.",
+                  "source": "testdata/oms/src/application/order/usecases/place_order/mod.rs:22"
                 }
               ],
               "events": [
@@ -234,6 +238,28 @@
                   }
                 }
               ],
+              "enums": [
+                {
+                  "id": "shop.oms.order.status",
+                  "slug": "status",
+                  "name": "Status",
+                  "doc": "",
+                  "values": [
+                    {
+                      "name": "placed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "confirmed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "cancelled",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
               "lifecycle": {
                 "states": [
                   "placed",
@@ -256,29 +282,7 @@
                     "emits": "shop.oms.order.OrderCancelled"
                   }
                 ]
-              },
-              "enums": [
-                {
-                  "id": "shop.oms.order.status",
-                  "slug": "status",
-                  "name": "Status",
-                  "doc": "",
-                  "values": [
-                    {
-                      "name": "placed",
-                      "doc": ""
-                    },
-                    {
-                      "name": "confirmed",
-                      "doc": ""
-                    },
-                    {
-                      "name": "cancelled",
-                      "doc": ""
-                    }
-                  ]
-                }
-              ]
+              }
             }
           ]
         }
@@ -293,6 +297,11 @@
       "name": "Cancel order",
       "summary": "Cancels an order that has not been dispatched; cancelling twice changes nothing.",
       "source": "testdata/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · CancelOrder",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -325,6 +334,7 @@
           "kind": "rpc",
           "label": "CancelOrder",
           "status": "declared",
+          "ref": "shop.v1.OrderService/CancelOrder",
           "line": "testdata/oms/src/infrastructure/transport/grpc/order/handlers.rs:19"
         },
         {
@@ -383,6 +393,11 @@
       "name": "Get order",
       "summary": "Answers with the order as it is now.",
       "source": "testdata/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · GetOrder",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -410,6 +425,7 @@
           "kind": "rpc",
           "label": "GetOrder",
           "status": "declared",
+          "ref": "shop.v1.OrderService/GetOrder",
           "line": "testdata/oms/src/infrastructure/transport/grpc/order/handlers.rs:14"
         },
         {
@@ -430,6 +446,11 @@
       "name": "Confirm order on payment authorized",
       "summary": "Confirms the order once the payment for it is authorised.",
       "source": "testdata/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
+      "trigger": {
+        "kind": "event",
+        "label": "PaymentAuthorized",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -473,6 +494,7 @@
           "kind": "call",
           "label": "ConfirmOrder",
           "status": "declared",
+          "ref": "shop.oms.order/ConfirmOrder",
           "line": "testdata/oms/src/application/policy/confirm_order_on_payment_authorized.rs:25"
         },
         {
@@ -525,6 +547,11 @@
       "name": "Place order on basket checked out",
       "summary": "Places the order the basket was checked out for.",
       "source": "testdata/oms/src/application/policy/place_order_on_basket_checked_out.rs",
+      "trigger": {
+        "kind": "event",
+        "label": "BasketCheckedOut",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -563,6 +590,7 @@
           "kind": "call",
           "label": "PlaceOrder",
           "status": "declared",
+          "ref": "shop.oms.order/PlaceOrder",
           "line": "testdata/oms/src/application/policy/place_order_on_basket_checked_out.rs:15"
         },
         {

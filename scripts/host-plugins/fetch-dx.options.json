@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["cache", "defaultContext"],
+  "properties": {
+    "server": {
+      "type": "string",
+      "default": "https://api.getdx.com",
+      "description": "DX Web API base URL. The token comes from DX_API_TOKEN, never from the manifest."
+    },
+    "cache": {
+      "type": "string",
+      "description": "Where the last snapshot was written, repo-relative. An offline run replays it and verifies its digest."
+    },
+    "defaultContext": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Context used for DX identifiers that do not already have Portolan's context.service shape."
+    },
+    "entityTypes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "default": ["service"],
+      "description": "DX entity types imported as Portolan services."
+    },
+    "relations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "DX relation identifiers imported as generic service dependencies."
+    },
+    "technologyProperty": {
+      "type": "string",
+      "description": "DX property identifier whose string or string-list value contains technologies."
+    },
+    "kindProperty": {
+      "type": "string",
+      "description": "DX property identifier whose value is a Portolan component kind."
+    }
+  }
+}

@@ -33,8 +33,13 @@
       "id": "flow.cart-add-item",
       "slug": "cart-add-item",
       "name": "Add item",
-      "summary": "",
+      "summary": " Source-backed cross-protocol continuations are included.",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/items",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -98,6 +103,17 @@
           "seen": {
             "traces": 3
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "shop.cart",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -203,8 +219,13 @@
       "id": "flow.cart-checkout",
       "slug": "cart-checkout",
       "name": "Checkout",
-      "summary": "",
+      "summary": " Source-backed cross-protocol continuations are included.",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/checkout",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -314,6 +335,17 @@
           "seen": {
             "traces": 1
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "shop.cart",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -366,8 +398,13 @@
       "id": "flow.cart-create-basket",
       "slug": "cart-create-basket",
       "name": "Create basket",
-      "summary": "",
+      "summary": " Source-backed cross-protocol continuations are included.",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -431,6 +468,17 @@
           "seen": {
             "traces": 2
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "shop.cart",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -504,8 +552,13 @@
       "id": "flow.cart-get-basket",
       "slug": "cart-get-basket",
       "name": "Get basket",
-      "summary": "",
+      "summary": " Source-backed cross-protocol continuations are included.",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /v1/baskets/{basketId}",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -533,6 +586,17 @@
           "seen": {
             "traces": 2
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "shop.cart",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -584,8 +648,13 @@
       "id": "flow.cart-merge-baskets",
       "slug": "cart-merge-baskets",
       "name": "Merge baskets",
-      "summary": "",
+      "summary": " Source-backed cross-protocol continuations are included.",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /v1/baskets/{basketId}/merge",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -719,6 +788,17 @@
           "seen": {
             "traces": 1
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "shop.cart",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -793,8 +873,13 @@
       "id": "flow.cart-remove-item",
       "slug": "cart-remove-item",
       "name": "Remove item",
-      "summary": "",
+      "summary": " Source-backed cross-protocol continuations are included.",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "trigger": {
+        "kind": "http",
+        "label": "DELETE /v1/baskets/{basketId}/items/{sku}",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -858,6 +943,17 @@
           "seen": {
             "traces": 1
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "shop.cart",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [

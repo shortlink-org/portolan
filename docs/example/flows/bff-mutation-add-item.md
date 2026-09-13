@@ -4,6 +4,8 @@
 
 - **Id:** `flow.bff-mutation-add-item`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Mutation.addItem
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts)
 
 Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live.

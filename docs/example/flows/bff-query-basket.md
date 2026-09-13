@@ -4,6 +4,8 @@
 
 - **Id:** `flow.bff-query-basket`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Query.basket
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/basket/resolvers/Query/basket.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts)
 
 The basket as the cart has it, in the storefront's words.

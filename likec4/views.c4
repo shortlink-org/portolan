@@ -230,10 +230,10 @@ views {
 
   dynamic view flow_auth_change_password {
     title 'Change password'
-    description 'Replaces the password of a user, given the current one.'
-    client -> auth.auth 'ChangePasswordRequest → 204' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
+    description 'Replaces the password of a user, given the current one. Source-backed cross-protocol continuations are included.'
+    client -> auth.auth 'ChangePasswordRequest' {
+      color declared  line solid  head normal
+      notes 'examples/auth/internal/user/infrastructure/http/change_password.go:20'
     }
     auth.auth -> auth_pg 'ByToken' {
       color declared  line solid  head none
@@ -248,30 +248,38 @@ views {
       notes 'examples/auth/internal/user/application/change_password/usecase.go:48'
     }
     auth.auth -> bus 'PasswordChanged' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/change_password/usecase.go:48'
+      color declared  line solid  head onormal
+      notes 'examples/auth/internal/user/application/change_password/usecase.go:48'
+    }
+    auth.auth -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_auth_get_user {
     title 'Get user'
-    description 'Reads a user by id.'
-    client -> auth.auth 'getUser → User' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/auth/internal/user/infrastructure/http/get.go:11'
+    description 'Reads a user by id. Source-backed cross-protocol continuations are included.'
+    client -> auth.auth 'getUser' {
+      color declared  line solid  head normal
+      notes 'examples/auth/internal/user/infrastructure/http/get.go:11'
     }
     auth.auth -> auth_pg 'ByID' {
       color declared  line solid  head none
       notes 'examples/auth/internal/user/application/get/usecase.go:22'
     }
+    auth.auth -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
+    }
   }
 
   dynamic view flow_auth_login {
     title 'Login'
-    description 'Turns credentials into a session.'
-    client -> auth.auth 'LoginRequest → Session' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
+    description 'Turns credentials into a session. Source-backed cross-protocol continuations are included.'
+    client -> auth.auth 'LoginRequest' {
+      color declared  line solid  head normal
+      notes 'examples/auth/internal/session/infrastructure/http/login.go:11'
     }
     auth.auth -> auth.auth 'CheckCredentials' {
       color declared  line solid  head none
@@ -305,8 +313,12 @@ views {
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
           }
           auth.auth -> bus 'AccountLocked' {
-            color verified  line solid  head onormal
+            color declared  line solid  head onormal
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
+          }
+          auth.auth -> client 'HTTP response' {
+            color declared  line dashed  head normal
+            notes 'Synthesized from the proven synchronous HTTP handler return.'
           }
         }
       }
@@ -344,6 +356,10 @@ views {
             color declared  line solid  head onormal
             notes 'inside a loop over `sessions`. — examples/auth/internal/session/application/login/usecase.go:101'
           }
+          auth.auth -> client 'HTTP response' {
+            color declared  line dashed  head normal
+            notes 'Synthesized from the proven synchronous HTTP handler return.'
+          }
         }
       }
       else 'otherwise' {
@@ -354,17 +370,21 @@ views {
       notes 'examples/auth/internal/session/application/login/usecase.go:77'
     }
     auth.auth -> bus 'SessionStarted' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/application/login/usecase.go:77'
+      color declared  line solid  head onormal
+      notes 'examples/auth/internal/session/application/login/usecase.go:77'
+    }
+    auth.auth -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_auth_logout {
     title 'Logout'
-    description 'Ends the session behind a token.'
-    client -> auth.auth 'logout → 204' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/http/logout.go:15'
+    description 'Ends the session behind a token. Source-backed cross-protocol continuations are included.'
+    client -> auth.auth 'logout' {
+      color declared  line solid  head normal
+      notes 'examples/auth/internal/session/infrastructure/http/logout.go:15'
     }
     auth.auth -> auth_pg 'ByToken' {
       color declared  line solid  head none
@@ -375,17 +395,21 @@ views {
       notes 'examples/auth/internal/session/application/logout/usecase.go:48'
     }
     auth.auth -> bus 'SessionEnded' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/application/logout/usecase.go:48'
+      color declared  line solid  head onormal
+      notes 'examples/auth/internal/session/application/logout/usecase.go:48'
+    }
+    auth.auth -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_auth_register_user {
     title 'Register user'
-    description 'Creates a user from an email address and a password.'
-    client -> auth.auth 'RegisterRequest → User' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/register.go:16'
+    description 'Creates a user from an email address and a password. Source-backed cross-protocol continuations are included.'
+    client -> auth.auth 'RegisterRequest' {
+      color declared  line solid  head normal
+      notes 'examples/auth/internal/user/infrastructure/http/register.go:16'
     }
     auth.auth -> auth_pg 'ByEmail' {
       color declared  line solid  head none
@@ -396,21 +420,29 @@ views {
       notes 'examples/auth/internal/user/application/register/usecase.go:53'
     }
     auth.auth -> bus 'UserRegistered' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:53'
+      color declared  line solid  head onormal
+      notes 'examples/auth/internal/user/application/register/usecase.go:53'
+    }
+    auth.auth -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_auth_validate_session {
     title 'Validate session'
-    description 'Resolves a token to a live session: who is calling, and how long the answer stays good.'
-    client -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/validate.go:12'
+    description 'Resolves a token to a live session: who is calling, and how long the answer stays good. Source-backed cross-protocol continuations are included.'
+    client -> auth.auth 'validateSession' {
+      color declared  line solid  head normal
+      notes 'examples/auth/internal/session/infrastructure/http/validate.go:12'
     }
     auth.auth -> auth_pg 'ByToken' {
       color declared  line solid  head none
       notes 'examples/auth/internal/session/application/validate/usecase.go:33'
+    }
+    auth.auth -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
@@ -450,7 +482,7 @@ views {
 
   dynamic view flow_bff_query_shipment {
     title 'Query shipment'
-    description ''
+    description 'Where the parcel is, or null when nothing has been handed to a carrier yet.'
     client -> storefront.bff 'QueryShipmentArgs → Shipment' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3'
@@ -471,7 +503,7 @@ views {
 
   dynamic view flow_bff_query_order {
     title 'Query order'
-    description ''
+    description 'The order, or null when the storefront has never been told of one.'
     client -> storefront.bff 'QueryOrderArgs → Order' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:3'
@@ -555,7 +587,7 @@ views {
 
   dynamic view flow_bff_mutation_remove_item {
     title 'Mutation remove item'
-    description ''
+    description 'Remove a line outright.'
     client -> storefront.bff 'RemoveItemInput → Basket' {
       color declared  line solid  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3'
@@ -830,8 +862,8 @@ views {
 
   dynamic view flow_billing_invoice_create {
     title 'Invoice create'
-    description 'Draws up a draft invoice for an order, with a line for each thing sold.'
-    client -> shop.billing 'DrawUpRequest → InvoiceId' {
+    description 'Draws up a draft invoice for an order, with a line for each thing sold. Source-backed cross-protocol continuations are included.'
+    client -> shop.billing 'DrawUpRequest' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:13'
     }
@@ -843,12 +875,16 @@ views {
       color declared  line solid  head none
       notes 'in one transaction, for each line. — examples/shop/billing/invoices/services.py:29'
     }
+    shop.billing -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
+    }
   }
 
   dynamic view flow_billing_invoice_destroy {
     title 'Invoice destroy'
-    description 'Ends an invoice nobody is going to pay.'
-    client -> shop.billing 'invoice_destroy → 204' {
+    description 'Ends an invoice nobody is going to pay. Source-backed cross-protocol continuations are included.'
+    client -> shop.billing 'invoice_destroy' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:34'
     }
@@ -864,12 +900,16 @@ views {
       color declared  line solid  head onormal
       notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
     }
+    shop.billing -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
+    }
   }
 
   dynamic view flow_billing_invoice_issue {
     title 'Invoice issue'
     description 'Confirms the session, freezes the invoice and asks the customer to pay. Source-backed cross-protocol continuations are included.'
-    client -> shop.billing 'invoice_issue → InvoiceId' {
+    client -> shop.billing 'invoice_issue' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:29'
     }
@@ -913,6 +953,10 @@ views {
       color declared  line solid  head onormal
       notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:51'
     }
+    shop.billing -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
+    }
   }
 
   dynamic view flow_billing_invoice_issue_cross {
@@ -925,26 +969,34 @@ views {
 
   dynamic view flow_billing_invoice_list {
     title 'Invoice list'
-    description 'Invoices over HTTP. Every action here runs one function of services.py.'
+    description 'Invoices over HTTP. Every action here runs one function of services.py. Source-backed cross-protocol continuations are included.'
     client -> shop.billing 'invoice_list' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:10'
+    }
+    shop.billing -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_billing_invoice_partial_update {
     title 'Invoice partial update'
-    description 'Invoices over HTTP. Every action here runs one function of services.py.'
+    description 'Invoices over HTTP. Every action here runs one function of services.py. Source-backed cross-protocol continuations are included.'
     client -> shop.billing 'invoice_partial_update' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:10'
+    }
+    shop.billing -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_billing_invoice_retrieve {
     title 'Invoice retrieve'
-    description 'Reads one invoice and the lines it is made of.'
-    client -> shop.billing 'invoice_retrieve → Invoice' {
+    description 'Reads one invoice and the lines it is made of. Source-backed cross-protocol continuations are included.'
+    client -> shop.billing 'invoice_retrieve' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:24'
     }
@@ -952,14 +1004,22 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/billing/invoices/services.py:77'
     }
+    shop.billing -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
+    }
   }
 
   dynamic view flow_billing_invoice_update {
     title 'Invoice update'
-    description 'Invoices over HTTP. Every action here runs one function of services.py.'
+    description 'Invoices over HTTP. Every action here runs one function of services.py. Source-backed cross-protocol continuations are included.'
     client -> shop.billing 'invoice_update' {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:10'
+    }
+    shop.billing -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
@@ -984,33 +1044,55 @@ views {
     }
   }
 
+  dynamic view flow_billing_celery_body_invoices_tasks_send_invoice_email {
+    title 'Send invoice email work'
+    description 'Emails the customer the invoice they were asked to pay. Observable work performed by the Celery task.'
+    shop.billing -> billing_pg 'Invoice.objects.get' {
+      color declared  line solid  head none
+      notes 'examples/shop/billing/invoices/tasks.py:20'
+    }
+  }
+
+  dynamic view flow_billing_celery_body_invoices_tasks_remind_unpaid_invoice {
+    title 'Remind unpaid invoice work'
+    description 'Nudges the customer about an invoice that has stayed unpaid. Observable work performed by the Celery task.'
+    shop.billing -> billing_pg 'Invoice.objects.filter' {
+      color declared  line solid  head none
+      notes 'examples/shop/billing/invoices/tasks.py:32'
+    }
+  }
+
   dynamic view flow_cart_add_item {
     title 'Add item'
-    description ''
-    client -> shop.cart 'AddItemRequest → Basket' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
+    description ' Source-backed cross-protocol continuations are included.'
+    client -> shop.cart 'AddItemRequest' {
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
     }
     shop.cart -> bus 'BasketItemAdded' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
+      color declared  line solid  head onormal
+      notes 'examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
+    }
+    shop.cart -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_cart_checkout {
     title 'Checkout'
-    description ''
-    client -> shop.cart 'checkout → CheckedOut' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
+    description ' Source-backed cross-protocol continuations are included.'
+    client -> shop.cart 'checkout' {
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
     }
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
     shop.cart -> cart_pg 'byId' {
       color declared  line solid  head none
@@ -1025,55 +1107,67 @@ views {
       notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
     }
     shop.cart -> bus 'BasketCheckedOut' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
+      color declared  line solid  head onormal
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
+    }
+    shop.cart -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_cart_checkout_cross {
     title 'Checkout — crossings only'
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
   }
 
   dynamic view flow_cart_create_basket {
     title 'Create basket'
-    description ''
-    client -> shop.cart 'createBasket → BasketCreated' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
+    description ' Source-backed cross-protocol continuations are included.'
+    client -> shop.cart 'createBasket' {
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
     }
     shop.cart -> bus 'BasketCreated' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
+      color declared  line solid  head onormal
+      notes 'examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
+    }
+    shop.cart -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_cart_get_basket {
     title 'Get basket'
-    description ''
-    client -> shop.cart 'getBasket → Basket' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
+    description ' Source-backed cross-protocol continuations are included.'
+    client -> shop.cart 'getBasket' {
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
+    }
+    shop.cart -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_cart_merge_baskets {
     title 'Merge baskets'
-    description ''
-    client -> shop.cart 'MergeRequest → Basket' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
+    description ' Source-backed cross-protocol continuations are included.'
+    client -> shop.cart 'MergeRequest' {
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
     }
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
     shop.cart -> cart_pg 'openFor' {
       color declared  line solid  head none
@@ -1084,45 +1178,53 @@ views {
       notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
     }
     shop.cart -> bus 'BasketCreated' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+      color declared  line solid  head onormal
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
     }
     shop.cart -> bus 'BasketItemAdded' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+      color declared  line solid  head onormal
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
     }
     shop.cart -> bus 'BasketMerged' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
+      color declared  line solid  head onormal
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
+    }
+    shop.cart -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
   dynamic view flow_cart_merge_baskets_cross {
     title 'Merge baskets — crossings only'
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
   }
 
   dynamic view flow_cart_remove_item {
     title 'Remove item'
-    description ''
-    client -> shop.cart 'removeItem → Basket' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
+    description ' Source-backed cross-protocol continuations are included.'
+    client -> shop.cart 'removeItem' {
+      color declared  line solid  head normal
+      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
     }
     shop.cart -> bus 'BasketItemRemoved' {
-      color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
+      color declared  line solid  head onormal
+      notes 'examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
+    }
+    shop.cart -> client 'HTTP response' {
+      color declared  line dashed  head normal
+      notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
 
@@ -1398,8 +1500,8 @@ views {
     title 'Cancel order'
     description 'Reads one order by id.'
     client -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
+      color declared  line solid  head normal
+      notes 'examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
     }
     shop.oms -> oms_pg 'by_id' {
       color declared  line solid  head none
@@ -1416,8 +1518,8 @@ views {
           notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26'
         }
         shop.oms -> bus 'OrderCancelled' {
-          color verified  line solid  head onormal
-          notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26'
+          color declared  line solid  head onormal
+          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26'
         }
       }
     }
@@ -1431,8 +1533,8 @@ views {
     title 'Get order'
     description 'Reads one order by id.'
     client -> shop.oms 'GetOrderRequest → GetOrderResponse' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
+      color declared  line solid  head normal
+      notes 'examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
     }
     shop.oms -> oms_pg 'by_id' {
       color declared  line solid  head none
@@ -1462,6 +1564,59 @@ views {
     shop.oms -> bus 'OrderPlaced' {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31'
+    }
+  }
+
+  dynamic view flow_observed_oms_cancelorder {
+    title 'Observed: CancelOrder'
+    description 'Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
+    client -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
+      color verified  line solid  head normal
+    }
+    shop.oms -> oms_pg 'SELECT' {
+      color verified  line solid  head none
+    }
+    shop.oms -> oms_pg 'SELECT' {
+      color verified  line solid  head none
+    }
+    shop.oms -> oms_pg 'UPDATE orders' {
+      color verified  line solid  head none
+    }
+    shop.oms -> oms_pg 'DELETE' {
+      color verified  line solid  head none
+    }
+    shop.oms -> oms_pg 'INSERT' {
+      color verified  line solid  head none
+    }
+    shop.oms -> bus 'OrderCancelled' {
+      color verified  line solid  head onormal
+    }
+    shop.oms -> oms_pg 'SELECT' {
+      color verified  line solid  head none
+    }
+    shop.oms -> oms_pg 'SELECT' {
+      color verified  line solid  head none
+    }
+  }
+
+  dynamic view flow_observed_oms_getorder {
+    title 'Observed: GetOrder'
+    description 'Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
+    client -> shop.oms 'GetOrderRequest → GetOrderResponse' {
+      color verified  line solid  head normal
+    }
+    shop.oms -> oms_pg 'SELECT' {
+      color verified  line solid  head none
+    }
+    alt {
+      when 'SELECT' {
+        shop.oms -> oms_pg 'SELECT' {
+          color verified  line solid  head none
+          notes 'Seen in 1 recording of 2 traces.'
+        }
+      }
+      else 'otherwise' {
+      }
     }
   }
 

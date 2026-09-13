@@ -122,12 +122,14 @@
                   "doc": "Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing.",
                   "exposedBy": [
                     "CancelOrder"
-                  ]
+                  ],
+                  "source": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:20"
                 },
                 {
                   "id": "ConfirmOrder",
                   "kind": "command",
-                  "doc": "Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation."
+                  "doc": "Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation.",
+                  "source": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25"
                 },
                 {
                   "id": "GetOrder",
@@ -136,17 +138,20 @@
                   "exposedBy": [
                     "CancelOrder",
                     "GetOrder"
-                  ]
+                  ],
+                  "source": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41"
                 },
                 {
                   "id": "PlaceOrder",
                   "kind": "command",
-                  "doc": "Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced."
+                  "doc": "Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced.",
+                  "source": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26"
                 },
                 {
                   "id": "RequestPayment",
                   "kind": "query",
-                  "doc": "Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout."
+                  "doc": "Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout.",
+                  "source": "examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:37"
                 }
               ],
               "events": [
@@ -329,6 +334,11 @@
       "name": "Cancel order",
       "summary": "Reads one order by id.",
       "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · CancelOrder",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -361,6 +371,7 @@
           "kind": "rpc",
           "label": "CancelOrder",
           "status": "declared",
+          "ref": "shop.v1.OrderService/CancelOrder",
           "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41"
         },
         {
@@ -429,6 +440,11 @@
       "name": "Get order",
       "summary": "Reads one order by id.",
       "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · GetOrder",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -456,6 +472,7 @@
           "kind": "rpc",
           "label": "GetOrder",
           "status": "declared",
+          "ref": "shop.v1.OrderService/GetOrder",
           "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31"
         },
         {
@@ -476,6 +493,11 @@
       "name": "Place order on basket checked out",
       "summary": "Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order.",
       "source": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs",
+      "trigger": {
+        "kind": "event",
+        "label": "BasketCheckedOut",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -514,6 +536,7 @@
           "kind": "call",
           "label": "PlaceOrder",
           "status": "declared",
+          "ref": "shop.oms.order/PlaceOrder",
           "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29"
         },
         {

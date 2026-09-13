@@ -373,6 +373,11 @@
       "name": "Authorize",
       "summary": "Reserves the money for an order, or records that the gateway refused.",
       "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · Authorize",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -521,6 +526,11 @@
       "name": "Capture",
       "summary": "Moves the money the gateway was holding, and says so on the bus.",
       "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · Capture",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -610,6 +620,11 @@
       "name": "Get payment",
       "summary": "Reads one payment, for whoever is asking what happened to the money.",
       "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · GetPayment",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {
@@ -657,6 +672,11 @@
       "name": "Void payment on order cancelled",
       "summary": "Gives back what was reserved once the order it was reserved for is gone.",
       "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java",
+      "trigger": {
+        "kind": "event",
+        "label": "OrderCancelled",
+        "confidence": "high"
+      },
       "owner": "payments",
       "participants": [
         {

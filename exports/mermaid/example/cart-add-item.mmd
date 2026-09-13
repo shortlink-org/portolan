@@ -4,6 +4,7 @@ sequenceDiagram
     participant p1 as shop.cart
     participant p2 as cart-pg
     participant p3 as bus
-    p0->>p1: addItem → Basket
+    p0->>p1: addItem
     p1->>p2: save
     p1-)p3: BasketItemAdded
+    p1-->>p0: HTTP response

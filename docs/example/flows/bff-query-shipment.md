@@ -4,7 +4,11 @@
 
 - **Id:** `flow.bff-query-shipment`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Query.shipment
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts)
+
+Where the parcel is, or null when nothing has been handed to a carrier yet.
 
 ## Participants
 

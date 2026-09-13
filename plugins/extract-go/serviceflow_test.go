@@ -129,6 +129,9 @@ func (c *userRPCClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.Ca
 	if flow.EntryPoint != "internal/book/infrastructure/rpc:BookServer.Rent" {
 		t.Fatalf("entrypoint = %q", flow.EntryPoint)
 	}
+	if flow.Trigger == nil || flow.Trigger.Kind != "callback" || flow.Trigger.Label != "gRPC · book_rpc.BookRPC/Rent" {
+		t.Fatalf("trigger = %+v", flow.Trigger)
+	}
 	if len(flow.Steps) != 3 {
 		t.Fatalf("book steps = %+v", flow.Steps)
 	}

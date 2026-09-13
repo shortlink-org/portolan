@@ -38,6 +38,7 @@ func canonicalCatalog(cat catalog.Catalog) catalog.Catalog {
 			svc.Provides = canonicalProvides(svc.Provides)
 			svc.Consumes = slices.Clone(svc.Consumes)
 			slices.SortFunc(svc.Consumes, func(a, b catalog.RpcCall) int { return strings.Compare(a.ID, b.ID) })
+			svc.DependsOn = sortedStrings(svc.DependsOn)
 			svc.Stores = sortedStrings(svc.Stores)
 			svc.Modules = sortedStrings(svc.Modules)
 			svc.Channels = slices.Clone(svc.Channels)

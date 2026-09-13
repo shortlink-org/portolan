@@ -125,7 +125,8 @@ with that type, up to five calls deep. And one per listener method: the
 events it reacts to, then what it publishes in turn. A step's `ref` is the
 event's id when the tree dispatches it, and the step is unresolved with a
 note when it does not - a framework event, or a name nobody in the tree
-dispatches, which is reported.
+dispatches, which is reported. Endpoint flows carry an exact verb/path `http`
+trigger; listener flows carry an `event` trigger listing their declared events.
 
 **Store.** The migrations, replayed. `extract-sql` reads DDL and a Laravel
 schema is not DDL, so `Schema::create('orders', function (Blueprint $table)
@@ -164,7 +165,8 @@ it and a `receive` per job worked from it, the shape extract-celery writes
 for a Celery queue; the transport is the connection config/queue.php
 defaults to. A dispatch is a hop in the flow that makes it, a `call` to the
 `Queue · mail` lane with a `job` handoff, and every job has a worker flow of
-its own from the queue in through what `handle()` does.
+its own from the queue in through what `handle()` does. That worker flow has a
+`job` trigger labelled with its resolved Laravel queue.
 
 ## What it does not read
 

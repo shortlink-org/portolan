@@ -4,7 +4,11 @@
 
 - **Id:** `flow.bff-query-order`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Query.order
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/order/resolvers/Query/order.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts)
+
+The order, or null when the storefront has never been told of one.
 
 ## Participants
 

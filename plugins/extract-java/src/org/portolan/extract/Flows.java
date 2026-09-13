@@ -210,6 +210,7 @@ final class Flows {
                 sentence(name),
                 ran.isEmpty() ? endpoint.doc : ran.get(ran.size() - 1).doc,
                 endpoint.unit.rel,
+                Catalog.trigger("callback", "gRPC · " + endpoint.id, "high"),
                 opts.context,
                 d.lanes,
                 d.steps);
@@ -238,6 +239,7 @@ final class Flows {
                 sentence(Ids.slug(type.getSimpleName().toString())),
                 unit.doc(type),
                 unit.rel,
+                Catalog.trigger("event", trigger[1], "high"),
                 opts.context,
                 d.lanes,
                 d.steps);

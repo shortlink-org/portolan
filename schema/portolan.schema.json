@@ -107,6 +107,7 @@
               "asyncapi",
               "graphql",
               "sql",
+              "dx-source",
               "adr",
               "glossary",
               "flows",
@@ -654,6 +655,25 @@
               ],
               "properties": {
                 "plugin": {
+                  "const": "dx-source"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.dx-source"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
                   "const": "adr"
                 }
               }
@@ -929,7 +949,8 @@
             "enum": [
               "markdown",
               "mermaid",
-              "backstage"
+              "backstage",
+              "dx-export"
             ],
             "description": "A plugin declared above, one that belongs in this phase."
           },
@@ -1004,6 +1025,25 @@
                 }
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "dx-export"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.dx-export"
+                }
+              }
+            }
           }
         ]
       },
@@ -1021,7 +1061,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)*$",
-          "description": "The rule. One of the built-in ids - rpc, consumer, cross-service-fk, cross-service-lineage, cross-service-view, shared-store, persistence-drift, column-type, outbox-payload, proto-missing, proto-drift, shared-channel, channel-undeclared, channel-unpublished, message-encoding, subscription-unresolved, deployment-unclaimed, deployment-drift - to switch or re-grade that rule; any other id declares a rule of its own."
+          "description": "The rule. One of the built-in ids - merge-conflict, flow-trigger-missing, flow-summary-empty, flow-step-unresolved, flow-crossing-uncontracted, flow-observed-coverage-low, rpc, consumer, cross-service-fk, cross-service-lineage, cross-service-view, shared-store, persistence-drift, column-type, outbox-payload, proto-missing, proto-drift, shared-channel, channel-undeclared, channel-unpublished, message-encoding, subscription-unresolved, deployment-unclaimed, deployment-drift - to switch or re-grade that rule; any other id declares a rule of its own."
         },
         "enabled": {
           "type": "boolean",
@@ -1061,19 +1101,19 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 2000,
-          "description": "The condition: a row exists for every subject where it holds. CEL returning bool, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
+          "description": "The condition: a row exists for every subject where it holds. CEL returning bool, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, summary, owner, trigger, triggerConfidence, participants, contexts, crossContext, uncontractedCrossings, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, observedCoverage, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
         },
         "message": {
           "type": "string",
           "minLength": 1,
           "maxLength": 2000,
-          "description": "The note on the row. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
+          "description": "The note on the row. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, summary, owner, trigger, triggerConfidence, participants, contexts, crossContext, uncontractedCrossings, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, observedCoverage, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
         },
         "peer": {
           "type": "string",
           "minLength": 1,
           "maxLength": 2000,
-          "description": "The row's far end, when it has one; a service, event or table id links to its page. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, owner, trigger, triggerConfidence, participants, contexts, crossContext, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
+          "description": "The row's far end, when it has one; a service, event or table id links to its page. CEL returning string, over the subject named by `over` and `estate` (services, contexts, stores, channels, externals). Fields by subject: service: id, slug, name, context, kind, repo, path, technologies, owners, provides, methods, calls, unresolvedCalls, aggregates, events, stores, channels, hosts, dials; call: id, interface, method, peer, status, resolved, peerKnown, methodDeclared, service, context, source, module, note; copy: id, service, context, provider, methods, differences, source; event: id, slug, name, aggregate, service, context, versions, deprecated, consumers, unresolvedConsumers, wireName, channel, declaredChannels, fields; consumer: event, name, aggregate, owner, context, consumer, status, resolved, note; channel: address, kind, title, service, context, declared, publishes, sends, receives, events, otherPublishers, otherClaims, source; subscription: service, context, channel, kind, name, encoding, published, publishers, mismatched, mismatchedEncodings, source; table: id, name, kind, store, storeKind, owner, context, role, aggregate, aggregateOwner, aggregateFields, mappedColumns, claimedColumns, block, columns, primaryKey, foreignKeys, foreignReads, hasPayload, indexes, reads, writes, deletes; column: id, name, relation, kind, store, owner, context, type, nullable, pk, fk, fkOwner, from, foreignFrom, foreignOwners, maps, fieldType, typeMatches; deployment: id, name, project, environment, cluster, namespace, repo, path, chart, from, targetRevision, revision, tool, service, labelled, claimed, context, runsIn, images, basis, drifted, drift, url; flow: id, slug, name, summary, owner, trigger, triggerConfidence, participants, contexts, crossContext, uncontractedCrossings, steps, verifiedSteps, declaredSteps, unresolvedSteps, seenSteps, observedCoverage, events, stores, examples, source; aggregate: id, slug, name, root, modelGroup, service, context, entities, valueObjects, enums, commands, queries, exposedOperations, deprecatedOperations, events, states, transitions, tables."
         },
         "title": {
           "type": "string",
@@ -1098,6 +1138,12 @@
         "properties": {
           "id": {
             "enum": [
+              "merge-conflict",
+              "flow-trigger-missing",
+              "flow-summary-empty",
+              "flow-step-unresolved",
+              "flow-crossing-uncontracted",
+              "flow-observed-coverage-low",
               "rpc",
               "consumer",
               "cross-service-fk",
@@ -1369,7 +1415,8 @@
             "fetch-bsr",
             "fetch-csr",
             "fetch-k8s",
-            "fetch-argocd"
+            "fetch-argocd",
+            "fetch-dx"
           ],
           "description": "A plugin the host runs inside its own process, because it needs a socket or a git binary (portolan.0008). Only the ones shipped with Portolan can be named."
         },
@@ -3179,6 +3226,93 @@
         }
       }
     },
+    "options.dx-source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cache",
+        "defaultContext"
+      ],
+      "properties": {
+        "server": {
+          "type": "string",
+          "default": "https://api.getdx.com",
+          "description": "DX Web API base URL. The token comes from DX_API_TOKEN, never from the manifest."
+        },
+        "cache": {
+          "type": "string",
+          "description": "Where the last snapshot was written, repo-relative. An offline run replays it and verifies its digest."
+        },
+        "defaultContext": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Context used for DX identifiers that do not already have Portolan's context.service shape."
+        },
+        "entityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "service"
+          ],
+          "description": "DX entity types imported as Portolan services."
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "DX relation identifiers imported as generic service dependencies."
+        },
+        "technologyProperty": {
+          "type": "string",
+          "description": "DX property identifier whose string or string-list value contains technologies."
+        },
+        "kindProperty": {
+          "type": "string",
+          "description": "DX property identifier whose value is a Portolan component kind."
+        }
+      }
+    },
+    "options.dx-export": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "default": "service",
+          "description": "DX entity type used when no component-kind override is configured."
+        },
+        "entityTypes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Optional mapping from Portolan component kind to DX entity type identifier."
+        },
+        "relationIdentifier": {
+          "type": "string",
+          "default": "service-depends-on-service",
+          "description": "Existing DX relation identifier receiving service dependency edges."
+        },
+        "technologyProperty": {
+          "type": "string",
+          "description": "Existing DX entity property receiving Portolan technology names."
+        },
+        "ownerTeamIds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Mapping from a Portolan owner handle to a DX owner team ID. Unmapped handles are omitted."
+        }
+      }
+    },
     "options.otel": {
       "type": "object",
       "additionalProperties": false,
@@ -3220,6 +3354,18 @@
           "examples": [
             {
               "auth.PasswordChanged": "auth.auth.PasswordChanged"
+            }
+          ]
+        },
+        "routes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which operation a route a server span answers on belongs to - the verb and the http.route, to the operation's name in the service's interface - for an estate where the two do not line up: a prefix a gateway adds, a path the document spells another way. Without a line here a route is matched by verb and path shape.",
+          "examples": [
+            {
+              "POST /api/v1/sessions": "login"
             }
           ]
         },

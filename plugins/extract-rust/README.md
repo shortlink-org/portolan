@@ -108,10 +108,12 @@ terminal; that is derived on the page, never written down.
 `transport/grpc/<aggregate>/proto/` that a method of `impl <Service> for …`
 answers - `GetOrder` and `get_order` are one name - opens a flow: `client →
 service : rpc GetOrder`, then the steps of every use case the method runs
-through `self.<field>.handle(…)`, in the order it runs them. **Flow, from a
+through `self.<field>.handle(…)`, in the order it runs them. Its `callback`
+trigger keeps the gRPC method identity. **Flow, from a
 policy.** Each pub struct under `application/policy/` with a `handle` opens a
 flow on the bus: `bus → service : event <ref>`, where the event is the type of
-`handle`'s event parameter, or failing that the name the body compares the
+`handle`'s event parameter and also names the flow's `event` trigger, or failing
+that the name the body compares the
 message's against - `message.name != "…"`, a `match` arm. A type from under
 `src/domain` is the service's own; one from another module is another
 service's, and a line in the `events` option mapping that module to an

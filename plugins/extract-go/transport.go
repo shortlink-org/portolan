@@ -29,7 +29,12 @@ func extractTransport(root string, layout sourceLayout, b *plugin.Builder) (map[
 	var endpoints []endpointDecl
 
 	for _, dir := range layout.http {
-		for _, endpoint := range readTransportPackage(root, dir, layout, isHandler, lowerFirst, nil, b) {
+		found := readTransportPackage(root, dir, layout, isHandler, lowerFirst, nil, b)
+		for i := range found {
+			found[i].triggerKind = "http"
+			found[i].triggerLabel = found[i].id
+		}
+		for _, endpoint := range found {
 			endpoints = append(endpoints, endpoint)
 			for _, useCase := range endpoint.useCases {
 				out[useCase] = appendOnce(out[useCase], endpoint.id)
@@ -42,7 +47,12 @@ func extractTransport(root string, layout sourceLayout, b *plugin.Builder) (map[
 	// An rpc is named the same on both sides - GetQuote is GetQuote - so the
 	// method name is the id, and it is the id extract-proto puts in `provides`.
 	for _, dir := range layout.grpc {
-		for _, endpoint := range readTransportPackage(root, dir, layout, isRpcHandler, sameName, grpcMethodRef, b) {
+		found := readTransportPackage(root, dir, layout, isRpcHandler, sameName, grpcMethodRef, b)
+		for i := range found {
+			found[i].triggerKind = "callback"
+			found[i].triggerLabel = "gRPC · " + found[i].id
+		}
+		for _, endpoint := range found {
 			endpoints = append(endpoints, endpoint)
 			for _, useCase := range endpoint.useCases {
 				out[useCase] = appendOnce(out[useCase], endpoint.id)
@@ -182,11 +192,13 @@ func useCaseImports(file *ast.File, layouts ...sourceLayout) map[string]string {
 // endpoint that validates a token and then changes a password does those two
 // things in that order, and a picture that swapped them would be wrong.
 type endpointDecl struct {
-	id       string
-	ref      string
-	useCases []string
-	source   string
-	line     int
+	id           string
+	ref          string
+	triggerKind  string
+	triggerLabel string
+	useCases     []string
+	source       string
+	line         int
 }
 
 // grpcMethodRef resolves the generated server embedded by a handler back to

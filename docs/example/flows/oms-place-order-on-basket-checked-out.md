@@ -4,6 +4,8 @@
 
 - **Id:** `flow.oms-place-order-on-basket-checked-out`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `event` · BasketCheckedOut
+- **Root confidence:** high
 - **Source:** [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs)
 
 Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order.
@@ -38,7 +40,7 @@ sequenceDiagram
    [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L19) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
 2. **shop.oms** ↺ **shop.oms** — PlaceOrder
-   status: declared · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L29)
+   `shop.oms.order/PlaceOrder` · status: declared · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L29)
 <a id="step-s3"></a>
 3. **shop.oms** → **oms-pg** — by_basket
    status: declared · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L27)

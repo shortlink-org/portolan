@@ -13,8 +13,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::catalog::{
-    Aggregate, Catalog, Channel, ChannelMessage, Column, Context, Event, EventConsumer, EventVersion, Flow, FlowNode, ForeignKey, Handoff, HttpRoute,
-    Participant, Persists, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
+    Aggregate, Catalog, Channel, ChannelMessage, Column, Context, Event, EventConsumer, EventVersion, Flow, FlowNode, FlowTrigger, ForeignKey, Handoff,
+    HttpRoute, Participant, Persists, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
 };
 use crate::events::{self, Events, Kind, Listener};
 use crate::ids::{aggregate_id, block_id, event_id, sentence, service_id, short, slug, title};
@@ -326,6 +326,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             name: sentence(&slug(&base_name)),
             summary: summary(&doc),
             source: rel(&ep.file),
+            trigger: FlowTrigger {
+                kind: "http".into(),
+                label: format!("{} {}", ep.verb, ep.path),
+                confidence: "high".into(),
+            },
             owner: context.clone(),
             participants,
             steps,
@@ -395,12 +400,18 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         } else {
             sentence(&slug(&method))
         };
+        let trigger_label = listeners.iter().map(|listener| events.display(&listener.key)).collect::<Vec<_>>().join(" | ");
         flows.push(Flow {
             id: format!("flow.{flow_slug}"),
             slug: flow_slug,
             name: flow_name,
             summary: handler.map(|(_, m)| summary(&m.doc)).unwrap_or_default(),
             source: rel(&source_file),
+            trigger: FlowTrigger {
+                kind: "event".into(),
+                label: trigger_label,
+                confidence: "high".into(),
+            },
             owner: context.clone(),
             participants,
             steps,
@@ -447,6 +458,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             name: sentence(&slug(&job.name)),
             summary: summary(&job.doc),
             source: rel(&job.file),
+            trigger: FlowTrigger {
+                kind: "job".into(),
+                label: format!("Laravel queue · {queue}"),
+                confidence: "high".into(),
+            },
             owner: context.clone(),
             participants,
             steps,

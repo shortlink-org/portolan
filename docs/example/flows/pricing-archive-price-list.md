@@ -4,6 +4,8 @@
 
 - **Id:** `flow.pricing-archive-price-list`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `callback` · gRPC · ArchivePriceList
+- **Root confidence:** high
 - **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go)
 
 Package archive_price_list takes a price list out of use without losing it.

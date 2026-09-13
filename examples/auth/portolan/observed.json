@@ -75,8 +75,13 @@
       "id": "flow.auth-change-password",
       "slug": "auth-change-password",
       "name": "Change password",
-      "summary": "Replaces the password of a user, given the current one.",
+      "summary": "Replaces the password of a user, given the current one. Source-backed cross-protocol continuations are included.",
       "source": "examples/auth/internal/user/infrastructure/http/change_password.go",
+      "trigger": {
+        "kind": "http",
+        "label": "changePassword",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -254,6 +259,17 @@
           "seen": {
             "traces": 1
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "auth.auth",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -316,8 +332,13 @@
       "id": "flow.auth-get-user",
       "slug": "auth-get-user",
       "name": "Get user",
-      "summary": "Reads a user by id.",
+      "summary": "Reads a user by id. Source-backed cross-protocol continuations are included.",
       "source": "examples/auth/internal/user/infrastructure/http/get.go",
+      "trigger": {
+        "kind": "http",
+        "label": "getUser",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -393,6 +414,17 @@
             "store": "auth.auth.pg",
             "method": "ByID"
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "auth.auth",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -465,8 +497,13 @@
       "id": "flow.auth-login",
       "slug": "auth-login",
       "name": "Login",
-      "summary": "Turns credentials into a session.",
+      "summary": "Turns credentials into a session. Source-backed cross-protocol continuations are included.",
       "source": "examples/auth/internal/session/infrastructure/http/login.go",
+      "trigger": {
+        "kind": "http",
+        "label": "login",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -852,6 +889,17 @@
                   "seen": {
                     "traces": 1
                   }
+                },
+                {
+                  "type": "step",
+                  "id": "response-s1",
+                  "from": "auth.auth",
+                  "to": "client",
+                  "kind": "response",
+                  "label": "HTTP response",
+                  "status": "declared",
+                  "note": "Synthesized from the proven synchronous HTTP handler return.",
+                  "replyTo": "s1"
                 }
               ],
               "terminal": true
@@ -1143,6 +1191,17 @@
                   "status": "declared",
                   "note": "inside a loop over `sessions`.",
                   "line": "examples/auth/internal/session/application/login/usecase.go:101"
+                },
+                {
+                  "type": "step",
+                  "id": "response-s1-exit-2",
+                  "from": "auth.auth",
+                  "to": "client",
+                  "kind": "response",
+                  "label": "HTTP response",
+                  "status": "declared",
+                  "note": "Synthesized from the proven synchronous HTTP handler return.",
+                  "replyTo": "s1"
                 }
               ],
               "terminal": true
@@ -1215,6 +1274,17 @@
           "seen": {
             "traces": 3
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1-exit-3",
+          "from": "auth.auth",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -1373,8 +1443,13 @@
       "id": "flow.auth-logout",
       "slug": "auth-logout",
       "name": "Logout",
-      "summary": "Ends the session behind a token.",
+      "summary": "Ends the session behind a token. Source-backed cross-protocol continuations are included.",
       "source": "examples/auth/internal/session/infrastructure/http/logout.go",
+      "trigger": {
+        "kind": "http",
+        "label": "logout",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1518,6 +1593,17 @@
           "seen": {
             "traces": 1
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "auth.auth",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -1559,8 +1645,13 @@
       "id": "flow.auth-register-user",
       "slug": "auth-register-user",
       "name": "Register user",
-      "summary": "Creates a user from an email address and a password.",
+      "summary": "Creates a user from an email address and a password. Source-backed cross-protocol continuations are included.",
       "source": "examples/auth/internal/user/infrastructure/http/register.go",
+      "trigger": {
+        "kind": "http",
+        "label": "registerUser",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1704,6 +1795,17 @@
           "seen": {
             "traces": 2
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "auth.auth",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -1779,6 +1881,11 @@
       "name": "Revoke sessions on password change",
       "summary": "Ends the sessions issued against a password that has just been replaced.",
       "source": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go",
+      "trigger": {
+        "kind": "event",
+        "label": "PasswordChanged",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1869,8 +1976,13 @@
       "id": "flow.auth-validate-session",
       "slug": "auth-validate-session",
       "name": "Validate session",
-      "summary": "Resolves a token to a live session: who is calling, and how long the answer stays good.",
+      "summary": "Resolves a token to a live session: who is calling, and how long the answer stays good. Source-backed cross-protocol continuations are included.",
       "source": "examples/auth/internal/session/infrastructure/http/validate.go",
+      "trigger": {
+        "kind": "http",
+        "label": "validateSession",
+        "confidence": "high"
+      },
       "owner": "auth",
       "participants": [
         {
@@ -1946,6 +2058,17 @@
             "store": "auth.auth.pg",
             "method": "ByToken"
           }
+        },
+        {
+          "type": "step",
+          "id": "response-s1",
+          "from": "auth.auth",
+          "to": "client",
+          "kind": "response",
+          "label": "HTTP response",
+          "status": "declared",
+          "note": "Synthesized from the proven synchronous HTTP handler return.",
+          "replyTo": "s1"
         }
       ],
       "examples": [

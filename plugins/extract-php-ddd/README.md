@@ -113,7 +113,9 @@ step to its store. When a controller dispatches a command whose handler lives
 in another context - the backoffice front end creating a Mooc course - the
 flow crosses to that context's service with a `call` step and a note: in
 process, over an in-memory bus, but a boundary all the same. One flow per
-subscriber does the same from the queue in.
+subscriber does the same from the queue in. Route flows carry an exact
+verb/path `http` trigger; subscriber flows carry an `event` trigger labelled
+with their source-proven RabbitMQ queue.
 
 **HTTP.** One OpenAPI 3.1 document per application with routes,
 `openapi.<context>-<app>.yaml` (`openapiOut` in the options, `{service}`

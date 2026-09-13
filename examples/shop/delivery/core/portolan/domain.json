@@ -821,6 +821,11 @@
       "name": "Close route",
       "summary": "Ends the day, whatever is left undone.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · CloseRoute",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -894,6 +899,11 @@
       "name": "Dispatch",
       "summary": "One shipment, for whoever is asking about an order.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · Dispatch",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1030,6 +1040,11 @@
       "name": "Get route",
       "summary": "One route, as the depot reads it.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · GetRoute",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1077,6 +1092,11 @@
       "name": "Get shipment",
       "summary": "One shipment, for whoever is asking about an order.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · GetShipment",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1124,6 +1144,11 @@
       "name": "Plan route",
       "summary": "Builds a van's day out of the shipments waiting to go out.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · PlanRoute",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1220,6 +1245,11 @@
       "name": "Record delivery",
       "summary": "Ends a shipment at the door.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · RecordDelivery",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1293,6 +1323,11 @@
       "name": "Record scan",
       "summary": "Writes down that a parcel was seen somewhere.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · RecordScan",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1392,6 +1427,11 @@
       "name": "Start route",
       "summary": "The van is out.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · StartRoute",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1465,6 +1505,11 @@
       "name": "Track shipment",
       "summary": "What the customer sees when they paste a tracking code.",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "trigger": {
+        "kind": "callback",
+        "label": "gRPC · TrackShipment",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {
@@ -1512,6 +1557,11 @@
       "name": "Release shipment on payment captured",
       "summary": "Nothing leaves the warehouse before the money has moved (ADR core.0002).",
       "source": "examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts",
+      "trigger": {
+        "kind": "event",
+        "label": "PaymentCaptured",
+        "confidence": "high"
+      },
       "owner": "delivery",
       "participants": [
         {

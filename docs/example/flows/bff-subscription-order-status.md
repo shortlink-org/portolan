@@ -4,6 +4,8 @@
 
 - **Id:** `flow.bff-subscription-order-status`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Subscription.orderStatus
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts)
 
 Every move of one order, for as long as somebody is watching it.

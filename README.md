@@ -51,7 +51,7 @@ flowchart TB
   merged["merge + validate"]
   site["the site<br/>React SPA"]
   docs["docs/<br/>markdown, llms.txt"]
-  exports["exports/<br/>Backstage + Mermaid"]
+  exports["exports/<br/>Backstage + Mermaid + DX"]
   c4["likec4/<br/>C4 + full/cross views per flow"]
 
   code -- extract --> frag
@@ -165,7 +165,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 | --- | --- |
 | extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-laravel`, `extract-php-ddd`, `extract-csharp-ddd`, `extract-celery`, `extract-python-kafka`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-redis`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-debezium`, `extract-go-nats`, `extract-go-sqs`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary`, `extract-commands`, `extract-k8s`, `extract-argocd` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified`; `verify-codeowners` — reads CODEOWNERS, says who to ask about each service |
-| generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities |
+| generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities, `gen-dx` — DX catalog apply plan |
 
 `fetch-git`, `fetch-bsr` and `fetch-csr` bring in sources from other
 repositories, the Buf Schema Registry and a Confluent Schema Registry, against a
@@ -175,6 +175,57 @@ dials, and replays the committed fragment when there is no cluster to ask.
 `fetch-argocd` reads the applications an Argo CD server manages into a snapshot
 of where each service runs - environment, cluster, namespace, revision, images -
 against the same kind of lock; the service page shows it under "Where it runs".
+
+### DX Software Catalog
+
+DX is two independent adapters, not a synchronization mode. `fetch-dx` reads
+selected DX entity types and relations into a committed catalog fragment;
+`gen-dx` renders the merged Portolan catalog as a deterministic apply plan.
+A customer may configure either adapter or both. Portolan assigns neither side
+priority and keeps no cross-system reconciliation state.
+
+An input step needs a `DX_API_TOKEN` with `catalog:read`; its generated
+`dx.catalog.json` must also be included in the chosen catalog's `sources`:
+
+```json
+{
+  "plugin": "dx-source",
+  "in": ".",
+  "out": "vendor/dx",
+  "options": {
+    "cache": "vendor/dx",
+    "defaultContext": "dx",
+    "entityTypes": ["service"],
+    "relations": ["service-depends-on-service"]
+  }
+}
+```
+
+An output step only writes a reviewable plan; generation never changes DX:
+
+```json
+{
+  "plugin": "dx-export",
+  "catalog": "example",
+  "out": "exports/dx",
+  "options": {
+    "relationIdentifier": "service-depends-on-service"
+  }
+}
+```
+
+Validate it without network access, then apply it explicitly with a token that
+has `catalog:write:entities`:
+
+```bash
+portolan dx apply exports/dx/plan.json --dry-run
+DX_API_TOKEN=... portolan dx apply exports/dx/plan.json
+```
+
+The configured entity type, optional property identifiers and relation type
+must already exist in DX. Apply upserts entities first and dependency edges in
+DX-sized batches; it deliberately does not prune DX entities or relations that
+are absent from Portolan.
 
 Each plugin describes its own options; `npm run schema` asks all of them and
 composes `schema/portolan.schema.json`, which editors complete against and `gen`

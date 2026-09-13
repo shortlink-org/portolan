@@ -4,7 +4,11 @@
 
 - **Id:** `flow.bff-mutation-remove-item`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Mutation.removeItem
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts)
+
+Remove a line outright.
 
 ## Participants
 

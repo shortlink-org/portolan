@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-plan-route`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `callback` · gRPC · PlanRoute
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts)
 
 Builds a van's day out of the shipments waiting to go out.

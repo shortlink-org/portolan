@@ -25,7 +25,7 @@ interface RawFlow {
   name: string;
   summary: string;
   owner: string;
-  trigger?: { kind: string; confidence: string };
+  trigger: { kind: string; label?: string; confidence: string };
   participants: Array<{ id: string; kind: string; context: string | null; entityRef?: string }>;
   steps: RawNode[];
 }
@@ -84,8 +84,17 @@ describe("extractor flow conformance", () => {
       expect(["verified", "declared", "unresolved"]).toContain(step.status);
       if (step.replyTo) expect(ids).toContain(step.replyTo);
     }
-    if (flow.trigger) {
-      expect(["high", "medium", "low"]).toContain(flow.trigger.confidence);
-    }
+    expect([
+      "http",
+      "callback",
+      "event",
+      "message",
+      "job",
+      "startup",
+      "scheduled",
+      "manual",
+      "unproven",
+    ]).toContain(flow.trigger.kind);
+    expect(["high", "medium", "low"]).toContain(flow.trigger.confidence);
   });
 });

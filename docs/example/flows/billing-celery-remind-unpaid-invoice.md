@@ -22,7 +22,7 @@ Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and 
 
 | Fragment | After step | Seam | Target | Evidence | Source |
 | --- | --- | --- | --- | --- | --- |
-| `billing-celery-body-invoices-tasks-remind-unpaid-invoice` | [work](billing-celery-remind-unpaid-invoice.md#step-work) | `entrypoint` | `python:invoices.tasks:remind_unpaid_invoice` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
+| [billing-celery-body-invoices-tasks-remind-unpaid-invoice](billing-celery-body-invoices-tasks-remind-unpaid-invoice.md) | [work](billing-celery-remind-unpaid-invoice.md#step-work) | `entrypoint` | `python:invoices.tasks:remind_unpaid_invoice` | high · exact source entrypoint | [`examples/shop/billing/invoices/tasks.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py) |
 
 ## Sequence
 

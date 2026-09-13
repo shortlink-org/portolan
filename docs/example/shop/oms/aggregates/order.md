@@ -100,13 +100,13 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. |
-| `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. |
-| `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. |
-| `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. |
-| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. |
+| Operation | Kind | Exposed by | Doc | Source |
+| --- | --- | --- | --- | --- |
+| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L20) |
+| `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. | [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L25) |
+| `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. | [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L41) |
+| `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. | [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L26) |
+| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L37) |
 
 ## Events
 

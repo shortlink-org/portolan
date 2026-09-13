@@ -129,6 +129,22 @@
       "diagram": "bff-subscription-order-status.mmd"
     },
     {
+      "id": "flow.billing-celery-body-invoices-tasks-remind-unpaid-invoice",
+      "slug": "billing-celery-body-invoices-tasks-remind-unpaid-invoice",
+      "name": "Remind unpaid invoice work",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/tasks.py",
+      "diagram": "billing-celery-body-invoices-tasks-remind-unpaid-invoice.mmd"
+    },
+    {
+      "id": "flow.billing-celery-body-invoices-tasks-send-invoice-email",
+      "slug": "billing-celery-body-invoices-tasks-send-invoice-email",
+      "name": "Send invoice email work",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/tasks.py",
+      "diagram": "billing-celery-body-invoices-tasks-send-invoice-email.mmd"
+    },
+    {
       "id": "flow.billing-celery-remind-unpaid-invoice",
       "slug": "billing-celery-remind-unpaid-invoice",
       "name": "Remind Unpaid Invoice task",
@@ -383,6 +399,22 @@
       "owner": "payments",
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java",
       "diagram": "ledger-void-payment-on-order-cancelled.mmd"
+    },
+    {
+      "id": "flow.observed-oms-cancelorder",
+      "slug": "observed-oms-cancelorder",
+      "name": "Observed: CancelOrder",
+      "owner": "shop",
+      "source": "telemetry/traces.jsonl",
+      "diagram": "observed-oms-cancelorder.mmd"
+    },
+    {
+      "id": "flow.observed-oms-getorder",
+      "slug": "observed-oms-getorder",
+      "name": "Observed: GetOrder",
+      "owner": "shop",
+      "source": "telemetry/traces.jsonl",
+      "diagram": "observed-oms-getorder.mmd"
     },
     {
       "id": "flow.oms-cancel-order",

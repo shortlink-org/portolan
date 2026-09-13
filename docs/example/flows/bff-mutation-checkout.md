@@ -4,6 +4,8 @@
 
 - **Id:** `flow.bff-mutation-checkout`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Mutation.checkout
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts)
 
 Freeze the basket and hand it on.

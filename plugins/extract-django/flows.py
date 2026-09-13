@@ -326,6 +326,9 @@ class FlowReader:
         endpoint.use_cases = [u.key for u in ran]
         name = slug(endpoint.id)
         ident = "%s-%s" % (self.opts.service, name)
+        trigger_verb = getattr(endpoint, "verb", "")
+        trigger_path = getattr(endpoint, "path", "")
+        trigger_label = " ".join(part for part in (trigger_verb, trigger_path) if part) or endpoint.id
         return catalog.flow(
             "flow." + ident,
             ident,
@@ -335,6 +338,11 @@ class FlowReader:
             self.opts.context,
             d.lanes,
             d.steps,
+            trigger={
+                "kind": "http",
+                "label": trigger_label,
+                "confidence": "high" if trigger_verb and trigger_path else "medium",
+            },
         )
 
     def inherited_endpoint(self, d: Draft, endpoint, serializer, model: Optional[ModelDef]) -> None:
@@ -417,6 +425,7 @@ class FlowReader:
             self.opts.context,
             d.lanes,
             d.steps,
+            trigger={"kind": "event", "label": label, "confidence": "high"},
         )
 
     def task_flows(self) -> List[Dict[str, object]]:
@@ -444,6 +453,11 @@ class FlowReader:
                     self.opts.context,
                     d.lanes,
                     d.steps,
+                    trigger={
+                        "kind": "job",
+                        "label": "Celery · %s" % (task.queue or task.name),
+                        "confidence": "high",
+                    },
                     entrypoint=task.entrypoint,
                 )
             )

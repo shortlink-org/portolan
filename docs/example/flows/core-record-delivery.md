@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-record-delivery`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `callback` · gRPC · RecordDelivery
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts)
 
 Ends a shipment at the door.

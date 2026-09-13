@@ -39,6 +39,7 @@ import (
 	extractwatermill "github.com/shortlink-org/portolan/plugins/extract-watermill"
 	extractwsdl "github.com/shortlink-org/portolan/plugins/extract-wsdl"
 	genbackstage "github.com/shortlink-org/portolan/plugins/gen-backstage"
+	gendx "github.com/shortlink-org/portolan/plugins/gen-dx"
 	genmarkdown "github.com/shortlink-org/portolan/plugins/gen-markdown"
 	genmermaid "github.com/shortlink-org/portolan/plugins/gen-mermaid"
 	verifycodeowners "github.com/shortlink-org/portolan/plugins/verify-codeowners"
@@ -75,6 +76,7 @@ var Plugins = map[string]func(io.Reader, io.Writer) error{
 	"markdown":      genmarkdown.Serve,
 	"mermaid":       genmermaid.Serve,
 	"backstage":     genbackstage.Serve,
+	"dx-export":     gendx.Serve,
 }
 
 func main() {

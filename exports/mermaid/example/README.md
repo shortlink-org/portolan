@@ -18,6 +18,8 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Query shipment](bff-query-shipment.mmd) — `flow.bff-query-shipment`
 - [Query viewer](bff-query-viewer.mmd) — `flow.bff-query-viewer`
 - [Subscription order status](bff-subscription-order-status.mmd) — `flow.bff-subscription-order-status`
+- [Remind unpaid invoice work](billing-celery-body-invoices-tasks-remind-unpaid-invoice.mmd) — `flow.billing-celery-body-invoices-tasks-remind-unpaid-invoice`
+- [Send invoice email work](billing-celery-body-invoices-tasks-send-invoice-email.mmd) — `flow.billing-celery-body-invoices-tasks-send-invoice-email`
 - [Remind Unpaid Invoice task](billing-celery-remind-unpaid-invoice.mmd) — `flow.billing-celery-remind-unpaid-invoice`
 - [Send Invoice Email task](billing-celery-send-invoice-email.mmd) — `flow.billing-celery-send-invoice-email`
 - [Close invoice on payment](billing-close-invoice-on-payment.mmd) — `flow.billing-close-invoice-on-payment`
@@ -50,6 +52,8 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Issue refund](ledger-issue-refund.mmd) — `flow.ledger-issue-refund`
 - [List refunds](ledger-list-refunds.mmd) — `flow.ledger-list-refunds`
 - [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.mmd) — `flow.ledger-void-payment-on-order-cancelled`
+- [Observed: CancelOrder](observed-oms-cancelorder.mmd) — `flow.observed-oms-cancelorder`
+- [Observed: GetOrder](observed-oms-getorder.mmd) — `flow.observed-oms-getorder`
 - [Cancel order](oms-cancel-order.mmd) — `flow.oms-cancel-order`
 - [oms-cdc · public.order_lines · CDC](oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.mmd) — `shop.oms-cdc.oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope`
 - [oms-cdc · public.orders · CDC](oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.mmd) — `shop.oms-cdc.oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope`

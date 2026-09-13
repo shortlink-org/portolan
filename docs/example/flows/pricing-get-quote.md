@@ -4,6 +4,8 @@
 
 - **Id:** `flow.pricing-get-quote`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `callback` · gRPC · GetQuote
+- **Root confidence:** high
 - **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go)
 
 Package get_quote reads one quote.

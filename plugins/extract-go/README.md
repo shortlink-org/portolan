@@ -13,6 +13,12 @@ available for syntax-only legacy fixtures. Concrete service methods and their
 repository calls are followed by the existing flow walker. An unregistered
 method does not become an HTTP root just because it resembles a handler.
 
+Every emitted flow names its source-backed trigger. HTTP roots use `http`,
+gRPC roots use `callback`, and event policies use `event`; labels preserve the
+resolved handler, RPC identity, or event name so catalog trigger filters do not
+have to infer intent from the first step. Service-style HTTP registrations keep
+their exact verb and path when the router exposes both.
+
 `scope` still limits ownership to `internal/<scope>` in a shared module. Imported
 local application methods can be followed across that boundary. Nested modules,
 vendor, node_modules and testdata are excluded from package discovery. When a

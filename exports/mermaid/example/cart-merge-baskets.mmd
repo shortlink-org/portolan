@@ -5,7 +5,7 @@ sequenceDiagram
     participant p2 as auth.auth
     participant p3 as cart-pg
     participant p4 as bus
-    p0->>p1: mergeBaskets → Basket
+    p0->>p1: mergeBaskets
     p1->>p2: validateSession → SessionInfo
     p1->>p3: openFor
     p1->>p3: save
@@ -13,3 +13,4 @@ sequenceDiagram
     p1-)p4: BasketItemAdded
     p1->>p3: save
     p1-)p4: BasketMerged
+    p1-->>p0: HTTP response

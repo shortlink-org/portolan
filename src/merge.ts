@@ -500,6 +500,7 @@ function mergeService(
       ...incoming,
       provides: incoming.provides.map(copyInterface),
       consumes: [...incoming.consumes],
+      ...(incoming.dependsOn ? { dependsOn: [...incoming.dependsOn] } : {}),
       ...(incoming.copies
         ? { copies: incoming.copies.map(copyInterface) }
         : {}),
@@ -564,6 +565,13 @@ function mergeService(
 
   mergeInterfaces(existing.provides, incoming.provides);
   appendNew(existing.consumes, incoming.consumes, (c) => c.id, raise);
+  if (incoming.dependsOn?.length) {
+    const dependencies = existing.dependsOn ?? [];
+    for (const id of incoming.dependsOn) {
+      if (!dependencies.includes(id)) dependencies.push(id);
+    }
+    existing.dependsOn = dependencies;
+  }
   if (incoming.copies?.length) {
     const copies = existing.copies ?? [];
     mergeInterfaces(copies, incoming.copies);

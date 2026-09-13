@@ -38,6 +38,19 @@ fn joins_clients_policies_and_use_cases_across_the_tree() {
             "oms-place-order-on-basket-checked-out",
         ]
     );
+    assert_eq!(
+        flows[0]["trigger"],
+        serde_json::json!({"kind":"callback","label":"gRPC · CancelOrder","confidence":"high"})
+    );
+    assert_eq!(
+        flows[2]["trigger"],
+        serde_json::json!({"kind":"event","label":"PaymentAuthorized","confidence":"high"})
+    );
+    assert_eq!(flows[0]["steps"][0]["ref"], "shop.v1.OrderService/CancelOrder");
+    let cancel = service["aggregates"][0]["operations"].as_array().unwrap().iter().find(|op| op["id"] == "CancelOrder").unwrap();
+    assert!(cancel["source"].as_str().unwrap().contains("application/order/usecases/cancel_order/mod.rs:"));
+    assert!(serde_json::to_string(&flows[2]).unwrap().contains("shop.oms.order/ConfirmOrder"));
+    assert!(serde_json::to_string(&flows[3]).unwrap().contains("shop.oms.order/PlaceOrder"));
 }
 
 fn names(value: &serde_json::Value) -> Vec<&str> {

@@ -4,6 +4,8 @@
 
 - **Id:** `flow.bff-mutation-cancel-order`
 - **Owner:** [storefront](../storefront/README.md)
+- **Trigger:** `callback` · GraphQL · Mutation.cancelOrder
+- **Root confidence:** high
 - **Source:** [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts)
 
 Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means.

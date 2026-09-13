@@ -2102,6 +2102,115 @@
     }
   },
   {
+    "name": "dx-source",
+    "plugin": "fetch-dx",
+    "summary": "Reads DX Software Catalog entities and configured relations into a reproducible Portolan catalog fragment.",
+    "category": "sources",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "host",
+    "source": "scripts/host-plugins/fetch-dx.mjs",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cache",
+        "defaultContext"
+      ],
+      "properties": {
+        "server": {
+          "type": "string",
+          "default": "https://api.getdx.com",
+          "description": "DX Web API base URL. The token comes from DX_API_TOKEN, never from the manifest."
+        },
+        "cache": {
+          "type": "string",
+          "description": "Where the last snapshot was written, repo-relative. An offline run replays it and verifies its digest."
+        },
+        "defaultContext": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Context used for DX identifiers that do not already have Portolan's context.service shape."
+        },
+        "entityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "service"
+          ],
+          "description": "DX entity types imported as Portolan services."
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "DX relation identifiers imported as generic service dependencies."
+        },
+        "technologyProperty": {
+          "type": "string",
+          "description": "DX property identifier whose string or string-list value contains technologies."
+        },
+        "kindProperty": {
+          "type": "string",
+          "description": "DX property identifier whose value is a Portolan component kind."
+        }
+      }
+    }
+  },
+  {
+    "name": "dx-export",
+    "plugin": "gen-dx",
+    "summary": "Exports services and their dependencies as an explicit DX Software Catalog apply plan.",
+    "category": "exports",
+    "phases": [
+      "generate"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/gen-dx",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "default": "service",
+          "description": "DX entity type used when no component-kind override is configured."
+        },
+        "entityTypes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Optional mapping from Portolan component kind to DX entity type identifier."
+        },
+        "relationIdentifier": {
+          "type": "string",
+          "default": "service-depends-on-service",
+          "description": "Existing DX relation identifier receiving service dependency edges."
+        },
+        "technologyProperty": {
+          "type": "string",
+          "description": "Existing DX entity property receiving Portolan technology names."
+        },
+        "ownerTeamIds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Mapping from a Portolan owner handle to a DX owner team ID. Unmapped handles are omitted."
+        }
+      }
+    }
+  },
+  {
     "name": "otel",
     "plugin": "verify-otel",
     "summary": "Reads OpenTelemetry traces against the catalog and says which hops have been seen running.",
@@ -2152,6 +2261,18 @@
           "examples": [
             {
               "auth.PasswordChanged": "auth.auth.PasswordChanged"
+            }
+          ]
+        },
+        "routes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which operation a route a server span answers on belongs to - the verb and the http.route, to the operation's name in the service's interface - for an estate where the two do not line up: a prefix a gateway adds, a path the document spells another way. Without a line here a route is matched by verb and path shape.",
+          "examples": [
+            {
+              "POST /api/v1/sessions": "login"
             }
           ]
         },

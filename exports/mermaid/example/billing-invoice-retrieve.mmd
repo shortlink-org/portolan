@@ -5,3 +5,4 @@ sequenceDiagram
     participant p2 as billing-pg
     p0->>p1: invoice_retrieve
     p1->>p2: Invoice.objects.get
+    p1-->>p0: HTTP response

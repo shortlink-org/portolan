@@ -87,11 +87,11 @@
   "defs": {},
   "flows": [
     {
-      "id": "flow.oms-cancel-order",
-      "slug": "oms-cancel-order",
-      "name": "Cancel order",
-      "summary": "Reads one order by id.",
-      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "id": "flow.observed-oms-cancelorder",
+      "slug": "observed-oms-cancelorder",
+      "name": "Observed: CancelOrder",
+      "summary": "Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.",
+      "source": "telemetry/traces.jsonl",
       "owner": "shop",
       "participants": [
         {
@@ -107,8 +107,7 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.oms.pg"
+          "context": "shop"
         },
         {
           "id": "bus",
@@ -125,8 +124,6 @@
           "kind": "rpc",
           "label": "CancelOrder",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41",
           "seen": {
             "traces": 1
           }
@@ -137,50 +134,47 @@
           "from": "shop.oms",
           "to": "oms-pg",
           "kind": "call",
-          "label": "by_id",
-          "status": "declared",
-          "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21"
+          "label": "SELECT",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
         },
         {
-          "type": "alt",
-          "id": "alt5",
-          "branches": [
-            {
-              "title": "order.status is Status::Cancelled",
-              "steps": [],
-              "terminal": true
-            },
-            {
-              "title": "otherwise",
-              "steps": [
-                {
-                  "type": "step",
-                  "id": "s3",
-                  "from": "shop.oms",
-                  "to": "oms-pg",
-                  "kind": "call",
-                  "label": "save",
-                  "status": "declared",
-                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26"
-                },
-                {
-                  "type": "step",
-                  "id": "s4",
-                  "from": "shop.oms",
-                  "to": "bus",
-                  "kind": "event",
-                  "ref": "shop.oms.order.OrderCancelled",
-                  "label": "OrderCancelled",
-                  "status": "verified",
-                  "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26",
-                  "seen": {
-                    "traces": 1
-                  }
-                }
-              ]
-            }
-          ]
+          "type": "step",
+          "id": "s3",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "SELECT",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "UPDATE orders",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "DELETE",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -188,9 +182,48 @@
           "from": "shop.oms",
           "to": "oms-pg",
           "kind": "call",
-          "label": "by_id",
-          "status": "declared",
-          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42"
+          "label": "INSERT",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "shop.oms",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.oms.order.OrderCancelled",
+          "label": "OrderCancelled",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
+        },
+        {
+          "type": "step",
+          "id": "s8",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "SELECT",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
+        },
+        {
+          "type": "step",
+          "id": "s9",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "SELECT",
+          "status": "verified",
+          "seen": {
+            "traces": 1
+          }
         }
       ],
       "examples": [
@@ -212,7 +245,57 @@
               }
             },
             {
+              "step": "s2",
+              "label": "SELECT",
+              "durationMs": 1.046,
+              "attributes": {
+                "db.collection.name": "orders",
+                "db.operation.name": "SELECT",
+                "db.system.name": "postgresql"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "SELECT",
+              "durationMs": 0.898,
+              "attributes": {
+                "db.collection.name": "order_lines",
+                "db.operation.name": "SELECT",
+                "db.system.name": "postgresql"
+              }
+            },
+            {
               "step": "s4",
+              "label": "UPDATE orders",
+              "durationMs": 0.75,
+              "attributes": {
+                "db.collection.name": "orders",
+                "db.operation.name": "UPDATE",
+                "db.system.name": "postgresql"
+              }
+            },
+            {
+              "step": "s5",
+              "label": "DELETE",
+              "durationMs": 0.224,
+              "attributes": {
+                "db.collection.name": "order_lines",
+                "db.operation.name": "DELETE",
+                "db.system.name": "postgresql"
+              }
+            },
+            {
+              "step": "s6",
+              "label": "INSERT",
+              "durationMs": 0.221,
+              "attributes": {
+                "db.collection.name": "order_lines",
+                "db.operation.name": "INSERT",
+                "db.system.name": "postgresql"
+              }
+            },
+            {
+              "step": "s7",
               "label": "publish oms.OrderCancelled",
               "durationMs": 0.285,
               "attributes": {
@@ -221,17 +304,37 @@
                 "messaging.operation.type": "publish",
                 "messaging.system": "outbox"
               }
+            },
+            {
+              "step": "s8",
+              "label": "SELECT",
+              "durationMs": 0.714,
+              "attributes": {
+                "db.collection.name": "orders",
+                "db.operation.name": "SELECT",
+                "db.system.name": "postgresql"
+              }
+            },
+            {
+              "step": "s9",
+              "label": "SELECT",
+              "durationMs": 0.776,
+              "attributes": {
+                "db.collection.name": "order_lines",
+                "db.operation.name": "SELECT",
+                "db.system.name": "postgresql"
+              }
             }
           ]
         }
       ]
     },
     {
-      "id": "flow.oms-get-order",
-      "slug": "oms-get-order",
-      "name": "Get order",
-      "summary": "Reads one order by id.",
-      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "id": "flow.observed-oms-getorder",
+      "slug": "observed-oms-getorder",
+      "name": "Observed: GetOrder",
+      "summary": "Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.",
+      "source": "telemetry/traces.jsonl",
       "owner": "shop",
       "participants": [
         {
@@ -247,8 +350,7 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.oms.pg"
+          "context": "shop"
         }
       ],
       "steps": [
@@ -260,8 +362,6 @@
           "kind": "rpc",
           "label": "GetOrder",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31",
           "seen": {
             "traces": 2
           }
@@ -272,9 +372,45 @@
           "from": "shop.oms",
           "to": "oms-pg",
           "kind": "call",
-          "label": "by_id",
-          "status": "declared",
-          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42"
+          "label": "SELECT",
+          "status": "verified",
+          "seen": {
+            "traces": 2
+          }
+        },
+        {
+          "type": "alt",
+          "id": "alt1",
+          "branches": [
+            {
+              "title": "SELECT",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s3",
+                  "from": "shop.oms",
+                  "to": "oms-pg",
+                  "kind": "call",
+                  "label": "SELECT",
+                  "status": "verified",
+                  "note": "Seen in 1 recording of 2 traces.",
+                  "seen": {
+                    "traces": 1
+                  }
+                }
+              ],
+              "seen": {
+                "traces": 1
+              }
+            },
+            {
+              "title": "otherwise",
+              "steps": [],
+              "seen": {
+                "traces": 1
+              }
+            }
+          ]
         }
       ],
       "examples": [
@@ -293,6 +429,26 @@
                 "rpc.method": "GetOrder",
                 "rpc.service": "shop.v1.OrderService",
                 "rpc.system": "grpc"
+              }
+            },
+            {
+              "step": "s2",
+              "label": "SELECT",
+              "durationMs": 1.972,
+              "attributes": {
+                "db.collection.name": "orders",
+                "db.operation.name": "SELECT",
+                "db.system.name": "postgresql"
+              }
+            },
+            {
+              "step": "s3",
+              "label": "SELECT",
+              "durationMs": 1.106,
+              "attributes": {
+                "db.collection.name": "order_lines",
+                "db.operation.name": "SELECT",
+                "db.system.name": "postgresql"
               }
             }
           ]
@@ -313,6 +469,16 @@
                 "rpc.service": "shop.v1.OrderService",
                 "rpc.system": "grpc"
               }
+            },
+            {
+              "step": "s2",
+              "label": "SELECT",
+              "durationMs": 0.712,
+              "attributes": {
+                "db.collection.name": "orders",
+                "db.operation.name": "SELECT",
+                "db.system.name": "postgresql"
+              }
             }
           ]
         }
@@ -324,6 +490,11 @@
       "name": "Place order on basket checked out",
       "summary": "Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order.",
       "source": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs",
+      "trigger": {
+        "kind": "event",
+        "label": "BasketCheckedOut",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -365,6 +536,7 @@
           "from": "shop.oms",
           "to": "shop.oms",
           "kind": "call",
+          "ref": "shop.oms.order/PlaceOrder",
           "label": "PlaceOrder",
           "status": "declared",
           "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29"

@@ -4,6 +4,8 @@
 
 - **Id:** `flow.pricing-list-price-lists`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `callback` · gRPC · ListPriceLists
+- **Root confidence:** high
 - **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go)
 
 Package list_price_lists reads every price list there is.

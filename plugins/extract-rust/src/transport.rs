@@ -18,6 +18,8 @@ use crate::source::{Crate, Source, bare_type, methods, self_type_name, span_of, 
 pub struct Endpoint {
     /// The rpc, in the proto's own case: `GetOrder`.
     pub id: String,
+    /// Fully qualified method from the proto implemented by this handler.
+    pub reference: String,
     /// file:line of the handler.
     pub line: String,
     pub source: String,
@@ -59,6 +61,7 @@ pub fn read_transport(krate: &Crate, grpc: &Path, rel: &dyn Fn(&Path) -> String,
                     runs.visit_block(&m.block);
                     endpoints.push(Endpoint {
                         id: rpc.clone(),
+                        reference: format!("{}.{}/{}", svc.pkg, svc.name, rpc).trim_start_matches('.').to_string(),
                         line: src.at(span_of(&m.sig), rel),
                         source: rel(&src.path),
                         use_cases: runs.out,

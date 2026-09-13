@@ -17,7 +17,7 @@ use crate::application::{self, Operation as UseCase, Subscriber};
 use crate::bus::queue_name;
 use crate::catalog::{
     Aggregate, Block, Catalog, Channel, ChannelMessage, Column, Context, Enum, EnumValue, Event, EventConsumer, EventVersion, Flow, FlowNode, ForeignKey, Handoff,
-    HttpRoute, Operation, Participant, Persists, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
+    FlowTrigger, HttpRoute, Operation, Participant, Persists, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
 };
 use crate::domain::{self, Model, shape_of};
 use crate::ids::{aggregate_id, block_id, event_id, sentence, service_id, short, slug, title};
@@ -593,6 +593,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                 name: sentence(&slug(&route.name)),
                 summary: summary(&doc),
                 source: rel(&route.file),
+                trigger: FlowTrigger {
+                    kind: "http".into(),
+                    label: format!("{verb} {}", route.path),
+                    confidence: "high".into(),
+                },
                 owner: layout.contexts[svc.ctx].slug.clone(),
                 participants,
                 steps,
@@ -691,6 +696,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             name: sentence(&slug(&s.class.name)),
             summary: summary(&s.class.doc),
             source: rel(&s.file.path),
+            trigger: FlowTrigger {
+                kind: "event".into(),
+                label: format!("RabbitMQ · {queue}"),
+                confidence: "high".into(),
+            },
             owner: layout.contexts[ci].slug.clone(),
             participants,
             steps,

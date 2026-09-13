@@ -154,6 +154,10 @@ fn follows_a_request_into_what_it_publishes_and_a_listener_out_of_what_it_reacts
     let place = flow("shop-shop-checkout-onepage-orders-store");
     assert_eq!(place["summary"], "Places the order for the cart.");
     assert_eq!(
+        place["trigger"],
+        serde_json::json!({"kind":"http","label":"POST /checkout/onepage/orders","confidence":"high"})
+    );
+    assert_eq!(
         steps(place),
         [
             "rpc shop_checkout_onepage_orders_store declared",
@@ -181,6 +185,10 @@ fn follows_a_request_into_what_it_publishes_and_a_listener_out_of_what_it_reacts
 
     let reserve = flow("shop-reserve-stock-on-order-placed-handle");
     assert_eq!(reserve["name"], "Reserve stock on order placed");
+    assert_eq!(
+        reserve["trigger"],
+        serde_json::json!({"kind":"event","label":"OrderPlaced","confidence":"high"})
+    );
     assert_eq!(steps(reserve), ["event OrderPlaced declared", "event InventoryStockReserved declared"]);
     assert_eq!(reserve["participants"][0]["id"], "bus");
 
@@ -283,6 +291,10 @@ fn puts_jobs_on_their_queues_and_works_them() {
     let flows = fragment["flows"].as_array().unwrap();
     let worker = flows.iter().find(|f| f["slug"] == "shop-job-index-order").expect("a flow per job");
     assert_eq!(worker["name"], "Index order");
+    assert_eq!(
+        worker["trigger"],
+        serde_json::json!({"kind":"job","label":"Laravel queue · indexing","confidence":"high"})
+    );
     let steps: Vec<String> = worker["steps"]
         .as_array()
         .unwrap()

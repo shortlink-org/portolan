@@ -20,6 +20,12 @@ export interface Endpoint {
   /** file:line of the handler. */
   line: string;
   source: string;
+  /** Source-backed transport entry that starts the flow. */
+  trigger: {
+    kind: "http" | "callback";
+    label: string;
+    confidence: "high";
+  };
   /** Use case keys, in the order the handler runs them. */
   useCases: string[];
 }
@@ -68,6 +74,7 @@ export function readGrpcTransport(grpcDir: string, rel: (abs: string) => string,
             id: rpc,
             line: at(src, m.node, rel),
             source: rel(src.path),
+            trigger: { kind: "callback", label: `gRPC · ${rpc}`, confidence: "high" },
             useCases: useCasesRun(m.node, ports),
           });
         }
@@ -103,11 +110,17 @@ export function readTransport(httpDir: string, rel: (abs: string) => string, b: 
         const ports = useCasePorts(src, cls);
         for (const [method, m] of cls.methods) {
           if (!wanted.has(method) || found.has(method)) continue;
+          const operation = wanted.get(method)!;
           found.add(method);
           endpoints.push({
             id: method,
             line: at(src, m.node, rel),
             source: rel(src.path),
+            trigger: {
+              kind: "http",
+              label: `${operation.verb} ${operation.path}`,
+              confidence: "high",
+            },
             useCases: useCasesRun(m.node, ports),
           });
         }

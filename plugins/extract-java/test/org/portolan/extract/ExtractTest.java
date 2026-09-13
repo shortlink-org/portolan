@@ -119,6 +119,12 @@ public final class ExtractTest {
         // The gateway is a port too, and the difference is where it lands: a
         // repository is the store, a gateway is somebody else's system.
         Map<String, Object> authorize = Json.object(flows.get(0));
+        is("a contract handler states the callback that opens its flow",
+                "{kind=callback, label=gRPC · Authorize, confidence=high}",
+                authorize.get("trigger"));
+        is("an event listener states the event that opens its flow",
+                "{kind=event, label=OrderCancelled, confidence=high}",
+                Json.object(flows.get(3)).get("trigger"));
         List<?> steps = Json.array(authorize.get("steps"));
         is("a repository call lands in the store", "ledger-pg", Json.object(steps.get(5)).get("to"));
         is("a call with no contract lands on an unknown lane", "risk", Json.object(steps.get(2)).get("to"));

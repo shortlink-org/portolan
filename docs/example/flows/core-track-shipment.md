@@ -4,6 +4,8 @@
 
 - **Id:** `flow.core-track-shipment`
 - **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `callback` · gRPC · TrackShipment
+- **Root confidence:** high
 - **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts)
 
 What the customer sees when they paste a tracking code.

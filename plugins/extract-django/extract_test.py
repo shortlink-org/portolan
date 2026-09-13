@@ -357,10 +357,19 @@ class Reading(unittest.TestCase):
             ],
         )
         self.assertEqual(flows["billing-mark-invoice-paid"]["steps"][0]["ref"], "payments.ledger.payment.PaymentCaptured")
+        self.assertEqual(
+            flows["billing-invoice-issue"]["trigger"],
+            {"kind": "http", "label": "POST /api/invoices/{id}/issue/", "confidence": "high"},
+        )
+        self.assertEqual(
+            flows["billing-mark-invoice-paid"]["trigger"],
+            {"kind": "event", "label": "PaymentCaptured", "confidence": "high"},
+        )
 
     def test_a_celery_task_body_is_emitted_as_a_source_continuation(self):
         flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-celery-body-invoices-tasks-send-invoice-email"]
         self.assertEqual(flow["entrypoint"], "python:invoices.tasks:send_invoice_email")
+        self.assertEqual(flow["trigger"], {"kind": "job", "label": "Celery · invoices.tasks.send_invoice_email", "confidence": "high"})
         self.assertEqual([step["label"] for step in flow["steps"]], ["Invoice.objects.get"])
 
     def test_inherited_drf_actions_become_framework_flows_when_the_model_is_proven(self):

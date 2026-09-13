@@ -4,6 +4,8 @@
 
 - **Id:** `flow.pricing-expire-quote-on-checkout`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `event` · BasketCheckedOut
+- **Root confidence:** high
 - **Source:** [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go)
 
 Ends the promise once the basket it priced is checked out.

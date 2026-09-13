@@ -471,6 +471,32 @@ describe("commandChain", () => {
     expect(chain.nodes[1]!.children[0]!.cut).toEqual({ reason: "seen", hidden: 1 });
   });
 
+  it("joins a caller only to a unique source-backed server entry with the same canonical RPC", () => {
+    const caller = flow("caller", [step("payments.ledger", "shop.oms", "rpc", { ref: RPC })]);
+    const server = flow("server", [
+      step("client", "shop.oms", "rpc", { ref: RPC }),
+      step("shop.oms", "bus", "event", { ref: PLACED }),
+    ]);
+    server.source = "handlers.rs";
+    const c = estate([caller, server]);
+    const nested = run(c).nodes[0]!.children[0]!;
+    expect(nested).toMatchObject({ kind: "execution", flow: "server" });
+    expect(nested.children[0]).toMatchObject({ kind: "event", id: PLACED });
+    const duplicate = { ...server, id: "flow.other", slug: "other" };
+    expect(run(estate([caller, server, duplicate])).nodes[0]!.children).toEqual([]);
+  });
+
+  it("does not follow a terminal branch into the continuation after it", () => {
+    const chain = run(estate([flow("terminal", [
+      { type: "alt", id: "decision", branches: [{ title: "rejected", terminal: true, steps: [
+        step("client", "shop.oms", "call", { ref: REF }),
+        step("shop.oms", "bus", "event", { ref: PLACED }),
+      ] }] },
+      step("shop.oms", "bus", "event", { ref: CONFIRMED }),
+    ])]));
+    expect(chain.nodes[0]!.children.map((node) => node.kind === "event" && node.id)).toEqual([PLACED]);
+  });
+
   it.each(["alt", "parallel"] as const)("excludes sibling %s branches and keeps their source conditions", (kind) => {
     const branches = [
       [step("client", "shop.oms", "call", { ref: REF }), step("shop.oms", "bus", "event", { ref: PLACED })],
