@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
+import type { RpcMessage, RpcService } from "../catalog";
 import { catalog, index } from "../data";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
@@ -10,6 +11,8 @@ import { MessageList, MethodRows } from "../components/MethodRows";
 import { RowActions } from "../components/RowActions";
 import {
   eventVersionPath,
+  messageAnchor,
+  methodAnchor,
   MODULE_ANCHOR,
   packageAnchor,
   paths,
@@ -25,7 +28,9 @@ import {
   eventsUsingModule,
   interfacesOf,
   packagesOf,
+  qualifiedMessageName,
   registryUrl,
+  usagesOfMessage,
 } from "../lib/registry";
 import { NotFound } from "./NotFound";
 
@@ -73,6 +78,80 @@ export function ModulePage() {
   const eventSchemas = eventsUsingModule(catalog, module);
   const owner = module.owner ? index.serviceById.get(module.owner) : undefined;
   const url = registryUrl(module);
+
+  const tabLink = (nextTab: "interfaces" | "types", anchor: string) => {
+    const next = new URLSearchParams(params);
+    next.set("tab", nextTab);
+    return `${paths.module(module.slug)}?${next.toString()}#${anchor}`;
+  };
+
+  const usageLinks = (provided: RpcService, message: RpcMessage) => {
+    const target = qualifiedMessageName(provided.id, message.name);
+    const usages = usagesOfMessage(catalog, index, module, target);
+
+    return (
+      <div className="mono mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line pt-2 text-muted">
+        <span className="label">Used by</span>
+        {usages.length === 0 ? (
+          <span>nothing in this catalog</span>
+        ) : (
+          usages.map((usage) => {
+            if (usage.kind === "method") {
+              const id = `${usage.provided.id}/${usage.method.name}`;
+              return (
+                <Link
+                  key={`${id}:${usage.direction}`}
+                  to={tabLink(
+                    "interfaces",
+                    methodAnchor(usage.provided.id, usage.method.name),
+                  )}
+                  className="rounded-control hover:text-ink"
+                >
+                  {id} · {usage.direction}
+                </Link>
+              );
+            }
+
+            if (usage.kind === "field") {
+              const name = qualifiedMessageName(
+                usage.provided.id,
+                usage.message.name,
+              );
+              return (
+                <Link
+                  key={`${name}:${usage.fields.join(",")}`}
+                  to={tabLink(
+                    "types",
+                    messageAnchor(usage.provided.id, usage.message.name),
+                  )}
+                  className="rounded-control hover:text-ink"
+                >
+                  {name}.{usage.fields.join(", ")}
+                </Link>
+              );
+            }
+
+            const to = eventVersionPath(
+              usage.event.id,
+              usage.version.version,
+            );
+            const label = `${usage.event.id} · ${usage.version.version}`;
+            return to ? (
+              <Link
+                key={label}
+                to={to}
+                className="rounded-control hover:text-ink"
+              >
+                {label}
+              </Link>
+            ) : (
+              <span key={label}>{label}</span>
+            );
+          })
+        )}
+      </div>
+    );
+  };
 
   const tabCounts: Record<Tab, number | null> = {
     overview: null,
@@ -352,6 +431,7 @@ export function ModulePage() {
                     provided={provided}
                     open={openShapes}
                     onToggle={toggleShape}
+                    usedBy={(message) => usageLinks(provided, message)}
                   />
                 </div>
               ) : null,

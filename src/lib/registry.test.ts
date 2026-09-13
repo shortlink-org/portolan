@@ -18,6 +18,7 @@ import {
   registryUrl,
   registryMessageUrl,
   servicesUsing,
+  usagesOfMessage,
 } from "./registry";
 
 const catalog = registryCatalog();
@@ -162,6 +163,50 @@ describe("who uses a module", () => {
     expect(usages[0]?.version.schema?.message).toBe(
       "shop.events.v1.OrderPlaced",
     );
+  });
+
+  it("finds methods, fields and event versions that use one message", () => {
+    const sample = structuredClone(catalog);
+    const sampleIndex = buildIndex(sample);
+    const module = moduleBySlug(sampleIndex, "acme-shop")!;
+    const feed = interfacesOf(sampleIndex, module).find(
+      ({ provided }) => provided.id === "shop.events.v1.Feed",
+    )!.provided;
+
+    feed.methods[0]!.request = "OrderPlaced";
+    feed.messages![1]!.fields.push({
+      name: "placed",
+      type: "OrderPlaced",
+      doc: "",
+    });
+
+    const usages = usagesOfMessage(
+      sample,
+      sampleIndex,
+      module,
+      "shop.events.v1.OrderPlaced",
+    );
+
+    expect(usages.map((usage) => usage.kind)).toEqual([
+      "method",
+      "field",
+      "event",
+    ]);
+    expect(usages[0]).toMatchObject({
+      kind: "method",
+      direction: "request",
+      method: { name: "Method1" },
+    });
+    expect(usages[1]).toMatchObject({
+      kind: "field",
+      message: { name: "Message2" },
+      fields: ["placed"],
+    });
+    expect(usages[2]).toMatchObject({
+      kind: "event",
+      event: { name: "OrderPlaced" },
+      version: { version: "v1" },
+    });
   });
 
   it("finds a service through what it publishes and what it calls", () => {

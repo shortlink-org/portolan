@@ -14,12 +14,13 @@ import type { ReactNode } from "react";
 import type {
   Field,
   RpcDiscriminator,
+  RpcMessage,
   RpcMethod,
   RpcService,
 } from "../catalog";
 import { catalog } from "../data";
 import { streamingKind } from "../lib/api";
-import { messageAnchor } from "../routes";
+import { messageAnchor, methodAnchor } from "../routes";
 import { Ident } from "./Ident";
 import { RowActions } from "./RowActions";
 import { ShapeRows } from "./ShapeRows";
@@ -159,7 +160,8 @@ export function MethodRows({
         return (
           <li
             key={method.name}
-            className="row rounded-none border-x-0 border-t-0 last:border-b-0"
+            id={methodAnchor(provided.id, method.name)}
+            className="row rounded-none border-x-0 border-t-0 last:border-b-0 target:bg-raised"
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2">
@@ -275,10 +277,13 @@ export function MessageList({
   provided,
   open,
   onToggle,
+  usedBy,
 }: {
   provided: RpcService;
   open: ReadonlySet<string>;
   onToggle: (key: string) => void;
+  /** Exact incoming references, when the page can resolve them. */
+  usedBy?: (message: RpcMessage) => ReactNode;
 }) {
   if (!provided.messages?.length) return null;
 
@@ -322,6 +327,7 @@ export function MessageList({
                   enums={provided.enums}
                   showHeader
                 />
+                {usedBy?.(message)}
               </div>
             ) : null}
           </div>

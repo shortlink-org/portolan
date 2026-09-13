@@ -19,9 +19,11 @@ import type {
   ProtoModule,
   RpcCall,
   RpcMessage,
+  RpcMethod,
   Service,
 } from "../catalog";
 import { allEvents, allModules } from "../catalog";
+import { parseType } from "./shape";
 
 export function modules(catalog: Catalog): ProtoModule[] {
   return allModules(catalog);
@@ -95,6 +97,87 @@ export function messageOf(
 export interface EventSchemaUsage {
   event: Event;
   version: EventVersion;
+}
+
+export type MessageUsage =
+  | {
+      kind: "method";
+      service: Service;
+      provided: InterfaceOwner["provided"];
+      method: RpcMethod;
+      direction: "request" | "response";
+    }
+  | {
+      kind: "field";
+      service: Service;
+      provided: InterfaceOwner["provided"];
+      message: RpcMessage;
+      fields: string[];
+    }
+  | ({ kind: "event" } & EventSchemaUsage);
+
+/** Every exact catalog reference to one protobuf message. */
+export function usagesOfMessage(
+  catalog: Catalog,
+  index: CatalogIndex,
+  module: ProtoModule,
+  target: string,
+): MessageUsage[] {
+  const normalized = target.replace(/^\./, "");
+  const usages: MessageUsage[] = [];
+
+  for (const { service, provided } of interfacesOf(index, module)) {
+    for (const method of provided.methods) {
+      if (
+        method.request &&
+        !method.requestRef &&
+        qualifiedMessageName(provided.id, method.request) === normalized
+      ) {
+        usages.push({
+          kind: "method",
+          service,
+          provided,
+          method,
+          direction: "request",
+        });
+      }
+      if (
+        method.response &&
+        !method.responseRef &&
+        qualifiedMessageName(provided.id, method.response) === normalized
+      ) {
+        usages.push({
+          kind: "method",
+          service,
+          provided,
+          method,
+          direction: "response",
+        });
+      }
+    }
+
+    for (const message of provided.messages ?? []) {
+      const fields = message.fields
+        .filter(
+          (field) =>
+            !field.ref &&
+            qualifiedMessageName(provided.id, parseType(field.type).base) ===
+              normalized,
+        )
+        .map((field) => field.name);
+      if (fields.length > 0) {
+        usages.push({ kind: "field", service, provided, message, fields });
+      }
+    }
+  }
+
+  for (const usage of eventsUsingModule(catalog, module)) {
+    if (usage.version.schema?.message.replace(/^\./, "") === normalized) {
+      usages.push({ kind: "event", ...usage });
+    }
+  }
+
+  return usages;
 }
 
 /** Event versions whose payload contract lives in this module. */
