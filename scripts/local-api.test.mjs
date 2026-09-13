@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, problemRulesState, readLocalSource, removeProject, saveProblemRules, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeManifest, writeProject } from "./local-api.mjs";
+import { adrProjectsState, classifyRepositoryFailure, createProjectAdr, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, problemRulesState, readLocalSource, removeProject, saveProblemRules, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, workspaceFingerprint, writeManifest, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -45,6 +45,70 @@ describe("local API base path", () => {
     expect(localApiPath("/portolan/__portolan/status", "/portolan")).toBe("/__portolan/status");
     expect(localApiPath("/__portolan/status", "/portolan/")).toBe("/__portolan/status");
     expect(localApiPath("/another/status", "/portolan/")).toBe("/another/status");
+  });
+});
+
+describe("local ADR authoring", () => {
+  function adrWorkspace({ configured = true } = {}) {
+    const root = workspace();
+    rmSync(join(root, "services/billing/docs/adr/0001.md"));
+    writeFileSync(join(root, "services/billing/docs/adr/0003-existing-decision.md"), "# billing.0003 — Existing decision\n\n- **Status:** accepted\n- **Date:** 2026-09-01\n- **Scope:** finance.billing\n\n## Decision Outcome\n\nKeep it.\n");
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.projects = [{ id: "billing", name: "Billing", root: "services/billing", group: "finance", component: "billing" }];
+    manifest.extract = configured ? [{ plugin: "adr", in: "services/billing", out: "services/billing/portolan", options: { files: ["docs/adr/*.md"], scope: "finance.billing", out: "adr.json" } }] : [];
+    writeFileSync(join(root, "portolan.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+    return root;
+  }
+
+  it("continues the numbering and directory of ADRs already read from a project", () => {
+    const root = adrWorkspace();
+    const state = adrProjectsState(root);
+    expect(state.projects[0]).toMatchObject({
+      id: "billing",
+      scope: "finance.billing",
+      prefix: "billing",
+      directory: "services/billing/docs/adr",
+      count: 1,
+      nextNumber: 4,
+      configured: true,
+      writable: true,
+    });
+
+    const created = createProjectAdr(root, {
+      revision: state.revision,
+      projectId: "billing",
+      number: 4,
+      title: "Keep invoice writes idempotent",
+      status: "proposed",
+      date: "2026-09-13",
+      body: "## Context and Problem Statement\n\nRetries can duplicate an invoice.\n\n## Decision Outcome\n\nUse an idempotency key.\n",
+    });
+    expect(created).toMatchObject({ id: "billing.0004", slug: "billing-0004-keep-invoice-writes-idempotent", path: "services/billing/docs/adr/0004-keep-invoice-writes-idempotent.md", manifestChanged: false });
+    expect(readFileSync(join(root, created.path), "utf8")).toContain("- **Scope:** finance.billing");
+    expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8")).extract).toHaveLength(1);
+  });
+
+  it("adds one project-scoped extractor when the first ADR is written", () => {
+    const root = adrWorkspace({ configured: false });
+    rmSync(join(root, "services/billing/docs/adr/0003-existing-decision.md"));
+    const state = adrProjectsState(root);
+    expect(state.projects[0]).toMatchObject({ configured: false, count: 0, nextNumber: 1 });
+    const created = createProjectAdr(root, {
+      revision: state.revision,
+      projectId: "billing",
+      number: 1,
+      title: "Store invoices",
+      status: "accepted",
+      date: "2026-09-13",
+      body: "## Decision Outcome\n\nUse Postgres.\n",
+    });
+    expect(created.manifestChanged).toBe(true);
+    expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8")).extract).toContainEqual({
+      plugin: "adr",
+      in: "services/billing",
+      out: "services/billing/portolan",
+      options: { files: ["docs/adr/*.md"], scope: "finance.billing", out: "adr.json" },
+    });
   });
 });
 

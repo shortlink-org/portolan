@@ -137,6 +137,11 @@ const setupInfo = publicSetupFrom(
 export default defineConfig({
   base: env.BASE_PATH ?? "/",
   server: {
+    // The editor loads Mermaid diagram renderers lazily. A browser-cached
+    // transformed module can otherwise outlive Vite's optimized-dependency
+    // cache after a restart and request a child chunk with an obsolete hash.
+    // Dev modules are disposable, so keep the whole graph on one generation.
+    headers: { "Cache-Control": "no-store" },
     // External repositories are inspected and generator previews run under
     // .portolan. Their tsconfig files and generated output are inputs to the
     // local control plane, not another Vite application to hot-reload.

@@ -18,7 +18,7 @@ import type { Change } from "./catalog-diff";
 import { findRef } from "./forge-refs";
 import { listForgeRefs, loadForgeCatalog, loadForgeCommit } from "./github-catalog";
 import type { ForgeRef, ForgeRepo } from "./github-catalog";
-import { localStatus } from "./local-api";
+import { adrProjects, localStatus } from "./local-api";
 import { loadSourceCode } from "./source-code";
 import type { SourceFile } from "./source-code";
 import type { SourceLocation } from "./source-link";
@@ -44,6 +44,7 @@ export const sourceKeys = {
 
 export const localKeys = {
   status: ["local", "status"] as const,
+  adrProjects: ["local", "adr-projects"] as const,
 };
 
 /** Branches and tags of the configured forge repository. Disabled without one. */
@@ -141,6 +142,15 @@ export function localStatusQuery() {
   return queryOptions({
     queryKey: localKeys.status,
     queryFn: () => localStatus(),
+    staleTime: 0,
+  });
+}
+
+/** Writable ADR locations, available only from the local dev server. */
+export function adrProjectsQuery() {
+  return queryOptions({
+    queryKey: localKeys.adrProjects,
+    queryFn: () => adrProjects(),
     staleTime: 0,
   });
 }

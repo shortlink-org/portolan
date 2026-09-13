@@ -42,6 +42,8 @@ export function Select({
   title,
   className = "",
   menuWidth,
+  disabled = false,
+  appearance = "compact",
 }: {
   value: string;
   options: readonly SelectOption[];
@@ -52,11 +54,15 @@ export function Select({
   className?: string;
   /** Width of the panel. Defaults to "as wide as the button, at least 160px". */
   menuWidth?: number;
+  disabled?: boolean;
+  /** A roomier picker with option notes, matching the Buf version picker. */
+  appearance?: "compact" | "detail";
 }) {
   const selected = options.find((o) => o.value === value);
+  const detailed = appearance === "detail";
 
   return (
-    <Listbox value={value} onChange={onChange}>
+    <Listbox value={value} onChange={onChange} disabled={disabled}>
       {/* Open state comes back as a render prop rather than a `data-open:`
           variant: `.tbtn-on` is a component class, and Tailwind variants
           compose utilities, not those. */}
@@ -64,7 +70,13 @@ export function Select({
         aria-label={label}
         title={title ?? label}
         className={({ open }) =>
-          `tbtn justify-between gap-1.5 ${open ? "tbtn-on" : ""} ${className}`
+          detailed
+            ? `group flex items-center justify-between gap-2 rounded-control border bg-canvas px-3 py-1.5 shadow-xs outline-none transition-colors ${
+              open
+                ? "border-accent text-ink"
+                : "border-line text-muted hover:border-line-strong hover:bg-surface"
+            } ${className}`
+            : `tbtn justify-between gap-1.5 ${open ? "tbtn-on" : ""} ${className}`
         }
       >
         {({ open }) => (
@@ -86,7 +98,9 @@ export function Select({
            Floating UI flips the panel to the button's other side rather than
            letting it hang off the page. */
         anchor={{ to: "bottom start", gap: 4, padding: 8 }}
-        className="palette-in z-50 max-h-64 overflow-y-auto rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"
+        className={detailed
+          ? "palette-in z-50 max-h-72 overflow-y-auto rounded-card border bg-canvas p-1.5 border-line-strong shadow-md focus:outline-none"
+          : "palette-in z-50 max-h-64 overflow-y-auto rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"}
         style={menuWidth ? { width: menuWidth } : { minWidth: 160 }}
       >
         {options.map((option) => (
@@ -94,24 +108,37 @@ export function Select({
             key={option.value}
             value={option.value}
             className={({ focus }) =>
-              `mono flex cursor-pointer items-start gap-2 px-2 py-1 ${focus ? "bg-raised" : ""}`
+              detailed
+                ? `mono flex cursor-pointer items-start gap-2.5 rounded-control px-2.5 py-2 outline-none ${focus ? "bg-raised" : ""}`
+                : `mono flex cursor-pointer items-start gap-2 px-2 py-1 ${focus ? "bg-raised" : ""}`
             }
           >
             {({ selected: on }) => (
               <>
-                <Check
-                  size={12}
-                  aria-hidden
-                  className="mt-0.5 shrink-0"
-                  style={{ opacity: on ? 1 : 0, color: "var(--accent)" }}
-                />
+                {detailed ? (
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                      on ? "border-accent bg-accent" : "border-line-strong text-transparent"
+                    }`}
+                  >
+                    <Check size={10} strokeWidth={3} style={on ? { color: "var(--bg)" } : undefined} />
+                  </span>
+                ) : (
+                  <Check
+                    size={12}
+                    aria-hidden
+                    className="mt-0.5 shrink-0"
+                    style={{ opacity: on ? 1 : 0, color: "var(--accent)" }}
+                  />
+                )}
                 <span
                   className="min-w-0"
                   style={on ? { color: "var(--accent)" } : undefined}
                 >
                   <span className="block truncate">{option.label}</span>
                   {option.note ? (
-                    <span className="block truncate text-muted">
+                    <span className={`block text-muted ${detailed ? "whitespace-normal" : "truncate"}`}>
                       {option.note}
                     </span>
                   ) : null}

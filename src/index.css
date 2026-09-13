@@ -1870,114 +1870,120 @@ h3 {
   margin-bottom: 0;
 }
 
-/* The ADR authoring surface is MDXEditor's UI with Portolan's tokens. The
-   editor remains a separate source-mode-capable control, but it should not
-   look like a white document embedded in the dark catalog. */
-.adr-editor.adr-editor,
-.mdxeditor-popup-container {
-  --basePageBg: var(--bg);
-  --baseBg: var(--bg);
-  --baseBgSubtle: var(--surface);
-  --baseBgHover: var(--surface-2);
-  --baseBgActive: var(--surface-2);
-  --baseLine: var(--border);
-  --baseBorder: var(--border);
-  --baseBorderHover: var(--border-strong);
-  --baseText: var(--fg-muted);
-  --baseTextContrast: var(--fg);
-  --baseSolid: var(--fg-muted);
-  --baseSolidHover: var(--fg);
-  --accentBase: var(--bg);
-  --accentBg: color-mix(in srgb, var(--accent) 8%, var(--bg));
-  --accentBgSubtle: color-mix(in srgb, var(--accent) 5%, var(--bg));
-  --accentBgHover: color-mix(in srgb, var(--accent) 12%, var(--bg));
-  --accentBgActive: color-mix(in srgb, var(--accent) 16%, var(--bg));
-  --accentLine: color-mix(in srgb, var(--accent) 35%, var(--border));
-  --accentBorder: color-mix(in srgb, var(--accent) 50%, var(--border));
-  --accentBorderHover: var(--accent);
-  --accentSolid: var(--accent);
-  --accentSolidHover: var(--accent-hi);
-  --accentText: var(--accent);
-  --accentTextContrast: var(--bg);
-  --font-body: var(--font-sans);
-  --radius-medium: var(--radius-control);
-  color: var(--fg);
+/* The ADR composer is a block editor: its chrome appears at the cursor, like
+   Notion, instead of permanently consuming a toolbar row. Keep both the
+   document and its floating controls in the catalog palette. */
+.adr-block-editor.adr-block-editor.adr-block-editor {
+  --bn-colors-editor-text: var(--fg);
+  --bn-colors-editor-background: var(--bg);
+  --bn-colors-menu-text: var(--fg);
+  --bn-colors-menu-background: var(--surface);
+  --bn-colors-tooltip-text: var(--fg);
+  --bn-colors-tooltip-background: var(--surface-2);
+  --bn-colors-hovered-text: var(--fg);
+  --bn-colors-hovered-background: var(--surface-2);
+  --bn-colors-selected-text: var(--bg);
+  --bn-colors-selected-background: var(--accent);
+  --bn-colors-disabled-text: var(--fg-faint);
+  --bn-colors-disabled-background: var(--surface);
+  --bn-colors-shadow: color-mix(in srgb, #000 45%, transparent);
+  --bn-colors-border: var(--border);
+  --bn-colors-side-menu: var(--fg-muted);
+  --bn-font-family: var(--font-sans);
+  --bn-border-radius: var(--radius-control);
   background: var(--bg);
 }
 
-.adr-editor .mdxeditor-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  border-bottom: 1px solid var(--border);
+.adr-block-editor .bn-editor {
+  min-height: 26rem;
   border-radius: 0;
+  padding-block: 1rem 2rem;
+  padding-inline: clamp(2.75rem, 7vw, 5.5rem);
+  font-size: 14px;
+}
+
+.adr-block-editor .bn-block-content[data-content-type="heading"] {
+  color: var(--fg);
+}
+
+.adr-block-editor .bn-block-content[data-content-type="heading"][data-level="2"] {
+  margin-top: 0.7rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3rem;
+}
+
+.adr-block-editor .bn-block-content[data-content-type="table"] :is(th, td) {
+  border-color: var(--border);
+}
+
+.adr-block-editor .bn-block-content[data-content-type="table"] th {
   background: var(--surface);
 }
 
-.adr-editor .mdxeditor-toolbar :is(button, [role="radio"], [role="combobox"]) {
+.adr-block-editor :is(button, [role="button"]) svg {
+  color: currentColor;
+}
+
+/* DayPicker keeps the date compact enough to sit beside the project and
+   status pickers, while its popover uses the same catalog palette in either
+   theme. */
+.adr-date-calendar.rdp-root {
+  --rdp-accent-color: var(--accent);
+  --rdp-accent-background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  --rdp-day-height: 2rem;
+  --rdp-day-width: 2rem;
+  --rdp-day_button-height: 1.875rem;
+  --rdp-day_button-width: 1.875rem;
+  --rdp-day_button-border-radius: var(--radius-control);
+  --rdp-day_button-border: 1px solid transparent;
+  --rdp-nav_button-height: 2rem;
+  --rdp-nav_button-width: 2rem;
+  --rdp-nav-height: 2.25rem;
+  --rdp-outside-opacity: 0.42;
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.adr-date-calendar .rdp-month_caption {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.adr-date-calendar .rdp-weekday {
+  color: var(--fg-faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.adr-date-calendar .rdp-day_button:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.adr-date-calendar .rdp-selected .rdp-day_button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.adr-date-calendar .rdp-today:not(.rdp-selected) .rdp-day_button {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.adr-date-calendar :is(.rdp-button_next, .rdp-button_previous) {
+  border-radius: var(--radius-control);
   color: var(--fg-muted);
 }
 
-.adr-editor .mdxeditor-toolbar [role="radiogroup"] {
-  border: 1px solid var(--border);
+.adr-date-calendar :is(.rdp-button_next, .rdp-button_previous):hover {
   background: var(--surface-2);
-}
-
-.adr-editor .mdxeditor-toolbar :is(button, [role="radio"], [role="combobox"]):not(:disabled):hover,
-.adr-editor .mdxeditor-toolbar [data-state="on"],
-.adr-editor .mdxeditor-toolbar [aria-checked="true"] {
   color: var(--fg);
-  background: var(--surface-2);
-}
-
-.adr-editor .mdxeditor-toolbar svg {
-  color: currentColor;
-  stroke: currentColor;
-}
-
-.adr-editor-content {
-  min-height: 34rem;
-  max-width: var(--w-prose);
-  padding: var(--pad-card);
-  color: var(--fg);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.adr-editor-content h2 {
-  margin: 1.75rem 0 0.65rem;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.35rem;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.adr-editor-content h3 {
-  margin: 1.35rem 0 0.5rem;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.adr-editor-content p,
-.adr-editor-content ul,
-.adr-editor-content ol {
-  margin: 0.65rem 0;
-}
-
-.adr-editor-content ul,
-.adr-editor-content ol {
-  padding-left: 1.5rem;
-}
-
-.adr-editor-content ul { list-style: disc; }
-.adr-editor-content ol { list-style: decimal; }
-
-.adr-editor-content code {
-  border-radius: 3px;
-  background: var(--surface-2);
-  padding: 0.08rem 0.28rem;
-  font-family: var(--font-mono);
 }
 
 /* ---------------------------------------------------------------------------

@@ -19,6 +19,7 @@ export const paths = {
       id: flowStepId(slug, stepId),
     })}`,
   adrs: () => "/adrs",
+  newAdr: () => "/adrs/new",
   /**
    * The estate's vocabulary. One page rather than one per context: the words
    * a context means by itself are only half of what a reader needs, and the

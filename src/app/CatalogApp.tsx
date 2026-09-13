@@ -70,6 +70,8 @@ const ChatPanel =
     ? lazy(() => import("../chat/ChatPanel"))
     : null;
 
+const AdrCreate = lazy(() => import("../pages/AdrCreate"));
+
 /**
  * What the click shows while that chunk is on its way: the same sheet, at the
  * same width, with a word in it. A fallback of nothing meant the first "ask"
@@ -121,6 +123,14 @@ function AppRoutes({
       <Route path="/adrs" element={<AdrIndex />} />
       <Route path="/language" element={<Language />} />
       <Route path="/plugins" element={<PluginIndex />} />
+      <Route
+        path="/adrs/new"
+        element={
+          <Suspense fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
+            <AdrCreate />
+          </Suspense>
+        }
+      />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
       <Route path="/settings/*" element={<Settings />} />

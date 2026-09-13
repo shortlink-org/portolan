@@ -2,6 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
   cpSync,
+  globSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -44,6 +45,8 @@ const removalUndos = new Map();
 const repositoryCredentials = new Map();
 const SNAPSHOT_SKIP = new Set([".git", ".portolan", "dist", "node_modules", "target"]);
 const PROJECT_PREVIEW_TTL_MS = 15 * 60 * 1000;
+const ADR_BODY_LIMIT = 256 * 1024;
+const ADR_STATUSES = new Set(["proposed", "accepted", "superseded", "deprecated", "rejected"]);
 
 /** Remove Vite's configured base before matching a local control-plane route. */
 export function localApiPath(pathname, base = "/") {
@@ -296,6 +299,188 @@ export function prepareRepository(workspace, request) {
 
 function lstatExists(path) {
   try { lstatSync(path); return true; } catch { return false; }
+}
+
+function safeWorkspacePath(workspace, value, what) {
+  const clean = String(value ?? "").trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "") || ".";
+  if (clean.includes("\0") || clean.startsWith("/") || clean.split("/").includes("..")) {
+    throw new Error(`${what} must stay inside this repository.`);
+  }
+  const root = realpathSync(workspace);
+  const target = resolve(root, clean);
+  if (target !== root && !target.startsWith(`${root}${sep}`)) throw new Error(`${what} resolves outside this repository.`);
+  let existing = target;
+  while (!lstatExists(existing) && dirname(existing) !== existing) existing = dirname(existing);
+  const existingReal = realpathSync(existing);
+  if (existingReal !== root && !existingReal.startsWith(`${root}${sep}`)) throw new Error(`${what} resolves outside this repository.`);
+  return { relative: relative(root, target).replaceAll(sep, "/") || ".", absolute: target };
+}
+
+function adrScope(project, step) {
+  const configured = String(step?.options?.scope ?? "").trim();
+  if (configured) return configured;
+  const group = project.group ?? project.context;
+  const component = project.component ?? project.service;
+  return [group, component].filter(Boolean).join(".") || group || "org";
+}
+
+function adrPrefix(scope) {
+  if (scope === "org") return "org";
+  return scope.split(".").filter(Boolean).at(-1) || "org";
+}
+
+function adrStepFor(manifest, project) {
+  const output = posix.join(project.root, "portolan");
+  return (manifest.extract ?? []).find((step) => step?.plugin === "adr" && step?.out === output) ?? null;
+}
+
+function adrPatterns(step) {
+  const configured = Array.isArray(step?.options?.files)
+    ? step.options.files.filter((value) => typeof value === "string" && value.trim())
+    : [];
+  return configured.length ? configured : ["docs/adr/*.md"];
+}
+
+/** Files an ADR step already reads, relative to its input root. */
+function adrStepFiles(workspace, step) {
+  const input = safeWorkspacePath(workspace, step.in, "ADR input");
+  const files = new Set();
+  for (const pattern of adrPatterns(step)) {
+    const clean = pattern.replaceAll("\\", "/");
+    if (clean.startsWith("/") || clean.split("/").includes("..")) throw new Error("ADR file patterns must stay inside the project.");
+    for (const name of globSync(clean, { cwd: input.absolute })) {
+      const normalized = String(name).replaceAll("\\", "/");
+      if (posix.basename(normalized).toLowerCase() !== "readme.md") files.add(normalized);
+    }
+  }
+  return { input, files: [...files].sort() };
+}
+
+function adrDirectory(workspace, project, step) {
+  const { input, files } = adrStepFiles(workspace, step);
+  const populated = new Map();
+  for (const file of files) populated.set(posix.dirname(file), (populated.get(posix.dirname(file)) ?? 0) + 1);
+  const existing = [...populated].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
+  const literal = adrPatterns(step)
+    .map((pattern) => posix.dirname(pattern.replaceAll("\\", "/")))
+    .find((dir) => !/[?*\[\]{}]/.test(dir));
+  const directory = existing ?? literal;
+  if (!directory) throw new Error(`Project "${project.id}" uses an ADR glob whose destination is ambiguous. Give its adr step a literal directory such as docs/adr/*.md.`);
+  const relativeDirectory = posix.normalize(posix.join(input.relative, directory === "." ? "" : directory));
+  const safe = safeWorkspacePath(workspace, relativeDirectory, "ADR directory");
+  const projectRoot = safeWorkspacePath(workspace, project.root, "Project root");
+  if (safe.absolute !== projectRoot.absolute && !safe.absolute.startsWith(`${projectRoot.absolute}${sep}`)) {
+    throw new Error(`Project "${project.id}" writes ADRs outside its project root.`);
+  }
+  return { directory: safe.relative, absolute: safe.absolute, files, input: input.relative };
+}
+
+function adrFileNumber(name) {
+  const match = /^(\d+)-[a-z0-9_]+(?:-[a-z0-9_]+)*\.md$/i.exec(posix.basename(name));
+  return match ? Number(match[1]) : 0;
+}
+
+function adrProjectDescriptor(workspace, manifest, project) {
+  const step = adrStepFor(manifest, project) ?? {
+    plugin: "adr",
+    in: project.root,
+    out: posix.join(project.root, "portolan"),
+    options: { files: ["docs/adr/*.md"], scope: adrScope(project), out: "adr.json" },
+  };
+  const target = adrDirectory(workspace, project, step);
+  const highest = target.files.reduce((number, file) => Math.max(number, adrFileNumber(file)), 0);
+  const scope = adrScope(project, step);
+  return {
+    id: project.id,
+    name: project.name,
+    root: project.root,
+    scope,
+    prefix: adrPrefix(scope),
+    directory: target.directory,
+    count: target.files.length,
+    nextNumber: highest + 1,
+    configured: adrStepFor(manifest, project) !== null,
+    writable: !project.repository,
+    ...(project.repository ? { reason: "This project is an imported repository snapshot. Create the ADR in its source checkout." } : {}),
+  };
+}
+
+/** The projects an ADR can be written beside, including records already read from their code. */
+export function adrProjectsState(workspace) {
+  const manifestPath = join(workspace, "portolan.json");
+  const text = readFileSync(manifestPath, "utf8");
+  const manifest = readManifestText(text, manifestPath);
+  return {
+    revision: createHash("sha256").update(text).digest("hex"),
+    projects: (manifest.projects ?? []).map((project) => adrProjectDescriptor(workspace, manifest, project)),
+  };
+}
+
+function validAdrDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+/** Write one MADR record into the selected project's existing ADR source tree. */
+export function createProjectAdr(workspace, request) {
+  const manifestPath = join(workspace, "portolan.json");
+  const before = readFileSync(manifestPath, "utf8");
+  const manifest = readManifestText(before, manifestPath);
+  if (request?.revision !== createHash("sha256").update(before).digest("hex")) {
+    throw new Error("portolan.json changed while this ADR was being written. Reload the editor and try again.");
+  }
+  const project = (manifest.projects ?? []).find((candidate) => candidate.id === request.projectId);
+  if (!project) throw new Error(`Project "${String(request?.projectId ?? "")}" does not exist.`);
+  const descriptor = adrProjectDescriptor(workspace, manifest, project);
+  if (!descriptor.writable) throw new Error(descriptor.reason);
+  if (request.number !== descriptor.nextNumber) throw new Error(`The next ADR is now ${String(descriptor.nextNumber).padStart(4, "0")}. Reload the editor and try again.`);
+
+  const title = String(request.title ?? "").trim();
+  if (!title || title.length > 180 || /[\r\n\0]/.test(title)) throw new Error("ADR title must be one line between 1 and 180 characters.");
+  const status = String(request.status ?? "");
+  if (!ADR_STATUSES.has(status)) throw new Error("Choose a valid ADR status.");
+  const date = String(request.date ?? "");
+  if (!validAdrDate(date)) throw new Error("ADR date must be a real date written as YYYY-MM-DD.");
+  const body = String(request.body ?? "").replaceAll("\r\n", "\n").trim();
+  if (!body.startsWith("## ")) throw new Error("ADR body must begin with a level-two Markdown heading.");
+  if (Buffer.byteLength(body, "utf8") > ADR_BODY_LIMIT) throw new Error("ADR body is larger than 256 KB.");
+
+  const number = descriptor.nextNumber;
+  const padded = String(number).padStart(4, "0");
+  const titleSlug = slug(title) || "decision";
+  const name = `${padded}-${titleSlug}.md`;
+  const target = resolve(realpathSync(workspace), descriptor.directory, name);
+  const directory = dirname(target);
+  const id = `${descriptor.prefix}.${padded}`;
+  const markdown = `# ${id} — ${title}\n\n- **Status:** ${status}\n- **Date:** ${date}\n- **Scope:** ${descriptor.scope}\n\n${body}\n`;
+
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(target, markdown, { flag: "wx" });
+  let manifestChanged = false;
+  try {
+    if (!adrStepFor(manifest, project)) {
+      manifest.extract = [...(manifest.extract ?? []), {
+        plugin: "adr",
+        in: project.root,
+        out: posix.join(project.root, "portolan"),
+        options: { files: ["docs/adr/*.md"], scope: descriptor.scope, out: "adr.json" },
+      }];
+      writeManifest(manifestPath, manifest);
+      manifestChanged = true;
+    }
+  } catch (cause) {
+    rmSync(target, { force: true });
+    throw cause;
+  }
+  return {
+    id,
+    slug: `${id.replaceAll(".", "-")}-${titleSlug}`,
+    number,
+    title,
+    path: posix.join(descriptor.directory, name),
+    manifestChanged,
+  };
 }
 
 function pluginOptions(plugin, project, detectedOptions = {}) {
@@ -1304,6 +1489,9 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             const active = [...jobs.values()].find((job) => job.status === "running");
             return send(res, 200, { local: true, workspace: realpathSync(workspace), setup: setup(workspace, publicSetupFrom), activeRun: active ? { id: active.id, mode: active.mode } : null });
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/adrs/projects`) {
+            return send(res, 200, adrProjectsState(workspace));
+          }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/django-aggregates`) {
             return send(res, 200, djangoAggregateProposals(workspace));
           }
@@ -1353,6 +1541,16 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (url.pathname === `${LOCAL_API_PREFIX}/rules`) {
             if ([...jobs.values()].some((job) => job.status === "running")) throw new Error("Wait for the current generation to finish before saving rules.");
             return send(res, 200, saveProblemRules(workspace, input));
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/adrs`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before writing an ADR." });
+            const created = createProjectAdr(workspace, input);
+            try {
+              const job = startJob(workspace, "write", null);
+              return send(res, 201, { ...created, run: { runId: job.id, mode: job.mode } });
+            } catch (cause) {
+              return send(res, 201, { ...created, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
+            }
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/delivery-presets/install`) {
             return send(res, 201, installDeliveryPreset(workspace, input));

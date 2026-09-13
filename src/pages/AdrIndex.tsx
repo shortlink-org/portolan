@@ -1,6 +1,8 @@
 import { useDocumentTitle } from "../app/title";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { FilePlus2 } from "lucide-react";
 import { catalog } from "../data";
 import type { Adr } from "../catalog";
 import { scopeLabel, sortAdrs } from "../lib/adr";
@@ -14,6 +16,7 @@ import { RowActions } from "../components/RowActions";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
 import { paths } from "../routes";
+import { localStatusQuery } from "../lib/queries";
 
 /**
  * A table, not cards: the number, the status and the date are the whole point,
@@ -71,6 +74,7 @@ const COLUMNS: ColumnSpec<Adr>[] = [
 
 export function AdrIndex() {
   useDocumentTitle("Decisions");
+  const local = useQuery(localStatusQuery()).isSuccess;
   const rows = useMemo(() => sortAdrs(catalog.adrs), []);
 
   // An empty table with a header row is a table that looks broken. Before the
@@ -82,6 +86,7 @@ export function AdrIndex() {
     <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">Decisions</h1>
+        {local ? <Link className="product-primary ml-auto" to={paths.newAdr()}><FilePlus2 size={15} /> New ADR</Link> : null}
       </div>
 
       {bare ? (

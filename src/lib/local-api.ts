@@ -48,6 +48,46 @@ export interface ProjectDraft {
   plugins: string[];
 }
 
+export interface AdrProject {
+  id: string;
+  name: string;
+  root: string;
+  scope: string;
+  prefix: string;
+  directory: string;
+  count: number;
+  nextNumber: number;
+  configured: boolean;
+  writable: boolean;
+  reason?: string;
+}
+
+export interface AdrProjectsState {
+  revision: string;
+  projects: AdrProject[];
+}
+
+export interface CreateAdrInput {
+  revision: string;
+  projectId: string;
+  number: number;
+  title: string;
+  status: "proposed" | "accepted" | "superseded" | "deprecated" | "rejected";
+  date: string;
+  body: string;
+}
+
+export interface CreatedAdr {
+  id: string;
+  slug: string;
+  number: number;
+  title: string;
+  path: string;
+  manifestChanged: boolean;
+  run: { runId: string; mode: "write" } | null;
+  generationError?: string;
+}
+
 export interface ProjectPlan {
   project: { id: string; name: string; root: string; group?: string; component?: string; components?: string[]; groupKind?: string; componentKind?: string; context?: string; service?: string; repository?: string };
   plugins: string[];
@@ -228,6 +268,16 @@ export class LocalApiError extends Error {
 
 export async function localStatus(): Promise<{ local: true; workspace: string; setup: SetupInfo; activeRun: { id: string; mode: RunMode } | null }> {
   return json("/status");
+}
+
+/** Projects and source directories the dev server can write ADRs into. */
+export async function adrProjects(): Promise<AdrProjectsState> {
+  return json("/adrs/projects");
+}
+
+/** Writes an ADR beside its project and starts catalog generation. */
+export async function createAdr(input: CreateAdrInput): Promise<CreatedAdr> {
+  return json("/adrs", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(input) });
 }
 
 export interface DjangoAggregateProposals {
