@@ -2,8 +2,8 @@
 // applies it when emitting the *_cross views, and the step rail applies it to
 // stay in step with whichever view is on screen.
 
-import type { Flow, Step } from "../catalog";
-import { walkSteps } from "../catalog";
+import type { Flow, Step } from "../catalog-model.ts";
+import { walkSteps } from "../catalog-model.ts";
 
 export function isCrossContext(
   step: Step,
@@ -25,6 +25,12 @@ export function contextResolver(
 ): (participantId: string) => string | null {
   const contexts = new Map(flow.participants.map((p) => [p.id, p.context]));
   return (id) => contexts.get(id) ?? null;
+}
+
+/** Only flows with a real crossing need a separate generated view. */
+export function hasCrossContextSteps(flow: Flow): boolean {
+  const contextOf = contextResolver(flow);
+  return walkSteps(flow.steps).some((step) => isCrossContext(step, contextOf));
 }
 
 /** Ids of the steps a cross-context view leaves out. */

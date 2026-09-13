@@ -115,7 +115,7 @@ export function FlowDetail() {
   const { flow: slug } = useParams();
   const flow: Flow | undefined = slug ? index.flowBySlug.get(slug) : undefined;
 
-  const [crossOnly, setCrossOnly] = useState(false);
+  const [crossRequested, setCrossOnly] = useState(false);
   const [compact, setCompact] = useState(false);
   /** The one status the rail is reading, or null for all of them. */
   const [statusFilter, setStatusFilter] = useState<Status | null>(null);
@@ -156,6 +156,9 @@ export function FlowDetail() {
     () => (flow ? hiddenStepIds(flow) : new Set<string>()),
     [flow],
   );
+  const hasCrossings = allSteps.length > hidden.size;
+  // Route changes can reuse this page while the previous flow's filter is on.
+  const crossOnly = crossRequested && hasCrossings;
   const paths = useMemo(
     () => (flow ? flowPaths(flow) : { paths: [], truncated: false }),
     [flow],
@@ -568,6 +571,7 @@ export function FlowDetail() {
           pathSteps={path ? path.stepIds.size : null}
           totalSteps={allSteps.length}
           crossOnly={crossOnly}
+          hasCrossings={hasCrossings}
           onCrossOnly={setCrossOnly}
           compact={compact}
           onCompact={setCompact}

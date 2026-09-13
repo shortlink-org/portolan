@@ -245,11 +245,6 @@ views {
     }
   }
 
-  dynamic view flow_auth_change_password_cross {
-    title 'Change password — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_auth_get_user {
     title 'Get user'
     description 'Reads a user by id.'
@@ -261,11 +256,6 @@ views {
       color declared  line solid  head none
       notes 'examples/auth/internal/user/application/get/usecase.go:22'
     }
-  }
-
-  dynamic view flow_auth_get_user_cross {
-    title 'Get user — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_login {
@@ -361,11 +351,6 @@ views {
     }
   }
 
-  dynamic view flow_auth_login_cross {
-    title 'Login — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_auth_logout {
     title 'Logout'
     description 'Ends the session behind a token.'
@@ -385,11 +370,6 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/application/logout/usecase.go:48'
     }
-  }
-
-  dynamic view flow_auth_logout_cross {
-    title 'Logout — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_auth_register_user {
@@ -413,11 +393,6 @@ views {
     }
   }
 
-  dynamic view flow_auth_register_user_cross {
-    title 'Register user — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_auth_validate_session {
     title 'Validate session'
     description 'Resolves a token to a live session: who is calling, and how long the answer stays good.'
@@ -431,11 +406,6 @@ views {
     }
   }
 
-  dynamic view flow_auth_validate_session_cross {
-    title 'Validate session — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_auth_revoke_sessions_on_password_change {
     title 'Revoke sessions on password change'
     description 'Ends the sessions issued against a password that has just been replaced.'
@@ -447,11 +417,6 @@ views {
       color verified  line solid  head onormal
       notes 'Seen in 1 recording; the code does not declare this hop.'
     }
-  }
-
-  dynamic view flow_auth_revoke_sessions_on_password_change_cross {
-    title 'Revoke sessions on password change — crossings only'
-    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_bff_query_basket {
@@ -631,11 +596,6 @@ views {
     }
   }
 
-  dynamic view flow_bff_subscription_order_status_cross {
-    title 'Subscription order status — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_ledger_authorize {
     title 'Authorize'
     description 'Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.'
@@ -734,11 +694,6 @@ views {
     }
   }
 
-  dynamic view flow_ledger_capture_cross {
-    title 'Capture — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_ledger_get_payment {
     title 'Get payment'
     description 'Reads one payment, for whoever is asking what happened to the money.'
@@ -750,11 +705,6 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:27'
     }
-  }
-
-  dynamic view flow_ledger_get_payment_cross {
-    title 'Get payment — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_ledger_issue_refund {
@@ -802,11 +752,6 @@ views {
     }
   }
 
-  dynamic view flow_ledger_issue_refund_cross {
-    title 'Issue refund — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_ledger_list_refunds {
     title 'List refunds'
     description 'Every refund against one payment, newest first.'
@@ -818,11 +763,6 @@ views {
       color declared  line solid  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:27'
     }
-  }
-
-  dynamic view flow_ledger_list_refunds_cross {
-    title 'List refunds — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_ledger_void_payment_on_order_cancelled {
@@ -846,11 +786,6 @@ views {
     }
   }
 
-  dynamic view flow_ledger_void_payment_on_order_cancelled_cross {
-    title 'Void payment on order cancelled — crossings only'
-    bus -> bus 'no cross-context step'
-  }
-
   dynamic view flow_billing_celery_remind_unpaid_invoice {
     title 'Remind Unpaid Invoice task'
     description 'Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. Source-backed cross-protocol continuations are included.'
@@ -866,11 +801,6 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/billing/invoices/tasks.py:32'
     }
-  }
-
-  dynamic view flow_billing_celery_remind_unpaid_invoice_cross {
-    title 'Remind Unpaid Invoice task — crossings only'
-    shop.billing -> shop.billing 'no cross-context step'
   }
 
   dynamic view flow_billing_celery_send_invoice_email {
@@ -890,11 +820,6 @@ views {
     }
   }
 
-  dynamic view flow_billing_celery_send_invoice_email_cross {
-    title 'Send Invoice Email task — crossings only'
-    shop.billing -> shop.billing 'no cross-context step'
-  }
-
   dynamic view flow_billing_invoice_create {
     title 'Invoice create'
     description 'Draws up a draft invoice for an order, with a line for each thing sold.'
@@ -910,11 +835,6 @@ views {
       color declared  line solid  head none
       notes 'in one transaction, for each line. — examples/shop/billing/invoices/services.py:29'
     }
-  }
-
-  dynamic view flow_billing_invoice_create_cross {
-    title 'Invoice create — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_destroy {
@@ -936,11 +856,6 @@ views {
       color declared  line solid  head onormal
       notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
     }
-  }
-
-  dynamic view flow_billing_invoice_destroy_cross {
-    title 'Invoice destroy — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_issue {
@@ -1009,11 +924,6 @@ views {
     }
   }
 
-  dynamic view flow_billing_invoice_list_cross {
-    title 'Invoice list — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_billing_invoice_partial_update {
     title 'Invoice partial update'
     description 'Invoices over HTTP. Every action here runs one function of services.py.'
@@ -1021,11 +931,6 @@ views {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:10'
     }
-  }
-
-  dynamic view flow_billing_invoice_partial_update_cross {
-    title 'Invoice partial update — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_invoice_retrieve {
@@ -1041,11 +946,6 @@ views {
     }
   }
 
-  dynamic view flow_billing_invoice_retrieve_cross {
-    title 'Invoice retrieve — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_billing_invoice_update {
     title 'Invoice update'
     description 'Invoices over HTTP. Every action here runs one function of services.py.'
@@ -1053,11 +953,6 @@ views {
       color declared  line solid  head normal
       notes 'examples/shop/billing/invoices/views.py:10'
     }
-  }
-
-  dynamic view flow_billing_invoice_update_cross {
-    title 'Invoice update — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_billing_close_invoice_on_payment {
@@ -1081,11 +976,6 @@ views {
     }
   }
 
-  dynamic view flow_billing_close_invoice_on_payment_cross {
-    title 'Close invoice on payment — crossings only'
-    bus -> bus 'no cross-context step'
-  }
-
   dynamic view flow_cart_add_item {
     title 'Add item'
     description ''
@@ -1101,11 +991,6 @@ views {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
     }
-  }
-
-  dynamic view flow_cart_add_item_cross {
-    title 'Add item — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_cart_checkout {
@@ -1162,11 +1047,6 @@ views {
     }
   }
 
-  dynamic view flow_cart_create_basket_cross {
-    title 'Create basket — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_cart_get_basket {
     title 'Get basket'
     description ''
@@ -1174,11 +1054,6 @@ views {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
     }
-  }
-
-  dynamic view flow_cart_get_basket_cross {
-    title 'Get basket — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_cart_merge_baskets {
@@ -1243,11 +1118,6 @@ views {
     }
   }
 
-  dynamic view flow_cart_remove_item_cross {
-    title 'Remove item — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_core_close_route {
     title 'Close route'
     description 'Ends the day, whatever is left undone.'
@@ -1267,11 +1137,6 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:13'
     }
-  }
-
-  dynamic view flow_core_close_route_cross {
-    title 'Close route — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_dispatch {
@@ -1340,11 +1205,6 @@ views {
     }
   }
 
-  dynamic view flow_core_get_route_cross {
-    title 'Get route — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_core_get_shipment {
     title 'Get shipment'
     description 'One shipment, for whoever is asking about an order.'
@@ -1356,11 +1216,6 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24'
     }
-  }
-
-  dynamic view flow_core_get_shipment_cross {
-    title 'Get shipment — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_plan_route {
@@ -1392,11 +1247,6 @@ views {
     }
   }
 
-  dynamic view flow_core_plan_route_cross {
-    title 'Plan route — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_core_record_delivery {
     title 'Record delivery'
     description 'Ends a shipment at the door.'
@@ -1416,11 +1266,6 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13'
     }
-  }
-
-  dynamic view flow_core_record_delivery_cross {
-    title 'Record delivery — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_record_scan {
@@ -1456,11 +1301,6 @@ views {
     }
   }
 
-  dynamic view flow_core_record_scan_cross {
-    title 'Record scan — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_core_start_route {
     title 'Start route'
     description 'The van is out.'
@@ -1482,11 +1322,6 @@ views {
     }
   }
 
-  dynamic view flow_core_start_route_cross {
-    title 'Start route — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_core_track_shipment {
     title 'Track shipment'
     description 'What the customer sees when they paste a tracking code.'
@@ -1498,11 +1333,6 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23'
     }
-  }
-
-  dynamic view flow_core_track_shipment_cross {
-    title 'Track shipment — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_core_release_shipment_on_payment_captured {
@@ -1528,11 +1358,6 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
     }
-  }
-
-  dynamic view flow_core_release_shipment_on_payment_captured_cross {
-    title 'Release shipment on payment captured — crossings only'
-    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_oms_cancel_order {
@@ -1568,11 +1393,6 @@ views {
     }
   }
 
-  dynamic view flow_oms_cancel_order_cross {
-    title 'Cancel order — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_oms_get_order {
     title 'Get order'
     description 'Reads one order by id.'
@@ -1584,11 +1404,6 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42'
     }
-  }
-
-  dynamic view flow_oms_get_order_cross {
-    title 'Get order — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_oms_place_order_on_basket_checked_out {
@@ -1616,11 +1431,6 @@ views {
     }
   }
 
-  dynamic view flow_oms_place_order_on_basket_checked_out_cross {
-    title 'Place order on basket checked out — crossings only'
-    bus -> bus 'no cross-context step'
-  }
-
   dynamic view flow_pricing_archive_price_list {
     title 'Archive price list'
     description 'Package archive_price_list takes a price list out of use without losing it.'
@@ -1636,11 +1446,6 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28'
     }
-  }
-
-  dynamic view flow_pricing_archive_price_list_cross {
-    title 'Archive price list — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_get_quote {
@@ -1666,11 +1471,6 @@ views {
     }
   }
 
-  dynamic view flow_pricing_get_quote_cross {
-    title 'Get quote — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_pricing_import_price_list {
     title 'Import price list'
     description 'Package import_price_list takes in a whole price list.'
@@ -1682,11 +1482,6 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43'
     }
-  }
-
-  dynamic view flow_pricing_import_price_list_cross {
-    title 'Import price list — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_issue_quote {
@@ -1710,11 +1505,6 @@ views {
     }
   }
 
-  dynamic view flow_pricing_issue_quote_cross {
-    title 'Issue quote — crossings only'
-    client -> client 'no cross-context step'
-  }
-
   dynamic view flow_pricing_list_price_lists {
     title 'List price lists'
     description 'Package list_price_lists reads every price list there is.'
@@ -1726,11 +1516,6 @@ views {
       color declared  line solid  head none
       notes 'examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22'
     }
-  }
-
-  dynamic view flow_pricing_list_price_lists_cross {
-    title 'List price lists — crossings only'
-    client -> client 'no cross-context step'
   }
 
   dynamic view flow_pricing_expire_quote_on_checkout {
@@ -1752,11 +1537,6 @@ views {
       color declared  line solid  head onormal
       notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55'
     }
-  }
-
-  dynamic view flow_pricing_expire_quote_on_checkout_cross {
-    title 'Expire quote on checkout — crossings only'
-    bus -> bus 'no cross-context step'
   }
 
   dynamic view flow_gen {
@@ -1809,11 +1589,6 @@ In `--check` mode the same run writes nothing and fails on the first file that d
     portolan.host -> tree 'write .portolan/build-report.json' {
       color declared  line solid  head none
     }
-  }
-
-  dynamic view flow_gen_cross {
-    title 'npm run gen — crossings only'
-    developer -> developer 'no cross-context step'
   }
 
 

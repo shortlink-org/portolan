@@ -81,6 +81,7 @@ export function FlowToolbar({
   pathSteps,
   totalSteps,
   crossOnly,
+  hasCrossings,
   onCrossOnly,
   compact,
   onCompact,
@@ -109,6 +110,7 @@ export function FlowToolbar({
   pathSteps: number | null;
   totalSteps: number;
   crossOnly: boolean;
+  hasCrossings: boolean;
   onCrossOnly: (value: boolean) => void;
   compact: boolean;
   onCompact: (value: boolean) => void;
@@ -300,14 +302,14 @@ export function FlowToolbar({
           title={`LikeC4 view ${viewId} — click to copy`}
         />
         <div className="seg">
-          <Toggle
+          {hasCrossings ? <Toggle
             on={crossOnly}
             onClick={() => onCrossOnly(!crossOnly)}
             icon={Filter}
             title="Switch to the declared crossings-only view"
           >
             cross-context only
-          </Toggle>
+          </Toggle> : <span className="mono flex items-center px-2 text-faint">No cross-context steps</span>}
           <Toggle
             on={compact}
             onClick={() => onCompact(!compact)}

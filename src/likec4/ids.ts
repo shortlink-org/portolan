@@ -11,6 +11,7 @@ import type {
 } from "../catalog";
 import { allDeployments, deploys, environmentOf } from "../catalog";
 import reserved from "./reserved.json";
+import { hasCrossContextSteps } from "../flow/cross-context";
 
 /**
  * Words the LikeC4 grammar has taken. An aggregate called `order` is an
@@ -91,7 +92,7 @@ export const serviceViewId = (service: Service | string): string =>
 export const serviceInsideViewId = (service: Service | string): string =>
   `${serviceViewId(service)}_inside`;
 
-/** Every flow has two declared views: the whole sequence, and the crossings only. */
+/** Every flow has a full view; the crossings view exists only when needed. */
 export const flowViewId = (flow: Flow | string): string =>
   `flow_${safeId(typeof flow === "string" ? flow : flow.slug)}`;
 
@@ -146,7 +147,7 @@ export function allViewIds(catalog: Catalog): string[] {
   }
   for (const flow of catalog.flows) {
     out.push(flowViewId(flow));
-    out.push(flowCrossViewId(flow));
+    if (hasCrossContextSteps(flow)) out.push(flowCrossViewId(flow));
   }
   for (const environment of environmentsOf(catalog)) {
     out.push(deploymentViewId(environment));

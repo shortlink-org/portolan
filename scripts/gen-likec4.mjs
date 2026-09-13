@@ -2,8 +2,8 @@
 //
 // Everything LikeC4 renders is DECLARED here: the C4 views — the estate at
 // level 1, its containers at level 2 as one picture and one per context, two
-// per service — and two dynamic views per flow: full plus bounded-context
-// crossings. Nothing in the app draws these pictures itself.
+// per service — and a full dynamic view per flow, plus a bounded-context
+// crossings view when crossings exist. Nothing in the app draws these pictures itself.
 //
 //   node scripts/gen-likec4.mjs
 
@@ -15,6 +15,7 @@ import { loadCatalog } from "./catalog-sources.mjs";
 import reserved from "../src/likec4/reserved.json" with { type: "json" };
 import { catalogProfiles } from "../src/catalog-profile.ts";
 import { allDeployments, deploys, environmentOf } from "../src/catalog-model.ts";
+import { isCrossContext } from "../src/flow/cross-context.ts";
 
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
@@ -745,13 +746,7 @@ function emitSteps(nodes, out, indent, replied) {
 
 /** Keeps only steps that actually leave a bounded context. */
 function crossContextOnly(nodes, contextOf) {
-  const keep = (step) => {
-    if (step.kind === "call") return false;
-    if (step.from === step.to) return false;
-    const a = contextOf(step.from);
-    const b = contextOf(step.to);
-    return a !== null && b !== null && a !== b;
-  };
+  const keep = (step) => isCrossContext(step, contextOf);
   const walk = (list) => {
     const out = [];
     for (const node of list) {
@@ -1028,18 +1023,11 @@ for (const flow of catalog.flows) {
   views.push("");
 
   const cross = crossContextOnly(flow.steps, contextOf);
+  if (cross.length === 0) continue;
   views.push(`  dynamic view ${flowCrossViewId(flow)} {`);
   views.push(`    title ${q(`${flow.name} — crossings only`)}`);
   const crossBody = [];
   emitSteps(cross, crossBody, "    ", replied);
-  if (crossBody.length === 0) {
-    // A flow with no crossing at all still needs a renderable view.
-    const first = flow.participants[0];
-    if (first) {
-      const firstRef = participantRef(first.id);
-      crossBody.push(`    ${firstRef} -> ${firstRef} 'no cross-context step'`);
-    }
-  }
   views.push(...crossBody);
   views.push("  }");
   views.push("");
@@ -1169,6 +1157,6 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   for (const file of files) writeFileSync(join("likec4", file.name), file.contents);
   console.log(
     `wrote ${files.map((file) => `likec4/${file.name}`).join(", ")} ` +
-      `(${bundle.catalog.flows.length * 2} dynamic views)`,
+      `(${files.find((file) => file.name === "views.c4").contents.match(/dynamic view /g)?.length ?? 0} dynamic views)`,
   );
 }

@@ -9,6 +9,7 @@ import { walkSteps } from "../catalog";
 import {
   contextResolver,
   hiddenStepIds,
+  hasCrossContextSteps,
   isCrossContext,
 } from "./cross-context";
 import { flowCrossViewId, flowViewId } from "../likec4/ids";
@@ -40,19 +41,19 @@ describe("isCrossContext", () => {
 describe("generated LikeC4 views agree with the predicate", () => {
   const views = readFileSync("likec4/views.c4", "utf8");
 
-  it("declares both a full and a cross view for every flow", () => {
+  it("declares every full view and omits cross views without crossings", () => {
     for (const flow of shipped.flows) {
       expect(views, flow.slug).toContain(`dynamic view ${flowViewId(flow)} {`);
-      expect(views, flow.slug).toContain(
-        `dynamic view ${flowCrossViewId(flow)} {`,
-      );
+      expect(views.includes(`dynamic view ${flowCrossViewId(flow)} {`), flow.slug)
+        .toBe(hasCrossContextSteps(flow));
     }
+    expect(views).not.toContain("no cross-context step");
   });
 
   it("omits exactly the hidden steps from a cross view", () => {
     // Whichever shipped flow hides the most: the point is the predicate, and
     // pinning one flow by name is how this test broke when that flow left.
-    const flow = [...shipped.flows].sort(
+    const flow = shipped.flows.filter(hasCrossContextSteps).sort(
       (a, b) => hiddenStepIds(b).size - hiddenStepIds(a).size,
     )[0];
     if (!flow) throw new Error("no flows");

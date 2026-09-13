@@ -86,8 +86,8 @@ reference).
   memory, and the external GitHub/GitLab link remains available.
 - **Diagrams** — LikeC4 C4 views (estate landscape, every container in the
   estate with its technology and the protocol on each edge, one per context,
-  two per service, and two dynamic views per flow: full plus bounded-context
-  crossings), an ELK-routed dependency graph,
+  two per service, and a full dynamic view per flow plus a bounded-context
+  crossings view when crossings exist), an ELK-routed dependency graph,
   and a context map. The app never draws these itself; `npm run gen` writes
   the model from the catalog as its last step, and holds it to the catalog in
   `gen:check`, and `npm run likec4:gen` writes it on its own before `dev`.

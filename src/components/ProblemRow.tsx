@@ -8,8 +8,11 @@
 // end leads: an event has a page, a table has a canvas, a channel, a call
 // and a deployment are shown on their service's page.
 
-import { Link } from "react-router";
-import { ExternalLink } from "lucide-react";
+import { Link, useHref, useLocation } from "react-router";
+import { Copy, ExternalLink } from "lucide-react";
+import { useToastStore } from "../app/toast";
+import { toClipboard } from "../lib/clipboard";
+import { problemTaskMarkdown } from "../lib/problem-task";
 import { catalog, index } from "../data";
 import type { Problem } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
@@ -121,6 +124,18 @@ export function ProblemRow({
   const text = url && problem.note ? problem.note.slice(0, problem.note.length - url.length).trim() : problem.note;
   const flows = flowsOfProblem(catalog, index, over, problem);
   const tone = problem.severity === "error" ? "text-unresolved" : "text-declared";
+  const say = useToastStore((state) => state.say);
+  const location = useLocation();
+  const query = new URLSearchParams({ rule: problem.rule, q: problem.id });
+  if (problem.context) query.set("context", problem.context);
+  const profile = new URLSearchParams(location.search).get("catalog");
+  if (profile) query.set("catalog", profile);
+  const taskHref = useHref({ pathname: paths.problems(), search: `?${query}` });
+  const copyTask = async () => {
+    const url = new URL(taskHref, window.location.href).href;
+    const ok = await toClipboard(problemTaskMarkdown(problem, rule, url, source));
+    say(ok ? "Problem copied as Markdown task" : "could not reach the clipboard");
+  };
 
   return (
     <div className="stagger-in px-3 py-2.5" style={staggerStyle(at)} data-rule={problem.rule}>
@@ -165,7 +180,6 @@ export function ProblemRow({
         ) : null}
       </div>
       {text ? <p className="mt-1 max-w-prose text-muted">{text}</p> : null}
-      {flows.length > 0 || source || url ? (
         <div className="mono mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted">
           {flows.length > 0 ? (
             <span className="flex flex-wrap items-center gap-1">
@@ -202,8 +216,16 @@ export function ProblemRow({
               <ExternalLink size={12} aria-hidden /> open in the deployer
             </a>
           ) : null}
+          <button
+            type="button"
+            className="tbtn ml-auto flex items-center gap-1"
+            onClick={() => void copyTask()}
+            aria-label={`Copy task for ${problem.id}`}
+            title="Copy problem, recommendation and links as Markdown"
+          >
+            <Copy size={12} aria-hidden /> copy task
+          </button>
         </div>
-      ) : null}
     </div>
   );
 }
