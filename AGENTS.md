@@ -10,7 +10,8 @@
 
 ## Direct answers and scope
 
-- When the user asks a simple yes-or-no question about work already completed, answer directly from the known conversation state. Do not run status, log, test, or other verification commands unless the user asks for verification or the answer is genuinely unknown.
+- Before answering any question about Git status, uncommitted or staged changes, or whether there is anything to commit, always run a fresh `git status`. Inspect the current staged diff or recent commits when needed to support the answer. Never rely on conversation history for Git state: other tasks may have changed it. Recheck immediately before committing.
+- For other simple yes-or-no questions about work already completed, answer directly from the known conversation state without unrelated verification commands.
 - Do not turn a straightforward request into an audit. Perform only the action requested and avoid narrating or checking unrelated workspace state.
 - After a requested push succeeds, consider the work complete and stop. Do not monitor CI/CD, wait for workflows, or verify a release, deployment, or package publication unless the user explicitly asks for that follow-up.
 
