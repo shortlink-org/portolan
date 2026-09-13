@@ -12,6 +12,7 @@ import type {
   Enum,
 } from "../catalog";
 import { flowsRunning, markdownOutline } from "../lib/derive";
+import { CommandConsequences } from "../flow/CommandConsequences";
 import {
   redisKeyspacesPersisting,
   tablesPersisting,
@@ -163,7 +164,7 @@ function BlockList({
                   deprecated
                 </span>
               ) : null}
-              <span className="meta block truncate" title={block.doc}>
+              <span className="meta block max-w-prose truncate" title={block.doc}>
                 {block.doc}
               </span>
             </span>
@@ -233,7 +234,7 @@ function EnumList({
                 deprecated
               </span>
             ) : null}
-            <span className="meta block truncate" title={item.doc}>
+            <span className="meta block max-w-prose truncate" title={item.doc}>
               {item.doc}
             </span>
             <span className="mono mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-muted">
@@ -313,7 +314,10 @@ function OperationList({
                 </SourcePreviewLink>
               ) : null}
             </span>
-            {op.doc ? <p className="mt-0.5 text-muted">{op.doc}</p> : null}
+            {op.doc ? <p className="mt-0.5 max-w-prose text-muted">{op.doc}</p> : null}
+            {kind === "command" ? (
+              <CommandConsequences catalog={catalog} service={service} aggregate={aggregate} operation={op} />
+            ) : null}
             {/* What the caller hands in: the message's own shape. An empty
                 list is said out loud - a query that takes nothing is a fact
                 about the query, not a gap in the reading. */}
@@ -463,7 +467,7 @@ export function AggregatePage() {
           {aggregate.kind === "model-group" ? <p className="mb-section text-muted">Models discovered in this application. Their relationships are extracted from the source; aggregate boundaries have not been specified.</p> : null}
 
           <div
-            className="mt-section max-w-prose"
+            className="mt-section"
             id={AGGREGATE_ANCHOR.entities}
           >
             <SectionTitle
@@ -485,7 +489,7 @@ export function AggregatePage() {
           </div>
 
           <div
-            className="mt-section max-w-prose"
+            className="mt-section"
             id={AGGREGATE_ANCHOR.valueObjects}
           >
             <SectionTitle
@@ -506,7 +510,7 @@ export function AggregatePage() {
           </div>
 
           <div
-            className="mt-section max-w-prose"
+            className="mt-section"
             id={AGGREGATE_ANCHOR.enums}
           >
             <SectionTitle
@@ -551,7 +555,7 @@ export function AggregatePage() {
             </div>
           ) : null}
 
-          <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.events}>
+          <div className="mt-section" id={AGGREGATE_ANCHOR.events}>
             <SectionTitle anchor={AGGREGATE_ANCHOR.events}>Events</SectionTitle>
             {aggregate.events.length === 0 ? (
               <Empty>
@@ -625,10 +629,9 @@ export function AggregatePage() {
             )}
           </div>
 
-          {/* One column, not two: an operation whose precondition is written
-              down is a paragraph, and two prose columns half a page wide would
-              turn every one of them into a ladder. */}
-          <div className="mt-8 flex max-w-prose flex-col gap-section">
+          {/* Rows and consequence trees use the available width; only the
+              operation descriptions keep a prose reading measure. */}
+          <div className="mt-8 flex flex-col gap-section">
             <div id={AGGREGATE_ANCHOR.commands}>
               <SectionTitle
                 anchor={AGGREGATE_ANCHOR.commands}
@@ -667,7 +670,7 @@ export function AggregatePage() {
               before the backlinks because it answers a question about THIS
               aggregate — one a reader asks once they believe the model. */}
           <div
-            className="mt-section max-w-table"
+            className="mt-section"
             id={AGGREGATE_SECTION.persistence}
           >
             <SectionTitle

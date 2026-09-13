@@ -10,7 +10,7 @@ import type {
   Service,
 } from "../catalog";
 import { catalog as real } from "../testing/estate";
-import { eventChain } from "./chain";
+import { commandChain, eventChain } from "./chain";
 import type { ChainNode } from "./chain";
 
 // ---------------------------------------------------------------------------
@@ -379,5 +379,139 @@ describe("eventChain: the real catalog", () => {
       "  in auth-revoke-sessions-on-password-change · step 1 (verified)",
       "    SessionEnded · step 6 (verified)",
     ]);
+  });
+});
+
+describe("commandChain", () => {
+  const REF = "shop.oms.order/PlaceOrder";
+  const RPC = "shop.OrderService/PlaceOrder";
+  function subject(c: Catalog) {
+    const service = c.contexts[0]!.services[0]!;
+    const aggregate = service.aggregates[0]!;
+    const operation = { id: "PlaceOrder", kind: "command" as const, exposedBy: ["PlaceOrder"] };
+    aggregate.operations = [operation];
+    service.provides = [{ id: "shop.OrderService", methods: [{ name: "PlaceOrder" }], source: "api.proto" }];
+    return { service, aggregate, operation };
+  }
+  function run(c: Catalog, options = {}) {
+    const { service, aggregate, operation } = subject(c);
+    return commandChain(c, service, aggregate, operation, options);
+  }
+
+  it("starts at the command's exact call and follows event consumers transitively", () => {
+    const f = structuredClone(SAGA);
+    Object.assign(f.steps[0]!, { kind: "call", ref: REF });
+    const chain = run(estate([f]));
+    expect(chain.nodes[0]).toMatchObject({ kind: "execution", flow: "saga", number: 1 });
+    const published = chain.nodes[0]!.children[0]!;
+    expect(published).toMatchObject({ kind: "event", id: PLACED, number: 2 });
+    expect(outline(published.children)).toContain("    payments.ledger (declared)");
+    expect(outline(published.children).some((line) => line.includes("PaymentAuthorized"))).toBe(true);
+    expect(chain.nodes[0]!.worst).toBe("declared");
+  });
+
+  it("matches an exposed RPC only when it enters the owning service, including aliased lanes", () => {
+    const f = flow("rpc", [
+      step("client", "payments.ledger", "rpc", { ref: RPC }),
+      step("client", "order-lane", "rpc", { ref: RPC }),
+      step("order-lane", "bus", "event", { ref: PLACED }),
+    ]);
+    f.participants = [...LANES, { id: "order-lane", entityRef: "shop.oms", kind: "service", context: "shop" }];
+    const chain = run(estate([f]));
+    expect(chain.nodes).toHaveLength(1);
+    expect(chain.nodes[0]).toMatchObject({ number: 2, children: [expect.objectContaining({ id: PLACED })] });
+  });
+
+  it("does not infer a command from a label, event receipt, or an RPC with an operation ref", () => {
+    const chain = run(estate([flow("unlinked", [
+      step("client", "shop.oms", "call", { label: "PlaceOrder" }),
+      step("bus", "shop.oms", "event", { ref: REF }),
+      step("client", "shop.oms", "rpc", { ref: REF }),
+      step("client", "payments.ledger", "call", { ref: REF }),
+    ])]));
+    expect(chain.nodes).toEqual([]);
+  });
+
+  it("keeps an invocation with no known publication, without inventing an event", () => {
+    const chain = run(estate([flow("empty", [step("client", "shop.oms", "call", { ref: REF })])]));
+    expect(chain.nodes).toHaveLength(1);
+    expect(chain.nodes[0]!.children).toEqual([]);
+    expect(run(estate([])).nodes).toEqual([]);
+  });
+
+  it("stops at the matching return instead of attributing later work to this invocation", () => {
+    const call = step("client", "shop.oms", "call", { ref: REF });
+    const chain = run(estate([flow("returns", [
+      call,
+      step("shop.oms", "bus", "event", { ref: PLACED }),
+      { type: "step", id: "reply", kind: "response", from: "shop.oms", to: "client", replyTo: call.id, status: "declared" },
+      step("shop.oms", "bus", "event", { ref: CONFIRMED }),
+    ])]));
+    expect(chain.nodes[0]!.children.map((n) => n.kind === "event" && n.id)).toEqual([PLACED]);
+  });
+
+  it("retains both conditions when different branches publish the same event", () => {
+    const chain = run(estate([flow("alternatives", [
+      step("client", "shop.oms", "call", { ref: REF }),
+      { type: "alt", id: "choice", branches: ["immediate", "scheduled"].map((title) => ({
+        title, steps: [step("shop.oms", "bus", "event", { ref: PLACED })],
+      })) },
+    ])]));
+    expect(chain.nodes[0]!.children.map((n) => n.scope)).toEqual([["immediate"], ["scheduled"]]);
+    expect(chain.nodes[0]!.children[1]!.cut?.reason).toBe("seen");
+  });
+
+  it("keeps repeated invocations and cuts repeated downstream expansion", () => {
+    const f = (slug: string) => flow(slug, [
+      step("client", "shop.oms", "call", { ref: REF }),
+      step("shop.oms", "bus", "event", { ref: PLACED }),
+    ]);
+    const chain = run(estate([f("one"), f("two")]));
+    expect(chain.nodes).toHaveLength(2);
+    expect(chain.nodes[1]!.children[0]!.cut).toEqual({ reason: "seen", hidden: 1 });
+  });
+
+  it.each(["alt", "parallel"] as const)("excludes sibling %s branches and keeps their source conditions", (kind) => {
+    const branches = [
+      [step("client", "shop.oms", "call", { ref: REF }), step("shop.oms", "bus", "event", { ref: PLACED })],
+      [step("shop.oms", "bus", "event", { ref: CONFIRMED })],
+    ];
+    const node: FlowNode = kind === "parallel"
+      ? { type: "parallel", id: "fork", branches }
+      : { type: "alt", id: "fork", branches: branches.map((steps, i) => ({ title: i ? "declined" : "accepted", steps })) };
+    const chain = run(estate([flow("branches", [node])]));
+    expect(chain.nodes[0]!.children.map((n) => n.kind === "event" && n.id)).toEqual([PLACED]);
+    expect(chain.nodes[0]!.scope).toEqual([kind === "parallel" ? "parallel branch 1" : "accepted"]);
+  });
+
+  it("labels conditional publications and loops, retaining unresolved evidence", () => {
+    const chain = run(estate([flow("conditional", [
+      step("client", "shop.oms", "call", { ref: REF }),
+      { type: "loop", id: "retry", title: "retry", steps: [
+        { type: "alt", id: "condition", branches: [{ title: "accepted", steps: [
+          step("shop.oms", "bus", "event", { ref: PLACED, status: "unresolved" }),
+        ] }] },
+      ] },
+    ])]));
+    expect(chain.nodes[0]!.children[0]).toMatchObject({ scope: ["loop: retry", "accepted"], status: "unresolved" });
+    expect(chain.nodes[0]!.worst).toBe("unresolved");
+  });
+
+  it("shares cycle, depth and row limits across the whole command chain", () => {
+    const f = flow("cycle", [
+      step("client", "shop.oms", "call", { ref: REF }),
+      step("shop.oms", "bus", "event", { ref: PLACED }),
+      step("bus", "payments.ledger", "event", { ref: PLACED }),
+      step("payments.ledger", "bus", "event", { ref: AUTHORIZED }),
+      step("bus", "shop.oms", "event", { ref: AUTHORIZED }),
+      step("shop.oms", "bus", "event", { ref: PLACED }),
+    ]);
+    const c = estate([f]);
+    expect(outline(run(c).nodes).some((line) => line.includes("[cycle 1]"))).toBe(true);
+    expect(run(c, { maxDepth: 0 }).nodes[0]!.children[0]!.cut?.reason).toBe("depth");
+    const limited = run(c, { maxNodes: 2 });
+    expect(limited).toMatchObject({ count: 2, truncated: true });
+    expect(limited.nodes[0]!.children[0]!.cut?.reason).toBe("budget");
+    expect(run(c, { maxNodes: 0 })).toMatchObject({ count: 0, nodes: [], truncated: true });
   });
 });

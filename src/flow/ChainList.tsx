@@ -53,8 +53,14 @@ function Row({ node, path }: { node: ChainNode; path: string }) {
           }
         />
       </div>
-      {node.kind === "consumer" && node.known && node.children.length === 0 ? (
+      {node.scope?.length ? (
+        <Aside depth={node.depth + 1}>{node.scope.join(" · ")}</Aside>
+      ) : null}
+      {node.kind === "consumer" && node.known && node.children.length === 0 && !node.cut ? (
         <Aside depth={node.depth + 1}>no flow shows this service hearing it</Aside>
+      ) : null}
+      {(node.kind === "execution" || node.kind === "receipt") && node.children.length === 0 && !node.cut ? (
+        <Aside depth={node.depth + 1}>no subsequent publication is linked in this flow</Aside>
       ) : null}
       {node.children.map((child, i) => (
         <Row key={`${path}.${i}`} node={child} path={`${path}.${i}`} />
@@ -92,15 +98,18 @@ function Label({ node }: { node: ChainNode }) {
       );
     }
     case "receipt":
+    case "execution":
       return (
         <Link
           to={paths.flowStep(node.flow, node.stepId)}
           data-nav-item
           className="mono flex min-w-0 items-center gap-1 rounded-control text-accent hover:underline"
-          title={`the step where it hears the event, in ${node.name}`}
+          title={node.kind === "execution"
+            ? `the step where this command runs, in ${node.name}`
+            : `the step where it hears the event, in ${node.name}`}
         >
           <CornerDownRight size={9} aria-hidden className="shrink-0" />
-          <span className="truncate">
+          <span className="min-w-0 break-words">
             in {node.name} · step {node.number}
           </span>
         </Link>

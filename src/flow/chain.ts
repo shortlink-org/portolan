@@ -25,11 +25,14 @@
 // without adding a fact. The second arrival says the event is shown above.
 
 import type {
+  Aggregate,
   Catalog,
   EdgeVia,
   Flow,
   FlowNode,
   Participant,
+  Operation,
+  Service,
   Status,
   Step,
 } from "../catalog";
@@ -48,6 +51,8 @@ export interface ChainCut {
 }
 
 interface ChainBase {
+  /** Conditions and repetition enclosing this source step. */
+  scope?: string[];
   /** Indentation level; the root event's consumers sit at 0. */
   depth: number;
   /** This node's own status: the consumer's, or the step's. */
@@ -70,7 +75,7 @@ export type ChainNode = ChainBase &
       }
     | {
         /** The step where the consumer is shown hearing the event. */
-        kind: "receipt";
+        kind: "receipt" | "execution";
         flow: string;
         name: string;
         stepId: string;
@@ -107,8 +112,8 @@ export interface ChainOptions {
 const CHAIN_DEPTH = 4;
 export const CHAIN_BUDGET = 200;
 
-/** Which arm of which alt a step sits in, innermost last. */
-type Arms = readonly { alt: string; arm: number }[];
+/** Enclosing alternatives, parallel branches and loops, innermost last. */
+type Arms = readonly { alt: string; arm: number; label: string }[];
 
 interface Walked {
   steps: Step[];
@@ -130,15 +135,17 @@ function walk(nodes: FlowNode[]): Walked {
           arms.push(enclosing);
           break;
         case "parallel":
-          for (const branch of node.branches) visit(branch, enclosing);
+          node.branches.forEach((branch, arm) =>
+            visit(branch, [...enclosing, { alt: node.id, arm, label: `parallel branch ${arm + 1}` }]),
+          );
           break;
         case "alt":
           node.branches.forEach((branch, arm) =>
-            visit(branch.steps, [...enclosing, { alt: node.id, arm }]),
+            visit(branch.steps, [...enclosing, { alt: node.id, arm, label: branch.title }]),
           );
           break;
         case "loop":
-          visit(node.steps, enclosing);
+          visit(node.steps, [...enclosing, { alt: node.id, arm: 0, label: `loop: ${node.title}` }]);
           break;
       }
     }
@@ -147,7 +154,7 @@ function walk(nodes: FlowNode[]): Walked {
   return { steps, arms };
 }
 
-/** True unless `later` sits in another arm of an alt that encloses `earlier`. */
+/** A sibling alternative or parallel branch is not a consequence of this one. */
 function sameSide(earlier: Arms, later: Arms): boolean {
   return earlier.every((frame) => {
     const other = later.find((f) => f.alt === frame.alt);
@@ -166,6 +173,37 @@ export function eventChain(
   catalog: Catalog,
   eventId: string,
   opts: ChainOptions = {},
+): EventChain {
+  return buildChain(catalog, eventId, opts);
+}
+
+/** Consequences shown after each explicit invocation of a command. */
+export function commandChain(
+  catalog: Catalog,
+  service: Service,
+  aggregate: Aggregate,
+  operation: Operation,
+  opts: ChainOptions = {},
+): EventChain {
+  const root = `${aggregate.id}/${operation.id}`;
+  if (operation.kind !== "command") return { root, nodes: [], count: 0, truncated: false };
+  const methods = new Set(service.provides.flatMap((provided) =>
+    provided.methods
+      .filter((method) => operation.exposedBy?.includes(method.name))
+      .map((method) => `${provided.id}/${method.name}`),
+  ));
+  return buildChain(catalog, root, opts, { service: service.id, methods });
+}
+
+function entity(lanes: Map<string, Participant>, id: string): string {
+  return lanes.get(id)?.entityRef ?? id;
+}
+
+function buildChain(
+  catalog: Catalog,
+  root: string,
+  opts: ChainOptions,
+  command?: { service: string; methods: Set<string> },
 ): EventChain {
   const maxDepth = opts.maxDepth ?? CHAIN_DEPTH;
   const maxNodes = opts.maxNodes ?? CHAIN_BUDGET;
@@ -192,10 +230,16 @@ export function eventChain(
 
   // Every step where a service is shown hearing an event, by event.
   const receipts = new Map<string, Receipt[]>();
+  const executions: Receipt[] = [];
   for (const flow of catalog.flows) {
     const walked = walk(flow.steps);
     const lanes = new Map(flow.participants.map((p) => [p.id, p]));
     walked.steps.forEach((step, index) => {
+      if (command && entity(lanes, step.to) === command.service &&
+          ((step.kind === "call" && step.ref === root) ||
+           (step.kind === "rpc" && step.ref && command.methods.has(step.ref)))) {
+        executions.push({ flow, walked, lanes, index });
+      }
       if (step.kind !== "event" || !step.ref || !events.has(step.ref)) return;
       if (step.from === step.to) return;
       if (lanes.get(step.to)?.kind !== "service") return;
@@ -207,7 +251,7 @@ export function eventChain(
 
   let count = 0;
   let truncated = false;
-  const expanded = new Set<string>([eventId]);
+  const expanded = new Set<string>(command ? [] : [root]);
 
   /** True when there is room for one more node; marks the cut otherwise. */
   const room = (parent: ChainBase | null, remaining: number): boolean => {
@@ -251,7 +295,7 @@ export function eventChain(
       out.push(node);
 
       const heard = (receipts.get(id) ?? []).filter(
-        (r) => r.walked.steps[r.index]?.to === consumer.service,
+        (r) => entity(r.lanes, r.walked.steps[r.index]!.to) === consumer.service,
       );
       heard.forEach((receipt, j) => {
         if (!room(node, heard.length - j)) return;
@@ -262,6 +306,7 @@ export function eventChain(
           name: receipt.flow.name,
           stepId: step.id,
           number: receipt.index + 1,
+          scope: receipt.walked.arms[receipt.index]!.map((arm) => arm.label),
           depth: depth + 1,
           status: step.status,
           worst: step.status,
@@ -269,47 +314,7 @@ export function eventChain(
         };
         node.children.push(rnode);
 
-        const published = publishedAfter(receipt, consumer.service, events);
-        published.forEach(({ step: pub, index }, k) => {
-          if (!room(rnode, published.length - k)) return;
-          const ref = pub.ref!;
-          const next = events.get(ref)!;
-          const enode: ChainNode = {
-            kind: "event",
-            id: ref,
-            name: next.name,
-            publisher: next.publisher,
-            context: serviceContext.get(next.publisher) ?? null,
-            flow: receipt.flow.slug,
-            stepId: pub.id,
-            number: index + 1,
-            depth: depth + 2,
-            status: pub.status,
-            worst: pub.status,
-            children: [],
-          };
-          rnode.children.push(enode);
-
-          if (ancestors.has(ref)) {
-            enode.cut = { reason: "cycle", hidden: next.consumers.length };
-          } else if (expanded.has(ref)) {
-            if (next.consumers.length > 0)
-              enode.cut = { reason: "seen", hidden: next.consumers.length };
-          } else if (hop + 1 >= maxDepth) {
-            if (next.consumers.length > 0)
-              enode.cut = { reason: "depth", hidden: next.consumers.length };
-          } else {
-            expanded.add(ref);
-            enode.children = visit(
-              ref,
-              new Set([...ancestors, ref]),
-              hop + 1,
-              depth + 3,
-              enode,
-            );
-          }
-          settle(enode);
-        });
+        appendPublished(rnode, receipt, consumer.service, ancestors, hop, depth + 2);
         settle(rnode);
       });
       settle(node);
@@ -318,16 +323,79 @@ export function eventChain(
     return out;
   };
 
-  const nodes = visit(eventId, new Set([eventId]), 0, 0, null);
-  return { root: eventId, nodes, count, truncated };
+  const appendPublished = (
+    rnode: ChainNode,
+    receipt: Receipt,
+    service: string,
+    ancestors: Set<string>,
+    hop: number,
+    depth: number,
+  ): void => {
+    const published = publishedAfter(receipt, service, events);
+    published.forEach(({ step: pub, index }, k) => {
+      if (!room(rnode, published.length - k)) return;
+      const ref = pub.ref!;
+      const next = events.get(ref)!;
+      const enode: ChainNode = {
+        kind: "event",
+        id: ref,
+        name: next.name,
+        publisher: next.publisher,
+        context: serviceContext.get(next.publisher) ?? null,
+        flow: receipt.flow.slug,
+        stepId: pub.id,
+        number: index + 1,
+        scope: receipt.walked.arms[index]!.map((arm) => arm.label),
+        depth,
+        status: pub.status,
+        worst: pub.status,
+        children: [],
+      };
+      rnode.children.push(enode);
+
+      if (ancestors.has(ref)) {
+        enode.cut = { reason: "cycle", hidden: next.consumers.length };
+      } else if (expanded.has(ref)) {
+        if (next.consumers.length > 0)
+          enode.cut = { reason: "seen", hidden: next.consumers.length };
+      } else if (hop + 1 >= maxDepth) {
+        if (next.consumers.length > 0)
+          enode.cut = { reason: "depth", hidden: next.consumers.length };
+      } else {
+        expanded.add(ref);
+        enode.children = visit(ref, new Set([...ancestors, ref]), hop + 1, depth + 1, enode);
+      }
+      settle(enode);
+    });
+  };
+
+  if (command) {
+    const nodes: ChainNode[] = [];
+    executions.forEach((receipt, i) => {
+      if (!room(null, executions.length - i)) return;
+      const step = receipt.walked.steps[receipt.index]!;
+      const node: ChainNode = {
+        kind: "execution", flow: receipt.flow.slug, name: receipt.flow.name,
+        stepId: step.id, number: receipt.index + 1, depth: 0,
+        scope: receipt.walked.arms[receipt.index]!.map((arm) => arm.label),
+        status: step.status, worst: step.status, children: [],
+      };
+      appendPublished(node, receipt, command.service, new Set(), -1, 1);
+      settle(node);
+      nodes.push(node);
+    });
+    return { root, nodes, count, truncated };
+  }
+  const nodes = visit(root, new Set([root]), 0, 0, null);
+  return { root, nodes, count, truncated };
 }
 
 type ChainConsumer = { service: string; status: Status; via?: EdgeVia };
 
 /**
  * The events a service publishes after a given step of a flow, in walk order,
- * first occurrence of each, leaving out the arms of an alt the step is not
- * on. Only the publisher's own events count: a service relaying somebody
+ * first occurrence in each branch, leaving out sibling branches. Only the
+ * publisher's own events count: a service relaying somebody
  * else's event is a broker, and a broker is not a "then".
  */
 function publishedAfter(
@@ -341,12 +409,15 @@ function publishedAfter(
   const here = arms[receipt.index]!;
   for (let i = receipt.index + 1; i < steps.length; i += 1) {
     const step = steps[i]!;
-    if (step.kind !== "event" || !step.ref || step.from !== service) continue;
+    // Composition can prove where this invocation returns to its caller.
+    if (step.kind === "response" && step.replyTo === steps[receipt.index]!.id) break;
+    if (step.kind !== "event" || !step.ref || entity(receipt.lanes, step.from) !== service) continue;
     if (step.to === step.from) continue;
     if (events.get(step.ref)?.publisher !== service) continue;
     if (!sameSide(here, arms[i]!)) continue;
-    if (seen.has(step.ref)) continue;
-    seen.add(step.ref);
+    const occurrence = JSON.stringify([step.ref, arms[i]!.map((arm) => [arm.alt, arm.arm])]);
+    if (seen.has(occurrence)) continue;
+    seen.add(occurrence);
     out.push({ step, index: i });
   }
   return out;
