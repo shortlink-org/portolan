@@ -42,9 +42,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		var hosts []string
 		backends := map[string]bool{}
 		for _, s := range svcs {
-			if s.selects(w.podLabels) {
+			if objectNamespace(s.namespace) == objectNamespace(w.namespace) && s.selects(w.podLabels) {
 				hosts = append(hosts, hostForms(s.name, s.namespace)...)
-				backends[s.name] = true
+				backends[namespacedName(s.namespace, s.name)] = true
 			}
 		}
 		hosts = append(hosts, frontingHosts(objects, backends)...)

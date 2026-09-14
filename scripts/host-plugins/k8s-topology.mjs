@@ -97,29 +97,172 @@ export function containerValues(container, namespace, configMaps) {
   return out;
 }
 
-/** The hosts an Ingress or a Gateway API route answers on for the named Services. */
+const GATEWAY_API_GROUP = "gateway.networking.k8s.io";
+const ROUTE_PROTOCOLS = {
+  HTTPRoute: new Set(["HTTP", "HTTPS"]),
+  GRPCRoute: new Set(["HTTP", "HTTPS"]),
+  TLSRoute: new Set(["TLS"]),
+};
+
+const objectNamespace = (namespace) => String(namespace ?? "").trim() || "default";
+const namespacedName = (namespace, name) => `${objectNamespace(namespace)}/${name ?? ""}`;
+
+/** The concrete hosts an Ingress or an attached Gateway API Route answers on. */
 export function frontingHosts(objects, backends) {
   const out = [];
   for (const object of objects) {
     const spec = object.spec ?? {};
     if (object.kind === "Ingress") {
+      const backend = (name) => backends.has(namespacedName(object.metadata?.namespace, name));
       const rules = Array.isArray(spec.rules) ? spec.rules : [];
-      if (backends.has(spec.defaultBackend?.service?.name ?? "")) {
+      if (backend(spec.defaultBackend?.service?.name ?? "")) {
         for (const rule of rules) if (rule.host) out.push(rule.host);
       }
       for (const rule of rules) {
         if (!rule.host) continue;
         const paths = Array.isArray(rule.http?.paths) ? rule.http.paths : [];
-        if (paths.some((path) => backends.has(path.backend?.service?.name ?? ""))) out.push(rule.host);
+        if (paths.some((path) => backend(path.backend?.service?.name ?? ""))) out.push(rule.host);
       }
-    } else if (["HTTPRoute", "GRPCRoute", "TLSRoute"].includes(object.kind)) {
-      const hostnames = Array.isArray(spec.hostnames) ? spec.hostnames : [];
-      if (hostnames.length === 0) continue;
-      const rules = Array.isArray(spec.rules) ? spec.rules : [];
-      if (rules.some((rule) => (rule.backendRefs ?? []).some((ref) => backends.has(ref.name ?? "")))) out.push(...hostnames);
     }
   }
+  out.push(...gatewayHosts(objects, backends));
+  return sortedUnique(out);
+}
+
+/** Resolve Route -> Gateway listener -> Service before accepting a hostname. */
+export function gatewayHosts(objects, backends) {
+  const gateways = new Map();
+  const namespaces = namespaceLabelIndex(objects);
+  for (const object of objects) {
+    if (object.kind === "Gateway" && String(object.apiVersion ?? "").startsWith(`${GATEWAY_API_GROUP}/`)) {
+      gateways.set(namespacedName(object.metadata?.namespace, object.metadata?.name), object);
+    }
+  }
+
+  const out = [];
+  for (const route of objects) {
+    if (!ROUTE_PROTOCOLS[route.kind] || !String(route.apiVersion ?? "").startsWith(`${GATEWAY_API_GROUP}/`)) continue;
+    const spec = route.spec ?? {};
+    if (!routeTargetsBackend(route, spec, objects, backends)) continue;
+    for (const parent of spec.parentRefs ?? []) {
+      const group = String(parent.group ?? "").trim() || GATEWAY_API_GROUP;
+      const kind = String(parent.kind ?? "").trim() || "Gateway";
+      if (group !== GATEWAY_API_GROUP || kind !== "Gateway") continue;
+      const parentNamespace = String(parent.namespace ?? "").trim() || objectNamespace(route.metadata?.namespace);
+      const gateway = gateways.get(namespacedName(parentNamespace, parent.name));
+      if (!gateway) continue;
+      for (const listener of gateway.spec?.listeners ?? []) {
+        if (listenerAcceptsRoute(listener, gateway, route, parent, namespaces)) {
+          out.push(...intersectHostnames(listener.hostname, spec.hostnames));
+        }
+      }
+    }
+  }
+  return sortedUnique(out);
+}
+
+function routeTargetsBackend(route, spec, objects, backends) {
+  for (const rule of spec.rules ?? []) {
+    for (const ref of rule.backendRefs ?? []) {
+      const group = String(ref.group ?? "").trim();
+      const kind = String(ref.kind ?? "").trim();
+      if (group || (kind && kind !== "Service")) continue;
+      const namespace = String(ref.namespace ?? "").trim() || objectNamespace(route.metadata?.namespace);
+      const name = String(ref.name ?? "").trim();
+      if (!backends.has(namespacedName(namespace, name))) continue;
+      if (namespace === objectNamespace(route.metadata?.namespace) || referenceGranted(objects, route, namespace, name)) return true;
+    }
+  }
+  return false;
+}
+
+function referenceGranted(objects, route, targetNamespace, targetName) {
+  return objects.some((grant) => {
+    if (grant.kind !== "ReferenceGrant"
+      || objectNamespace(grant.metadata?.namespace) !== targetNamespace
+      || !String(grant.apiVersion ?? "").startsWith(`${GATEWAY_API_GROUP}/`)) return false;
+    const fromMatches = (grant.spec?.from ?? []).some((from) => from.group === GATEWAY_API_GROUP
+      && from.kind === route.kind
+      && from.namespace === objectNamespace(route.metadata?.namespace));
+    if (!fromMatches) return false;
+    return (grant.spec?.to ?? []).some((to) => String(to.group ?? "").trim() === ""
+      && to.kind === "Service"
+      && (!to.name || to.name === targetName));
+  });
+}
+
+function listenerAcceptsRoute(listener, gateway, route, parent, namespaces) {
+  if (parent.sectionName && parent.sectionName !== listener.name) return false;
+  if (parent.port !== undefined && String(parent.port) !== String(listener.port)) return false;
+  if (!ROUTE_PROTOCOLS[route.kind].has(String(listener.protocol ?? "").toUpperCase())) return false;
+
+  const allowed = listener.allowedRoutes ?? {};
+  if (Array.isArray(allowed.kinds) && allowed.kinds.length > 0) {
+    const kindMatches = allowed.kinds.some((candidate) => (String(candidate.group ?? "").trim() || GATEWAY_API_GROUP) === GATEWAY_API_GROUP
+      && candidate.kind === route.kind);
+    if (!kindMatches) return false;
+  }
+
+  const from = String(allowed.namespaces?.from ?? "").trim() || "Same";
+  if (from === "All") return true;
+  if (from === "Same") return objectNamespace(gateway.metadata?.namespace) === objectNamespace(route.metadata?.namespace);
+  if (from === "Selector") {
+    const labels = namespaces.get(objectNamespace(route.metadata?.namespace));
+    return Boolean(labels) && labelSelectorMatches(labels, allowed.namespaces?.selector ?? {});
+  }
+  return false;
+}
+
+function namespaceLabelIndex(objects) {
+  const out = new Map();
+  for (const object of objects) {
+    if (object.kind !== "Namespace" || !object.metadata?.name) continue;
+    out.set(object.metadata.name, { "kubernetes.io/metadata.name": object.metadata.name, ...(object.metadata.labels ?? {}) });
+  }
   return out;
+}
+
+function labelSelectorMatches(labels, selector) {
+  for (const [key, value] of Object.entries(selector.matchLabels ?? {})) {
+    if (labels[key] !== value) return false;
+  }
+  for (const expression of selector.matchExpressions ?? []) {
+    const exists = Object.hasOwn(labels, expression.key);
+    const contains = (expression.values ?? []).includes(labels[expression.key]);
+    if (expression.operator === "In" && (!exists || !contains)) return false;
+    if (expression.operator === "NotIn" && exists && contains) return false;
+    if (expression.operator === "Exists" && !exists) return false;
+    if (expression.operator === "DoesNotExist" && exists) return false;
+    if (!["In", "NotIn", "Exists", "DoesNotExist"].includes(expression.operator)) return false;
+  }
+  return true;
+}
+
+function intersectHostnames(listenerHostname, routeHostnames) {
+  const listener = String(listenerHostname ?? "").trim().toLowerCase();
+  const routes = Array.isArray(routeHostnames) ? routeHostnames.map((host) => String(host).trim().toLowerCase()).filter(Boolean) : [];
+  if (routes.length === 0) return listener ? [listener] : [];
+  if (!listener) return sortedUnique(routes);
+  return sortedUnique(routes.map((route) => hostnameIntersection(listener, route)).filter(Boolean));
+}
+
+function hostnameIntersection(a, b) {
+  if (a === b) return a;
+  if (wildcardMatches(a, b)) return b;
+  if (wildcardMatches(b, a)) return a;
+  if (a.startsWith("*.") && b.startsWith("*.")) {
+    const as = a.slice(1);
+    const bs = b.slice(1);
+    if (as.endsWith(bs)) return a;
+    if (bs.endsWith(as)) return b;
+  }
+  return undefined;
+}
+
+function wildcardMatches(pattern, hostname) {
+  if (!pattern.startsWith("*.") || hostname.startsWith("*.")) return false;
+  const suffix = pattern.slice(1);
+  return hostname.endsWith(suffix) && hostname.length > suffix.length;
 }
 
 function sortedUnique(values) {
@@ -164,10 +307,10 @@ export function topology(objects) {
     for (const service of services) {
       if (service.namespace === ns && selects(service.selector, podLabels)) {
         hosts.push(...hostForms(service.name, service.namespace));
-        backends.add(service.name);
+        backends.add(namespacedName(service.namespace, service.name));
       }
     }
-    hosts.push(...frontingHosts(objects.filter((o) => (o.metadata?.namespace ?? "") === ns), backends));
+    hosts.push(...frontingHosts(objects, backends));
     const own = new Set(hosts);
     const dials = [];
     const spec = template.spec ?? {};

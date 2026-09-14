@@ -70,16 +70,15 @@ func hostForms(name, namespace string) []string {
 	}
 }
 
-// frontingHosts are the hosts an Ingress or a Gateway API HTTPRoute answers
-// on for the named Services. A rule whose backend is another Service is
-// another service's host.
+// frontingHosts are the concrete hosts an Ingress or an attached Gateway API
+// Route answers on for the named Services.
 func frontingHosts(objects []object, backends map[string]bool) []string {
 	var out []string
 	for _, o := range objects {
 		spec := mapAt(o.body, "spec")
-		switch o.kind {
-		case "Ingress":
-			if svc := mapAt(mapAt(spec, "defaultBackend"), "service"); backends[stringAt(svc, "name")] {
+		if o.kind == "Ingress" {
+			backend := func(name string) bool { return backends[namespacedName(o.namespace, name)] }
+			if svc := mapAt(mapAt(spec, "defaultBackend"), "service"); backend(stringAt(svc, "name")) {
 				for _, rule := range listAt(spec, "rules") {
 					out = append(out, stringAt(rule, "host"))
 				}
@@ -90,33 +89,27 @@ func frontingHosts(objects []object, backends map[string]bool) []string {
 					continue
 				}
 				for _, path := range listAt(mapAt(rule, "http"), "paths") {
-					if backends[stringAt(mapAt(mapAt(path, "backend"), "service"), "name")] {
+					if backend(stringAt(mapAt(mapAt(path, "backend"), "service"), "name")) {
 						out = append(out, host)
 						break
 					}
 				}
 			}
-		case "HTTPRoute", "GRPCRoute", "TLSRoute":
-			hostnames := stringListAt(spec, "hostnames")
-			if len(hostnames) == 0 {
-				continue
-			}
-			for _, rule := range listAt(spec, "rules") {
-				matched := false
-				for _, ref := range listAt(rule, "backendRefs") {
-					if backends[stringAt(ref, "name")] {
-						matched = true
-						break
-					}
-				}
-				if matched {
-					out = append(out, hostnames...)
-					break
-				}
-			}
 		}
 	}
+	out = append(out, gatewayHosts(objects, backends)...)
 	return out
+}
+
+func objectNamespace(namespace string) string {
+	if namespace == "" {
+		return "default"
+	}
+	return namespace
+}
+
+func namespacedName(namespace, name string) string {
+	return objectNamespace(namespace) + "/" + name
 }
 
 var (

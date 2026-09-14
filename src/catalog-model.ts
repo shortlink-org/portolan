@@ -227,9 +227,9 @@ export interface Service {
   /**
    * The names this service answers on, read from what deploys it: a
    * Kubernetes Service's name in its short, namespaced, `svc` and fully
-   * qualified forms, and the hosts of the Ingress or HTTPRoute in front of
-   * it. Written so that a call another service is configured to make to
-   * `pricing.shop.svc` can find the service that answers. Absent when
+   * qualified forms, and the hosts of the Ingress or an attached Gateway API
+   * Route in front of it. Written so that a call another service is configured
+   * to make to `pricing.shop.svc` can find the service that answers. Absent when
    * nothing in the tree says where the service is reachable.
    */
   hosts?: string[];

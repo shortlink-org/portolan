@@ -42,6 +42,7 @@
 | [portolan.0015](adr/portolan.0015.md) | A rule on a field is read into the catalog, in one vocabulary | accepted | 2026-09-12 |
 | [portolan.0016](adr/portolan.0016.md) | A problem is a rule with a passport, and a new one is written in CEL over one subject | accepted | 2026-09-12 |
 | [portolan.0017](adr/portolan.0017.md) | Every problem rule is CEL over a row that already carries its joins | accepted | 2026-09-12 |
+| [portolan.0018](adr/portolan.0018.md) | A Gateway Route contributes hosts only through a valid attachment | accepted | 2026-09-14 |
 
 <!-- portolan/README.md -->
 
@@ -87,6 +88,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0015](../adr/portolan.0015.md) | A rule on a field is read into the catalog, in one vocabulary | accepted | 2026-09-12 |
 | [portolan.0016](../adr/portolan.0016.md) | A problem is a rule with a passport, and a new one is written in CEL over one subject | accepted | 2026-09-12 |
 | [portolan.0017](../adr/portolan.0017.md) | Every problem rule is CEL over a row that already carries its joins | accepted | 2026-09-12 |
+| [portolan.0018](../adr/portolan.0018.md) | A Gateway Route contributes hosts only through a valid attachment | accepted | 2026-09-14 |
 
 <!-- portolan/glossary.md -->
 
@@ -973,8 +975,9 @@ service:
 
 - **Hosts** - the names it answers on: a Kubernetes Service's name in its
   short, namespaced, `svc` and fully qualified forms, and the hosts of the
-  Ingress or Gateway API HTTPRoute in front of it, from a rule whose backend
-  is that Service.
+  Ingress or attached Gateway API Route in front of it. A Route contributes
+  only through a Gateway listener that accepts its kind, namespace and
+  hostname, and a cross-namespace Service backend requires a ReferenceGrant.
 - **Dials** - the in-cluster names its workload is configured to reach, cut
   out of its containers' `env` and the ConfigMaps they read.
 
@@ -1021,7 +1024,10 @@ chart into the tree, or point `paths` at plain manifests, to have it read.
 Kustomize is read without running it: the base and the overlays are all under
 the root, and two documents of one kind and name - a Deployment and the patch
 laid over it - fold into one, their env and labels unioned. `namespace`
-narrows the read to one namespace; an object naming none is read either way.
+narrows workloads, Services, Ingresses and ConfigMaps to one namespace;
+Gateway API objects in other namespaces remain available to resolve shared
+Gateways and cross-namespace Routes. An object naming no namespace is read
+either way.
 
 The workload the step is about is the Deployment, StatefulSet, DaemonSet,
 ReplicaSet, Job or CronJob named like the service, or labelled so with
@@ -1034,9 +1040,10 @@ none named is a warning, not a guess.
 
 The manifests say what should run; the cluster says what does, and for an
 estate deployed by Helm or Argo the rendered objects are in no repository at
-all. `fetch-k8s` asks `kubectl` for the workloads, Services, Ingresses,
-Gateway API routes and ConfigMaps of the namespaces named - never for a
-Secret - and answers with one fragment for every workload it saw, placed
+all. `fetch-k8s` asks `kubectl` for the workloads, Services, Ingresses, Gateway
+API Gateways, Routes and ReferenceGrants, Namespace metadata, and ConfigMaps of
+the namespaces named - never for a Secret - and answers with one fragment for
+every workload it saw, placed
 into contexts and services by label. It runs in the host (portolan.0008)
 because it needs the binary, the socket and kubectl's own credential, which
 comes from the kubeconfig and is never in the manifest.
@@ -1051,6 +1058,7 @@ comes from the kubeconfig and is never in the manifest.
   "options": {
     "kubeContext": "prod-eu",
     "namespaces": ["shop", "auth", "payments"],
+    "gatewayNamespaces": ["platform-networking"],
     "labels": { "context": "app.kubernetes.io/part-of", "service": "app.kubernetes.io/name" },
     "namespaceContexts": { "shop-jobs": "shop" },
     "cache": "data",
@@ -1058,6 +1066,13 @@ comes from the kubeconfig and is never in the manifest.
   }
 }
 ```
+
+`namespaces` controls which workloads are emitted. `gatewayNamespaces` adds
+namespaces that hold shared Gateways or Routes without adding their workloads.
+When `namespaces` is omitted, the all-namespaces read already includes both.
+HTTPRoute and GRPCRoute are read as standard kinds; TLSRoute is used when its
+experimental CRD is installed. TCPRoute and UDPRoute carry no hostname and do
+not contribute to `hosts`.
 
 The context is the value of the `app.kubernetes.io/part-of` label and the
 service the value of `app.kubernetes.io/name`; an estate that labels
@@ -2113,6 +2128,7 @@ sequenceDiagram
 | [portolan.0015](portolan.0015.md) | A rule on a field is read into the catalog, in one vocabulary | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
 | [portolan.0016](portolan.0016.md) | A problem is a rule with a passport, and a new one is written in CEL over one subject | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
 | [portolan.0017](portolan.0017.md) | Every problem rule is CEL over a row that already carries its joins | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
+| [portolan.0018](portolan.0018.md) | A Gateway Route contributes hosts only through a valid attachment | accepted | 2026-09-14 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
@@ -3752,3 +3768,78 @@ one row naming the first. The fixture has neither.
 - The subject schema is larger, and part of the manifest's contract: a
   field removed from a projection is a manifest rule that stops
   type-checking. Fields are added, not renamed.
+
+<!-- adr/portolan.0018.md -->
+
+# portolan.0018 — A Gateway Route contributes hosts only through a valid attachment
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-14
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0018-a-gateway-route-contributes-hosts-only-through-a-valid-attachment.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0018-a-gateway-route-contributes-hosts-only-through-a-valid-attachment.md)
+
+### Context and Problem Statement
+
+Portolan reads Kubernetes names to distinguish providers of the same HTTP or
+gRPC route (portolan.0011). The first Gateway API reader treated an HTTPRoute,
+GRPCRoute or TLSRoute as an ingress by itself: when one of its backendRefs named
+a Service, every hostname on the Route was added to that Service.
+
+A Route is not an entry point by itself. It has to name a Gateway in parentRefs,
+the Gateway has to accept the Route on a listener, and the listener and Route
+hostnames have to intersect. Namespace boundaries add two different handshakes:
+allowedRoutes controls Route-to-Gateway attachment, while ReferenceGrant
+controls a Route referring to a Service in another namespace. Ignoring those
+relationships can publish a hostname on which the service is not reachable.
+
+### Decision Drivers
+
+- A host used to resolve an ambiguous call must be proven, not inferred from an
+  unattached Route.
+- Manifest and live-cluster readers must apply the same rules.
+- The catalog needs the reachable name, not a second model of the Kubernetes
+  control plane.
+- Kubernetes Secrets and certificate references must remain unread.
+- A namespace-scoped cluster read must not silently widen the workload scope.
+
+### Decision Outcome
+
+A Gateway API hostname contributes to `service.hosts` only through the complete
+Route -> Gateway listener -> Service relationship.
+
+The reader resolves HTTPRoute and GRPCRoute, and TLSRoute when its experimental
+CRD is available. It applies parentRef defaults, sectionName and port listener
+selection, protocol and allowed kind compatibility, allowedRoutes namespace
+rules, and listener/Route hostname intersection. A cross-namespace backendRef
+to a Service is accepted only when a ReferenceGrant in the Service namespace
+allows that Route kind and source namespace.
+
+`GatewayClass`, policies, listener status and controller-specific resources do
+not become catalog entities. They do not add a name that an application calls.
+The readers use declarative configuration, not status conditions, so a manifest
+and the same objects returned by a cluster produce the same answer.
+
+For `fetch-k8s`, `namespaces` remains the set whose workloads are emitted.
+`gatewayNamespaces` may additionally name namespaces holding shared Gateways or
+Routes; only Gateway API and Namespace metadata is read there. When namespaces
+is omitted the existing all-namespaces read already covers both.
+
+Namespace objects are read only for labels used by allowedRoutes selectors.
+Secrets are still never requested. TLS certificateRefs and every other value
+that does not become a hostname are ignored.
+
+### Consequences
+
+An unattached Route, a listener with no hostname intersection, a disallowed
+namespace, and an ungranted cross-namespace backend no longer create false
+hosts. A Route without hostnames can inherit a concrete listener hostname.
+
+The Go manifest extractor and JavaScript cluster reader keep separate
+implementations because they run in different environments. A shared table of
+Gateway API object graphs and expected hosts holds their behavior together.
+
+TCPRoute and UDPRoute carry no hostname, so they do not affect `service.hosts`.
+Gateway addresses and status conditions may be added later if the catalog needs
+to distinguish desired attachment from controller-observed reachability.

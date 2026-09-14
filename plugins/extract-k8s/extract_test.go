@@ -437,6 +437,53 @@ func TestNamespaceOptionAndPathsOption(t *testing.T) {
 	}
 }
 
+func TestNamespaceOptionKeepsASharedGatewayAvailable(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "shop.yaml", pricingDeployment+`---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing
+  namespace: shop
+spec:
+  selector:
+    app: pricing
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pricing
+  namespace: shop
+spec:
+  parentRefs:
+    - name: shared
+      namespace: infra
+  rules:
+    - backendRefs:
+        - name: pricing
+`)
+	write(t, root, "infra.yaml", `apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shared
+  namespace: infra
+spec:
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: shared.example.com
+      allowedRoutes:
+        namespaces:
+          from: All
+`)
+
+	svc, _ := extracted(t, root, Options{Namespace: "shop"})
+	if !reflect.DeepEqual(svc.Hosts, []string{"pricing", "pricing.shop", "pricing.shop.svc", "pricing.shop.svc.cluster.local", "shared.example.com"}) {
+		t.Errorf("hosts = %v", svc.Hosts)
+	}
+}
+
 func TestSeveralWorkloadsNoneNamedIsAWarningNotAGuess(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "a.yaml", strings.ReplaceAll(pricingDeployment, "pricing", "alpha"))
@@ -476,5 +523,46 @@ func TestHostOnly(t *testing.T) {
 		if got != want || ok != (want != "") {
 			t.Errorf("hostOnly(%q) = %q, %v; want %q", value, got, ok, want)
 		}
+	}
+}
+
+func TestGatewayHostCases(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "gateway-cases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		Cases []struct {
+			Name     string           `json:"name"`
+			Objects  []map[string]any `json:"objects"`
+			Backends []string         `json:"backends"`
+			Want     []string         `json:"want"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range fixture.Cases {
+		t.Run(test.Name, func(t *testing.T) {
+			objects := make([]object, 0, len(test.Objects))
+			for _, body := range test.Objects {
+				meta := mapAt(body, "metadata")
+				objects = append(objects, object{
+					apiVersion: stringAt(body, "apiVersion"),
+					kind:       stringAt(body, "kind"),
+					name:       stringAt(meta, "name"),
+					namespace:  stringAt(meta, "namespace"),
+					labels:     stringMapAt(meta, "labels"),
+					body:       body,
+				})
+			}
+			backends := map[string]bool{}
+			for _, backend := range test.Backends {
+				backends[backend] = true
+			}
+			if got := gatewayHosts(objects, backends); !reflect.DeepEqual(got, test.Want) {
+				t.Errorf("gatewayHosts() = %v, want %v", got, test.Want)
+			}
+		})
 	}
 }

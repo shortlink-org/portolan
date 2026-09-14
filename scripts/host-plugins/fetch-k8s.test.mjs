@@ -1,11 +1,13 @@
 // The cluster reader, against a recorded kubectl. NEVER against a live one.
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_OUT, OFFLINE_ENV, fragment, labelsOf, run } from "./fetch-k8s.mjs";
-import { hostOnly, topology } from "./k8s-topology.mjs";
+import { frontingHosts, hostOnly, topology } from "./k8s-topology.mjs";
+
+const GATEWAY_CASES = JSON.parse(readFileSync(new URL("../../plugins/extract-k8s/testdata/gateway-cases.json", import.meta.url), "utf8")).cases;
 
 const cleanups = [];
 afterEach(() => {
@@ -68,10 +70,26 @@ const OBJECTS = [
   { kind: "ConfigMap", apiVersion: "v1", metadata: { name: "pricing-shared", namespace: "shop" }, data: { CATALOG_URL: "https://catalog.shop.svc.cluster.local/v1", REGION: "eu-west-1" } },
 ];
 
-const ROUTES = [{
-  kind: "HTTPRoute", apiVersion: "gateway.networking.k8s.io/v1", metadata: { name: "pricing", namespace: "shop" },
-  spec: { hostnames: ["api.example.com"], rules: [{ backendRefs: [{ name: "pricing" }] }] },
-}];
+const GATEWAY_OBJECTS = [
+  {
+    kind: "Gateway", apiVersion: "gateway.networking.k8s.io/v1", metadata: { name: "shop", namespace: "shop" },
+    spec: { listeners: [{
+      name: "https", protocol: "HTTPS", port: 443, hostname: "*.example.com",
+      allowedRoutes: { namespaces: { from: "Selector", selector: { matchExpressions: [{ key: "kubernetes.io/metadata.name", operator: "In", values: ["shop"] }] } } },
+    }] },
+  },
+  {
+    kind: "HTTPRoute", apiVersion: "gateway.networking.k8s.io/v1", metadata: { name: "pricing", namespace: "shop" },
+    spec: { parentRefs: [{ name: "shop" }], hostnames: ["api.example.com"], rules: [{ backendRefs: [{ name: "pricing" }] }] },
+  },
+];
+
+const NAMESPACES = [
+  { kind: "Namespace", apiVersion: "v1", metadata: { name: "shop", labels: { "kubernetes.io/metadata.name": "shop" } } },
+  { kind: "Namespace", apiVersion: "v1", metadata: { name: "auth", labels: { "kubernetes.io/metadata.name": "auth" } } },
+  { kind: "Namespace", apiVersion: "v1", metadata: { name: "payments", labels: { "kubernetes.io/metadata.name": "payments" } } },
+  { kind: "Namespace", apiVersion: "v1", metadata: { name: "sandbox", labels: { "kubernetes.io/metadata.name": "sandbox" } } },
+];
 
 const PLANTED = [
   "hunter2", "s3cr3t", "pricing-secrets", "8080", "9090", "/api", "sslmode", "u:p@",
@@ -79,7 +97,7 @@ const PLANTED = [
 ];
 
 /** A kubectl that answers from the recording, by namespace, and knows no Gateway API. */
-function recorded({ routes = true, fail = false, calls = [] } = {}) {
+function recorded({ gateway = true, fail = false, calls = [], objects = OBJECTS, gatewayObjects = GATEWAY_OBJECTS } = {}) {
   return (args) => {
     calls.push(args);
     if (fail) {
@@ -90,9 +108,19 @@ function recorded({ routes = true, fail = false, calls = [] } = {}) {
     }
     const kinds = args[args.indexOf("get") + 1];
     const scoped = args.includes("-n") ? args[args.indexOf("-n") + 1] : "";
-    const pool = kinds.startsWith("httproutes") || kinds.startsWith("grpcroutes")
-      ? (routes ? (kinds.startsWith("httproutes") ? ROUTES : []) : null)
-      : OBJECTS;
+    const gatewayKind = {
+      "gateways.gateway.networking.k8s.io": "Gateway",
+      "httproutes.gateway.networking.k8s.io": "HTTPRoute",
+      "grpcroutes.gateway.networking.k8s.io": "GRPCRoute",
+      "referencegrants.gateway.networking.k8s.io": "ReferenceGrant",
+      "tlsroutes.gateway.networking.k8s.io": "TLSRoute",
+    }[kinds];
+    const requestedNamespaceNames = kinds === "namespaces" ? args.slice(args.indexOf("get") + 2, args.indexOf("-o")) : [];
+    const pool = kinds === "namespaces"
+      ? NAMESPACES.filter((item) => requestedNamespaceNames.length === 0 || requestedNamespaceNames.includes(item.metadata.name))
+      : gatewayKind
+        ? (gateway ? gatewayObjects.filter((item) => item.kind === gatewayKind) : null)
+        : objects;
     if (pool === null) {
       const cause = new Error("kubectl failed");
       cause.status = 1;
@@ -140,17 +168,36 @@ describe("fetch-k8s", () => {
     expect(everything).not.toContain("Secret");
   });
 
-  it("asks for no secrets, and asks once per namespace when namespaces are named", () => {
+  it("asks for no secrets, and keeps workload and Gateway namespaces separate", () => {
     const calls = [];
-    read({ cache: cache(), namespaces: ["shop", "auth"], kubeContext: "prod" }, { exec: recorded({ calls }) });
+    read({ cache: cache(), namespaces: ["shop", "auth"], gatewayNamespaces: ["infra"], kubeContext: "prod" }, { exec: recorded({ calls }) });
     for (const args of calls) {
       expect(args.slice(0, 2)).toEqual(["--context", "prod"]);
       expect(args.join(" ")).not.toMatch(/secret/i);
     }
-    const scopes = calls.map((args) => args[args.indexOf("-n") + 1]);
-    expect(scopes.filter((ns) => ns === "auth").length).toBe(3);
-    expect(scopes.filter((ns) => ns === "shop").length).toBe(3);
+    const workloadCalls = calls.filter((args) => args[args.indexOf("get") + 1].startsWith("deployments"));
+    expect(workloadCalls.map((args) => args[args.indexOf("-n") + 1])).toEqual(["auth", "shop"]);
+    const gatewayCalls = calls.filter((args) => args[args.indexOf("get") + 1].startsWith("gateways."));
+    expect(gatewayCalls.map((args) => args[args.indexOf("-n") + 1])).toEqual(["auth", "infra", "shop"]);
+    expect(calls.find((args) => args[args.indexOf("get") + 1] === "namespaces")).toContain("infra");
     expect(calls.some((args) => args.includes("-A"))).toBe(false);
+  });
+
+  it("resolves a Route in a workload namespace through a shared Gateway namespace", () => {
+    const shared = [
+      {
+        kind: "Gateway", apiVersion: "gateway.networking.k8s.io/v1", metadata: { name: "shared", namespace: "infra" },
+        spec: { listeners: [{ name: "https", protocol: "HTTPS", port: 443, hostname: "shared.example.com", allowedRoutes: { namespaces: { from: "All" } } }] },
+      },
+      {
+        kind: "HTTPRoute", apiVersion: "gateway.networking.k8s.io/v1", metadata: { name: "pricing", namespace: "shop" },
+        spec: { parentRefs: [{ name: "shared", namespace: "infra" }], rules: [{ backendRefs: [{ name: "pricing" }] }] },
+      },
+    ];
+    const { catalog } = read({ cache: cache(), namespaces: ["shop"], gatewayNamespaces: ["infra"], namespaceContexts: { shop: "shop" } }, {
+      exec: recorded({ gatewayObjects: shared }),
+    });
+    expect(serviceOf(catalog, "shop.pricing").hosts).toContain("shared.example.com");
   });
 
   it("lets the manifest name its own labels", () => {
@@ -166,9 +213,9 @@ describe("fetch-k8s", () => {
   });
 
   it("goes on without Gateway API routes, with one warning", () => {
-    const { catalog, warnings } = read({ cache: cache() }, { exec: recorded({ routes: false }) });
+    const { catalog, warnings } = read({ cache: cache() }, { exec: recorded({ gateway: false }) });
     expect(serviceOf(catalog, "shop.pricing").hosts).not.toContain("api.example.com");
-    expect(warnings).toContain("the cluster serves no Gateway API routes, or refused to list them; hosts of HTTPRoute and GRPCRoute were not read");
+    expect(warnings).toContain("Gateway API kinds not read: GRPCRoute, Gateway, HTTPRoute, ReferenceGrant; related hosts may be incomplete");
   });
 
   it("replays the committed fragment offline, unchanged", () => {
@@ -203,18 +250,18 @@ describe("fetch-k8s", () => {
   });
 
   it("writes the fragment the same way whatever order the cluster listed things in", () => {
-    const shuffled = [...OBJECTS].reverse();
-    const exec = (args) => {
-      const kinds = args[args.indexOf("get") + 1];
-      if (kinds.startsWith("httproutes")) return JSON.stringify({ items: ROUTES });
-      if (kinds.startsWith("grpcroutes")) return JSON.stringify({ items: [] });
-      return JSON.stringify({ items: shuffled });
-    };
+    const exec = recorded({ objects: [...OBJECTS].reverse(), gatewayObjects: [...GATEWAY_OBJECTS].reverse() });
     expect(read({ cache: cache() }, { exec }).file.contents).toBe(read({ cache: cache() }).file.contents);
   });
 });
 
 describe("k8s-topology", () => {
+  it("matches the shared Gateway API contract cases", () => {
+    for (const test of GATEWAY_CASES) {
+      expect(frontingHosts(test.objects, new Set(test.backends)), test.name).toEqual(test.want);
+    }
+  });
+
   // The same table as extract-k8s's TestHostOnly, so the two readers stay
   // one rule.
   it("hostOnly keeps a host and nothing else", () => {

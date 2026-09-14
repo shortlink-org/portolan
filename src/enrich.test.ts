@@ -628,6 +628,27 @@ describe("enrichCatalog: HTTP route correlation", () => {
     ).toEqual([["api/post", "shop.ledger", "declared", "kubernetes-host"]]);
   });
 
+  it("matches a concrete destination against a Gateway wildcard hostname", () => {
+    const caller = service("shop", "oms", {
+      consumes: [{
+        id: "http-client/POST /foo @ api.example.com",
+        peer: "api-example-com",
+        status: "unresolved",
+        source: "client.go:10",
+      }],
+    });
+    const publicProvider = { ...httpProvider("public", "post", "/foo"), hosts: ["*.example.com"] };
+    const privateProvider = { ...httpProvider("private", "post", "/foo"), hosts: ["private.internal"] };
+
+    const out = enrichCatalog(estate([], [caller, publicProvider, privateProvider])).catalog;
+    expect(serviceOf(out, "shop.oms").consumes[0]).toEqual(expect.objectContaining({
+      id: "api/post",
+      peer: "shop.public",
+      status: "declared",
+      destination: expect.objectContaining({ resolution: expect.objectContaining({ basis: "kubernetes-host" }) }),
+    }));
+  });
+
   it("resolves a destination-qualified route like a bare one", () => {
     const caller = service("shop", "oms", {
       consumes: [

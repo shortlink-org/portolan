@@ -723,8 +723,9 @@ service:
 
 - **Hosts** - the names it answers on: a Kubernetes Service's name in its
   short, namespaced, `svc` and fully qualified forms, and the hosts of the
-  Ingress or Gateway API HTTPRoute in front of it, from a rule whose backend
-  is that Service.
+  Ingress or attached Gateway API Route in front of it. A Route contributes
+  only through a Gateway listener that accepts its kind, namespace and
+  hostname, and a cross-namespace Service backend requires a ReferenceGrant.
 - **Dials** - the in-cluster names its workload is configured to reach, cut
   out of its containers' `env` and the ConfigMaps they read.
 
@@ -771,7 +772,10 @@ chart into the tree, or point `paths` at plain manifests, to have it read.
 Kustomize is read without running it: the base and the overlays are all under
 the root, and two documents of one kind and name - a Deployment and the patch
 laid over it - fold into one, their env and labels unioned. `namespace`
-narrows the read to one namespace; an object naming none is read either way.
+narrows workloads, Services, Ingresses and ConfigMaps to one namespace;
+Gateway API objects in other namespaces remain available to resolve shared
+Gateways and cross-namespace Routes. An object naming no namespace is read
+either way.
 
 The workload the step is about is the Deployment, StatefulSet, DaemonSet,
 ReplicaSet, Job or CronJob named like the service, or labelled so with
@@ -784,9 +788,10 @@ none named is a warning, not a guess.
 
 The manifests say what should run; the cluster says what does, and for an
 estate deployed by Helm or Argo the rendered objects are in no repository at
-all. `fetch-k8s` asks `kubectl` for the workloads, Services, Ingresses,
-Gateway API routes and ConfigMaps of the namespaces named - never for a
-Secret - and answers with one fragment for every workload it saw, placed
+all. `fetch-k8s` asks `kubectl` for the workloads, Services, Ingresses, Gateway
+API Gateways, Routes and ReferenceGrants, Namespace metadata, and ConfigMaps of
+the namespaces named - never for a Secret - and answers with one fragment for
+every workload it saw, placed
 into contexts and services by label. It runs in the host (portolan.0008)
 because it needs the binary, the socket and kubectl's own credential, which
 comes from the kubeconfig and is never in the manifest.
@@ -801,6 +806,7 @@ comes from the kubeconfig and is never in the manifest.
   "options": {
     "kubeContext": "prod-eu",
     "namespaces": ["shop", "auth", "payments"],
+    "gatewayNamespaces": ["platform-networking"],
     "labels": { "context": "app.kubernetes.io/part-of", "service": "app.kubernetes.io/name" },
     "namespaceContexts": { "shop-jobs": "shop" },
     "cache": "data",
@@ -808,6 +814,13 @@ comes from the kubeconfig and is never in the manifest.
   }
 }
 ```
+
+`namespaces` controls which workloads are emitted. `gatewayNamespaces` adds
+namespaces that hold shared Gateways or Routes without adding their workloads.
+When `namespaces` is omitted, the all-namespaces read already includes both.
+HTTPRoute and GRPCRoute are read as standard kinds; TLSRoute is used when its
+experimental CRD is installed. TCPRoute and UDPRoute carry no hostname and do
+not contribute to `hosts`.
 
 The context is the value of the `app.kubernetes.io/part-of` label and the
 service the value of `app.kubernetes.io/name`; an estate that labels

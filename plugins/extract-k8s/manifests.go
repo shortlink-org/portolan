@@ -100,7 +100,7 @@ func readTree(root string, paths []string, namespace string, b *plugin.Builder) 
 				return nil
 			}
 			for _, o := range found {
-				if namespace != "" && o.namespace != "" && o.namespace != namespace {
+				if namespace != "" && o.namespace != "" && o.namespace != namespace && !neededForGatewayResolution(o.kind) {
 					continue
 				}
 				objects = append(objects, o)

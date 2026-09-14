@@ -14,6 +14,12 @@
       "description": "The namespaces to read. Left out, every namespace the credential can list.",
       "examples": [["shop", "auth", "payments"]]
     },
+    "gatewayNamespaces": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional namespaces that hold shared Gateways or Routes. Workloads are still read only from namespaces; left out when all namespaces are already being read.",
+      "examples": [["networking", "platform"]]
+    },
     "labels": {
       "type": "object",
       "additionalProperties": false,

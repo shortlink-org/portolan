@@ -36,7 +36,15 @@ export const DEFAULT_LABELS = Object.freeze({
 // What is asked for, and the whole of it. Secrets are not a kind this list
 // could grow to hold: the reader has no use for one.
 const KINDS = ["deployments", "statefulsets", "daemonsets", "replicasets", "jobs", "cronjobs", "services", "ingresses", "configmaps"];
-const ROUTE_KINDS = ["httproutes.gateway.networking.k8s.io", "grpcroutes.gateway.networking.k8s.io"];
+const GATEWAY_KINDS = [
+  { resource: "gateways.gateway.networking.k8s.io", kind: "Gateway" },
+  { resource: "httproutes.gateway.networking.k8s.io", kind: "HTTPRoute" },
+  { resource: "grpcroutes.gateway.networking.k8s.io", kind: "GRPCRoute" },
+  { resource: "referencegrants.gateway.networking.k8s.io", kind: "ReferenceGrant" },
+  // TLSRoute is in the experimental channel. Read it when installed without
+  // making its absence a warning on an otherwise conformant cluster.
+  { resource: "tlsroutes.gateway.networking.k8s.io", kind: "TLSRoute", optional: true },
+];
 
 export function describe() {
   return {
@@ -114,18 +122,39 @@ function read(exec, options, builder, stderr) {
   for (const scope of scopes) {
     objects.push(...items(call(exec, [...base, "get", KINDS.join(","), ...scope, "-o", "json"], stderr)));
   }
-  let routesMissing = false;
-  for (const scope of scopes) {
-    for (const kind of ROUTE_KINDS) {
+  const declaredGatewayNamespaces = Array.isArray(options.gatewayNamespaces) ? options.gatewayNamespaces : [];
+  const gatewayNamespaces = namespaces.length
+    ? [...new Set([...namespaces, ...declaredGatewayNamespaces.map((ns) => String(ns).trim()).filter(Boolean)])].sort()
+    : [];
+  const gatewayScopes = gatewayNamespaces.length ? gatewayNamespaces.map((ns) => ["-n", ns]) : [["-A"]];
+  const missing = new Set();
+  for (const scope of gatewayScopes) {
+    for (const apiKind of GATEWAY_KINDS) {
       try {
-        objects.push(...items(call(exec, [...base, "get", kind, ...scope, "-o", "json"], stderr)));
+        objects.push(...items(call(exec, [...base, "get", apiKind.resource, ...scope, "-o", "json"], stderr)));
       } catch {
-        routesMissing = true;
+        if (!apiKind.optional) missing.add(apiKind.kind);
       }
     }
   }
-  if (routesMissing) builder.warn("", "the cluster serves no Gateway API routes, or refused to list them; hosts of HTTPRoute and GRPCRoute were not read");
+
+  if (needsNamespaceMetadata(objects)) {
+    try {
+      const names = gatewayNamespaces.length ? gatewayNamespaces : [];
+      objects.push(...items(call(exec, [...base, "get", "namespaces", ...names, "-o", "json"], stderr)));
+    } catch {
+      builder.warn("", "Namespace metadata was not read; selector-based Gateway listeners were not resolved");
+    }
+  }
+  if (missing.size) {
+    builder.warn("", `Gateway API kinds not read: ${[...missing].sort().join(", ")}; related hosts may be incomplete`);
+  }
   return objects;
+}
+
+function needsNamespaceMetadata(objects) {
+  return objects.some((object) => object.kind === "Gateway"
+    && (object.spec?.listeners ?? []).some((listener) => listener.allowedRoutes?.namespaces?.from === "Selector"));
 }
 
 /**

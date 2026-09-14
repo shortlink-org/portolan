@@ -376,6 +376,21 @@
         "author": "Victor Login",
         "date": "2026-09-12T18:03:33+07:00"
       }
+    },
+    {
+      "id": "portolan.0018",
+      "slug": "portolan-0018-a-gateway-route-contributes-hosts-only-through-a-valid-attachment",
+      "number": 18,
+      "title": "A Gateway Route contributes hosts only through a valid attachment",
+      "status": "accepted",
+      "date": "2026-09-14",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nPortolan reads Kubernetes names to distinguish providers of the same HTTP or\ngRPC route (portolan.0011). The first Gateway API reader treated an HTTPRoute,\nGRPCRoute or TLSRoute as an ingress by itself: when one of its backendRefs named\na Service, every hostname on the Route was added to that Service.\n\nA Route is not an entry point by itself. It has to name a Gateway in parentRefs,\nthe Gateway has to accept the Route on a listener, and the listener and Route\nhostnames have to intersect. Namespace boundaries add two different handshakes:\nallowedRoutes controls Route-to-Gateway attachment, while ReferenceGrant\ncontrols a Route referring to a Service in another namespace. Ignoring those\nrelationships can publish a hostname on which the service is not reachable.\n\n## Decision Drivers\n\n- A host used to resolve an ambiguous call must be proven, not inferred from an\n  unattached Route.\n- Manifest and live-cluster readers must apply the same rules.\n- The catalog needs the reachable name, not a second model of the Kubernetes\n  control plane.\n- Kubernetes Secrets and certificate references must remain unread.\n- A namespace-scoped cluster read must not silently widen the workload scope.\n\n## Decision Outcome\n\nA Gateway API hostname contributes to `service.hosts` only through the complete\nRoute -\u003e Gateway listener -\u003e Service relationship.\n\nThe reader resolves HTTPRoute and GRPCRoute, and TLSRoute when its experimental\nCRD is available. It applies parentRef defaults, sectionName and port listener\nselection, protocol and allowed kind compatibility, allowedRoutes namespace\nrules, and listener/Route hostname intersection. A cross-namespace backendRef\nto a Service is accepted only when a ReferenceGrant in the Service namespace\nallows that Route kind and source namespace.\n\n`GatewayClass`, policies, listener status and controller-specific resources do\nnot become catalog entities. They do not add a name that an application calls.\nThe readers use declarative configuration, not status conditions, so a manifest\nand the same objects returned by a cluster produce the same answer.\n\nFor `fetch-k8s`, `namespaces` remains the set whose workloads are emitted.\n`gatewayNamespaces` may additionally name namespaces holding shared Gateways or\nRoutes; only Gateway API and Namespace metadata is read there. When namespaces\nis omitted the existing all-namespaces read already covers both.\n\nNamespace objects are read only for labels used by allowedRoutes selectors.\nSecrets are still never requested. TLS certificateRefs and every other value\nthat does not become a hostname are ignored.\n\n## Consequences\n\nAn unattached Route, a listener with no hostname intersection, a disallowed\nnamespace, and an ungranted cross-namespace backend no longer create false\nhosts. A Route without hostnames can inherit a concrete listener hostname.\n\nThe Go manifest extractor and JavaScript cluster reader keep separate\nimplementations because they run in different environments. A shared table of\nGateway API object graphs and expected hosts holds their behavior together.\n\nTCPRoute and UDPRoute carry no hostname, so they do not affect `service.hosts`.\nGateway addresses and status conditions may be added later if the catalog needs\nto distinguish desired attachment from controller-observed reachability.\n",
+      "relates": {},
+      "source": "adr/0018-a-gateway-route-contributes-hosts-only-through-a-valid-attachment.md"
     }
   ]
 }

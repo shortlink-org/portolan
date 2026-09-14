@@ -378,7 +378,7 @@ function resolveHTTPCalls(input: Catalog): Catalog {
     const reachable = matches.filter((provider) => {
       const hosts = hostsByService.get(provider.service);
       if (!hosts) return false;
-      return host ? hosts.has(host) : dials.some((dial) => hosts.has(dial));
+      return host ? answersOn(hosts, host) : dials.some((dial) => answersOn(hosts, dial));
     });
     return reachable.length === 1
       ? { ...reachable[0]!, basis: "kubernetes-host" }
@@ -458,6 +458,18 @@ function resolveHTTPCalls(input: Catalog): Catalog {
   });
 
   return { ...input, contexts, flows };
+}
+
+function answersOn(hosts: Set<string>, candidate: string): boolean {
+  const host = candidate.toLowerCase();
+  for (const declared of hosts) {
+    const pattern = declared.toLowerCase();
+    if (pattern === host) return true;
+    if (pattern.startsWith("*.") && !host.startsWith("*.") && host.endsWith(pattern.slice(1)) && host.length > pattern.length - 1) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function rawHTTPRoute(
