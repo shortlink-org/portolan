@@ -1,35 +1,36 @@
 # Portolan roadmap
 
-Этот документ собирает открытые идеи и проблемы Portolan. Завершённые задачи
-из roadmap удаляются.
+Open ideas and known problems of Portolan. A ticket is removed from the
+roadmap when it lands.
 
-## Статусы
+## Statuses
 
-- **open** — проблема подтверждена, решения ещё нет.
-- **investigate** — симптом подтверждён, но сначала нужно выбрать модель решения.
-- **source quality** — Portolan корректно сообщает о недостатке в исходном
-  проекте; можно улучшить диагностику или добавить явную конфигурацию.
+- **open** — the problem is confirmed, there is no solution yet.
+- **investigate** — the symptom is confirmed, but a solution model has to be
+  chosen first.
+- **source quality** — Portolan correctly reports a defect in the source
+  project; the diagnostic can be improved or an explicit configuration added.
 
-## P2 — качество извлечения и UX
+## P2 — extraction quality and UX
 
-### PORTOLAN-21. Показывать feature-ветки в общем каталоге как draft
+### PORTOLAN-21. Show feature branches in the main catalog as drafts
 
 **Status:** open
 
-Если feature-ветка добавляет то, чего на main ещё нет (flow, шаг, сервис,
-событие), читатель должен видеть это в общем каталоге на своём месте с
-пометкой `draft`, именем ветки и ссылкой на PR.
+When a feature branch adds something main does not have yet (a flow, a step, a
+service, an event), the reader should see it in the main catalog in its place,
+marked `draft`, with the branch name and a link to the PR.
 
-- Пикер веток: на каждую feature-ветку своя галочка, по умолчанию все
-  выключены. Выбор живёт у читателя и не меняет сгенерированный main-каталог.
-- Draft-сущность несёт source evidence из своей ветки и исчезает после мержа
-  или удаления ветки.
-- Конфликт (один идентификатор изменён и на main, и в ветке): показывать обе
-  версии, ветвевая помечена `draft`.
+- Branch picker: one checkbox per feature branch, all off by default. The
+  choice belongs to the reader and does not change the generated main catalog.
+- A draft entity carries source evidence from its branch and disappears once
+  the branch is merged or deleted.
+- Conflict (one identifier changed both on main and in the branch): show both
+  versions, the branch one marked `draft`.
 
-Открытые вопросы: откуда брать список веток и PR (fetch-git, forge API), где
-хранить извлечение по ветке (отдельный snapshot на ветку), как считать
-«добавляет», а не «меняет».
+Open questions: where the list of branches and PRs comes from (fetch-git, forge
+API), where per-branch extraction is stored (a snapshot per branch), and how
+"adds" is told apart from "changes".
 
 ### PORTOLAN-22. Go extractor: unpack embedded structs and interfaces
 
