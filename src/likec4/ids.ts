@@ -44,6 +44,12 @@ export function fqn(catalogId: string): string {
   return catalogId.split(".").map(safeId).join(".");
 }
 
+/** Stores are siblings of their owner, so opening L2 never turns a service into a frame. */
+export function storeFqn(store: { id: string; owner: string }): string {
+  const context = store.owner.split(".").slice(0, -1).map(safeId).join(".");
+  return `${context}._store_${safeId(store.id)}`;
+}
+
 export const eventFqn = (event: Event | string): string =>
   fqn(typeof event === "string" ? event : event.id);
 

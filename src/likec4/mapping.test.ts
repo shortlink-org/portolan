@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../data";
 import { classify } from "../selection/model";
-import { fqn, participantFqn } from "./ids";
+import { fqn, participantFqn, storeFqn } from "./ids";
 import { catalogIdMap, catalogIdOf } from "./mapping";
 
 describe("catalogIdOf", () => {
+  it("maps sibling stores back to their unchanged catalog ids and owner", () => {
+    const map = catalogIdMap(catalog);
+    for (const store of catalog.stores ?? []) {
+      expect(map.get(storeFqn(store))).toBe(store.id);
+      expect(storeFqn(store).split(".").slice(0, -1)).toEqual(fqn(store.owner).split(".").slice(0, -1));
+      expect(storeFqn(store).startsWith(`${fqn(store.owner)}.`)).toBe(false);
+    }
+  });
   /**
    * The ID contract, checked rather than assumed: every catalog id must survive
    * the round trip through the LikeC4 identifier the generator emits for it.

@@ -13,6 +13,7 @@ import type { EdgeStepPairing } from "./flow-edges";
 import { EMPTY_PAIRING } from "./flow-edges";
 import { flowCrossViewId, flowViewId } from "./ids";
 import type { BBox } from "./canvas-viewport";
+import { neighborhood } from "./neighborhood";
 
 interface ViewShape {
   nodeIds: Set<string>;
@@ -48,6 +49,11 @@ export function viewNodeIds(viewId: string): readonly string[] {
 /** The edge ids a view draws, in the order LikeC4 emits them. */
 export function viewEdgeIds(viewId: string): readonly string[] {
   return shapeOf(viewId).edgeIds;
+}
+
+export function viewNeighborhood(viewId: string, selected: string) {
+  const view = likec4model.findView(viewId)?.$layouted;
+  return view ? neighborhood(view.nodes, view.edges, selected) : null;
 }
 
 /**

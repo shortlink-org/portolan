@@ -39,7 +39,12 @@ const safeId = (raw) => {
     ? `_${cleaned}`
     : cleaned;
 };
-const fqn = (id) => id.split(".").map(safeId).join(".");
+// Mirrors storeFqn in ids.ts; catalog ids and ownership stay unchanged.
+const storeRefs = new Map((catalog.stores ?? []).map((store) => [
+  store.id,
+  `${store.owner.split(".").slice(0, -1).map(safeId).join(".")}._store_${safeId(store.id)}`,
+]));
+const fqn = (id) => storeRefs.get(id) ?? id.split(".").map(safeId).join(".");
 const flowViewId = (flow) => `flow_${safeId(flow.slug)}`;
 const flowCrossViewId = (flow) => `${flowViewId(flow)}_cross`;
 const contextViewId = (c) => `ctx_${safeId(c.id)}`;
@@ -130,6 +135,7 @@ const RELATION_KINDS = [
   "reads",
   "persists",
   "uses",
+  "owns",
 ];
 
 const contextColorName = (contextId) => {
@@ -323,12 +329,15 @@ for (const context of catalog.contexts) {
       }
       model.push("      }");
     }
-    for (const store of storesByOwner.get(service.id) ?? []) {
-      model.push(`      ${safeId(store.slug)} = store ${q(store.name)} {`);
-      model.push(`        technology ${q(store.kind)}`);
-      model.push("      }");
-    }
     model.push("    }");
+  }
+  for (const service of context.services) {
+    for (const store of storesByOwner.get(service.id) ?? []) {
+      model.push(`    ${fqn(store.id).split(".").at(-1)} = store ${q(store.name)} {`);
+      model.push(`      technology ${q(store.kind)}`);
+      model.push(`      description ${q(`Owned by ${service.name}`)}`);
+      model.push("    }");
+    }
   }
   model.push("  }");
 }
@@ -359,7 +368,9 @@ for (const context of catalog.contexts) {
       const method = call.id.split("/").pop() ?? call.id;
       const protocol = protocolOf(call.source);
       relations.push(
-        `  ${fqn(service.id)} -[calls]-> ${participantRef(peer)} ${q(method)}${protocol ? ` ${q(protocol)}` : ""} {\n` +
+        `  ${fqn(service.id)} -[calls]-> ${participantRef(peer)} ${q(method)} {\n` +
+          (protocol ? `    technology ${q(protocol)}\n` : "") +
+          `    description ${q(`${call.id} · ${call.status}${call.source ? ` · ${call.source}` : ""}`)}\n` +
           `    style { color ${call.status}  line ${STATUS_LINE[call.status]}  head normal }\n` +
           `  }`,
       );
@@ -372,9 +383,11 @@ for (const context of catalog.contexts) {
           `  }`,
       );
     }
-    // Owning a store is containment and needs no arrow. Reading one somebody
-    // else owns is the arrow worth drawing, and it is the same fact the
-    // Problems page reports: a database with a second reader.
+    // Ownership is explicit now that stores and services are peers in L2.
+    for (const store of storesByOwner.get(service.id) ?? []) {
+      relations.push(`  ${fqn(service.id)} -[owns]-> ${fqn(store.id)} 'owns' {\n    style { color muted  line solid  head none }\n  }`);
+    }
+    // Cross-service readers still target the actual store, never its owner.
     for (const storeId of service.stores ?? []) {
       const store = storeById.get(storeId);
       if (!store || store.owner === service.id) continue;
@@ -538,8 +551,7 @@ model.push("}");
 // and the flows are about. A container diagram is about which boxes talk and
 // over what, and LikeC4 folds a pair's relations into one edge on its own but
 // labels it `[...]`. The fold is given a label here, once per pair: the
-// method when there is one, a count when there are more, the protocol read
-// off the contract, and the best status any of the calls has.
+// count and protocol when evidence is uniform. Mixed pairs stay separate.
 const callPairs = new Map(); // "from|to" -> { from, to, methods:[], protocols:Set, status }
 for (const context of catalog.contexts) {
   for (const service of context.services) {
@@ -552,11 +564,13 @@ for (const context of catalog.contexts) {
         to: peer,
         methods: [],
         protocols: new Set(),
+        statuses: new Set(),
         status: "unresolved",
       };
       pair.methods.push(call.id.split("/").pop() ?? call.id);
+      pair.statuses.add(call.status);
       const protocol = protocolOf(call.source);
-      if (protocol) pair.protocols.add(protocol);
+      pair.protocols.add(protocol);
       if (STATUS_RANK[call.status] < STATUS_RANK[pair.status])
         pair.status = call.status;
       callPairs.set(key, pair);
@@ -566,10 +580,13 @@ for (const context of catalog.contexts) {
 
 /** The `include a -> b with { … }` line that labels one pair's folded edge. */
 function pairEdge(pair) {
-  const title =
-    pair.methods.length === 1
-      ? pair.methods[0]
-      : `${pair.methods.length} calls`;
+  // A mixed pair stays separate: a verified HTTP call must not lend its
+  // appearance to a declared gRPC call or to an event between the same nodes.
+  const target = `${participantRef(pair.from)} -> ${participantRef(pair.to)} where kind is calls`;
+  if (pair.statuses.size > 1 || pair.protocols.size > 1) {
+    return `include ${target} with { title '1 call'  multiple true }`;
+  }
+  const title = `${pair.methods.length} ${pair.methods.length === 1 ? "call" : "calls"}`;
   const technology = [...pair.protocols].sort().join(" · ");
   const props = [
     `title ${q(title)}`,
@@ -577,7 +594,7 @@ function pairEdge(pair) {
     `color ${pair.status}`,
     `line ${STATUS_LINE[pair.status]}`,
   ].filter(Boolean);
-  return `include ${participantRef(pair.from)} -> ${participantRef(pair.to)} with { ${props.join("  ")} }`;
+  return `include ${target} with { ${props.join("  ")} }`;
 }
 
 // A consumer arrow the bus already carries: the publisher's hop onto a broker
@@ -587,19 +604,24 @@ function pairEdge(pair) {
 const carriedByBus = []; // [publisher, consumer]
 for (const context of catalog.contexts) {
   for (const service of context.services) {
-    const consumers = new Set();
+    const consumers = new Map();
     for (const aggregate of service.aggregates) {
       for (const event of aggregate.events) {
-        for (const consumer of event.consumers) consumers.add(consumer.service);
+        for (const consumer of event.consumers) {
+          const names = consumers.get(consumer.service) ?? new Set();
+          names.add(event.name);
+          consumers.set(consumer.service, names);
+        }
       }
     }
     consumers.delete(service.id);
-    for (const consumer of consumers) {
-      const via = [...brokerIds].some(
-        (broker) =>
-          busEdges.has(`${service.id}|${broker}`) &&
-          busEdges.has(`${broker}|${consumer}`),
-      );
+    for (const [consumer, names] of consumers) {
+      // A shared broker alone does not prove it carries THIS event. Every
+      // omitted consumer fact must remain represented by both transport hops.
+      const via = [...names].every((name) => [...brokerIds].some((broker) =>
+        busEdges.get(`${service.id}|${broker}`)?.labels.has(name) &&
+        busEdges.get(`${broker}|${consumer}`)?.labels.has(name),
+      ));
       if (via) carriedByBus.push([service.id, consumer]);
     }
   }
@@ -617,7 +639,37 @@ function containerPredicates(pairs, carried, indent) {
       ([from, to]) =>
         `${indent}exclude ${participantRef(from)} -> ${participantRef(to)} where kind is consumes`,
     ),
+    `${indent}autoLayout LeftRight 100 70`,
+    `${indent}style * { size sm  textSize xl }`,
+    `${indent}style element.kind = store { size xs  textSize lg }`,
   ];
+}
+
+/** Compact cards keep implementation paths in element details, not on the canvas. */
+function containerCards(services, indent = "    ") {
+  return services.flatMap((service) => [
+    `${indent}include ${fqn(service.id)} with { description '' }`,
+    ...(storesByOwner.get(service.id) ?? []).map((store) => `${indent}include ${fqn(store.id)} with { description '' }`),
+  ]);
+}
+
+/** Only customize edges whose endpoints this view already includes. */
+function transportLabels(services, roots, indent = "    ") {
+  const visible = new Set([...services.map((service) => service.id), ...roots]);
+  return [...busEdges.values()].filter((edge) => visible.has(edge.from) && visible.has(edge.to)).map((edge) => {
+    const count = edge.labels.size;
+    const noun = edge.kind === "event" ? "event" : "call";
+    return `${indent}include ${participantRef(edge.from)} -> ${participantRef(edge.to)} where kind is bus with { title ${q(`${count} ${noun}${count === 1 ? "" : "s"}`)}  notes ${q([...edge.labels].sort().join("\n"))} }`;
+  });
+}
+// Rank constraints align only local queues, without claiming that they are
+// owned by a context or fabricating a shared infrastructure boundary.
+function localQueueRanks(services, roots, indent = "    ") {
+  const allowed = new Set(roots);
+  return services.flatMap((service) => {
+    const brokers = [...brokerIds].filter((broker) => allowed.has(broker) && [...busEdges.values()].some((edge) => [edge.from, edge.to].includes(broker) && [edge.from, edge.to].includes(service.id)) && [...busEdges.values()].every((edge) => ![edge.from, edge.to].includes(broker) || [edge.from, edge.to].includes(service.id)));
+    return brokers.length ? [`${indent}rank same { ${[fqn(service.id).split(".").slice(0, -1).join("."), ...brokers.map(safeId)].join(", ")} }`] : [];
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -811,7 +863,7 @@ views.push("");
 
 // --- C4 level 2: every container in the estate -----------------------------
 // The same boxes as the landscape, opened: each context with its services
-// inside, each service with the store it owns inside that, the brokers the
+// and their stores beside them, the brokers the
 // flows walk through, and the same outsiders as above. One picture of what
 // runs, what it talks to and over which protocol — the diagram most people
 // mean when they ask for "the architecture".
@@ -844,9 +896,14 @@ views.push(
     ...outside,
   ])}`,
 );
+views.push(...containerCards(allServices));
+views.push(...transportLabels(allServices, [...rootParticipants.keys()]));
 views.push(
   ...containerPredicates([...callPairs.values()], carriedByBus, "    "),
 );
+views.push(...localQueueRanks(allServices, [...rootParticipants.keys()]));
+if (outside.some((id) => [...actorIds].some((actor) => safeId(actor) === id)))
+  views.push(`    rank source { ${[...actorIds].map(safeId).join(", ")} }`);
 views.push("  }");
 views.push("");
 
@@ -933,27 +990,31 @@ for (const profile of profiles) {
       ...profileOutside,
     ])}`,
   );
+  views.push(...containerCards(profileServices));
+  views.push(...transportLabels(profileServices, [...profileRoots]));
   views.push(
     ...containerPredicates(
       [...callPairs.values()].filter(
         (pair) =>
-          profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to),
+          profileServiceIds.has(pair.from) && (profileServiceIds.has(pair.to) || profileRoots.has(pair.to)),
       ),
       carriedByBus.filter(
-        (pair) =>
-          profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to),
+        ([from, to]) =>
+          profileServiceIds.has(from) && profileServiceIds.has(to),
       ),
       "    ",
     ),
   );
+  views.push(...localQueueRanks(profileServices, [...profileRoots]));
+  const profileActors = [...actorIds].map(safeId).filter((id) => profileOutside.includes(id));
+  if (profileActors.length) views.push(`    rank source { ${profileActors.join(", ")} }`);
   views.push("  }");
   views.push("");
 }
 
 for (const context of catalog.contexts) {
   // --- C4 level 2: the containers of one context --------------------------
-  // Services, and the databases they keep their state in. A store is a
-  // grandchild of the context, so `*` does not reach it and each one is named:
+  // Services, and the databases they keep their state in. Stores are named:
   // the ones this context's services own, and the ones they only read, which
   // is how a service reading someone else's database shows up as a crossing
   // rather than as a box inside its own walls. The brokers these services
@@ -981,6 +1042,7 @@ for (const context of catalog.contexts) {
   views.push(`  view ${contextViewId(context)} of ${safeId(context.id)} {`);
   views.push(`    title ${q(context.name)}`);
   views.push(`    include ${include}`);
+  views.push(...containerCards(context.services));
   views.push(
     ...containerPredicates(pairs, carriedByBus.filter(inside), "    "),
   );
@@ -994,9 +1056,6 @@ for (const context of catalog.contexts) {
     // read from inside `auth.auth` resolves to nothing at all.
     const parts = [
       ...service.aggregates.map((a) => safeId(a.slug)),
-      ...(storesByOwner.get(service.id) ?? []).map((store) =>
-        safeId(store.slug),
-      ),
     ];
     views.push(`  view ${serviceViewId(service)} of ${fqn(service.id)} {`);
     views.push(`    title ${q(`${service.name} — neighbours`)}`);
@@ -1009,10 +1068,16 @@ for (const context of catalog.contexts) {
     // picture: a service with eleven of them would draw a wall of boxes where
     // the page already lists them, one line each.
     views.push(
-      `  view ${serviceInsideViewId(service)} of ${fqn(service.id)} {`,
+      `  view ${serviceInsideViewId(service)} {`,
     );
     views.push(`    title ${q(`${service.name} — inside`)}`);
-    views.push("    include *");
+    const aggregateIds = new Set(service.aggregates.map((aggregate) => aggregate.id));
+    const insideStores = new Set([
+      ...(storesByOwner.get(service.id) ?? []).map((store) => store.id),
+      ...[...persists.values()].filter((edge) => aggregateIds.has(edge.aggregate)).map((edge) => edge.store),
+    ]);
+    views.push(`    include ${[fqn(service.id), ...[...aggregateIds].map(fqn), ...[...insideStores].map(fqn)].join(", ")}`);
+    views.push("    exclude * -> * where kind is owns");
     views.push("  }");
   }
 }

@@ -9,23 +9,89 @@ views {
   view containers {
     title 'Containers'
     description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, developer
-    include auth.auth -> risk_v1 with { title 'Assess'  technology 'gRPC'  color unresolved  line dotted }
-    include storefront.bff -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> shop.cart with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> delivery.core with { title 'GetShipment'  technology 'gRPC'  color declared  line dashed }
-    include storefront.bff -> shop.oms with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> stripe with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
-    include shop.billing -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
-    include shop.cart -> auth.auth with { title 'validateSession'  technology 'HTTP'  color verified  line solid }
-    include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
-    include delivery.core -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
+    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, developer
+    include auth.auth with { description '' }
+    include auth._store_auth_auth_pg with { description '' }
+    include storefront.bff with { description '' }
+    include payments.ledger with { description '' }
+    include payments._store_payments_ledger_pg with { description '' }
+    include shop.billing with { description '' }
+    include shop._store_shop_billing_pg with { description '' }
+    include shop.cart with { description '' }
+    include shop._store_shop_cart_pg with { description '' }
+    include shop.oms with { description '' }
+    include shop._store_shop_oms_pg with { description '' }
+    include shop.oms_cdc with { description '' }
+    include shop.pricing with { description '' }
+    include shop._store_shop_pricing_pg with { description '' }
+    include delivery.core with { description '' }
+    include delivery._store_delivery_core_pg with { description '' }
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    include auth.auth -> bus where kind is bus with { title '5 events'  notes 'AccountLocked
+PasswordChanged
+SessionEnded
+SessionStarted
+UserRegistered' }
+    include bus -> auth.auth where kind is bus with { title '1 event'  notes 'PasswordChanged' }
+    include payments.ledger -> bus where kind is bus with { title '4 events'  notes 'PaymentAuthorized
+PaymentCaptured
+PaymentDeclined
+RefundIssued' }
+    include bus -> payments.ledger where kind is bus with { title '1 event'  notes 'OrderCancelled' }
+    include shop.billing -> celery_billing where kind is bus with { title '1 call'  notes 'enqueue remind_unpaid_invoice' }
+    include celery_billing -> shop.billing where kind is bus with { title '1 call'  notes 'remind_unpaid_invoice' }
+    include shop.billing -> celery_billing_mail where kind is bus with { title '1 call'  notes 'enqueue send_invoice_email' }
+    include celery_billing_mail -> shop.billing where kind is bus with { title '1 call'  notes 'send_invoice_email' }
+    include shop.billing -> bus where kind is bus with { title '3 events'  notes 'InvoiceIssued
+InvoicePaid
+InvoiceVoided' }
+    include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include shop.cart -> bus where kind is bus with { title '5 events'  notes 'BasketCheckedOut
+BasketCreated
+BasketItemAdded
+BasketItemRemoved
+BasketMerged' }
+    include delivery.core -> bus where kind is bus with { title '8 events'  notes 'RouteClosed
+RoutePlanned
+RouteStarted
+ShipmentDelivered
+ShipmentDispatched
+ShipmentInTransit
+ShipmentLost
+ShipmentReleased' }
+    include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+publish shop.oms.public.orders.Envelope' }
+    include shop.oms -> bus where kind is bus with { title '2 events'  notes 'OrderCancelled
+OrderPlaced' }
+    include bus -> shop.oms where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
+QuoteIssued' }
+    include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include auth.auth -> risk_v1 where kind is calls with { title '1 call'  technology 'gRPC'  color unresolved  line dotted }
+    include storefront.bff -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> shop.cart where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> delivery.core where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> shop.oms where kind is calls with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> stripe where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include shop.billing -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
+    include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
+    include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     exclude payments.ledger -> shop.billing where kind is consumes
     exclude payments.ledger -> delivery.core where kind is consumes
     exclude shop.cart -> shop.oms where kind is consumes
     exclude shop.cart -> shop.pricing where kind is consumes
     exclude shop.oms -> payments.ledger where kind is consumes
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank same { shop, celery_billing, celery_billing_mail }
+    rank same { shop, oms_cdc_kafka }
+    rank source { client, developer }
   }
 
   view landscape_portolan {
@@ -38,6 +104,13 @@ views {
     title 'Portolan containers'
     description 'The services, stores and transports selected by this catalog profile.'
     include portolan, portolan.host, portolan.plugins, portolan.site, developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { developer }
   }
 
   view landscape_example {
@@ -49,16 +122,86 @@ views {
   view containers_example {
     title 'Example estate containers'
     description 'The services, stores and transports selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe
-    include storefront.bff -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> shop.cart with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> delivery.core with { title 'GetShipment'  technology 'gRPC'  color declared  line dashed }
-    include storefront.bff -> shop.oms with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
-    include shop.billing -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
-    include shop.cart -> auth.auth with { title 'validateSession'  technology 'HTTP'  color verified  line solid }
-    include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
-    include delivery.core -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe
+    include auth.auth with { description '' }
+    include auth._store_auth_auth_pg with { description '' }
+    include storefront.bff with { description '' }
+    include payments.ledger with { description '' }
+    include payments._store_payments_ledger_pg with { description '' }
+    include shop.billing with { description '' }
+    include shop._store_shop_billing_pg with { description '' }
+    include shop.cart with { description '' }
+    include shop._store_shop_cart_pg with { description '' }
+    include shop.oms with { description '' }
+    include shop._store_shop_oms_pg with { description '' }
+    include shop.oms_cdc with { description '' }
+    include shop.pricing with { description '' }
+    include shop._store_shop_pricing_pg with { description '' }
+    include delivery.core with { description '' }
+    include delivery._store_delivery_core_pg with { description '' }
+    include auth.auth -> bus where kind is bus with { title '5 events'  notes 'AccountLocked
+PasswordChanged
+SessionEnded
+SessionStarted
+UserRegistered' }
+    include bus -> auth.auth where kind is bus with { title '1 event'  notes 'PasswordChanged' }
+    include payments.ledger -> bus where kind is bus with { title '4 events'  notes 'PaymentAuthorized
+PaymentCaptured
+PaymentDeclined
+RefundIssued' }
+    include bus -> payments.ledger where kind is bus with { title '1 event'  notes 'OrderCancelled' }
+    include shop.billing -> celery_billing where kind is bus with { title '1 call'  notes 'enqueue remind_unpaid_invoice' }
+    include celery_billing -> shop.billing where kind is bus with { title '1 call'  notes 'remind_unpaid_invoice' }
+    include shop.billing -> celery_billing_mail where kind is bus with { title '1 call'  notes 'enqueue send_invoice_email' }
+    include celery_billing_mail -> shop.billing where kind is bus with { title '1 call'  notes 'send_invoice_email' }
+    include shop.billing -> bus where kind is bus with { title '3 events'  notes 'InvoiceIssued
+InvoicePaid
+InvoiceVoided' }
+    include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include shop.cart -> bus where kind is bus with { title '5 events'  notes 'BasketCheckedOut
+BasketCreated
+BasketItemAdded
+BasketItemRemoved
+BasketMerged' }
+    include delivery.core -> bus where kind is bus with { title '8 events'  notes 'RouteClosed
+RoutePlanned
+RouteStarted
+ShipmentDelivered
+ShipmentDispatched
+ShipmentInTransit
+ShipmentLost
+ShipmentReleased' }
+    include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+publish shop.oms.public.orders.Envelope' }
+    include shop.oms -> bus where kind is bus with { title '2 events'  notes 'OrderCancelled
+OrderPlaced' }
+    include bus -> shop.oms where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
+QuoteIssued' }
+    include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include auth.auth -> risk_v1 where kind is calls with { title '1 call'  technology 'gRPC'  color unresolved  line dotted }
+    include storefront.bff -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> shop.cart where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> delivery.core where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> shop.oms where kind is calls with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> stripe where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include shop.billing -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
+    include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
+    include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    exclude payments.ledger -> shop.billing where kind is consumes
+    exclude payments.ledger -> delivery.core where kind is consumes
+    exclude shop.cart -> shop.oms where kind is consumes
+    exclude shop.cart -> shop.pricing where kind is consumes
+    exclude shop.oms -> payments.ledger where kind is consumes
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank same { shop, celery_billing, celery_billing_mail }
+    rank same { shop, oms_cdc_kafka }
+    rank source { client }
   }
 
   view landscape_bagisto {
@@ -71,6 +214,9 @@ views {
     title 'Bagisto containers'
     description 'The services, stores and transports selected by this catalog profile.'
     include *
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
 
   view landscape_codely {
@@ -83,6 +229,9 @@ views {
     title 'CodelyTV php-ddd-example containers'
     description 'The services, stores and transports selected by this catalog profile.'
     include *
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
 
   view landscape_modular_monolith {
@@ -94,138 +243,216 @@ views {
   view containers_modular_monolith {
     title 'Modular Monolith with DDD containers'
     description 'The services, stores and transports selected by this catalog profile.'
-    include payments, payments.ledger, payments.ledger.pg, bus, client, stripe
+    include payments, payments.ledger, payments._store_payments_ledger_pg, bus, client, stripe
+    include payments.ledger with { description '' }
+    include payments._store_payments_ledger_pg with { description '' }
+    include payments.ledger -> bus where kind is bus with { title '4 events'  notes 'PaymentAuthorized
+PaymentCaptured
+PaymentDeclined
+RefundIssued' }
+    include bus -> payments.ledger where kind is bus with { title '1 event'  notes 'OrderCancelled' }
+    include shop.billing -> bus where kind is bus with { title '3 events'  notes 'InvoiceIssued
+InvoicePaid
+InvoiceVoided' }
+    include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include delivery.core -> bus where kind is bus with { title '8 events'  notes 'RouteClosed
+RoutePlanned
+RouteStarted
+ShipmentDelivered
+ShipmentDispatched
+ShipmentInTransit
+ShipmentLost
+ShipmentReleased' }
+    include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include shop.oms -> bus where kind is bus with { title '2 events'  notes 'OrderCancelled
+OrderPlaced' }
+    include bus -> shop.oms where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include payments.ledger -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> stripe where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { client }
   }
 
   view ctx_auth of auth {
     title 'Authentication'
-    include *, auth.auth.pg
+    include *, auth._store_auth_auth_pg
+    include auth.auth with { description '' }
+    include auth._store_auth_auth_pg with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
   view svc_auth_auth of auth.auth {
     title 'Authentication & Sessions — neighbours'
     include *, -> *, * ->
-    exclude lockout, session, user, pg
+    exclude lockout, session, user
   }
-  view svc_auth_auth_inside of auth.auth {
+  view svc_auth_auth_inside {
     title 'Authentication & Sessions — inside'
-    include *
+    include auth.auth, auth.auth.lockout, auth.auth.session, auth.auth.user, auth._store_auth_auth_pg
+    exclude * -> * where kind is owns
   }
   view ctx_storefront of storefront {
     title 'Storefront'
     include *
+    include storefront.bff with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
   view svc_storefront_bff of storefront.bff {
     title 'Storefront BFF — neighbours'
     include *, -> *, * ->
   }
-  view svc_storefront_bff_inside of storefront.bff {
+  view svc_storefront_bff_inside {
     title 'Storefront BFF — inside'
-    include *
+    include storefront.bff
+    exclude * -> * where kind is owns
   }
   view ctx_payments of payments {
     title 'Payments'
-    include *, payments.ledger.pg
+    include *, payments._store_payments_ledger_pg
+    include payments.ledger with { description '' }
+    include payments._store_payments_ledger_pg with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
   view svc_payments_ledger of payments.ledger {
     title 'Ledger — neighbours'
     include *, -> *, * ->
-    exclude payment, refund, pg
+    exclude payment, refund
   }
-  view svc_payments_ledger_inside of payments.ledger {
+  view svc_payments_ledger_inside {
     title 'Ledger — inside'
-    include *
+    include payments.ledger, payments.ledger.payment, payments.ledger.refund, payments._store_payments_ledger_pg
+    exclude * -> * where kind is owns
   }
   view ctx_shop of shop {
     title 'Shop'
-    include *, shop.billing.pg, shop.cart.pg, shop.oms.pg, shop.pricing.pg
-    include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
+    include *, shop._store_shop_billing_pg, shop._store_shop_cart_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg
+    include shop.billing with { description '' }
+    include shop._store_shop_billing_pg with { description '' }
+    include shop.cart with { description '' }
+    include shop._store_shop_cart_pg with { description '' }
+    include shop.oms with { description '' }
+    include shop._store_shop_oms_pg with { description '' }
+    include shop.oms_cdc with { description '' }
+    include shop.pricing with { description '' }
+    include shop._store_shop_pricing_pg with { description '' }
+    include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     exclude shop.cart -> shop.oms where kind is consumes
     exclude shop.cart -> shop.pricing where kind is consumes
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
   view svc_shop_billing of shop.billing {
     title 'Billing — neighbours'
     include *, -> *, * ->
-    exclude invoice, pg
+    exclude invoice
   }
-  view svc_shop_billing_inside of shop.billing {
+  view svc_shop_billing_inside {
     title 'Billing — inside'
-    include *
+    include shop.billing, shop.billing.invoice, shop._store_shop_billing_pg
+    exclude * -> * where kind is owns
   }
   view svc_shop_cart of shop.cart {
     title 'Shopping Cart — neighbours'
     include *, -> *, * ->
-    exclude basket, pg
+    exclude basket
   }
-  view svc_shop_cart_inside of shop.cart {
+  view svc_shop_cart_inside {
     title 'Shopping Cart — inside'
-    include *
+    include shop.cart, shop.cart.basket, shop._store_shop_cart_pg
+    exclude * -> * where kind is owns
   }
   view svc_shop_oms of shop.oms {
     title 'Order Management — neighbours'
     include *, -> *, * ->
-    exclude _order, pg
+    exclude _order
   }
-  view svc_shop_oms_inside of shop.oms {
+  view svc_shop_oms_inside {
     title 'Order Management — inside'
-    include *
+    include shop.oms, shop.oms._order, shop._store_shop_oms_pg
+    exclude * -> * where kind is owns
   }
   view svc_shop_oms_cdc of shop.oms_cdc {
     title 'oms-cdc — neighbours'
     include *, -> *, * ->
   }
-  view svc_shop_oms_cdc_inside of shop.oms_cdc {
+  view svc_shop_oms_cdc_inside {
     title 'oms-cdc — inside'
-    include *
+    include shop.oms_cdc
+    exclude * -> * where kind is owns
   }
   view svc_shop_pricing of shop.pricing {
     title 'Pricing — neighbours'
     include *, -> *, * ->
-    exclude price_list, quote, pg
+    exclude price_list, quote
   }
-  view svc_shop_pricing_inside of shop.pricing {
+  view svc_shop_pricing_inside {
     title 'Pricing — inside'
-    include *
+    include shop.pricing, shop.pricing.price_list, shop.pricing.quote, shop._store_shop_pricing_pg
+    exclude * -> * where kind is owns
   }
   view ctx_delivery of delivery {
     title 'Delivery'
-    include *, delivery.core.pg
+    include *, delivery._store_delivery_core_pg
+    include delivery.core with { description '' }
+    include delivery._store_delivery_core_pg with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
   view svc_delivery_core of delivery.core {
     title 'Delivery Core — neighbours'
     include *, -> *, * ->
-    exclude route, shipment, pg
+    exclude route, shipment
   }
-  view svc_delivery_core_inside of delivery.core {
+  view svc_delivery_core_inside {
     title 'Delivery Core — inside'
-    include *
+    include delivery.core, delivery.core.route, delivery.core.shipment, delivery._store_delivery_core_pg
+    exclude * -> * where kind is owns
   }
   view ctx_portolan of portolan {
     title 'Portolan'
     include *
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
   }
   view svc_portolan_host of portolan.host {
     title 'Host — neighbours'
     include *, -> *, * ->
   }
-  view svc_portolan_host_inside of portolan.host {
+  view svc_portolan_host_inside {
     title 'Host — inside'
-    include *
+    include portolan.host
+    exclude * -> * where kind is owns
   }
   view svc_portolan_plugins of portolan.plugins {
     title 'Plugins — neighbours'
     include *, -> *, * ->
   }
-  view svc_portolan_plugins_inside of portolan.plugins {
+  view svc_portolan_plugins_inside {
     title 'Plugins — inside'
-    include *
+    include portolan.plugins
+    exclude * -> * where kind is owns
   }
   view svc_portolan_site of portolan.site {
     title 'Site — neighbours'
     include *, -> *, * ->
   }
-  view svc_portolan_site_inside of portolan.site {
+  view svc_portolan_site_inside {
     title 'Site — inside'
-    include *
+    include portolan.site
+    exclude * -> * where kind is owns
   }
 
   dynamic view flow_auth_change_password {

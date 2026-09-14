@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
+import { LikeC4 } from "likec4";
 
 import { likec4Sources } from "./gen-likec4.mjs";
 
@@ -305,12 +306,12 @@ describe("the LikeC4 generator", () => {
         steps: [{ type: "step", id: "save", from: "demo.api", to: "database", kind: "call", label: "save", status: "declared" }],
       }],
     });
-    expect(model).toContain("pg = store 'Postgres'");
+    expect(model).toContain("_store_demo_api_pg = store 'Postgres'");
     expect(model).toContain("database = store 'database'");
     expect(views).toContain("demo.api -> database 'save'");
   });
 
-  it("draws level 2 with the bus between the boxes and one labelled edge per pair", () => {
+  it("draws L2 with leaf services, sibling stores and evidence-preserving edges", async () => {
     const service = (id, slug, name, extra) => ({
       id,
       slug,
@@ -323,7 +324,7 @@ describe("the LikeC4 generator", () => {
       aggregates: [],
       ...extra,
     });
-    const { model, views } = generate({
+    const { spec, model, views } = generate({
       contexts: [
         {
           id: "shop",
@@ -445,7 +446,7 @@ describe("the LikeC4 generator", () => {
     expect(model).toContain("technology 'Go · HTTP'");
     expect(model).toContain("technology 'postgres'");
     // Every relation says what kind of fact it is; a call carries its protocol.
-    expect(model).toContain("shop.oms -[calls]-> shop.cart 'getBasket' 'HTTP'");
+    expect(model).toContain("shop.oms -[calls]-> shop.cart 'getBasket' {\n    technology 'HTTP'");
     expect(model).toContain(
       "shop.cart -[consumes]-> shop.oms 'BasketCheckedOut'",
     );
@@ -459,26 +460,39 @@ describe("the LikeC4 generator", () => {
 
     // The estate's containers: contexts opened, stores and the bus named.
     expect(views).toMatch(
-      /view containers \{[^}]*include shop, shop\.cart, shop\.oms, shop\.cart\.pg, bus\n/,
+      /view containers \{[^}]*include shop, shop\.cart, shop\.oms, shop\._store_shop_cart_pg, bus\n/,
     );
     // One edge per pair, counted, with the protocol and the best status.
     const pair =
-      "include shop.oms -> shop.cart with { title '2 calls'  technology 'HTTP'  color verified  line solid }";
+      "include shop.oms -> shop.cart where kind is calls with { title '1 call'  multiple true }";
     expect(views).toContain(`view containers {\n    title 'Containers'`);
     expect(views.split(pair)).toHaveLength(4); // containers, containers_default, and ctx_shop
     // With the bus on the picture the direct consumer arrow is not drawn twice.
-    expect(views).toContain(
-      "view ctx_shop of shop {\n" +
-        "    title 'Shop'\n" +
-        "    include *, shop.cart.pg\n" +
-        `    ${pair}\n` +
-        "    exclude shop.cart -> shop.oms where kind is consumes\n" +
-        "  }",
-    );
+    expect(views).toContain("include *, shop._store_shop_cart_pg");
+    expect(views).toContain("exclude shop.cart -> shop.oms where kind is consumes");
+    expect(model).toContain("shop.cart -[owns]-> shop._store_shop_cart_pg 'owns'");
+    expect(views).toContain("autoLayout LeftRight 100 70");
+    expect(views).toContain("include shop.cart with { description '' }");
     // The neighbours view keeps every method as its own relation.
     expect(views).toMatch(
       /view svc_shop_oms of shop\.oms \{\n    title[^\n]*\n    include \*, -> \*, \* ->\n  \}/,
     );
+    const engine = await LikeC4.fromSource(spec + model + views, { logger: false });
+    try {
+      const computed = await engine.computedModel();
+      for (const relation of Object.values(computed.$data.relations).filter((relation) => relation.kind === "calls")) {
+        expect(relation.technology).toBe("HTTP");
+        expect(relation.description.txt).toContain("oms/vendor/cart/openapi.yaml");
+      }
+      for (const id of ["containers", "containers_default", "ctx_shop"]) {
+        const view = computed.view(id).$view;
+        expect(view.nodes.find((node) => node.id === "shop.cart").children).toEqual([]);
+        expect(view.nodes.find((node) => node.id === "shop._store_shop_cart_pg").parent).toBe("shop");
+        expect(view.edges.filter((edge) => edge.source === "shop.oms" && edge.target === "shop.cart")).toHaveLength(2);
+        expect(view.edges.some((edge) => edge.kind === "consumes")).toBe(false);
+        expect(view.edges.filter((edge) => edge.kind === "bus")).toHaveLength(2);
+      }
+    } finally { await engine.dispose(); }
   });
 
   it("places every deployed service in its environment, cluster and namespace, and draws the frames by name", () => {

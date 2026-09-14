@@ -7,7 +7,7 @@
 
 import { catalog } from "../data";
 import type { Catalog } from "../catalog";
-import { fqn, participantFqn } from "./ids";
+import { fqn, participantFqn, storeFqn } from "./ids";
 
 export function catalogIdMap(catalog: Catalog): Map<string, string> {
   const result = new Map<string, string>();
@@ -28,9 +28,8 @@ export function catalogIdMap(catalog: Catalog): Map<string, string> {
       }
     }
   }
-  // A store is a container inside the service that owns it, and clicking one
-  // should open the schema rather than nothing.
-  for (const store of catalog.stores ?? []) remember(store.id);
+  // The visual placement is independent of the catalog's ownership path.
+  for (const store of catalog.stores ?? []) result.set(storeFqn(store), store.id);
   // Brokers, actors and externals are model elements too, and a flow lane is
   // the most likely thing on screen to be clicked.
   for (const flow of catalog.flows) {

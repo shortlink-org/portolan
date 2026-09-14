@@ -46,9 +46,10 @@ model {
           description 'UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.'
         }
       }
-      pg = store 'Auth database' {
-        technology 'postgres'
-      }
+    }
+    _store_auth_auth_pg = store 'Auth database' {
+      technology 'postgres'
+      description 'Owned by Authentication & Sessions'
     }
   }
   storefront = context 'Storefront' {
@@ -83,9 +84,10 @@ model {
           description 'Money went back to the customer, against a payment that had been captured.'
         }
       }
-      pg = store 'Ledger database' {
-        technology 'postgres'
-      }
+    }
+    _store_payments_ledger_pg = store 'Ledger database' {
+      technology 'postgres'
+      description 'Owned by Ledger'
     }
   }
   shop = context 'Shop' {
@@ -105,9 +107,6 @@ model {
         InvoiceVoided = event 'InvoiceVoided' {
           description 'The invoice was ended without payment, and nobody will be asked again.'
         }
-      }
-      pg = store 'Billing database' {
-        technology 'postgres'
       }
     }
     cart = service 'Shopping Cart' {
@@ -137,9 +136,6 @@ for it, and pricing expires the quote it issued.'
 that now holds everything.'
         }
       }
-      pg = store 'Cart database' {
-        technology 'postgres'
-      }
     }
     oms = service 'Order Management' {
       description 'github.com/shortlink-org/portolan/examples/shop/oms'
@@ -159,9 +155,6 @@ listens for this.'
           description 'An order came into being from a checked-out basket. Placed, not yet paid
 for: whoever moves money listens for this.'
         }
-      }
-      pg = store 'Order database' {
-        technology 'postgres'
       }
     }
     oms_cdc = service 'oms-cdc' {
@@ -183,9 +176,22 @@ for: whoever moves money listens for this.'
           description 'QuoteIssued says a basket has a price, and for how long. Whoever places the order needs both, so both are on the event rather than fetched again.'
         }
       }
-      pg = store 'Pricing database' {
-        technology 'postgres'
-      }
+    }
+    _store_shop_billing_pg = store 'Billing database' {
+      technology 'postgres'
+      description 'Owned by Billing'
+    }
+    _store_shop_cart_pg = store 'Cart database' {
+      technology 'postgres'
+      description 'Owned by Shopping Cart'
+    }
+    _store_shop_oms_pg = store 'Order database' {
+      technology 'postgres'
+      description 'Owned by Order Management'
+    }
+    _store_shop_pricing_pg = store 'Pricing database' {
+      technology 'postgres'
+      description 'Owned by Pricing'
     }
   }
   delivery = context 'Delivery' {
@@ -232,9 +238,10 @@ dispatched. Said by this service, not by the ledger: the ledger says a
 payment was captured, and what that means for a parcel is decided here.'
         }
       }
-      pg = store 'Delivery database' {
-        technology 'postgres'
-      }
+    }
+    _store_delivery_core_pg = store 'Delivery database' {
+      technology 'postgres'
+      description 'Owned by Delivery Core'
     }
   }
   portolan = context 'Portolan' {
@@ -257,31 +264,52 @@ payment was captured, and what that means for a parcel is decided here.'
     }
   }
 
-  auth.auth -[calls]-> risk_v1 'Assess' 'gRPC' {
+  auth.auth -[calls]-> risk_v1 'Assess' {
+    technology 'gRPC'
+    description 'risk.v1.RiskService/Assess · unresolved · examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go'
     style { color unresolved  line dotted  head normal }
   }
-  storefront.bff -[calls]-> auth.auth 'validateSession' 'HTTP' {
+  auth.auth -[owns]-> auth._store_auth_auth_pg 'owns' {
+    style { color muted  line solid  head none }
+  }
+  storefront.bff -[calls]-> auth.auth 'validateSession' {
+    technology 'HTTP'
+    description 'auth.v1/validateSession · declared · examples/bff/src/infrastructure/auth/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'addItem' 'HTTP' {
+  storefront.bff -[calls]-> shop.cart 'addItem' {
+    technology 'HTTP'
+    description 'cart.v1/addItem · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'checkout' 'HTTP' {
+  storefront.bff -[calls]-> shop.cart 'checkout' {
+    technology 'HTTP'
+    description 'cart.v1/checkout · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'getBasket' 'HTTP' {
+  storefront.bff -[calls]-> shop.cart 'getBasket' {
+    technology 'HTTP'
+    description 'cart.v1/getBasket · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'removeItem' 'HTTP' {
+  storefront.bff -[calls]-> shop.cart 'removeItem' {
+    technology 'HTTP'
+    description 'cart.v1/removeItem · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> delivery.core 'GetShipment' 'gRPC' {
+  storefront.bff -[calls]-> delivery.core 'GetShipment' {
+    technology 'gRPC'
+    description 'delivery.v1.Delivery/GetShipment · declared · examples/bff/src/infrastructure/delivery/proto/delivery/v1/delivery.proto'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.oms 'CancelOrder' 'gRPC' {
+  storefront.bff -[calls]-> shop.oms 'CancelOrder' {
+    technology 'gRPC'
+    description 'shop.v1.OrderService/CancelOrder · declared · examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.oms 'GetOrder' 'gRPC' {
+  storefront.bff -[calls]-> shop.oms 'GetOrder' {
+    technology 'gRPC'
+    description 'shop.v1.OrderService/GetOrder · declared · examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto'
     style { color declared  line dashed  head normal }
   }
   payments.ledger -[consumes]-> shop.billing 'PaymentCaptured' {
@@ -290,23 +318,41 @@ payment was captured, and what that means for a parcel is decided here.'
   payments.ledger -[consumes]-> delivery.core 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -[calls]-> shop.oms 'GetOrder' 'gRPC' {
+  payments.ledger -[calls]-> shop.oms 'GetOrder' {
+    technology 'gRPC'
+    description 'shop.v1.OrderService/GetOrder · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostPaymentIntents' 'HTTP' {
+  payments.ledger -[calls]-> stripe 'PostPaymentIntents' {
+    technology 'HTTP'
+    description 'stripe.v1/PostPaymentIntents · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCancel' 'HTTP' {
+  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCancel' {
+    technology 'HTTP'
+    description 'stripe.v1/PostPaymentIntentsIntentCancel · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCapture' 'HTTP' {
+  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCapture' {
+    technology 'HTTP'
+    description 'stripe.v1/PostPaymentIntentsIntentCapture · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostRefunds' 'HTTP' {
+  payments.ledger -[calls]-> stripe 'PostRefunds' {
+    technology 'HTTP'
+    description 'stripe.v1/PostRefunds · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  shop.billing -[calls]-> auth.auth 'validateSession' 'HTTP' {
+  payments.ledger -[owns]-> payments._store_payments_ledger_pg 'owns' {
+    style { color muted  line solid  head none }
+  }
+  shop.billing -[calls]-> auth.auth 'validateSession' {
+    technology 'HTTP'
+    description 'auth.v1/validateSession · declared · examples/shop/billing/invoices/clients/auth/openapi.yaml'
     style { color declared  line dashed  head normal }
+  }
+  shop.billing -[owns]-> shop._store_shop_billing_pg 'owns' {
+    style { color muted  line solid  head none }
   }
   shop.cart -[consumes]-> shop.oms 'BasketCheckedOut' {
     style { color verified  line solid  head onormal }
@@ -314,55 +360,73 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.cart -[consumes]-> shop.pricing 'BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
   }
-  shop.cart -[calls]-> auth.auth 'validateSession' 'HTTP' {
+  shop.cart -[calls]-> auth.auth 'validateSession' {
+    technology 'HTTP'
+    description 'auth.v1/validateSession · verified · examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml'
     style { color verified  line solid  head normal }
   }
-  shop.cart -[calls]-> shop.pricing 'GetQuote' 'gRPC' {
+  shop.cart -[calls]-> shop.pricing 'GetQuote' {
+    technology 'gRPC'
+    description 'shop.v1.Pricing/GetQuote · declared · examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto'
     style { color declared  line dashed  head normal }
+  }
+  shop.cart -[owns]-> shop._store_shop_cart_pg 'owns' {
+    style { color muted  line solid  head none }
   }
   shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms_cdc -[reads]-> shop.oms.pg 'reads' {
+  shop.oms -[owns]-> shop._store_shop_oms_pg 'owns' {
+    style { color muted  line solid  head none }
+  }
+  shop.oms_cdc -[reads]-> shop._store_shop_oms_pg 'reads' {
     style { color declared  line dashed  head normal }
   }
-  delivery.core -[calls]-> shop.oms 'GetOrder' 'gRPC' {
+  shop.pricing -[owns]-> shop._store_shop_pricing_pg 'owns' {
+    style { color muted  line solid  head none }
+  }
+  delivery.core -[calls]-> shop.oms 'GetOrder' {
+    technology 'gRPC'
+    description 'shop.v1.OrderService/GetOrder · declared · examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto'
     style { color declared  line dashed  head normal }
   }
-  auth.auth.lockout -[persists]-> auth.auth.pg 'lockouts' {
+  delivery.core -[owns]-> delivery._store_delivery_core_pg 'owns' {
+    style { color muted  line solid  head none }
+  }
+  auth.auth.lockout -[persists]-> auth._store_auth_auth_pg 'lockouts' {
     style { color declared  line dashed  head normal }
   }
-  auth.auth.session -[persists]-> auth.auth.pg 'sessions' {
+  auth.auth.session -[persists]-> auth._store_auth_auth_pg 'sessions' {
     style { color declared  line dashed  head normal }
   }
-  auth.auth.user -[persists]-> auth.auth.pg 'users' {
+  auth.auth.user -[persists]-> auth._store_auth_auth_pg 'users' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger.payment -[persists]-> payments.ledger.pg 'payments, postings' {
+  payments.ledger.payment -[persists]-> payments._store_payments_ledger_pg 'payments, postings' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger.refund -[persists]-> payments.ledger.pg 'refunds' {
+  payments.ledger.refund -[persists]-> payments._store_payments_ledger_pg 'refunds' {
     style { color declared  line dashed  head normal }
   }
-  shop.billing.invoice -[persists]-> shop.billing.pg 'invoices, invoice_lines' {
+  shop.billing.invoice -[persists]-> shop._store_shop_billing_pg 'invoices, invoice_lines' {
     style { color declared  line dashed  head normal }
   }
-  shop.cart.basket -[persists]-> shop.cart.pg 'baskets, basket_items' {
+  shop.cart.basket -[persists]-> shop._store_shop_cart_pg 'baskets, basket_items' {
     style { color declared  line dashed  head normal }
   }
-  delivery.core.route -[persists]-> delivery.core.pg 'routes, route_stops' {
+  delivery.core.route -[persists]-> delivery._store_delivery_core_pg 'routes, route_stops' {
     style { color declared  line dashed  head normal }
   }
-  delivery.core.shipment -[persists]-> delivery.core.pg 'packages, parcels, scans' {
+  delivery.core.shipment -[persists]-> delivery._store_delivery_core_pg 'packages, parcels, scans' {
     style { color declared  line dashed  head normal }
   }
-  shop.oms._order -[persists]-> shop.oms.pg 'orders, order_lines' {
+  shop.oms._order -[persists]-> shop._store_shop_oms_pg 'orders, order_lines' {
     style { color declared  line dashed  head normal }
   }
-  shop.pricing.price_list -[persists]-> shop.pricing.pg 'price_lists, price_rows' {
+  shop.pricing.price_list -[persists]-> shop._store_shop_pricing_pg 'price_lists, price_rows' {
     style { color declared  line dashed  head normal }
   }
-  shop.pricing.quote -[persists]-> shop.pricing.pg 'quotes, quote_lines' {
+  shop.pricing.quote -[persists]-> shop._store_shop_pricing_pg 'quotes, quote_lines' {
     style { color declared  line dashed  head normal }
   }
   auth.auth -[bus]-> bus '5 events' {

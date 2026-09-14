@@ -199,6 +199,9 @@ Diagrams answer relationship, sequence, ownership, or deployment questions. Use 
 - Ghosts, dashed lines, status markers, and context colors retain their existing semantics.
 - Avoid crossings and overlaps when the layout can resolve them. Focus, filtering, and collapsing are legitimate ways to make a large graph readable: show the active scope and provide a way to reveal omitted records. Never silently drop inconvenient edges or nodes.
 - At narrow sizes, reduce the shell and controls before making graph labels unreadable.
+- In L2, services remain readable leaf cards even when they own stores. Put stores beside the service inside its context and show ownership explicitly; a database must not replace its service as the dominant block. Keep repository paths in details.
+- Keep the LikeC4 renderer and model for L2; use compound ELK placement and orthogonal routing to allocate separate corridors across context boundaries. Translate routes and labels from their containing context into canvas coordinates together. Do not use a synthetic ownership group to place a shared broker.
+- Aggregate call labels only across matching protocols and evidence statuses. Keep unlike relationships distinct, and keep individual methods and sources reachable from the summary. Focus emphasizes a node, its immediate neighbours and enclosing contexts without moving the graph; reset restores the complete view.
 
 ## Write like the catalog knows what it measured
 

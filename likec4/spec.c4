@@ -56,4 +56,5 @@ specification {
   relationship reads
   relationship persists
   relationship uses
+  relationship owns
 }

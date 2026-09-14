@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import type { DiagramApi, ViewPadding } from "likec4/react";
-import { ReactLikeC4, isLikeC4ViewId } from "./generated";
+import { ReactLikeC4 as ModelView, LikeC4ModelProvider } from "likec4/react";
+import type { LikeC4Model } from "@likec4/core/model";
+import { ReactLikeC4, RenderIcon, isLikeC4ViewId } from "./generated";
 import { useTheme } from "../app/theme";
 import { Ident } from "../components/Ident";
 import { buildHighlightCss } from "./highlight-css";
@@ -27,6 +29,8 @@ export interface InteractiveViewProps {
   extraCss?: string;
   onNode?: (likec4Id: string) => void;
   onEdge?: (edgeId: string) => void;
+  relationshipDetails?: boolean;
+  model?: LikeC4Model.Layouted;
   onCanvas?: () => void;
   /**
    * Once the canvas is live, with the diagram's API and the size of the box it
@@ -80,6 +84,8 @@ export function InteractiveView({
   extraCss = "",
   onNode,
   onEdge,
+  relationshipDetails = false,
+  model,
   onCanvas,
   onReady,
   children,
@@ -110,9 +116,10 @@ export function InteractiveView({
 
   if (!isLikeC4ViewId(viewId)) return <Missing viewId={viewId} />;
 
-  return (
+  const Renderer = model ? ModelView : ReactLikeC4;
+  const rendered = (
     <div ref={boxRef} className="h-full w-full bg-canvas">
-      <ReactLikeC4
+      <Renderer
         // Remounting on viewId keeps LikeC4's own walkthrough state from
         // leaking across a filter or variant switch. The variant is in the key
         // for a second reason: it is an initial value inside LikeC4, so the
@@ -120,6 +127,7 @@ export function InteractiveView({
         // selection is deliberately absent: re-keying would re-layout.
         key={`${viewId}:${variant}:${theme}`}
         viewId={viewId}
+        renderIcon={({ node, ...props }) => <RenderIcon {...props} node={{ ...node, icon: node.icon ?? undefined }} />}
         dynamicViewVariant={variant}
         colorScheme={theme}
         background="dots"
@@ -131,7 +139,7 @@ export function InteractiveView({
         enableDynamicViewWalkthrough={walkthrough}
         enableNotes
         enableElementDetails={false}
-        enableRelationshipDetails={false}
+        enableRelationshipDetails={relationshipDetails}
         enableSearch={false}
         injectFontCss={false}
         onNodeClick={(node) => onNode?.(String(node.id))}
@@ -142,7 +150,8 @@ export function InteractiveView({
       >
         {css ? <style>{css}</style> : null}
         {children}
-      </ReactLikeC4>
+      </Renderer>
     </div>
   );
+  return model ? <LikeC4ModelProvider likec4model={model}>{rendered}</LikeC4ModelProvider> : rendered;
 }
