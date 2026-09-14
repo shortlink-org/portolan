@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { BrowserRouter, useLocation } from "react-router";
 import { LandingPage } from "../landing/LandingPage";
 import { isLandingPath } from "../routes";
 import { MotionProvider } from "../lib/motion";
+import { SuspenseReveal } from "../components/SuspenseReveal";
 import { ThemeProvider } from "./theme";
 
 // The catalog carries diagram runtimes, API viewers and every generated fact.
@@ -18,7 +19,7 @@ function RoutedApp() {
   if (isLandingPath(pathname)) return <LandingPage />;
 
   return (
-    <Suspense
+    <SuspenseReveal
       fallback={
         <div className="flex h-full items-center justify-center bg-canvas text-muted">
           <span className="mono">loading the catalog…</span>
@@ -26,7 +27,7 @@ function RoutedApp() {
       }
     >
       <CatalogApp />
-    </Suspense>
+    </SuspenseReveal>
   );
 }
 

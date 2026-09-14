@@ -12,9 +12,10 @@
 // service that listens for one, which a rendered document cannot do because it
 // has never heard of the estate around it.
 
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import { loaderFor as loaderIn } from "../lib/spec-files";
 import { Empty } from "./PageHeader";
+import { SuspenseReveal } from "./SuspenseReveal";
 
 /**
  * Loaded on demand. This one is worth more than the OpenAPI reference is: the
@@ -102,7 +103,7 @@ export function AsyncApiReference({ source }: { source: string }) {
        to switch. `.spec-sheet` in index.css is where that is arranged, and why
        it takes re-declaring the palette rather than painting a background. */
     <div className="spec-sheet overflow-x-auto rounded-card border border-line p-2">
-      <Suspense fallback={<Empty>loading the reference…</Empty>}>
+      <SuspenseReveal fallback={<Empty>loading the reference…</Empty>}>
         <Reference
           schema={spec}
           config={{
@@ -114,7 +115,7 @@ export function AsyncApiReference({ source }: { source: string }) {
             },
           }}
         />
-      </Suspense>
+      </SuspenseReveal>
     </div>
   );
 }

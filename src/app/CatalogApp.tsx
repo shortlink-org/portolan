@@ -1,5 +1,4 @@
 import {
-  Suspense,
   ViewTransition,
   lazy,
   useCallback,
@@ -67,6 +66,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./query-client";
 import { useChatUi } from "../chat/store";
 import { projectPreview } from "../lib/project-preview";
+import { SuspenseReveal } from "../components/SuspenseReveal";
 
 // The chat is a chunk of its own, and a build with VITE_CHAT=off has no such
 // chunk: the test is on the literal Vite substitutes, so the import below is
@@ -131,17 +131,17 @@ function AppRoutes({
       <Route
         path="/adrs/new"
         element={
-          <Suspense fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
+          <SuspenseReveal fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
             <AdrCreate />
-          </Suspense>
+          </SuspenseReveal>
         }
       />
       <Route
         path="/adrs/:adr/edit"
         element={
-          <Suspense fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
+          <SuspenseReveal fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
             <AdrCreate />
-          </Suspense>
+          </SuspenseReveal>
         }
       />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
@@ -453,9 +453,9 @@ function Shell() {
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <ShortcutsSheet open={help} onClose={() => setHelp(false)} />
       {ChatPanel && chatOpen ? (
-        <Suspense fallback={<ChatLoading />}>
+        <SuspenseReveal fallback={<ChatLoading />}>
           <ChatPanel />
-        </Suspense>
+        </SuspenseReveal>
       ) : null}
       {/* The one thing the app says out loud, and it says it here rather than
           in the sidebar: a pin can be taken from a page whose tree is folded

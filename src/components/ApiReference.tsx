@@ -11,10 +11,11 @@
 // linkable and comparable with a proto service next door - and this tab shows
 // the source document beside them.
 
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import { useTheme } from "../app/theme";
 import { loaderFor as loaderIn } from "../lib/spec-files";
 import { Empty } from "./PageHeader";
+import { SuspenseReveal } from "./SuspenseReveal";
 
 /**
  * Loaded on demand, so a reader who never opens this tab never waits for it and
@@ -118,7 +119,7 @@ export function ApiReference({ source }: { source: string }) {
 
   return (
     <div className="rounded-card border border-line">
-      <Suspense fallback={<Empty>loading the reference…</Empty>}>
+      <SuspenseReveal fallback={<Empty>loading the reference…</Empty>}>
         <Reference
           configuration={{
             content: spec,
@@ -128,7 +129,7 @@ export function ApiReference({ source }: { source: string }) {
             forceDarkModeState: theme,
           }}
         />
-      </Suspense>
+      </SuspenseReveal>
     </div>
   );
 }
