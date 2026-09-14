@@ -40,17 +40,18 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	consumeAt := map[string]int{}
 	for _, call := range result.Calls {
 		peer, status := peerOf(call, opts)
-		if at, seen := consumeAt[call.ID]; seen {
+		id := callID(call, opts)
+		if at, seen := consumeAt[id]; seen {
 			consumes[at].Evidence = appendEvidence(consumes[at].Evidence, httpCallEvidence(call))
 			continue
 		}
-		consumeAt[call.ID] = len(consumes)
+		consumeAt[id] = len(consumes)
 		source := call.Source.String()
 		if call.Contract != "" {
 			source = call.Contract
 		}
 		consumes = append(consumes, catalog.RpcCall{
-			ID: call.ID, Peer: peer, Status: status, Source: source,
+			ID: id, Peer: peer, Status: status, Source: source,
 			Note: callNote(call), Destination: call.Destination, Evidence: httpCallEvidence(call),
 		})
 	}
@@ -91,6 +92,29 @@ func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, opts Opti
 		called[call.ID] = true
 	}
 	byExternal := map[string]*catalog.External{}
+	for _, call := range calls {
+		prefix, adapter, ok := adapterOf(call, opts)
+		if !ok || call.API != "" {
+			continue
+		}
+		target := byExternal[adapter.External]
+		if target == nil {
+			target = &catalog.External{
+				ID: adapter.External, Slug: adapter.External, Name: firstNonEmpty(adapter.Name, title(adapter.External)),
+				Summary: adapter.Summary, URL: adapter.URL, Provides: []catalog.RpcService{},
+			}
+			byExternal[adapter.External] = target
+		}
+		iface, name := observedOperation(call, adapter)
+		method := catalog.RpcMethod{Name: name}
+		if call.Protocol == "SOAP" {
+			method.Request, method.Response = call.Request, call.Response
+			method.SOAP = &catalog.SoapRoute{Action: call.Action, Version: call.SOAPVersion, Endpoint: call.Endpoint}
+		} else {
+			method.HTTP = &catalog.HttpRoute{Method: call.Method, Path: call.Path}
+		}
+		mergeProvides(target, []catalog.RpcService{{ID: iface, Source: prefix, Methods: []catalog.RpcMethod{method}}})
+	}
 	for _, contract := range contracts {
 		if !used[contract.API] || opts.Peers[contract.API] != "" {
 			continue
@@ -136,32 +160,7 @@ func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, opts Opti
 			provides = append(provides, catalog.RpcService{ID: id, Source: contract.Source, Methods: methods})
 		}
 		sort.Slice(provides, func(i, j int) bool { return provides[i].ID < provides[j].ID })
-		for _, provided := range provides {
-			at := -1
-			for i := range target.Provides {
-				if target.Provides[i].ID == provided.ID {
-					at = i
-					break
-				}
-			}
-			if at < 0 {
-				target.Provides = append(target.Provides, provided)
-				continue
-			}
-			seenMethod := map[string]bool{}
-			for _, method := range target.Provides[at].Methods {
-				seenMethod[method.Name] = true
-			}
-			for _, method := range provided.Methods {
-				if !seenMethod[method.Name] {
-					target.Provides[at].Methods = append(target.Provides[at].Methods, method)
-					seenMethod[method.Name] = true
-				}
-			}
-			sort.Slice(target.Provides[at].Methods, func(i, j int) bool {
-				return target.Provides[at].Methods[i].Name < target.Provides[at].Methods[j].Name
-			})
-		}
+		mergeProvides(target, provides)
 	}
 	var out []catalog.External
 	for _, external := range byExternal {
@@ -170,6 +169,115 @@ func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, opts Opti
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
+}
+
+// mergeProvides adds interfaces and methods to an external, keeping what it
+// already carries and never repeating a method.
+func mergeProvides(target *catalog.External, provides []catalog.RpcService) {
+	for _, provided := range provides {
+		at := -1
+		for i := range target.Provides {
+			if target.Provides[i].ID == provided.ID {
+				at = i
+				break
+			}
+		}
+		if at < 0 {
+			target.Provides = append(target.Provides, provided)
+			continue
+		}
+		seenMethod := map[string]bool{}
+		for _, method := range target.Provides[at].Methods {
+			seenMethod[method.Name] = true
+		}
+		for _, method := range provided.Methods {
+			if !seenMethod[method.Name] {
+				target.Provides[at].Methods = append(target.Provides[at].Methods, method)
+				seenMethod[method.Name] = true
+			}
+		}
+		sort.Slice(target.Provides[at].Methods, func(i, j int) bool {
+			return target.Provides[at].Methods[i].Name < target.Provides[at].Methods[j].Name
+		})
+	}
+}
+
+// adapterOf finds the manifest's adapter for a call: the longest adapter
+// directory that holds the call site, the place its base URL is read from,
+// or the function the call was grouped under. A generic HTTP helper in
+// pkg/jsonapi is not the adapter; the acc_manager client that hands it the
+// base URL is, and that is what the base URL source and the group say.
+func adapterOf(call gohttp.Call, opts Options) (string, Adapter, bool) {
+	if len(opts.Adapters) == 0 {
+		return "", Adapter{}, false
+	}
+	var places []string
+	addPlace := func(place string) {
+		if place == "" {
+			return
+		}
+		if at := strings.LastIndex(place, ":"); at >= 0 && strings.Trim(place[at+1:], "0123456789") == "" {
+			place = place[:at]
+		}
+		places = append(places, filepath.ToSlash(place))
+	}
+	addPlace(call.Source.File)
+	if d := call.Destination; d != nil {
+		addPlace(d.CallSite)
+		if d.BaseURL != nil {
+			addPlace(d.BaseURL.Source)
+			addPlace(d.BaseURL.OptionSource)
+		}
+	}
+	if directory, _, qualified := strings.Cut(call.Function, ":"); qualified {
+		addPlace(directory + "/")
+	}
+	best, found := "", false
+	var adapter Adapter
+	for prefix, candidate := range opts.Adapters {
+		clean := strings.Trim(filepath.ToSlash(prefix), "/")
+		if clean == "" || candidate.External == "" {
+			continue
+		}
+		for _, place := range places {
+			if (place == clean || strings.HasPrefix(place, clean+"/")) && len(clean) > len(best) {
+				best, adapter, found = clean, candidate, true
+			}
+		}
+	}
+	return best, adapter, found
+}
+
+// observedOperation names the interface and method a call under an adapter
+// is recorded as: what was seen going out, since no document was read.
+func observedOperation(call gohttp.Call, adapter Adapter) (string, string) {
+	if call.Protocol == "SOAP" {
+		name := call.Action
+		if at := strings.LastIndexAny(name, "/:#"); at >= 0 && at < len(name)-1 {
+			name = name[at+1:]
+		}
+		return adapter.External + ".soap", name
+	}
+	return adapter.External + ".http", strings.TrimSpace(call.Method + " " + call.Path)
+}
+
+// callID is what a step and a consumer entry name the call by: the contract
+// operation for a generated client, the observed operation under an adapter,
+// otherwise the raw identity the analyzer gave it.
+func callID(call gohttp.Call, opts Options) string {
+	if call.API != "" {
+		return call.ID
+	}
+	if adapter, ok := adapterOfCall(call, opts); ok {
+		iface, name := observedOperation(call, adapter)
+		return iface + "/" + name
+	}
+	return call.ID
+}
+
+func adapterOfCall(call gohttp.Call, opts Options) (Adapter, bool) {
+	_, adapter, ok := adapterOf(call, opts)
+	return adapter, ok
 }
 
 func flowsOf(serviceID, context string, calls []gohttp.Call, opts Options) []catalog.Flow {
@@ -233,7 +341,7 @@ func flowsOfGroupsExcept(serviceID, context string, groups []gohttp.FlowGroup, o
 			}
 			callSteps = append(callSteps, &catalog.Step{
 				Type: "step", ID: "s" + strconv.Itoa(index+1), From: serviceID, To: participant.ID,
-				Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
+				Kind: catalog.StepRPC, Ref: callID(call, opts), Label: callLabel(call), Status: status,
 				Note: note, Line: call.Source.String(), Destination: call.Destination, Evidence: httpCallEvidence(call),
 			})
 		}
@@ -334,7 +442,7 @@ func flowsOfRoots(serviceID, context string, roots []gohttp.RootFlow, opts Optio
 			}
 			steps = append(steps, &catalog.Step{
 				Type: "step", ID: "s" + strconv.Itoa(index+2), From: serviceID, To: participant.ID,
-				Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
+				Kind: catalog.StepRPC, Ref: callID(call, opts), Label: callLabel(call), Status: status,
 				Note: note, Line: call.Source.String(), Destination: call.Destination, Evidence: httpCallEvidence(call),
 			})
 		}
@@ -418,7 +526,7 @@ func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow
 				}
 				steps = append(steps, &catalog.Step{
 					Type: "step", ID: "s" + strconv.Itoa(stepIndex), From: serviceID, To: participant.ID,
-					Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
+					Kind: catalog.StepRPC, Ref: callID(call, opts), Label: callLabel(call), Status: status,
 					Note: note, Line: call.Source.String(), Destination: call.Destination, Evidence: httpCallEvidence(call),
 				})
 				stepIndex++
@@ -594,6 +702,9 @@ func participantOf(peer string, call gohttp.Call, opts Options) catalog.Particip
 			return catalog.Participant{ID: external, Kind: catalog.ParticipantExternal}
 		}
 	}
+	if adapter, ok := adapterOfCall(call, opts); ok {
+		return catalog.Participant{ID: adapter.External, Kind: catalog.ParticipantExternal}
+	}
 	return catalog.Participant{ID: peer, Kind: catalog.ParticipantUnknown, Label: rawPeerLabel(call)}
 }
 
@@ -605,6 +716,9 @@ func peerOf(call gohttp.Call, opts Options) (string, catalog.Status) {
 		if peer := firstNonEmpty(opts.Externals[call.API], call.External); peer != "" {
 			return peer, catalog.StatusDeclared
 		}
+	}
+	if adapter, ok := adapterOfCall(call, opts); ok {
+		return adapter.External, catalog.StatusDeclared
 	}
 	return rawPeer(call), catalog.StatusUnresolved
 }

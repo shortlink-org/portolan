@@ -3,6 +3,7 @@
 package extracthttpclients
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -15,7 +16,39 @@ type Options struct {
 	Service   string            `json:"service"`
 	Peers     map[string]string `json:"peers,omitempty"`
 	Externals map[string]string `json:"externals,omitempty"`
-	Out       string            `json:"out,omitempty"`
+	// Adapters names the system a hand-written client reaches, keyed by the
+	// directory the adapter lives in. A generated client carries its contract
+	// and names its own peer; a hand-written one only names a verb, a path and
+	// a base URL read from configuration, so the manifest has to say what is
+	// on the other end.
+	Adapters map[string]Adapter `json:"adapters,omitempty"`
+	Out      string             `json:"out,omitempty"`
+}
+
+// Adapter is what the manifest says about the system behind one adapter
+// directory: the external's bare id, and what to call it on the page.
+type Adapter struct {
+	External string `json:"external"`
+	Name     string `json:"name,omitempty"`
+	Summary  string `json:"summary,omitempty"`
+	URL      string `json:"url,omitempty"`
+}
+
+// UnmarshalJSON takes the short form, a bare external id, as well as the
+// object.
+func (a *Adapter) UnmarshalJSON(data []byte) error {
+	var id string
+	if err := json.Unmarshal(data, &id); err == nil {
+		*a = Adapter{External: id}
+		return nil
+	}
+	type plain Adapter
+	var full plain
+	if err := json.Unmarshal(data, &full); err != nil {
+		return err
+	}
+	*a = Adapter(full)
+	return nil
 }
 
 // Serve answers one request on stdin with one response on stdout. The

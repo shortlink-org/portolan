@@ -1559,3 +1559,107 @@ func Record() { http.Post("https://ledger.internal/foo", "application/json", nil
 		}
 	}
 }
+
+func TestAdapterNamesTheSystemBehindAHandWrittenClient(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/gateway\n")
+	writeHTTPFixture(t, root, "connector/acme/client.go", `package acme
+import (
+  "bytes"
+  "context"
+  "net/http"
+)
+type Client struct{ baseURL string }
+func (c *Client) Book(ctx context.Context, body []byte) error {
+  req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/v1/book", bytes.NewReader(body))
+  if err != nil { return err }
+  _ = req
+  return nil
+}
+`)
+	writeHTTPFixture(t, root, "connector/acme/soap.go", `package acme
+import (
+  "context"
+  soap "github.com/hooklift/gowsdl/soap"
+)
+const CancelAction = "urn:acme:CancelBooking"
+func Cancel(ctx context.Context, client soap.HTTPClient, request, response any) error {
+  return client.CallContext(ctx, CancelAction, request, response)
+}
+`)
+	writeHTTPFixture(t, root, "core/update.go", `package core
+import (
+  "context"
+  "net/http"
+)
+func Update(ctx context.Context, baseURL string) error {
+  req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/v1/update", nil)
+  if err != nil { return err }
+  _ = req
+  return nil
+}
+`)
+	opts := Options{Context: "edge", Service: "gateway", Adapters: map[string]Adapter{
+		"connector/acme/": {External: "acme", Name: "ACME Air", URL: "https://acme.example/docs"},
+	}}
+	resp, err := extract(plugin.Input{Root: root}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]catalog.RpcCall{}
+	for _, call := range got.Contexts[0].Services[0].Consumes {
+		byID[call.ID] = call
+	}
+	book, ok := byID["acme.http/POST /v1/book"]
+	if !ok || book.Peer != "acme" || book.Status != catalog.StatusDeclared {
+		t.Fatalf("book = %+v (all %v)", book, byID)
+	}
+	cancel, ok := byID["acme.soap/CancelBooking"]
+	if !ok || cancel.Peer != "acme" || cancel.Status != catalog.StatusDeclared {
+		t.Fatalf("cancel = %+v (all %v)", cancel, byID)
+	}
+	var update *catalog.RpcCall
+	for id, call := range byID {
+		if strings.Contains(id, "/v1/update") {
+			update = &call
+		}
+	}
+	if update == nil || update.Status != catalog.StatusUnresolved {
+		t.Fatalf("a call outside the adapter must stay unresolved: %+v", update)
+	}
+	if len(got.Externals) != 1 || got.Externals[0].ID != "acme" || got.Externals[0].Name != "ACME Air" || got.Externals[0].URL != "https://acme.example/docs" {
+		t.Fatalf("externals = %+v", got.Externals)
+	}
+	provides := map[string]catalog.RpcService{}
+	for _, provided := range got.Externals[0].Provides {
+		provides[provided.ID] = provided
+	}
+	http, ok := provides["acme.http"]
+	if !ok || len(http.Methods) != 1 || http.Methods[0].Name != "POST /v1/book" || http.Methods[0].HTTP == nil || http.Methods[0].HTTP.Path != "/v1/book" || http.Source != "connector/acme" {
+		t.Fatalf("acme.http = %+v", http)
+	}
+	soap, ok := provides["acme.soap"]
+	if !ok || len(soap.Methods) != 1 || soap.Methods[0].Name != "CancelBooking" || soap.Methods[0].SOAP == nil || soap.Methods[0].SOAP.Action != "urn:acme:CancelBooking" {
+		t.Fatalf("acme.soap = %+v", soap)
+	}
+	for _, flow := range got.Flows {
+		for _, participant := range flow.Participants {
+			if participant.ID == "acme" && participant.Kind != catalog.ParticipantExternal {
+				t.Fatalf("acme lane = %+v", participant)
+			}
+		}
+		for _, node := range flow.Steps {
+			if step, ok := node.(*catalog.Step); ok && step.To == "acme" && !strings.HasPrefix(step.Ref, "acme.") {
+				t.Fatalf("step to acme must name the observed operation: %+v", step)
+			}
+		}
+	}
+	var short Adapter
+	if err := json.Unmarshal([]byte(`"acme"`), &short); err != nil || short.External != "acme" {
+		t.Fatalf("short form = %+v, %v", short, err)
+	}
+}
