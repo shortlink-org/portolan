@@ -2,6 +2,7 @@ import { useState } from "react";
 import { TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
+import { WorkItems } from "../components/WorkItems";
 import {
   allRepos,
   commandsOf,
@@ -216,6 +217,7 @@ export function ServicePage() {
             </a>
           ) : null}
           <DocsLinks name={service.name} />
+          <WorkItems catalog={catalog} target={{ kind: "service", id: service.id }} />
           {/* Who to ask, read out of CODEOWNERS. A handle is copied rather
               than linked: it is what a reviewer types into a request, and a
               link to a team page is a page most readers cannot open. */}

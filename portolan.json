@@ -117,6 +117,10 @@
   ],
   "plugins": [
     {
+      "name": "work-items",
+      "host": "work-items"
+    },
+    {
       "name": "project",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"

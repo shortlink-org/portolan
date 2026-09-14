@@ -14,13 +14,11 @@ import { allRepos, flowContexts, walkSteps } from "../catalog";
 import type { Flow, Status, Step } from "../catalog";
 import { catalog, index } from "../data";
 import { contextName, ctxStyle } from "../lib/context-color";
-import { middleTruncate } from "../lib/format";
 import { toClipboard } from "../lib/clipboard";
 import { flowRepoService } from "../lib/derive";
 import { statusCounts } from "../lib/flow-tree";
 import { sourceLocation } from "../lib/source-link";
-import { EditorLink } from "../components/EditorLink";
-import { SourcePreviewButton } from "../components/SourcePreview";
+import { FlowEvidence } from "../flow/FlowEvidence";
 import { flowAnswers } from "../flow/answers";
 import { flowMermaid } from "../flow/mermaid";
 import { useToastStore } from "../app/toast";
@@ -30,7 +28,6 @@ import {
   isCrossContext,
 } from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
-import { RecordingsChip } from "../flow/Recordings";
 import { stepsShownBy } from "../flow/examples";
 import { FlowTable } from "../flow/FlowTable";
 import { FlowToolbar } from "../flow/FlowToolbar";
@@ -54,8 +51,6 @@ import {
 } from "../app/panels";
 import { Ident } from "../components/Ident";
 import { ContextPill } from "../components/primitives";
-import { WhatLinksHere } from "../components/WhatLinksHere";
-import { FlowTrigger } from "../components/FlowTrigger";
 import { NotFound } from "./NotFound";
 import { useChatAvailable } from "../chat/prefs";
 import { useChatUi } from "../chat/store";
@@ -470,6 +465,9 @@ export function FlowDetail() {
             {flow.name}
           </h1>
           <Ident value={flow.id} className="text-muted" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {contexts.map((c) => <ContextPill key={c} id={c} name={contextName(c)} />)}
+          </div>
           <div className="ml-auto flex items-center gap-2">
             {chatAvailable ? (
               <button
@@ -492,70 +490,7 @@ export function FlowDetail() {
           onToggle={() => setPrefs({ expanded: !prefs.expanded })}
         />
 
-        {/* Everything the reader might want to know ABOUT this flow, as one
-            wrapping row. Four separate rows of one chip each is four rows of
-            canvas spent on decoration — and on this page every row of header
-            is a row the picture does not get.
-
-            What the row does NOT carry is anything about the picture: the view
-            id and the filter's own count are facts about what is on the canvas
-            right now, and they live with the controls that changed them. */}
-        <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-control border border-line bg-surface px-2.5 py-1.5 shadow-xs">
-          <span className="label shrink-0 text-faint">evidence</span>
-          {flow.trigger ? <FlowTrigger trigger={flow.trigger} /> : null}
-          {flow.includes && flow.includes.length > 0 ? (
-            <span
-              className="chip mono"
-              title={
-                flow.composition?.length
-                  ? `Composition seams:\n${flow.composition
-                      .map(
-                        (item) =>
-                          `${item.flow} after ${item.seam.afterStep} · ${item.seam.kind} · ${item.seam.target} · ${item.seam.confidence}`,
-                      )
-                      .join("\n")}`
-                  : `Composed from:\n${flow.includes.join("\n")}`
-              }
-            >
-              composed · {flow.includes.length + 1} fragments
-            </span>
-          ) : null}
-          {/* The file the flow was read out of, spelled in full rather than
-              named: the point of putting it here is that a reader can copy it
-              and go and look. */}
-          {flow.source ? (
-            <Ident value={flow.source} className="text-muted">
-              {middleTruncate(flow.source, 40)}
-            </Ident>
-          ) : null}
-          <SourcePreviewButton location={flowSource} />
-          {flowSource?.href ? (
-            <a
-              href={flowSource.href}
-              target="_blank"
-              rel="noreferrer"
-              className="mono rounded-control text-accent hover:underline"
-              title="Open the file on the forge, at the built commit"
-            >
-              open ↗
-            </a>
-          ) : null}
-          <EditorLink location={flowSource} variant="text" />
-          {/* A recording is evidence too: the traces the flow was seen
-              running in, opened behind a chip rather than laid out in the
-              rail, which is for the steps. */}
-          <RecordingsChip flow={flow} exampleId={exampleId} onExample={setExampleId} />
-          <WhatLinksHere
-            target={{ kind: "flow", id: flow.slug }}
-            variant="line"
-            className="mt-0"
-          />
-          <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
-            {contexts.map((c) => (
-              <ContextPill key={c} id={c} name={contextName(c)} />
-            ))}
-          </div>
-        </div>
+        <FlowEvidence catalog={catalog} flow={flow} source={flowSource} exampleId={exampleId} onExample={setExampleId} />
 
         <FlowToolbar
           variant={prefs.variant}

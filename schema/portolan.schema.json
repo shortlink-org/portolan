@@ -874,6 +874,7 @@
         "properties": {
           "plugin": {
             "enum": [
+              "work-items",
               "otel",
               "codeowners"
             ],
@@ -893,6 +894,25 @@
           }
         },
         "allOf": [
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "work-items"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.work-items"
+                }
+              }
+            }
+          },
           {
             "if": {
               "required": [
@@ -1416,7 +1436,8 @@
             "fetch-csr",
             "fetch-k8s",
             "fetch-argocd",
-            "fetch-dx"
+            "fetch-dx",
+            "work-items"
           ],
           "description": "A plugin the host runs inside its own process, because it needs a socket or a git binary (portolan.0008). Only the ones shipped with Portolan can be named."
         },
@@ -1461,6 +1482,66 @@
               "description": "Arguments passed to the executable without shell parsing."
             }
           }
+        }
+      }
+    },
+    "options.work-items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trackers"
+      ],
+      "properties": {
+        "trackers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "provider",
+              "baseUrl",
+              "projects"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "provider": {
+                "const": "youtrack"
+              },
+              "baseUrl": {
+                "type": "string",
+                "pattern": "^https?://"
+              },
+              "projects": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                }
+              }
+            }
+          }
+        },
+        "repository": {
+          "type": "string",
+          "description": "Web URL of this Git checkout. Defaults to origin; never a credential URL."
+        },
+        "maxCommits": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 500,
+          "description": "Maximum reachable commits inspected from HEAD. Truncation is reported."
+        },
+        "out": {
+          "type": "string",
+          "default": "work-items.json"
         }
       }
     },

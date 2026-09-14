@@ -2,7 +2,8 @@ import { useDocumentTitle } from "../app/title";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { ArrowRight, ArrowLeft, Pencil } from "lucide-react";
-import { index } from "../data";
+import { catalog, index } from "../data";
+import { WorkItems } from "../components/WorkItems";
 import type { Adr, AdrCommit } from "../catalog";
 import { adrNumber } from "../lib/adr";
 import { Markdown } from "../components/Markdown";
@@ -191,6 +192,7 @@ export function AdrDetail() {
           <span title="decision date">{adr.date}</span>
           <Ident value={adr.source} title={`${adr.source} — click to copy`} />
           <Ident value={adr.id} />
+          <WorkItems catalog={catalog} target={{ kind: "adr", id: adr.id }} />
         </div>
         {adr.created || adr.revised ? (
           <div className="mono mt-1 flex flex-wrap items-center gap-x-4 text-muted">

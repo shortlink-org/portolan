@@ -14,8 +14,12 @@ not collide. Work items and links are optional catalog collections.
    and service directories. Keep each commit's repository, SHA, subject,
    author, date and matching paths. Explicit links can be authored as catalog
    fragments, including tasks without a commit.
-3. Show the first two task chips and a `+N` overflow control beside flow
-   evidence. Clicking opens an accessible, scrollable popover with task links,
+3. On a flow, keep task context in its own row: one task's key, title and
+   status snapshot, followed by a `+N tasks` overflow control. A separate
+   collapsed Evidence row summarizes the source and recordings; expanding it
+   exposes grouped source actions, recordings and backlinks. Context pills
+   belong with the flow title. Other pages retain two task chips plus overflow.
+   Clicking a task opens an accessible, scrollable popover with task links,
    optional task metadata, commits and an explanation of the association.
    Reuse it in step details, service pages and ADR pages. Empty collections
    consume no space. Keyboard focus, Escape and narrow screens must work.
@@ -57,7 +61,8 @@ second top-level integration configuration:
 Include the output in `sources` and the relevant catalog profile's sources.
 `in` is the Git checkout; `repository` can override its origin's web URL.
 Run one verifier per checkout. Source paths are resolved from each catalog
-service's `path`, with its repository checked before any automatic match.
+repository (the same convention as source links), with its service's repository
+checked before any automatic match. Service directory links use `service.path`.
 Vendored copies without their own Git history must not inherit the enclosing
 checkout's commits. Shallow and bounded histories are reported as incomplete.
 Unconfigured project keys produce no links. No network or credentials are
@@ -71,6 +76,11 @@ A link names `workItem`, `target`, `basis` and `commits`. A step target includes
 both the flow ID and the local step ID. Full examples live in the UI fixture
 at `src/testing/fixtures/work-items.json`; its data is fictional and never
 included in the default catalog.
+
+Run `node scripts/work-items-preview.mjs` to open the real flow and service
+pages with this fixture. The dedicated server marks the UI as Demo and injects
+the fixture in memory. It does not alter source catalogs or production builds.
+Start at `http://127.0.0.1:5191/flows/gen?catalog=portolan`.
 
 ## Following deliveries
 
@@ -86,3 +96,22 @@ included in the default catalog.
 The first delivery is useful without these extensions. Branch names alone
 cannot establish which existing entities changed; blame only describes the
 last surviving edit, not the full development history.
+
+## First-delivery verification (2026-09-14)
+
+- 19 focused Vitest checks passed: real temporary Git history, catalog
+  validation and merging, profile isolation, and the plugin registry.
+- TypeScript typecheck and the Go work-item round-trip test passed.
+- `PORTOLAN_OFFLINE=1 npm run gen` and `npm run likec4:gen` completed.
+  The generation run also reports existing unrelated flow-merge conflicts
+  and extractor warnings; it completes successfully.
+- The dedicated preview server was restarted after generation and the same
+  flow URL reloaded with a cache-busting query. Visually inspected the actual
+  flow diagram/header, expanded task/commit cards, step detail, service header
+  and ADR header. Checked Enter/Escape, missing metadata, overflow, and a
+  390 px viewport. Fixed chip truncation in the narrow step panel.
+
+The rendered UI uses the labeled fictional fixture. Git extraction was tested
+against temporary repositories, not a connected production YouTrack instance.
+Real activation needs the estate's tracker URL and project prefixes. API
+enrichment remains a following delivery.

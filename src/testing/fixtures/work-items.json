@@ -1,0 +1,19 @@
+{
+  "contexts": [], "defs": {}, "flows": [], "adrs": [],
+  "workItems": [
+    { "id": "demo:RT-101", "tracker": "demo", "provider": "youtrack", "key": "RT-101", "url": "https://youtrack.example.com/issue/RT-101", "title": "Add flow toolbar", "status": "In progress", "assignee": "Alex", "updatedAt": "2026-09-14T08:00:00Z" },
+    { "id": "demo:RT-118", "tracker": "demo", "provider": "youtrack", "key": "RT-118", "url": "https://youtrack.example.com/issue/RT-118" },
+    { "id": "demo:RT-125", "tracker": "demo", "provider": "youtrack", "key": "RT-125", "url": "https://youtrack.example.com/issue/RT-125", "title": "Keyboard navigation and a deliberately long task title to verify wrapping on narrow screens" }
+  ],
+  "workItemLinks": [
+    { "workItem": "demo:RT-101", "target": { "kind": "flow", "id": "flow.gen" }, "basis": "source-file", "commits": [
+      { "repository": "https://github.com/acme/architecture", "sha": "a1b2c3d400000000000000000000000000000000", "subject": "RT-101: added toolbar", "author": "Alex", "date": "2026-09-14T07:30:00Z", "paths": ["scripts/gen.mjs", "src/flow/FlowToolbar.tsx"] },
+      { "repository": "https://github.com/acme/architecture", "sha": "b2c3d4e500000000000000000000000000000000", "subject": "RT-101: preserve selection when changing views", "author": "Sam", "date": "2026-09-13T15:00:00Z", "paths": ["src/flow/FlowToolbar.tsx"] }
+    ] },
+    { "workItem": "demo:RT-118", "target": { "kind": "flow", "id": "flow.gen" }, "basis": "declared", "commits": [] },
+    { "workItem": "demo:RT-125", "target": { "kind": "flow", "id": "flow.gen" }, "basis": "declared", "commits": [] },
+    { "workItem": "demo:RT-101", "target": { "kind": "step", "flow": "flow.gen", "id": "s4" }, "basis": "declared", "commits": [] },
+    { "workItem": "demo:RT-101", "target": { "kind": "service", "id": "portolan.host" }, "basis": "declared", "commits": [] },
+    { "workItem": "demo:RT-118", "target": { "kind": "adr", "id": "portolan.0017" }, "basis": "declared", "commits": [] }
+  ]
+}

@@ -1,4 +1,5 @@
 import { RelationEvidencePanel } from "../components/RelationEvidence";
+import { WorkItems } from "../components/WorkItems";
 import { stepRelationEvidence } from "./evidence";
 import { exampleRowsFor, formatMs } from "./examples";
 import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
@@ -775,6 +776,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   return (
     <>
       <ExecutionContext step={step} flow={flow} />
+      <WorkItems catalog={catalog} target={{ kind: "step", id: step.id, flow: flow.id }} className="mb-3" />
       <RelationEvidencePanel items={stepRelationEvidence(index, step)} renderSource={(where) => <SourceWhere where={where} flow={flow} structured />} />
       <StepExamples step={step} flow={flow} />
 

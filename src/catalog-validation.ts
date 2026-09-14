@@ -849,9 +849,13 @@ export function validateCatalog(catalog: Catalog): Catalog {
 function validateWorkItems(catalog: Catalog): void {
   const items = new Set<string>();
   for (const item of catalog.workItems ?? []) {
-    if (!item.tracker || !item.key || !item.provider || item.id !== `${item.tracker}:${item.key}` || items.has(item.id))
+    if (![item.tracker, item.key, item.provider].every((value) => typeof value === "string" && value.trim()) || item.id !== `${item.tracker}:${item.key}` || items.has(item.id))
       fail("work item has invalid or duplicate identity", "workItems");
     if (!safeWorkItemUrl(item.url)) fail(`work item "${item.id}" has an invalid URL`, "workItems");
+    for (const field of ["title", "status", "assignee", "updatedAt"] as const) {
+      if (item[field] !== undefined && typeof item[field] !== "string") fail(`work item "${item.id}" has invalid ${field}`, "workItems");
+    }
+    if (item.updatedAt !== undefined && !Number.isFinite(Date.parse(item.updatedAt))) fail("invalid work item snapshot date", "workItems");
     items.add(item.id);
   }
   const links = new Set<string>();
@@ -863,9 +867,14 @@ function validateWorkItems(catalog: Catalog): void {
     if (links.has(key)) fail("duplicate work item link", "workItemLinks");
     links.add(key);
     if (!Array.isArray(link.commits) || (link.basis !== "declared" && !link.commits.length)) fail("derived work item link needs commits", "workItemLinks");
+    const commits = new Set<string>();
     for (const commit of link.commits) {
-      if (!safeWorkItemUrl(commit.repository) || !/^[a-f0-9]{40,64}$/.test(commit.sha)) fail("invalid work item commit", "workItemLinks");
-      if (!Array.isArray(commit.paths) || (link.basis !== "declared" && !commit.paths.length) || commit.paths.some((path) => !path || path.startsWith("/") || path.split("/").includes(".."))) fail("invalid work item commit paths", "workItemLinks");
+      if (!safeWorkItemUrl(commit.repository) || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(commit.sha)) fail("invalid work item commit", "workItemLinks");
+      if (typeof commit.subject !== "string" || typeof commit.author !== "string" || typeof commit.date !== "string" || !Number.isFinite(Date.parse(commit.date))) fail("invalid work item commit metadata", "workItemLinks");
+      if (!Array.isArray(commit.paths) || (link.basis !== "declared" && !commit.paths.length) || commit.paths.some((path) => typeof path !== "string" || !path || path.startsWith("/") || path.split("/").includes(".."))) fail("invalid work item commit paths", "workItemLinks");
+      const identity = JSON.stringify([commit.repository, commit.sha]);
+      if (commits.has(identity)) fail("duplicate work item commit", "workItemLinks");
+      commits.add(identity);
     }
   }
 }
