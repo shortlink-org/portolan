@@ -2679,6 +2679,51 @@
             }
           ]
         },
+        "adapters": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "external"
+                ],
+                "properties": {
+                  "external": {
+                    "type": "string",
+                    "description": "Bare id of the system outside the estate, no dot."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "What the external is called on the page."
+                  },
+                  "summary": {
+                    "type": "string",
+                    "description": "A sentence or two on what the estate uses it for."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Where the third party documents itself."
+                  }
+                }
+              }
+            ]
+          },
+          "description": "Which system outside the estate a module's plain HTTP calls reach, as the module or package (`mailer.mailota`, `geo`) to the external's bare id or an object naming it. A client with a vendored document names its own peer; a `requests.post` against a base URL from settings names nothing, so the manifest says what answers. Every such call made from a module under the key is recorded as declared against that external, which is given the operations seen going out under `<id>.http`, named `POST /api/v2/mail/messages`. The longest matching key wins.",
+          "examples": [
+            {
+              "mailer.mailota": {
+                "external": "mailota",
+                "name": "Mailota"
+              },
+              "geo.services": "planet"
+            }
+          ]
+        },
         "source": {
           "type": "string",
           "description": "The directory the applications are looked for in, relative to the input root.",

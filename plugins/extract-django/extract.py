@@ -98,6 +98,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
             peers=dict(opts.peers),
             events=dict(opts.events),
             flow_wrappers=dict(opts.flow_wrappers),
+            adapters=dict(opts.adapters),
             settings=opts.settings,
         ),
         project,
@@ -182,6 +183,9 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         "flows": found_flows,
         "adrs": [],
     }
+    externals = reader.externals()
+    if externals:
+        fragment["externals"] = externals
     if opts.classification:
         fragment["contexts"][0]["classification"] = opts.classification
     b.files.append(dump(opts.out or "domain.json", fragment))

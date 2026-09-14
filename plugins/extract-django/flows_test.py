@@ -105,8 +105,104 @@ def again():
 
         self.assertEqual([step["label"] for step in flow["steps"]], ["status_get", "POST /v1/status"])
         self.assertEqual(flow["steps"][1]["status"], "unresolved")
+        self.assertEqual(flow["steps"][1]["ref"], "http-client/POST /v1/status")
         self.assertEqual(flow["steps"][1]["line"], "app.helpers.py:8")
+        self.assertEqual(
+            reader.consumes(),
+            [{"id": "http-client/POST /v1/status", "peer": "http-peer", "status": "unresolved", "source": "app.helpers.py"}],
+        )
         self.assertEqual([lane["label"] for lane in flow["participants"] if lane.get("label")], ["peer.example"])
+
+    def test_adapter_names_the_system_behind_a_plain_http_call(self):
+        views = module(
+            "app.views",
+            """
+from app import mailer, helpers
+
+class StatusView:
+    def get(self, request):
+        mailer.send({"to": "x"})
+        helpers.ping()
+""",
+        )
+        mailer = module(
+            "app.mailer",
+            """
+from requests import post
+
+def send(mail, base_url="https://mailota.example"):
+    post(f"{base_url}/api/v2/mail/messages", json=mail)
+""",
+        )
+        helpers = module(
+            "app.helpers",
+            """
+from urllib.parse import urljoin
+from requests import get, post
+
+BILLING = "https://billing.example/billing/"
+
+def ping():
+    get("https://peer.example/v1/status")
+    post(urljoin(BILLING, "/billing/api/invoice/{}/unblock/".format("u1")))
+""",
+        )
+        project = Project([views, mailer, helpers])
+        reader = flows.FlowReader(
+            flows.Options(
+                context="app",
+                svc_id="app.web",
+                service="web",
+                store="",
+                adapters={"app.mailer": {"external": "mailota", "name": "Mailota", "url": "https://mailota.example/docs"}},
+            ),
+            project,
+            [],
+            [],
+            [],
+            [],
+            {},
+            lambda path: path,
+            Warnings(),
+        )
+        view = next(node for node in views.classes() if node.name == "StatusView")
+        handler = next(node for node in view.body if getattr(node, "name", "") == "get")
+        endpoint = SimpleNamespace(id="status_get", module=views, node=handler, view="StatusView", doc="", use_cases=[])
+
+        flow = reader.endpoint_flow(endpoint)
+
+        mail, ping = flow["steps"][1], flow["steps"][2]
+        self.assertEqual(mail["label"], "POST /api/v2/mail/messages")
+        self.assertEqual(mail["status"], "declared")
+        self.assertEqual(mail["ref"], "mailota.http/POST /api/v2/mail/messages")
+        self.assertEqual(mail["to"], "mailota")
+        self.assertEqual(ping["status"], "unresolved")
+        self.assertEqual(flow["steps"][3]["label"], "POST /billing/api/invoice/{}/unblock/")
+        lanes = {lane["id"]: lane for lane in flow["participants"]}
+        self.assertEqual(lanes["mailota"]["kind"], "external")
+        self.assertEqual(
+            [call["id"] for call in reader.consumes()],
+            ["http-client/GET /v1/status", "http-client/POST /billing/api/invoice/{}/unblock/", "mailota.http/POST /api/v2/mail/messages"],
+        )
+        self.assertEqual(
+            reader.externals(),
+            [
+                {
+                    "id": "mailota",
+                    "slug": "mailota",
+                    "name": "Mailota",
+                    "summary": "",
+                    "url": "https://mailota.example/docs",
+                    "provides": [
+                        {
+                            "id": "mailota.http",
+                            "source": "app.mailer",
+                            "methods": [{"name": "POST /api/v2/mail/messages", "http": {"method": "POST", "path": "/api/v2/mail/messages"}}],
+                        }
+                    ],
+                }
+            ],
+        )
 
     def test_one_sided_condition_keeps_an_explicit_otherwise_branch(self):
         views = module(

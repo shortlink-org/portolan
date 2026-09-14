@@ -26,6 +26,7 @@ class Options:
     peers: Dict[str, str] = field(default_factory=dict)
     events: Dict[str, str] = field(default_factory=dict)
     flow_wrappers: Dict[str, Any] = field(default_factory=dict)
+    adapters: Dict[str, Any] = field(default_factory=dict)
     source: str = "."
     settings: str = ""
     out: str = "domain.json"
@@ -49,6 +50,7 @@ class Options:
         "peers": "peers",
         "events": "events",
         "flowWrappers": "flow_wrappers",
+        "adapters": "adapters",
         "source": "source",
         "settings": "settings",
         "out": "out",

@@ -11,14 +11,16 @@ claim about behaviour, not a record of it.
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import dataclass, field as dc_field
 from typing import Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import catalog
 from clients import Client
 from domain import Aggregate, ModelDef
 from ids import pascal, slug
+from names import title
 from operations import UseCase
 import celery_conf
 import celery_tasks
@@ -73,7 +75,73 @@ class Options:
     peers: Dict[str, str] = dc_field(default_factory=dict)
     events: Dict[str, str] = dc_field(default_factory=dict)
     flow_wrappers: Dict[str, object] = dc_field(default_factory=dict)
+    adapters: Dict[str, object] = dc_field(default_factory=dict)  # module or package -> external
     settings: str = ""  # the Django settings module Celery is configured from
+
+
+@dataclass
+class Adapter:
+    """What the manifest says about the system behind a module's plain HTTP
+    calls: the external's bare id, and what to call it on the page."""
+
+    key: str
+    external: str
+    name: str = ""
+    summary: str = ""
+    url: str = ""
+
+
+def join_url(left: str, right: str) -> str:
+    """What `urljoin(left, right)` gives when the base is a URL: an absolute
+    path replaces the base's path, `urljoin("https://b/billing/", "/billing/api")`
+    is `https://b/billing/api`. A base that is a hole from settings has no
+    scheme to go by, so the two are joined as written."""
+    if not (left or right):
+        return ""
+    if "://" in left:
+        return urljoin(left, right)
+    return left.rstrip("/") + "/" + right.lstrip("/")
+
+
+def observed_route(path: str) -> str:
+    """The route as the external answers on it: what follows the base URL.
+    A base read from settings arrives as a hole - `{base_url}/api/v2/mail` -
+    and the hole is not part of the route."""
+    path = path.strip()
+    if path.startswith("{"):
+        close = path.find("}")
+        path = path[close + 1 :] if close >= 0 else ""
+    if "://" in path:
+        path = urlparse(path).path
+    return "/" + path.lstrip("/") if path.strip("/") else "/"
+
+
+def adapter_of(module_dotted: str, adapters: Dict[str, object]) -> Optional[Adapter]:
+    """The adapter a module is written under: its own dotted name, or the
+    longest package prefix the manifest names. A key with no external is
+    ignored rather than guessed at."""
+    best: Optional[Adapter] = None
+    for key, raw in adapters.items():
+        key = str(key).strip(".")
+        if not key or not (module_dotted == key or module_dotted.startswith(key + ".")):
+            continue
+        if isinstance(raw, str):
+            found = Adapter(key=key, external=raw)
+        elif isinstance(raw, dict) and isinstance(raw.get("external"), str):
+            found = Adapter(
+                key=key,
+                external=raw["external"],
+                name=str(raw.get("name") or ""),
+                summary=str(raw.get("summary") or ""),
+                url=str(raw.get("url") or ""),
+            )
+        else:
+            continue
+        if not found.external:
+            continue
+        if best is None or len(key) > len(best.key):
+            best = found
+    return best
 
 
 class Draft:
@@ -238,6 +306,9 @@ class FlowReader:
         self.rel = rel
         self.b = b
         self.calls: Dict[str, Dict[str, object]] = {}
+        # Systems outside the estate the adapters name, and the operations
+        # seen going out to each: id -> {"adapter": Adapter, "methods": {name: route}}.
+        self.observed: Dict[str, Dict[str, object]] = {}
         self.referenced = set()
         self.models: Dict[str, ModelDef] = {}
         self.models_by_name: Dict[str, List[ModelDef]] = {}
@@ -308,6 +379,36 @@ class FlowReader:
 
     def consumes(self) -> List[Dict[str, object]]:
         return [self.calls[key] for key in sorted(self.calls)]
+
+    def externals(self) -> List[Dict[str, object]]:
+        """The systems the adapters name, each providing what was seen going
+        out to it: nobody read a document, so the interface is `<id>.http`
+        and a method is the verb and the path."""
+        out: List[Dict[str, object]] = []
+        for external_id in sorted(self.observed):
+            entry = self.observed[external_id]
+            adapter: Adapter = entry["adapter"]  # type: ignore[assignment]
+            methods: Dict[str, Tuple[str, str]] = entry["methods"]  # type: ignore[assignment]
+            out.append(
+                {
+                    "id": external_id,
+                    "slug": external_id,
+                    "name": adapter.name or title(external_id),
+                    "summary": adapter.summary,
+                    **({"url": adapter.url} if adapter.url else {}),
+                    "provides": [
+                        {
+                            "id": external_id + ".http",
+                            "source": adapter.key,
+                            "methods": [
+                                {"name": name, "http": {"method": methods[name][0], "path": methods[name][1]}}
+                                for name in sorted(methods)
+                            ],
+                        }
+                    ],
+                }
+            )
+        return out
 
     # --- the two openings ----------------------------------------------------
 
@@ -706,7 +807,7 @@ class FlowReader:
         if self.external_name(frame.module, name) == "urllib.parse.urljoin" and len(node.args) >= 2:
             left = binding_string(positional[0]) or self.string_value(frame.module, node.args[0])
             right = binding_string(positional[1]) or self.string_value(frame.module, node.args[1])
-            text = left.rstrip("/") + "/" + right.lstrip("/") if left or right else ""
+            text = join_url(left, right)
             if text:
                 return ("string", text)
 
@@ -813,7 +914,7 @@ class FlowReader:
         http = self.http_call(frame.module, node, holder, positional)
         if http is not None:
             method, target = http
-            self.http_step(d, method, target, line)
+            self.http_step(d, method, target, line, frame.module)
             return None
 
         called = self.callable_target(frame, node.func, holder)
@@ -1222,10 +1323,15 @@ class FlowReader:
                 elif isinstance(item, ast.FormattedValue):
                     chunks.append("{%s}" % expression(item.value))
             return "".join(chunks)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
+            # "/invoice/{}/unblock/".format(uuid): the template is the route,
+            # its holes spelled the way an f-string's are.
+            template = self.string_value(module, node.func.value, depth + 1)
+            return re.sub(r"\{[^{}]*\}", "{}", template) if template else ""
         if isinstance(node, ast.Call) and self.external_name(module, dotted(node.func)) == "urllib.parse.urljoin" and len(node.args) >= 2:
             left = self.string_value(module, node.args[0], depth + 1)
             right = self.string_value(module, node.args[1], depth + 1)
-            return left.rstrip("/") + "/" + right.lstrip("/") if left or right else ""
+            return join_url(left, right)
         name = dotted(node)
         if not name:
             return ""
@@ -1237,13 +1343,35 @@ class FlowReader:
                 return self.string_value(hit[0], ast.Name(id=hit[1]), depth + 1)
         return ""
 
-    def http_step(self, d: Draft, method: str, target: str, line: str) -> None:
+    def http_step(self, d: Draft, method: str, target: str, line: str, module: Optional[Module] = None) -> None:
         parsed = urlparse(target)
         peer = parsed.netloc or parsed.path.split("/", 1)[0] or "external-http"
         path = parsed.path if parsed.netloc else target
         label = "%s %s" % (method, path or "/")
+        adapter = adapter_of(module.dotted, self.opts.adapters) if module is not None else None
+        if adapter is not None:
+            # The manifest says what is on the other end, so the call is
+            # recorded against it under the operation seen going out, and the
+            # external is given that operation to answer on.
+            route = observed_route(path)
+            name = "%s %s" % (method, route)
+            ref = adapter.external + ".http/" + name
+            lane = d.lane(adapter.external, "external", None)
+            d.add(self.opts.svc_id, lane, "rpc", name, catalog.DECLARED, ref, line=line)
+            entry = self.observed.setdefault(adapter.external, {"adapter": adapter, "methods": {}})
+            entry["methods"].setdefault(name, (method, route))  # type: ignore[union-attr]
+            self.calls.setdefault(ref, catalog.rpc_call(ref, adapter.external, catalog.DECLARED, line.split(":", 1)[0]))
+            return
+        # Nothing here says who answers, but the merged catalog may: the id is
+        # the one the Go extractor gives a raw call, `http-client/POST /x`, and
+        # merge resolves it against the routes the estate's services provide.
+        # Only a route can be matched; an expression is left as it is.
         lane = d.lane("http-" + slug(peer), "unknown", None, peer)
-        d.add(self.opts.svc_id, lane, "rpc", label, catalog.UNRESOLVED, line=line)
+        ref = ""
+        if path.startswith("/") and " " not in path and "(" not in path:
+            ref = "http-client/%s %s" % (method, path)
+            self.calls.setdefault(ref, catalog.rpc_call(ref, "http-peer", catalog.UNRESOLVED, line.split(":", 1)[0]))
+        d.add(self.opts.svc_id, lane, "rpc", label, catalog.UNRESOLVED, ref, line=line)
 
     def use_case(self, module: Module, name: str) -> Optional[UseCase]:
         """`issue_invoice(...)` imported from the services module,
