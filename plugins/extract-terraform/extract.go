@@ -23,8 +23,8 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		return plugin.Response{}, err
 	}
 	found := read(t, b)
-	if len(found.queues)+len(found.topics)+len(found.functions)+len(found.stores) == 0 {
-		b.Warn(filepath.ToSlash(filepath.Join(in.Root, dir)), "no AWS resource this reader knows was found")
+	if len(found.queues)+len(found.topics)+len(found.functions)+len(found.stores)+len(found.eventGrid)+len(found.eventGridSubs)+len(found.azureChannels) == 0 {
+		b.Warn(filepath.ToSlash(filepath.Join(in.Root, dir)), "no AWS or Azure resource this reader knows was found")
 	}
 
 	fragment := assemble(found, opts)
@@ -110,6 +110,25 @@ func (c *component) channel(address string, base catalog.Channel) *channelState 
 	if state == nil {
 		state = &channelState{channel: base, notes: map[string]bool{}}
 		c.channels[address] = state
+	} else {
+		for _, message := range base.Messages {
+			seen := false
+			for _, existing := range state.channel.Messages {
+				if existing.Name == message.Name && existing.Direction == message.Direction {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				state.channel.Messages = append(state.channel.Messages, message)
+			}
+		}
+		sort.SliceStable(state.channel.Messages, func(i, j int) bool {
+			if state.channel.Messages[i].Name == state.channel.Messages[j].Name {
+				return state.channel.Messages[i].Direction < state.channel.Messages[j].Direction
+			}
+			return state.channel.Messages[i].Name < state.channel.Messages[j].Name
+		})
 	}
 	return state
 }
@@ -133,7 +152,7 @@ func assemble(found *infra, opts Options) catalog.Catalog {
 	all := []*component{base}
 	for _, fn := range found.functions {
 		slug := goscan.Slug(fn.name)
-		technologies := []string{"AWS Lambda"}
+		technologies := []string{fn.technology}
 		if fn.runtime != "" {
 			technologies = append(technologies, fn.runtime)
 		}
@@ -198,6 +217,8 @@ func assemble(found *infra, opts Options) catalog.Catalog {
 	for _, fn := range found.functions {
 		functionNames[fn.r] = fn.name
 	}
+
+	assembleEventGrid(found, base, components)
 
 	queueBase := func(q *queue) catalog.Channel {
 		doc := "Declared in Terraform as " + q.r.Address() + "."

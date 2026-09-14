@@ -69,6 +69,7 @@ describe("warning classification", () => {
     ["watermill", "internal/bus/cqrs.go:40:5: Watermill CQRS handler topic generator could not be resolved", "watermill.unresolved-topic"],
     ["go-nats", "internal/pub.go:8:2: subject of Publish could not be resolved to a literal, a constant, a config default or a caller's argument", "messaging.unresolved-subject"],
     ["go-sqs", "internal/relay.go:15:2: queue of SendMessage could not be resolved to a literal, a constant, a config default, a constructor's argument or a caller's argument", "messaging.unresolved-queue"],
+    ["go-eventgrid", "internal/publisher.go:18:2: topic of PublishCloudEvents could not be resolved from the Event Grid client constructor", "messaging.unresolved-event-grid-topic"],
     ["terraform", "deploy/queues.tf:12: name of aws_sqs_queue.opaque could not be resolved to a literal, a variable default, a local or a module argument", "terraform.unresolved-name"],
     ["terraform", "deploy/queues.tf:40: aws_sqs_queue.generated is named with name_prefix, so its name is decided at apply time and is not read", "terraform.unresolved-name"],
     ["terraform", "deploy/lambda.tf:52: aws_lambda_function.unnamed sets no function_name, so its name is decided at apply time and is not read", "terraform.unresolved-name"],

@@ -12,7 +12,7 @@ var optionsSchema []byte
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
 		Name:     "extract-terraform",
-		Summary:  "Reads a Terraform module for AWS into the queues, topics, functions and stores it declares, and the subscriptions, triggers and dead-letter queues that join them.",
+		Summary:  "Reads AWS and Azure Event Grid Terraform into the queues, topics, functions and stores it declares, and the subscriptions, filters, triggers and dead-letter routes that join them.",
 		Category: plugin.CategoryInfrastructure,
 		Phases:   []string{plugin.PhaseExtract},
 		Options:  optionsSchema,

@@ -274,6 +274,217 @@ resource "aws_lambda_event_source_mapping" "in" {
 	}
 }
 
+func TestAzureEventGridTopicsSubscriptionsAndHandlers(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "event-grid.tf", `
+resource "azurerm_eventgrid_topic" "orders" {
+  name         = "orders-events"
+  input_schema = "CloudEventSchemaV1_0"
+}
+
+resource "azurerm_function_app_function" "project" {
+  name            = "project-order"
+  function_app_id = azurerm_linux_function_app.app.id
+  language        = "Python"
+  config_json     = "{}"
+}
+
+resource "azurerm_eventgrid_event_subscription" "project" {
+  name                  = "project-orders"
+  scope                 = azurerm_eventgrid_topic.orders.id
+  included_event_types  = ["OrderPlaced", "OrderCancelled"]
+  event_delivery_schema = "CloudEventSchemaV1_0"
+
+  subject_filter {
+    subject_begins_with = "/shops/"
+    subject_ends_with   = "/orders"
+    case_sensitive      = true
+  }
+
+  advanced_filter {
+    string_in {
+      key    = "data.region"
+      values = ["cn-north-3"]
+    }
+  }
+
+  retry_policy {
+    max_delivery_attempts = 12
+    event_time_to_live     = 90
+  }
+
+  storage_blob_dead_letter_destination {
+    storage_account_id          = azurerm_storage_account.deadletters.id
+    storage_blob_container_name = "event-grid-deadletters"
+  }
+
+  azure_function_endpoint {
+    function_id = azurerm_function_app_function.project.id
+  }
+}
+
+resource "azurerm_storage_account" "assets" {
+  name = "shopassets"
+}
+
+resource "azurerm_eventgrid_system_topic" "assets" {
+  name               = "assets-system"
+  source_resource_id = azurerm_storage_account.assets.id
+  topic_type         = "Microsoft.Storage.StorageAccounts"
+}
+
+resource "azurerm_storage_queue" "thumbnails" {
+  name = "thumbnails"
+}
+
+resource "azurerm_eventgrid_system_topic_event_subscription" "thumbnails" {
+  name         = "create-thumbnails"
+  system_topic = azurerm_eventgrid_system_topic.assets.name
+  included_event_types = ["Microsoft.Storage.BlobCreated"]
+
+  storage_queue_endpoint {
+    storage_account_id = azurerm_storage_account.assets.id
+    queue_name          = azurerm_storage_queue.thumbnails.name
+  }
+}
+`)
+
+	out, resp := extracted(t, root, Options{})
+	if got := warnings(resp); len(got) != 0 {
+		t.Fatalf("warnings: %v", got)
+	}
+
+	project := service(t, out, "shop.project-order")
+	if project.Kind != catalog.ComponentKindFunction || strings.Join(project.Technologies, ",") != "Azure Functions,Python" {
+		t.Errorf("Azure function: %+v", project)
+	}
+	orders := channel(t, project, "orders-events")
+	if orders.Title != "Azure Event Grid topic" || orders.Kind != catalog.ChannelKindEvent || orders.Source != "event-grid.tf:2" {
+		t.Errorf("orders topic: %+v", orders)
+	}
+	var messages []string
+	for _, message := range orders.Messages {
+		messages = append(messages, message.Name+":"+string(message.Direction))
+	}
+	if got := strings.Join(messages, ","); got != "OrderCancelled:receive,OrderPlaced:receive" {
+		t.Errorf("messages: %s", got)
+	}
+	for _, sentence := range []string{
+		"Input schema `CloudEventSchemaV1_0`.",
+		"Event Grid subscription `project-orders` delivers to Azure Function `project-order`.",
+		"Subject begins with `/shops/` and ends with `/orders` (case-sensitive).",
+		"1 advanced filter rule.",
+		"Retry policy up to 12 attempts within 90 minutes.",
+		"Dead letters go to blob container `event-grid-deadletters`.",
+	} {
+		if !strings.Contains(orders.Doc, sentence) {
+			t.Errorf("orders doc lacks %q: %s", sentence, orders.Doc)
+		}
+	}
+
+	base := service(t, out, "shop.fulfillment")
+	assets := channel(t, base, "assets-system")
+	if assets.Title != "Azure Event Grid system topic" || !strings.Contains(assets.Doc, "Carries events from `azurerm_storage_account.assets`.") || !strings.Contains(assets.Doc, "Topic type `Microsoft.Storage.StorageAccounts`.") {
+		t.Errorf("system topic: %+v", assets)
+	}
+	if !strings.Contains(assets.Doc, "delivers to Azure Storage queue `thumbnails`") || !strings.Contains(assets.Doc, "Includes event types `Microsoft.Storage.BlobCreated`.") {
+		t.Errorf("system subscription: %s", assets.Doc)
+	}
+	thumbnails := channel(t, base, "thumbnails")
+	if thumbnails.Title != "Azure Storage queue" || thumbnails.Kind != catalog.ChannelKindMessage || thumbnails.Source != "event-grid.tf:58" {
+		t.Errorf("storage destination: %+v", thumbnails)
+	}
+	if !strings.Contains(thumbnails.Doc, "Filled by Event Grid subscription `create-thumbnails` from `assets-system`.") || !strings.Contains(thumbnails.Doc, "Includes event types `Microsoft.Storage.BlobCreated`.") {
+		t.Errorf("storage destination doc: %s", thumbnails.Doc)
+	}
+}
+
+func TestAzureEventGridFirstClassMessagingDestinations(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "main.tf", `
+resource "azurerm_eventgrid_topic" "orders" {
+  name = "orders-events"
+}
+
+resource "azurerm_eventhub" "audit" {
+  name = "orders-audit"
+}
+
+resource "azurerm_servicebus_queue" "billing" {
+  name = "billing-commands"
+}
+
+resource "azurerm_servicebus_topic" "analytics" {
+  name = "orders-analytics"
+}
+
+resource "azurerm_eventgrid_event_subscription" "audit" {
+  name         = "audit-orders"
+  scope        = azurerm_eventgrid_topic.orders.id
+  eventhub_id  = azurerm_eventhub.audit.id
+}
+
+resource "azurerm_eventgrid_event_subscription" "billing" {
+  name                 = "bill-orders"
+  scope                = azurerm_eventgrid_topic.orders.id
+  service_bus_queue_id = azurerm_servicebus_queue.billing.id
+}
+
+resource "azurerm_eventgrid_event_subscription" "analytics" {
+  name                 = "analyze-orders"
+  scope                = azurerm_eventgrid_topic.orders.id
+  service_bus_topic_id = azurerm_servicebus_topic.analytics.id
+}
+`)
+
+	out, resp := extracted(t, root, Options{})
+	if got := warnings(resp); len(got) != 0 {
+		t.Fatalf("warnings: %v", got)
+	}
+	base := service(t, out, "shop.fulfillment")
+	for address, title := range map[string]string{
+		"orders-audit":     "Azure Event Hub",
+		"billing-commands": "Azure Service Bus queue",
+		"orders-analytics": "Azure Service Bus topic",
+	} {
+		got := channel(t, base, address)
+		if got.Title != title || got.Kind != catalog.ChannelKindMessage || !strings.Contains(got.Doc, "Filled by Event Grid subscription") || !strings.Contains(got.Doc, "from `orders-events`.") {
+			t.Errorf("destination %s: %+v", address, got)
+		}
+	}
+}
+
+func TestAzureEventGridDirectSourceAndWebhookKeepSecretsOut(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "main.tf", `
+resource "azurerm_storage_account" "assets" {
+  name = "shopassets"
+}
+
+resource "azurerm_eventgrid_event_subscription" "audit" {
+  name                 = "audit-uploads"
+  scope                = azurerm_storage_account.assets.id
+  included_event_types = ["Microsoft.Storage.BlobCreated"]
+
+  webhook_endpoint {
+    url = "https://audit.example.test/events?code=do-not-copy"
+  }
+}
+`)
+
+	out, resp := extracted(t, root, Options{})
+	if got := warnings(resp); len(got) != 0 {
+		t.Fatalf("warnings: %v", got)
+	}
+	assets := channel(t, service(t, out, "shop.fulfillment"), "shopassets")
+	if assets.Title != "Azure Event Grid source" || !strings.Contains(assets.Doc, "Event Grid subscription `audit-uploads` delivers to webhook `external endpoint`.") {
+		t.Errorf("direct source: %+v", assets)
+	}
+	if strings.Contains(assets.Doc, "audit.example.test") || strings.Contains(assets.Doc, "do-not-copy") {
+		t.Errorf("webhook URL leaked into the catalog: %s", assets.Doc)
+	}
+}
+
 func TestFindsTheOneDirectoryWithTerraform(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "go.mod", "module example.com/svc\n")
@@ -297,7 +508,7 @@ func TestNothingFoundIsSaidOnce(t *testing.T) {
 		t.Errorf("fragment: %+v", out)
 	}
 	got := warnings(resp)
-	if len(got) != 1 || !strings.HasSuffix(got[0], "no AWS resource this reader knows was found") {
+	if len(got) != 1 || !strings.HasSuffix(got[0], "no AWS or Azure resource this reader knows was found") {
 		t.Errorf("warnings: %v", got)
 	}
 }

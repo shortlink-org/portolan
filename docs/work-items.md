@@ -35,6 +35,45 @@ No association changes a flow step's execution confidence.
 
 ## Configuration
 
+### Settings UI
+
+Settings → Integrations → Task trackers configures one verifier per Git
+checkout, with several tracker instances supported in each verifier. The local
+form saves to `portolan.json` through the localhost-only API, with a manifest
+revision check. It never stores tracker configuration or tokens in localStorage.
+`Save & rebuild` starts the normal generator and diagram refresh; saving only
+configuration is also available. Failures are distinguished from a saved
+configuration. Reload settings explicitly after a revision conflict.
+
+Catalog scope is a compact multi-select. `Full scan` on a saved repository
+runs the generator with a one-run override for that verifier; `Save & full
+scan` first saves the form. Both ignore `maxCommits` for this invocation only.
+Git history is read in pages against the HEAD commit pinned at scan start.
+No fetch is performed: shallow repositories remain incomplete and report it.
+Other verifiers retain their normal limits, and subsequent regular builds
+use the saved limit again (so older links may disappear from their output).
+
+The form accepts a display name, stable tracker ID, HTTP(S) base address,
+project prefixes, key format and task URL template. A live test uses exactly
+the Git verifier's detector; it performs no network request and does not claim
+that the task exists. Default formats are `{project}-{number}` and
+`{baseUrl}/issue/{key}`. Key formats allow 1–4 literal separator characters
+from `- _ : # / .`; arbitrary regex is intentionally unsupported. Task links
+encode the key and must stay on the configured tracker host.
+
+Only known checkout roots inside the workspace are selectable. Nested source
+directories cannot inherit their enclosing checkout's history. New verifiers
+write under `portolan-work-items/`, with explicit source entries in the union
+and selected catalog profiles. Existing manually scoped verifiers retain their
+source setup. Removing all trackers retains a disabled verifier that overwrites
+its fragment with empty work-item collections on the next generation, clearing
+stale links without deleting files in the settings request.
+
+Published catalogs show an allowlisted read-only configuration and offer a
+copyable manifest snippet. Merge snippets into the existing manifest (do not
+replace it) and include the output sources in the intended catalog profiles.
+Titles, statuses and assignees still require the future API-enrichment step.
+
 The built-in verifier uses the existing pipeline instead of introducing a
 second top-level integration configuration:
 

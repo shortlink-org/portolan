@@ -108,6 +108,7 @@
   "sources": [
     "data/*.json",
     "portolan/*.json",
+    "portolan-work-items/**/*.json",
     "examples/*/portolan/*.json",
     "examples/*/*/portolan/*.json",
     "examples/*/*/*/portolan/*.json",
@@ -252,6 +253,12 @@
     },
     {
       "name": "go-sqs",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
+      "name": "go-eventgrid",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
       }

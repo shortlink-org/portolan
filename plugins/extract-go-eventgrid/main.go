@@ -1,7 +1,6 @@
-// Package extractterraform is portolan-extract-terraform: a Terraform module
-// for AWS or Azure Event Grid in, its topics, functions, queues and stores out
-// - and the edges between them that only the infrastructure knows.
-package extractterraform
+// Package extractgoeventgrid is portolan-extract-go-eventgrid: Azure Event
+// Grid publisher calls in a Go repository in, the topics the service sends to out.
+package extractgoeventgrid
 
 import (
 	"fmt"
@@ -15,13 +14,9 @@ import (
 type Options struct {
 	Context string `json:"context"`
 	Service string `json:"service"`
-	Dir     string `json:"dir,omitempty"`
 	Out     string `json:"out,omitempty"`
 }
 
-// Serve answers one request on stdin with one response on stdout. The
-// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
-// call it.
 func Serve(stdin io.Reader, stdout io.Writer) error {
 	return run(stdin, stdout)
 }
@@ -37,7 +32,6 @@ func run(stdin io.Reader, stdout io.Writer) error {
 		if opts.Service == "" {
 			opts.Service = goscan.Slug(filepath.Base(req.Input.Root))
 		}
-
 		return extract(req.Input, opts)
 	})
 }

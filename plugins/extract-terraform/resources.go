@@ -26,6 +26,18 @@ const (
 	typeTable        = "aws_dynamodb_table"
 	typeDBInstance   = "aws_db_instance"
 	typeDBCluster    = "aws_rds_cluster"
+
+	typeEventGridTopic              = "azurerm_eventgrid_topic"
+	typeEventGridSystemTopic        = "azurerm_eventgrid_system_topic"
+	typeEventGridDomain             = "azurerm_eventgrid_domain"
+	typeEventGridDomainTopic        = "azurerm_eventgrid_domain_topic"
+	typeEventGridSubscription       = "azurerm_eventgrid_event_subscription"
+	typeEventGridSystemSubscription = "azurerm_eventgrid_system_topic_event_subscription"
+	typeAzureFunction               = "azurerm_function_app_function"
+	typeAzureEventHub               = "azurerm_eventhub"
+	typeAzureServiceBusQueue        = "azurerm_servicebus_queue"
+	typeAzureServiceBusTopic        = "azurerm_servicebus_topic"
+	typeAzureStorageQueue           = "azurerm_storage_queue"
 )
 
 var notYet = map[string]string{
@@ -53,6 +65,9 @@ type infra struct {
 	mappings      []*mapping
 	notifications []*notification
 	stores        []*store
+	eventGrid     []*eventGridTopic
+	eventGridSubs []*eventGridSubscription
+	azureChannels []*azureDestination
 }
 
 type queue struct {
@@ -77,9 +92,10 @@ type subscription struct {
 }
 
 type function struct {
-	r       *resource
-	name    string
-	runtime string
+	r          *resource
+	name       string
+	runtime    string
+	technology string
 	// env is what the function is configured with, by variable name: the
 	// resources each value reaches. Sorted by name when read out.
 	env map[string][]ref
@@ -192,7 +208,7 @@ func read(t *tree, b *plugin.Builder) *infra {
 			if !ok {
 				continue
 			}
-			fn := &function{r: r, name: name, env: map[string][]ref{}}
+			fn := &function{r: r, name: name, technology: "AWS Lambda", env: map[string][]ref{}}
 			fn.runtime, _ = s.stringOf(r.attr("runtime"), nil)
 			if variables := r.env(); variables != nil {
 				for _, item := range variables.Items {
@@ -229,6 +245,31 @@ func read(t *tree, b *plugin.Builder) *infra {
 					continue
 				}
 				in.notifications = append(in.notifications, &notification{r: r, bucket: bucket, targets: []notificationTarget{{target: r}}})
+			}
+		case typeAzureFunction:
+			name, ok := named(r, "name", b)
+			if !ok {
+				continue
+			}
+			language, _ := s.stringOf(r.attr("language"), nil)
+			in.functions = append(in.functions, &function{
+				r:          r,
+				name:       name,
+				runtime:    language,
+				technology: "Azure Functions",
+				env:        map[string][]ref{},
+			})
+		case typeEventGridTopic, typeEventGridSystemTopic, typeEventGridDomain, typeEventGridDomainTopic:
+			if topic := readEventGridTopic(r, b); topic != nil {
+				in.eventGrid = append(in.eventGrid, topic)
+			}
+		case typeEventGridSubscription, typeEventGridSystemSubscription:
+			if subscription := readEventGridSubscription(r, b); subscription != nil {
+				in.eventGridSubs = append(in.eventGridSubs, subscription)
+			}
+		case typeAzureEventHub, typeAzureServiceBusQueue, typeAzureServiceBusTopic, typeAzureStorageQueue:
+			if destination := readAzureDestination(r, b); destination != nil {
+				in.azureChannels = append(in.azureChannels, destination)
 			}
 		case typeMapping:
 			m := &mapping{r: r}

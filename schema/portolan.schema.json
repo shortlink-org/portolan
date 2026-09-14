@@ -101,6 +101,7 @@
               "debezium",
               "go-nats",
               "go-sqs",
+              "go-eventgrid",
               "terraform",
               "k8s",
               "argocd-gitops",
@@ -530,6 +531,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.go-sqs"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "go-eventgrid"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.go-eventgrid"
                 }
               }
             }
@@ -1515,7 +1535,7 @@
       "properties": {
         "trackers": {
           "type": "array",
-          "minItems": 1,
+          "maxItems": 20,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -1532,6 +1552,22 @@
               },
               "provider": {
                 "const": "youtrack"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "keyFormat": {
+                "type": "string",
+                "maxLength": 100,
+                "default": "{project}-{number}",
+                "description": "Literal key template: {project}, 1–4 separator characters (- _ : # / .), then {number}."
+              },
+              "urlTemplate": {
+                "type": "string",
+                "maxLength": 500,
+                "default": "{baseUrl}/issue/{key}",
+                "description": "Task link on the tracker host, using {baseUrl} and {key}."
               },
               "baseUrl": {
                 "type": "string",
@@ -3006,6 +3042,31 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "sqs.json"
+        }
+      }
+    },
+    "options.go-eventgrid": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "fulfillment"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "eventgrid.json"
         }
       }
     },

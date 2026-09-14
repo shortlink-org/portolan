@@ -1227,13 +1227,13 @@ function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolea
             <Route path="delivery" element={<section><SectionTitle right={local ? "preview before writing" : "local mode required"}>Delivery presets</SectionTitle><DeliverySettings local={local} /></section>} />
             <Route path="recordings" element={<RecordingsRoute local={local} />} />
             <Route path="rules" element={<RulesSettings local={local} />} />
-            <Route path="integrations" element={<IntegrationsSettings />} />
+            <Route path="integrations" element={<IntegrationsSettings local={local} />} />
             <Route path="preferences" element={<PreferencesSettings />} />
             <Route path="about" element={<AboutSettings />} />
             <Route path="*" element={<Navigate to={paths.settings()} replace />} />
           </Routes>
         </div>
-        {!about ? <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />{browserIntegration ? "Integration settings stay in this browser and do not change the generated catalog." : local ? "Changes are written only after preview; generated files remain reviewable in git." : "Configuration is embedded at build time; changing it requires a new catalog build."}</div> : null}
+        {!about ? <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />{browserIntegration ? "Task trackers use project configuration; Kafka UI, Confluence and Notion links stay in this browser." : local ? "Changes are written only after preview; generated files remain reviewable in git." : "Configuration is embedded at build time; changing it requires a new catalog build."}</div> : null}
       </div>
     </div>
   );

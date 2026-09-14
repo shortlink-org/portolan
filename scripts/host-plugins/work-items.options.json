@@ -4,13 +4,16 @@
   "required": ["trackers"],
   "properties": {
     "trackers": {
-      "type": "array", "minItems": 1,
+      "type": "array", "maxItems": 20,
       "items": {
         "type": "object", "additionalProperties": false,
         "required": ["id", "provider", "baseUrl", "projects"],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
           "provider": { "const": "youtrack" },
+          "name": { "type": "string", "maxLength": 100 },
+          "keyFormat": { "type": "string", "maxLength": 100, "default": "{project}-{number}", "description": "Literal key template: {project}, 1–4 separator characters (- _ : # / .), then {number}." },
+          "urlTemplate": { "type": "string", "maxLength": 500, "default": "{baseUrl}/issue/{key}", "description": "Task link on the tracker host, using {baseUrl} and {key}." },
           "baseUrl": { "type": "string", "pattern": "^https?://" },
           "projects": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } }
         }

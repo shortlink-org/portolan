@@ -89,6 +89,7 @@ if (import.meta.hot) {
 export const SOURCE_GLOBS = [
   "data/*.json",
   "portolan/*.json",
+  "portolan-work-items/**/*.json",
   "examples/*/portolan/*.json",
   "examples/*/*/portolan/*.json",
   "examples/*/*/*/portolan/*.json",
@@ -100,6 +101,7 @@ export const SOURCE_GLOBS = [
 const modules: Record<string, unknown> = {
   ...import.meta.glob("../data/*.json", { eager: true, import: "default" }),
   ...import.meta.glob("../portolan/*.json", { eager: true, import: "default" }),
+  ...import.meta.glob("../portolan-work-items/**/*.json", { eager: true, import: "default" }),
   ...import.meta.glob("../examples/*/portolan/*.json", {
     eager: true,
     import: "default",

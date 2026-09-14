@@ -25,6 +25,7 @@ import { pluginsFresh } from "./plugins-fresh.mjs";
 import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import { formatLike } from "./json-format.mjs";
+import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
 import {
   discoverProject,
@@ -1483,7 +1484,7 @@ function refreshLikeC4Bundle(job) {
   });
 }
 
-function startJob(workspace, mode, approvedPreview, preparedTrial) {
+function startJob(workspace, mode, approvedPreview, preparedTrial, workItemsFullScan = "") {
   const id = randomUUID();
   const preview = mode === "preview" || mode === "project-preview" || mode === "trace-preview";
   const fingerprint = preparedTrial?.fingerprint ?? (preview ? workspaceFingerprint(workspace) : approvedPreview?.fingerprint);
@@ -1513,7 +1514,7 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
   try {
     child = spawn(command, args, {
       cwd: job.runRoot,
-      env: { ...gitAuth.env, PORTOLAN_EVENTS: "1", ...(generatedAt ? { PORTOLAN_GENERATED_AT: generatedAt } : {}) },
+      env: { ...gitAuth.env, PORTOLAN_EVENTS: "1", PORTOLAN_WORK_ITEMS_FULL_SCAN: workItemsFullScan, ...(generatedAt ? { PORTOLAN_GENERATED_AT: generatedAt } : {}) },
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
     });
@@ -1596,6 +1597,9 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/rules`) {
             return send(res, 200, problemRulesState(workspace));
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/task-trackers`) {
+            return send(res, 200, taskTrackerState(workspace));
+          }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
             const features = url.searchParams.has("features")
               ? url.searchParams.get("features").split(",").filter(Boolean)
@@ -1632,6 +1636,25 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             return send(res, 405, { error: "Use a local JSON request." });
           }
           const input = await body(req);
+          if (url.pathname === `${LOCAL_API_PREFIX}/task-trackers/full-scan`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before scanning." });
+            const target = taskTrackerFullScanTarget(workspace, input);
+            const job = startJob(workspace, "write", null, null, target);
+            return send(res, 200, { runId: job.id });
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/task-trackers`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before saving trackers." });
+            const saved = saveTaskTrackerSettings(workspace, input, writeManifest);
+            if (!input.generate) return send(res, 200, { ...saved, run: null });
+            try {
+              const entry = saved.entries.find((entry) => entry.input === input.input);
+              const target = input.fullScan === true ? taskTrackerFullScanTarget(workspace, { revision: saved.revision, step: entry?.step }) : "";
+              const job = startJob(workspace, "write", null, null, target);
+              return send(res, 200, { ...saved, run: { runId: job.id, mode: job.mode } });
+            } catch (cause) {
+              return send(res, 200, { ...saved, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
+            }
+          }
           if (url.pathname === `${LOCAL_API_PREFIX}/django-aggregates`) {
             if ([...jobs.values()].some((job) => job.status === "running")) throw new Error("Wait for the current generation to finish before saving aggregate roots.");
             return send(res, 200, saveDjangoAggregates(workspace, input));

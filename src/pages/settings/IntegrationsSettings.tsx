@@ -24,6 +24,7 @@ import { useKafkaUi } from "../../lib/kafka-ui";
 import { useNotion } from "../../lib/notion";
 import { setupInfo } from "../../lib/setup-info";
 import { techGlyph } from "../../lib/tech";
+import { TaskTrackerSettings } from "./TaskTrackerSettings";
 
 const FIELD =
   "mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
@@ -304,11 +305,12 @@ function DxIntegration() {
   );
 }
 
-export function IntegrationsSettings() {
+export function IntegrationsSettings({ local = false }: { local?: boolean }) {
   return (
     <section>
       <SectionTitle right="browser settings + build configuration">Integrations</SectionTitle>
       <div className="grid gap-grid lg:grid-cols-2">
+        <TaskTrackerSettings local={local} />
         <DxIntegration />
         <IntegrationCard
           name="Kafka UI"

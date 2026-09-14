@@ -283,8 +283,20 @@ match it. A port that takes exactly one other string beside the queue names
 the message; a direct call names none. `DeleteMessage`, visibility changes and
 `CreateQueue` say nothing about direction and are not read; SNS is not read.
 
-`extract-terraform` reads the other half: the infrastructure the code runs
-on, from the `*.tf` files of the directory given as `dir` - or the root, or
+`extract-go-eventgrid` reads publishers built with the Azure SDK for Go. For
+basic and custom topics it recognizes `azeventgrid.Client.PublishEvents`,
+`PublishCloudEvents` and `PublishCustomEventEvents`; for Event Grid namespace
+topics it recognizes `aznamespaces.SenderClient.SendEvent` and `SendEvents`.
+The client is followed back through locals, parameters and adapter fields to
+its SDK constructor. A basic-topic endpoint becomes the topic name; a namespace
+endpoint and constructor topic become `namespace/topic`. Event types are read
+from Event Grid-schema `EventType` fields and `messaging.NewCloudEvent` calls,
+and are emitted as sent messages with the publishing source line. Credential
+arguments are never resolved or copied. Dynamic endpoints remain warnings
+rather than guessed channels.
+
+`extract-terraform` reads the other half: the AWS and Azure infrastructure the
+code runs on, from the `*.tf` files of the directory given as `dir` - or the root, or
 the one directory under it that holds any. Nothing is evaluated; the files
 are read as syntax with `hashicorp/hcl`, and a name is followed the way a
 subject is - to a literal, a variable's default, a local, the argument a
@@ -321,6 +333,22 @@ secondary indexes as the table), `aws_db_instance` and `aws_rds_cluster`
 a queue or topic nothing in the module touches is listed on that service as
 well, and says so. Kinesis, EventBridge, API Gateway, Step Functions,
 ElastiCache, MSK and ECS resources are named once as not read yet.
+
+For Azure Event Grid, custom topics, system topics, domains and domain topics
+are `event` channels. `azurerm_eventgrid_event_subscription` and
+`azurerm_eventgrid_system_topic_event_subscription` connect those channels to
+Azure Functions, Event Hubs, Service Bus queues or topics, Storage queues,
+Relay hybrid connections and webhooks. Included event types become received
+messages on a function. Event Hubs, Service Bus queues and topics, and Storage
+queues declared in the same module also become first-class `message` channels,
+with the subscription and source Event Grid channel recorded on the destination;
+subject filters, the count of advanced filters,
+delivery schema, retry policy and the dead-letter blob container stay on the
+channel as declared routing facts. A subscription scoped directly to an Azure
+resource is kept as a system-event source even when no explicit system-topic
+resource exists. Webhook URLs are deliberately omitted because their query
+string may carry a validation or access token. Provider state, credentials and
+observed delivery attempts remain outside the extractor.
 
 `extract-python-kafka` is the framework-independent Kafka enrichment for
 Python. It recognizes confluent-kafka, kafka-python and aiokafka by their

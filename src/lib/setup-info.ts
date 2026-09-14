@@ -8,6 +8,8 @@
  */
 
 import { djangoAggregateCandidates, djangoAggregateMessage } from "./django-aggregates.ts";
+import { publicTaskTrackers } from "./task-tracker-config.mjs";
+import type { TaskTrackerEntry } from "./task-tracker-config.mjs";
 
 export type SetupPhase = "extract" | "verify" | "generate";
 
@@ -93,6 +95,7 @@ export interface SetupRun {
 }
 
 export interface SetupInfo {
+  taskTrackers?: TaskTrackerEntry[];
   projects: SetupProject[];
   plugins: SetupPlugin[];
   steps: SetupStep[];
@@ -181,6 +184,8 @@ export function publicSetupFrom(
       (source): source is string => typeof source === "string",
     ),
   };
+  const taskTrackers = publicTaskTrackers(manifest);
+  if (taskTrackers.length) result.taskTrackers = taskTrackers;
 
   const report = record(reportValue);
   if (Object.keys(report).length > 0) {

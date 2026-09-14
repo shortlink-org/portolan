@@ -1,6 +1,33 @@
 import type { SetupDiagnostic, SetupInfo, SetupPhase, SetupProject, SetupRunStepStatus } from "./setup-info";
 import type { DjangoAggregateCandidates } from "./django-aggregates";
 import type { ProblemRuleEntry } from "./problem-rules";
+import type { TaskTrackerEntry, TaskTracker } from "./task-tracker-config.mjs";
+
+export interface TaskTrackerState {
+  revision: string;
+  entries: Array<TaskTrackerEntry & { managed: boolean; catalogs: string[] }>;
+  repositories: Array<{ input: string; label: string; available: boolean; reason?: string }>;
+  catalogs: Array<{ id: string; title: string }>;
+}
+export interface SaveTaskTrackers {
+  revision: string;
+  step: number | null;
+  input: string;
+  catalogs: string[];
+  trackers: TaskTracker[];
+  maxCommits: number;
+  generate: boolean;
+  fullScan?: boolean;
+}
+export function taskTrackerSettings(): Promise<TaskTrackerState> {
+  return json("/task-trackers");
+}
+export function fullScanTaskTrackers(revision: string, step: number): Promise<{ runId: string }> {
+  return json("/task-trackers/full-scan", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ revision, step }) });
+}
+export function saveTaskTrackers(request: SaveTaskTrackers): Promise<TaskTrackerState & { run: { runId: string } | null; generationError?: string }> {
+  return json("/task-trackers", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(request) });
+}
 
 const ROOT = `${import.meta.env.BASE_URL}__portolan`;
 const LOCAL_HEADER = { "Content-Type": "application/json", "X-Portolan-Local": "1" };

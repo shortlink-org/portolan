@@ -18,7 +18,7 @@
       "properties": {
         "trackers": {
           "type": "array",
-          "minItems": 1,
+          "maxItems": 20,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -35,6 +35,22 @@
               },
               "provider": {
                 "const": "youtrack"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "keyFormat": {
+                "type": "string",
+                "maxLength": 100,
+                "default": "{project}-{number}",
+                "description": "Literal key template: {project}, 1–4 separator characters (- _ : # / .), then {number}."
+              },
+              "urlTemplate": {
+                "type": "string",
+                "maxLength": 500,
+                "default": "{baseUrl}/issue/{key}",
+                "description": "Task link on the tracker host, using {baseUrl} and {key}."
               },
               "baseUrl": {
                 "type": "string",
@@ -1755,9 +1771,45 @@
     }
   },
   {
+    "name": "go-eventgrid",
+    "plugin": "extract-go-eventgrid",
+    "summary": "Reads Azure SDK for Go Event Grid publisher calls into the topics and event types a service publishes.",
+    "category": "messaging",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-go-eventgrid",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "fulfillment"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "eventgrid.json"
+        }
+      }
+    }
+  },
+  {
     "name": "terraform",
     "plugin": "extract-terraform",
-    "summary": "Reads a Terraform module for AWS into the queues, topics, functions and stores it declares, and the subscriptions, triggers and dead-letter queues that join them.",
+    "summary": "Reads AWS and Azure Event Grid Terraform into the queues, topics, functions and stores it declares, and the subscriptions, filters, triggers and dead-letter routes that join them.",
     "category": "infrastructure",
     "phases": [
       "extract"

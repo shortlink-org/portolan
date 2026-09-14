@@ -1,12 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { issueKeys, run } from "./work-items.mjs";
+import { fullScanRequested, historyRecords, issueKeys, run } from "./work-items.mjs";
 
 const temporary = [];
-afterEach(() => { for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true }); });
+afterEach(() => { vi.unstubAllEnvs(); for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true }); });
 const trackers = [{ id: "team", provider: "youtrack", baseUrl: "https://tasks.example.com/youtrack/", projects: ["RT"] }];
 
 function checkout() {
@@ -28,6 +28,36 @@ function checkout() {
 }
 
 describe("work item Git evidence", () => {
+  it("full scan ignores the cap only for the selected verifier and preserves the normal limit", () => {
+    const { request, root, commit } = checkout();
+    commit("RT-1: old change"); commit("RT-2: recent change");
+    request.options.maxCommits = 1;
+    request.input.output = join(realpathSync(root), "output");
+    const target = JSON.stringify([realpathSync(root), request.input.output, "work-items.json"]);
+    vi.stubEnv("PORTOLAN_WORK_ITEMS_FULL_SCAN", target);
+    const scanned = run(request);
+    expect(JSON.parse(scanned.files[0].contents).workItems.map((item) => item.key)).toEqual(["RT-1", "RT-2"]);
+    expect(scanned.warnings).toEqual([]);
+    expect(request.options.maxCommits).toBe(1);
+    expect(fullScanRequested({ ...request, input: { ...request.input, output: join(root, "other") } })).toBe(false);
+    expect(fullScanRequested({ ...request, options: { ...request.options, out: "other.json" } })).toBe(false);
+    vi.stubEnv("PORTOLAN_WORK_ITEMS_FULL_SCAN", "");
+    expect(JSON.parse(run(request).files[0].contents).workItems.map((item) => item.key)).toEqual(["RT-2"]);
+  });
+  it("paginates through all records against a pinned HEAD and stops bounded reads at the cap", () => {
+    const calls = [];
+    const git = (args) => {
+      calls.push(args);
+      const skip = Number(args.find((arg) => arg.startsWith("--skip=")).slice(7));
+      const count = Number(args.find((arg) => arg.startsWith("-n")).slice(2));
+      return ["one", "two", "three", "four", "five"].slice(skip, skip + count).map((record) => `\x1e${record}`).join("");
+    };
+    expect([...historyRecords(git, "pinned-sha", null, [], 2)]).toEqual(["one", "two", "three", "four", "five"]);
+    expect(calls.every((args) => args[1] === "pinned-sha")).toBe(true);
+    const warnings = [];
+    expect([...historyRecords(git, "pinned-sha", 2, warnings, 2)]).toEqual(["one", "two"]);
+    expect(warnings[0].message).toMatch(/latest 2/);
+  });
   it("recognizes configured keys in a subject or body without substring matches", () => {
     expect(issueKeys("RT-101: toolbar\nFixes RT-102, RT-101; ART-1 xRT-2 RT-3x RT-4-more XX-4", ["RT"]))
       .toEqual(["RT-101", "RT-102"]);
