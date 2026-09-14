@@ -220,7 +220,7 @@ function live(url, want, out, env) {
  */
 export function wantedPaths(want) {
   const raw = Array.isArray(want.paths) ? want.paths : [];
-  const clean = raw.map((path) => posix.normalize(String(path).replaceAll("\\", "/")).replace(/^\.\/?/, "").replace(/\/+$/, "")).filter((path) => path && path !== ".");
+  const clean = raw.map((path) => posix.normalize(String(path).replaceAll("\\", "/")).replace(/^\.\//, "").replace(/\/+$/, "")).filter((path) => path && path !== ".");
   for (const path of clean) {
     if (path.startsWith("/") || path === ".." || path.startsWith("../")) throw new Error(`${want.repo}: path "${path}" leaves the repository`);
   }

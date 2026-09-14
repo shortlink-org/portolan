@@ -6,7 +6,7 @@ import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runPlugin } from "../plugin-host.mjs";
-import { LOCK_NAME, OFFLINE_ENV, encodeLock, pin, run, splitRepo, webRepo } from "./fetch-git.mjs";
+import { LOCK_NAME, OFFLINE_ENV, encodeLock, pin, run, splitRepo, wantedPaths, webRepo } from "./fetch-git.mjs";
 
 const created = [];
 afterEach(() => {
@@ -302,5 +302,11 @@ describe("names", () => {
     const lock = encodeLock({ repo: "github.com/acme/shop", commit: "abc", files: [{ path: "b", sha256: "2", size: 1 }, { path: "a", sha256: "1", size: 1 }], skipped: [{ path: "z.png", size: 2, reason: "known binary extension .png" }] });
     expect(JSON.parse(lock)).toEqual({ repos: [{ repo: "github.com/acme/shop", commit: "abc", files: [{ path: "a", sha256: "1", size: 1 }, { path: "b", sha256: "2", size: 1 }], skipped: [{ path: "z.png", size: 2, reason: "known binary extension .png" }] }] });
     expect(JSON.parse(encodeLock({ repo: "r", commit: "c", files: [] })).repos[0]).not.toHaveProperty("paths");
+  });
+});
+
+describe("wantedPaths", () => {
+  it("keeps dot-prefixed paths and strips only a leading ./", () => {
+    expect(wantedPaths({ paths: [".gitlab", ".air.toml", "./cmd", "docs/", "."] })).toEqual([".air.toml", ".gitlab", "cmd", "docs"]);
   });
 });
