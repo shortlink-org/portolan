@@ -17,11 +17,32 @@
           "consumes": [],
           "aggregates": [],
           "hosts": [
+            "api.example.com",
             "pricing",
             "pricing.shop",
             "pricing.shop.svc",
             "pricing.shop.svc.cluster.local",
             "shop.example.com"
+          ],
+          "gatewayExposures": [
+            {
+              "id": "HTTPRoute/shop/pricing-\u003eGateway/shop/shop#https-\u003eService/shop/pricing",
+              "hostnames": [
+                "api.example.com"
+              ],
+              "routeKind": "HTTPRoute",
+              "routeNamespace": "shop",
+              "routeName": "pricing",
+              "gatewayNamespace": "shop",
+              "gatewayName": "shop",
+              "listener": "https",
+              "protocol": "HTTPS",
+              "port": 443,
+              "backendNamespace": "shop",
+              "backendName": "pricing",
+              "basis": "manifest",
+              "source": "deploy/k8s/pricing.yaml"
+            }
           ],
           "dials": [
             "nats.shop.svc",

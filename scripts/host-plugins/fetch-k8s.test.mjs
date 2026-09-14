@@ -147,6 +147,22 @@ describe("fetch-k8s", () => {
     expect(catalog.contexts.map((c) => c.id)).toEqual(["payments", "shop"]);
     const pricing = serviceOf(catalog, "shop.pricing");
     expect(pricing.hosts).toEqual(["api.example.com", "pricing", "pricing.shop", "pricing.shop.svc", "pricing.shop.svc.cluster.local", "shop.example.com"]);
+    expect(pricing.gatewayExposures).toEqual([
+      expect.objectContaining({
+        hostnames: ["api.example.com"],
+        routeKind: "HTTPRoute",
+        routeNamespace: "shop",
+        routeName: "pricing",
+        gatewayNamespace: "shop",
+        gatewayName: "shop",
+        listener: "https",
+        protocol: "HTTPS",
+        port: 443,
+        backendNamespace: "shop",
+        backendName: "pricing",
+        basis: "api",
+      }),
+    ]);
     expect(pricing.dials).toEqual(["auth", "cart.shop.svc", "catalog.shop.svc.cluster.local", "ledger-db.payments.svc", "oms.shop.svc"]);
     // A Deployment beside the CronJob: the service is not a job.
     expect(pricing.kind).toBeUndefined();

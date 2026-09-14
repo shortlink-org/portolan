@@ -33,6 +33,8 @@ import type {
   Field,
   Flow,
   FlowNode,
+  GatewayExposure,
+  GatewayExposureDrift,
   Loop,
   Parallel,
   RpcMethod,
@@ -545,6 +547,9 @@ function mergeService(
         ? { commands: incoming.commands.map((c) => ({ ...c })) }
         : {}),
       ...(incoming.hosts ? { hosts: [...incoming.hosts] } : {}),
+      ...(incoming.gatewayExposures
+        ? { gatewayExposures: incoming.gatewayExposures.map(copyGatewayExposure) }
+        : {}),
       ...(incoming.dials ? { dials: [...incoming.dials] } : {}),
     });
     origin.set(incoming.id, path);
@@ -658,6 +663,24 @@ function mergeService(
     existing[field] = names;
   }
 
+  if (incoming.gatewayExposures?.length) {
+    const exposures = existing.gatewayExposures ?? [];
+    for (const offered of incoming.gatewayExposures) {
+      const at = exposures.findIndex((held) => held.id === offered.id);
+      if (at < 0) {
+        exposures.push(copyGatewayExposure(offered));
+        continue;
+      }
+      const held = exposures[at]!;
+      if (held.basis === offered.basis || held.basis === "both" || offered.basis === "both") {
+        continue;
+      }
+      const [manifest, api] = offered.basis === "manifest" ? [offered, held] : [held, offered];
+      exposures[at] = layGatewayManifestUnderAPI(manifest, api);
+    }
+    existing.gatewayExposures = exposures.sort((a, b) => a.id.localeCompare(b.id));
+  }
+
   if (incoming.channels?.length) {
     // Keyed by address, because that is the whole of a channel's identity. Two
     // documents describing one channel is not a conflict worth reporting - a
@@ -720,6 +743,45 @@ function mergeService(
     );
     existing.channels = channels;
   }
+}
+
+function copyGatewayExposure(exposure: GatewayExposure): GatewayExposure {
+  return {
+    ...exposure,
+    hostnames: [...exposure.hostnames],
+    ...(exposure.drift
+      ? {
+          drift: {
+            ...exposure.drift,
+            ...(exposure.drift.hostnames
+              ? { hostnames: [...exposure.drift.hostnames] }
+              : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+/** Keep the cluster's current listener values and the manifest's differences. */
+function layGatewayManifestUnderAPI(
+  manifest: GatewayExposure,
+  api: GatewayExposure,
+): GatewayExposure {
+  const drift: GatewayExposureDrift = {};
+  if (manifest.hostnames.join("\n") !== api.hostnames.join("\n")) {
+    drift.hostnames = [...manifest.hostnames];
+  }
+  if (manifest.protocol && manifest.protocol !== api.protocol) drift.protocol = manifest.protocol;
+  if (manifest.port && manifest.port !== api.port) drift.port = manifest.port;
+  const folded: GatewayExposure = {
+    ...copyGatewayExposure(api),
+    basis: "both",
+    source: manifest.source,
+  };
+  if (Object.keys(drift).length) folded.drift = drift;
+  else delete folded.drift;
+  if (!folded.source) delete folded.source;
+  return folded;
 }
 
 function copyChannel(channel: Channel): Channel {

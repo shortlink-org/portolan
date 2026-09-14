@@ -49,6 +49,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		}
 		hosts = append(hosts, frontingHosts(objects, backends)...)
 		service.Hosts = sortedUnique(hosts)
+		service.GatewayExposures = gatewayExposures(objects, backends, catalog.GatewayExposureManifest)
 
 		own := map[string]bool{}
 		for _, h := range service.Hosts {

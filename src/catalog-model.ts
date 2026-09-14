@@ -234,6 +234,12 @@ export interface Service {
    */
   hosts?: string[];
   /**
+   * Accepted Gateway API attachments that lead to this service. Each record
+   * keeps the Route, Gateway listener and backend Service that prove the
+   * exposure; `hosts` remains the compact lookup index derived from them.
+   */
+  gatewayExposures?: GatewayExposure[];
+  /**
    * The in-cluster names this service's workload is configured to reach,
    * read out of its environment and config maps and reduced to the host
    * alone. A value is never kept: not the variable it came from, not the
@@ -242,6 +248,35 @@ export interface Service {
    * not something this list can hold by shape.
    */
   dials?: string[];
+}
+
+/** One Route -> Gateway listener -> Kubernetes Service attachment. */
+export interface GatewayExposure {
+  id: string;
+  hostnames: string[];
+  routeKind: "HTTPRoute" | "GRPCRoute" | "TLSRoute";
+  routeNamespace: string;
+  routeName: string;
+  gatewayNamespace: string;
+  gatewayName: string;
+  listener: string;
+  protocol: string;
+  port: number;
+  backendNamespace: string;
+  backendName: string;
+  basis: GatewayExposureBasis;
+  /** Route manifest, relative to the service extractor's root. */
+  source?: string;
+  /** The manifest values where the live cluster reports something else. */
+  drift?: GatewayExposureDrift;
+}
+
+export type GatewayExposureBasis = "manifest" | "api" | "both";
+
+export interface GatewayExposureDrift {
+  hostnames?: string[];
+  protocol?: string;
+  port?: number;
 }
 
 /**

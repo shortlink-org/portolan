@@ -566,3 +566,36 @@ func TestGatewayHostCases(t *testing.T) {
 		})
 	}
 }
+
+func TestGatewayExposureKeepsTheAcceptedChain(t *testing.T) {
+	objects := []object{
+		{apiVersion: gatewayAPIGroup + "/v1", kind: "Gateway", name: "shared", namespace: "infra", body: map[string]any{
+			"spec": map[string]any{"listeners": []any{
+				map[string]any{
+					"name": "https", "protocol": "HTTPS", "port": 443, "hostname": "*.example.com",
+					"allowedRoutes": map[string]any{"namespaces": map[string]any{"from": "All"}},
+				},
+			}},
+		}},
+		{file: "deploy/gateway.yaml", apiVersion: gatewayAPIGroup + "/v1", kind: "HTTPRoute", name: "pricing", namespace: "shop", body: map[string]any{
+			"spec": map[string]any{
+				"parentRefs": []any{map[string]any{"name": "shared", "namespace": "infra", "sectionName": "https"}},
+				"hostnames":  []any{"api.example.com"},
+				"rules": []any{map[string]any{
+					"backendRefs": []any{map[string]any{"name": "pricing"}},
+				}},
+			},
+		}},
+	}
+	exposures := gatewayExposures(objects, map[string]bool{"shop/pricing": true}, catalog.GatewayExposureManifest)
+	if len(exposures) != 1 {
+		t.Fatalf("gatewayExposures() = %#v", exposures)
+	}
+	got := exposures[0]
+	if got.RouteKind != "HTTPRoute" || got.RouteNamespace != "shop" || got.RouteName != "pricing" ||
+		got.GatewayNamespace != "infra" || got.GatewayName != "shared" || got.Listener != "https" ||
+		got.Protocol != "HTTPS" || got.Port != 443 || got.BackendNamespace != "shop" || got.BackendName != "pricing" ||
+		got.Basis != catalog.GatewayExposureManifest || got.Source != "deploy/gateway.yaml" || !reflect.DeepEqual(got.Hostnames, []string{"api.example.com"}) {
+		t.Errorf("gatewayExposures()[0] = %#v", got)
+	}
+}

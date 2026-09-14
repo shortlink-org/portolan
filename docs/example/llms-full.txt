@@ -4655,7 +4655,7 @@ Source: [`examples/shop/oms/connectors/oms-cdc.yaml:1`](https://github.com/short
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/pricing/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing)
 - **Owners:** `@shortlink-org/shop`
-- **Hosts:** `pricing`, `pricing.shop`, `pricing.shop.svc`, `pricing.shop.svc.cluster.local`, `shop.example.com`
+- **Hosts:** `api.example.com`, `pricing`, `pricing.shop`, `pricing.shop.svc`, `pricing.shop.svc.cluster.local`, `shop.example.com`
 - **Dials:** `nats.shop.svc`, `otel-collector.observability.svc`
 
 Service `pricing` — bounded context **shop**. Go.
@@ -4927,6 +4927,12 @@ Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob
 | Environment | Where | Revision | Tracks | Tool | Images | Application |
 | --- | --- | --- | --- | --- | --- | --- |
 | prod | `in-cluster / shop` | [`3a0ebab`](https://github.com/shortlink-org/portolan/commit/3a0ebab1f0a622dded389f09a8eba5671fd8fd93) | `main` | kustomize | `ghcr.io/shortlink-org/pricing:1.4.2` | [shop-pricing-prod](https://argocd.example.com/applications/argocd/shop-pricing-prod) |
+
+## Gateway API
+
+| Hostnames | Route | Gateway listener | Protocol | Backend Service | Evidence | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `api.example.com` | `HTTPRoute shop/pricing` | `shop/shop#https` | `HTTPS:443` | `shop/pricing` | manifest | [`examples/shop/pricing/deploy/k8s/pricing.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/deploy/k8s/pricing.yaml) |
 
 <!-- shop/pricing/aggregates/price-list.md -->
 

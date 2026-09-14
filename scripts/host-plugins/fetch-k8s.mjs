@@ -206,10 +206,11 @@ export function fragment(objects, options, builder) {
     }
     const slug = String(all[labels.service] ?? "").trim() || String(meta.name ?? "");
     const id = `${context}.${slug}`;
-    const service = services.get(id) ?? { id, context, slug, kinds: new Set(), hosts: new Set(), dials: new Set() };
+    const service = services.get(id) ?? { id, context, slug, kinds: new Set(), hosts: new Set(), dials: new Set(), gatewayExposures: new Map() };
     service.kinds.add(entry.kind);
     for (const host of entry.hosts) service.hosts.add(host);
     for (const dial of entry.dials) service.dials.add(dial);
+    for (const exposure of entry.gatewayExposures) service.gatewayExposures.set(exposure.id, exposure);
     services.set(id, service);
   }
 
@@ -238,6 +239,7 @@ export function fragment(objects, options, builder) {
     const dials = [...service.dials].filter((dial) => !service.hosts.has(dial)).sort();
     if (service.hosts.size) record.hosts = [...service.hosts].sort();
     if (dials.length) record.dials = dials;
+    if (service.gatewayExposures.size) record.gatewayExposures = [...service.gatewayExposures.values()].sort((a, b) => a.id.localeCompare(b.id));
     context.services.push(record);
     contexts.set(service.context, context);
   }

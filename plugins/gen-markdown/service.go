@@ -77,6 +77,7 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	section(&b, "Stores", s.storesTable(self, svc))
 	section(&b, "Commands", s.commandsTable(self, svc))
 	section(&b, "Where it runs", s.deploymentsTable(svc))
+	section(&b, "Gateway API", s.gatewayExposuresTable(self, svc))
 	section(&b, "Decisions", s.adrTable(self, s.adrsFor[svc.ID]))
 
 	s.b.file(self, b.String())
@@ -487,6 +488,32 @@ func (s *site) commandsTable(from string, svc *catalog.Service) string {
 	}
 
 	return table([]string{"Run", "Does", "Body", "Source"}, rows)
+}
+
+// gatewayExposuresTable keeps the evidence behind a service's public host:
+// the accepted Route, Gateway listener and Kubernetes Service backend.
+func (s *site) gatewayExposuresTable(from string, svc *catalog.Service) string {
+	rows := make([][]string, 0, len(svc.GatewayExposures))
+	for _, exposure := range svc.GatewayExposures {
+		source := exposure.Source
+		if source != "" && svc.Path != "" && !strings.HasPrefix(source, strings.TrimSuffix(svc.Path, "/")+"/") {
+			source = path.Join(svc.Path, source)
+		}
+		evidence := string(exposure.Basis)
+		if exposure.Drift != nil {
+			evidence = "drift"
+		}
+		rows = append(rows, []string{
+			codeList(exposure.Hostnames),
+			code(exposure.RouteKind + " " + exposure.RouteNamespace + "/" + exposure.RouteName),
+			code(exposure.GatewayNamespace + "/" + exposure.GatewayName + "#" + exposure.Listener),
+			code(exposure.Protocol + ":" + strconv.Itoa(exposure.Port)),
+			code(exposure.BackendNamespace + "/" + exposure.BackendName),
+			evidence,
+			s.source(from, source, svc),
+		})
+	}
+	return table([]string{"Hostnames", "Route", "Gateway listener", "Protocol", "Backend Service", "Evidence", "Source"}, rows)
 }
 
 // deploymentsTable is where the service runs, one row per Application the

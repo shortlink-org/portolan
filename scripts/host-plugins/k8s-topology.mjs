@@ -131,6 +131,11 @@ export function frontingHosts(objects, backends) {
 
 /** Resolve Route -> Gateway listener -> Service before accepting a hostname. */
 export function gatewayHosts(objects, backends) {
+  return sortedUnique(gatewayExposures(objects, backends).flatMap((exposure) => exposure.hostnames));
+}
+
+/** Keep the Route, listener and backend evidence behind each accepted host. */
+export function gatewayExposures(objects, backends, basis = "api") {
   const gateways = new Map();
   const namespaces = namespaceLabelIndex(objects);
   for (const object of objects) {
@@ -139,11 +144,12 @@ export function gatewayHosts(objects, backends) {
     }
   }
 
-  const out = [];
+  const byID = new Map();
   for (const route of objects) {
     if (!ROUTE_PROTOCOLS[route.kind] || !String(route.apiVersion ?? "").startsWith(`${GATEWAY_API_GROUP}/`)) continue;
     const spec = route.spec ?? {};
-    if (!routeTargetsBackend(route, spec, objects, backends)) continue;
+    const targets = routeBackends(route, spec, objects, backends);
+    if (targets.length === 0) continue;
     for (const parent of spec.parentRefs ?? []) {
       const group = String(parent.group ?? "").trim() || GATEWAY_API_GROUP;
       const kind = String(parent.kind ?? "").trim() || "Gateway";
@@ -152,16 +158,36 @@ export function gatewayHosts(objects, backends) {
       const gateway = gateways.get(namespacedName(parentNamespace, parent.name));
       if (!gateway) continue;
       for (const listener of gateway.spec?.listeners ?? []) {
-        if (listenerAcceptsRoute(listener, gateway, route, parent, namespaces)) {
-          out.push(...intersectHostnames(listener.hostname, spec.hostnames));
+        if (!listenerAcceptsRoute(listener, gateway, route, parent, namespaces)) continue;
+        const listenerName = String(listener.name ?? "").trim();
+        for (const target of targets) {
+          const [backendNamespace, backendName] = target.split("/", 2);
+          const id = `${route.kind}/${namespacedName(route.metadata?.namespace, route.metadata?.name)}->Gateway/${namespacedName(gateway.metadata?.namespace, gateway.metadata?.name)}#${listenerName}->Service/${target}`;
+          byID.set(id, {
+            id,
+            hostnames: intersectHostnames(listener.hostname, spec.hostnames),
+            routeKind: route.kind,
+            routeNamespace: objectNamespace(route.metadata?.namespace),
+            routeName: String(route.metadata?.name ?? ""),
+            gatewayNamespace: objectNamespace(gateway.metadata?.namespace),
+            gatewayName: String(gateway.metadata?.name ?? ""),
+            listener: listenerName,
+            protocol: String(listener.protocol ?? "").toUpperCase(),
+            port: Number(listener.port ?? 0),
+            backendNamespace,
+            backendName,
+            basis,
+            ...(route.source ? { source: String(route.source) } : {}),
+          });
         }
       }
     }
   }
-  return sortedUnique(out);
+  return [...byID.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
-function routeTargetsBackend(route, spec, objects, backends) {
+function routeBackends(route, spec, objects, backends) {
+  const targets = new Set();
   for (const rule of spec.rules ?? []) {
     for (const ref of rule.backendRefs ?? []) {
       const group = String(ref.group ?? "").trim();
@@ -170,10 +196,12 @@ function routeTargetsBackend(route, spec, objects, backends) {
       const namespace = String(ref.namespace ?? "").trim() || objectNamespace(route.metadata?.namespace);
       const name = String(ref.name ?? "").trim();
       if (!backends.has(namespacedName(namespace, name))) continue;
-      if (namespace === objectNamespace(route.metadata?.namespace) || referenceGranted(objects, route, namespace, name)) return true;
+      if (namespace === objectNamespace(route.metadata?.namespace) || referenceGranted(objects, route, namespace, name)) {
+        targets.add(namespacedName(namespace, name));
+      }
     }
   }
-  return false;
+  return [...targets].sort();
 }
 
 function referenceGranted(objects, route, targetNamespace, targetName) {
@@ -275,7 +303,7 @@ function sortedUnique(values) {
  * `spec`, and for a ConfigMap `data`. A Secret is never among them, because
  * it is never asked for.
  *
- * @returns {{object: object, kind: string, hosts: string[], dials: string[]}[]}
+ * @returns {{object: object, kind: string, hosts: string[], dials: string[], gatewayExposures: object[]}[]}
  */
 export function topology(objects) {
   const configMaps = new Map();
@@ -310,6 +338,7 @@ export function topology(objects) {
         backends.add(namespacedName(service.namespace, service.name));
       }
     }
+    const exposures = gatewayExposures(objects, backends);
     hosts.push(...frontingHosts(objects, backends));
     const own = new Set(hosts);
     const dials = [];
@@ -320,7 +349,7 @@ export function topology(objects) {
         if (host && !own.has(host)) dials.push(host);
       }
     }
-    out.push({ object, kind: WORKLOAD_KINDS[object.kind], hosts: sortedUnique(hosts), dials: sortedUnique(dials) });
+    out.push({ object, kind: WORKLOAD_KINDS[object.kind], hosts: sortedUnique(hosts), dials: sortedUnique(dials), gatewayExposures: exposures });
   }
   return out;
 }

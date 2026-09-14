@@ -41,6 +41,7 @@ import {
 import { ChannelRows } from "../components/ChannelRows";
 import { DocsLinks } from "../components/DocsLinks";
 import { DeploymentRows } from "../components/DeploymentRows";
+import { GatewayExposureFlow } from "../components/GatewayExposureFlow";
 import { CommandRows } from "../components/CommandRows";
 import { ModuleSpec } from "../components/SourceDoc";
 import { hasSchema, SchemaDocument } from "../components/SchemaDocument";
@@ -85,9 +86,38 @@ const TABS = [
   "decisions",
 ] as const;
 type Tab = (typeof TABS)[number];
+type InfrastructureView = "deployment" | "routing";
 
 function isTab(value: string | null): value is Tab {
   return value !== null && (TABS as readonly string[]).includes(value);
+}
+
+function InfrastructureSwitch({
+  view,
+  onView,
+}: {
+  view: InfrastructureView;
+  onView: (view: InfrastructureView) => void;
+}) {
+  return (
+    <div className="seg" role="group" aria-label="Infrastructure view">
+      {([
+        ["deployment", "deployment", "where and what revision runs"],
+        ["routing", "routing", "how Gateway API traffic reaches the service"],
+      ] as const).map(([value, label, title]) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => onView(value)}
+          aria-pressed={view === value}
+          title={title}
+          className={view === value ? "is-on" : ""}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function ServicePage() {
@@ -96,6 +126,13 @@ export function ServicePage() {
   const [showRetired, setShowRetired] = useState(false);
   /** Which C4 level the model canvas is drawn at: the service, or its parts. */
   const [level, setLevel] = useState<C4Level>(2);
+  const [infrastructureView, setInfrastructureView] =
+    useState<InfrastructureView>(() =>
+      typeof window !== "undefined" &&
+      window.location.hash === `#${SERVICE_ANCHOR.gateways}`
+        ? "routing"
+        : "deployment",
+    );
   // Read-only stores are off by default: they belong to someone else, and the
   // question this tab opens with is what THIS service is responsible for.
   const [showReadOnly, setShowReadOnly] = useState(false);
@@ -127,6 +164,13 @@ export function ServicePage() {
   const tree = treeHref(service.path, service, allRepos(catalog));
   const owners = ownersOf(service);
   const deployments = index.deploymentsByService.get(service.id) ?? [];
+  const gatewayExposures = service.gatewayExposures ?? [];
+  const shownInfrastructureView: InfrastructureView =
+    infrastructureView === "deployment" && deployments.length === 0
+      ? "routing"
+      : infrastructureView === "routing" && gatewayExposures.length === 0
+        ? "deployment"
+        : infrastructureView;
   // The service as a road: the pairs of contexts it stands between, if any.
   // Derived from the whole estate, so it is computed here and not carried
   // on the service, which knows only its own edges.
@@ -339,30 +383,46 @@ export function ServicePage() {
                 />
               </section>
             ) : null}
-            {/* Where it runs, read from the deployer's snapshot. Beside the
-                commands because it answers the next question after "how do
-                I build it": which commit stands where. Absent entirely when
-                no snapshot places it - a heading over an empty list would
-                claim the service runs nowhere, and nobody made that claim. */}
-            {deployments.length > 0 ? (
+            {/* Deployment state and ingress are two views of the same runtime
+                surface. Keep them together so the reader can switch from
+                "where is it" to "how does traffic reach it" without losing
+                context. Preserve the old inner anchors for existing links. */}
+            {deployments.length > 0 || gatewayExposures.length > 0 ? (
               <section
-                id={SERVICE_ANCHOR.deployments}
+                id={SERVICE_ANCHOR.runtime}
                 className="mt-section max-w-table"
               >
-                <SectionTitle anchor={SERVICE_ANCHOR.deployments}>
-                  Where it runs
+                <SectionTitle
+                  anchor={SERVICE_ANCHOR.runtime}
+                  right={
+                    deployments.length > 0 && gatewayExposures.length > 0 ? (
+                      <InfrastructureSwitch
+                        view={shownInfrastructureView}
+                        onView={setInfrastructureView}
+                      />
+                    ) : null
+                  }
+                >
+                  Runtime
                 </SectionTitle>
-                <DeploymentRows deployments={deployments} />
-                {/* The same rows as a picture: the service's instances with
-                    the environment, cluster and namespace drawn as the
-                    frames they are. Under the rows, because the rows carry
-                    the commit and the images and the picture carries where. */}
-                <div className="mt-3">
-                  <C4View
-                    viewId={serviceDeployViewId(service)}
-                    height={220}
-                  />
-                </div>
+                {shownInfrastructureView === "deployment" ? (
+                  <div id={SERVICE_ANCHOR.deployments}>
+                    <DeploymentRows deployments={deployments} />
+                    <div className="mt-3">
+                      <C4View
+                        viewId={serviceDeployViewId(service)}
+                        height={220}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div id={SERVICE_ANCHOR.gateways}>
+                    <GatewayExposureFlow
+                      exposures={gatewayExposures}
+                      service={service}
+                    />
+                  </div>
+                )}
               </section>
             ) : null}
             {showDomain ? (

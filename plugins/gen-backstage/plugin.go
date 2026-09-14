@@ -405,6 +405,10 @@ func reachability(meta *metadata, svc *catalog.Service) {
 	if len(svc.Dials) > 0 {
 		meta.Annotations["portolan.io/dials"] = strings.Join(svc.Dials, ", ")
 	}
+	if len(svc.GatewayExposures) > 0 {
+		encoded, _ := json.Marshal(svc.GatewayExposures)
+		meta.Annotations["portolan.io/gateway-exposures"] = string(encoded)
+	}
 }
 
 func ownerOf(service *catalog.Service, fallback string) string {

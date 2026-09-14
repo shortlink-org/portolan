@@ -290,6 +290,67 @@ export function validateCatalog(catalog: Catalog): Catalog {
           names.add(name);
         }
       }
+      const gatewayExposureIDs = new Set<string>();
+      for (const exposure of service.gatewayExposures ?? []) {
+        if (!exposure.id.trim()) {
+          fail(
+            `service "${service.id}" has a Gateway exposure with no id`,
+            `service ${service.id}`,
+          );
+        }
+        if (gatewayExposureIDs.has(exposure.id)) {
+          fail(
+            `service "${service.id}" names Gateway exposure "${exposure.id}" twice`,
+            `service ${service.id}`,
+          );
+        }
+        gatewayExposureIDs.add(exposure.id);
+        for (const field of [
+          "routeNamespace",
+          "routeName",
+          "gatewayNamespace",
+          "gatewayName",
+          "listener",
+          "protocol",
+          "backendNamespace",
+          "backendName",
+        ] as const) {
+          if (!exposure[field].trim()) {
+            fail(
+              `Gateway exposure "${exposure.id}" has no ${field}`,
+              `service ${service.id}`,
+            );
+          }
+        }
+        if (!["HTTPRoute", "GRPCRoute", "TLSRoute"].includes(exposure.routeKind)) {
+          fail(
+            `Gateway exposure "${exposure.id}" has unsupported route kind "${exposure.routeKind}"`,
+            `service ${service.id}`,
+          );
+        }
+        if (!["manifest", "api", "both"].includes(exposure.basis)) {
+          fail(
+            `Gateway exposure "${exposure.id}" has unsupported basis "${exposure.basis}"`,
+            `service ${service.id}`,
+          );
+        }
+        if (!Number.isInteger(exposure.port) || exposure.port <= 0) {
+          fail(
+            `Gateway exposure "${exposure.id}" has invalid listener port`,
+            `service ${service.id}`,
+          );
+        }
+        const hostnames = new Set<string>();
+        for (const hostname of exposure.hostnames) {
+          if (!hostname.trim() || hostnames.has(hostname)) {
+            fail(
+              `Gateway exposure "${exposure.id}" has an empty or repeated hostname`,
+              `service ${service.id}`,
+            );
+          }
+          hostnames.add(hostname);
+        }
+      }
       const dependencies = new Set<string>();
       for (const dependency of service.dependsOn ?? []) {
         if (!dependency.trim()) {

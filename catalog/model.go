@@ -260,6 +260,13 @@ type Service struct {
 	// reachable.
 	Hosts []string `json:"hosts,omitempty"`
 
+	// GatewayExposures are the attached Gateway API paths that lead to this
+	// service. Unlike Hosts, which is a lookup index, each row keeps the Route,
+	// Gateway listener and backend Service that prove the public name. Manifest
+	// and live-cluster readers emit the same identity so the merge can show
+	// whether one or both sources said it.
+	GatewayExposures []GatewayExposure `json:"gatewayExposures,omitempty"`
+
 	// Dials are the in-cluster names this service's workload is configured
 	// to reach, read out of its environment and config maps and reduced to
 	// the host alone. A value is never kept: not the variable it came from,
@@ -268,6 +275,44 @@ type Service struct {
 	// `<name>.<namespace>.svc` form - so a password in an environment
 	// variable is not something this list can hold by shape.
 	Dials []string `json:"dials,omitempty"`
+}
+
+// GatewayExposure is one accepted Gateway API Route attachment ending at a
+// Kubernetes Service selected by this catalog service's workload.
+type GatewayExposure struct {
+	ID               string               `json:"id"`
+	Hostnames        []string             `json:"hostnames"`
+	RouteKind        string               `json:"routeKind"`
+	RouteNamespace   string               `json:"routeNamespace"`
+	RouteName        string               `json:"routeName"`
+	GatewayNamespace string               `json:"gatewayNamespace"`
+	GatewayName      string               `json:"gatewayName"`
+	Listener         string               `json:"listener"`
+	Protocol         string               `json:"protocol"`
+	Port             int                  `json:"port"`
+	BackendNamespace string               `json:"backendNamespace"`
+	BackendName      string               `json:"backendName"`
+	Basis            GatewayExposureBasis `json:"basis"`
+	// Source is the Route manifest, relative to the service extractor's root.
+	// It is absent for a row read from the cluster API.
+	Source string `json:"source,omitempty"`
+	// Drift is the manifest's word when the cluster reports different listener
+	// facts for the same Route -> Gateway listener -> Service identity.
+	Drift *GatewayExposureDrift `json:"drift,omitempty"`
+}
+
+type GatewayExposureBasis string
+
+const (
+	GatewayExposureManifest GatewayExposureBasis = "manifest"
+	GatewayExposureAPI      GatewayExposureBasis = "api"
+	GatewayExposureBoth     GatewayExposureBasis = "both"
+)
+
+type GatewayExposureDrift struct {
+	Hostnames []string `json:"hostnames,omitempty"`
+	Protocol  string   `json:"protocol,omitempty"`
+	Port      int      `json:"port,omitempty"`
 }
 
 // Command is one entry of a task runner's file: a make target, an npm script,

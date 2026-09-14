@@ -1,6 +1,12 @@
 package extractk8s
 
-import "strings"
+import (
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/shortlink-org/portolan/catalog"
+)
 
 const gatewayAPIGroup = "gateway.networking.k8s.io"
 
@@ -19,6 +25,16 @@ func neededForGatewayResolution(kind string) bool {
 // one of the selected Services, is attached to an existing Gateway listener,
 // and that listener accepts its kind, namespace and hostname.
 func gatewayHosts(objects []object, backends map[string]bool) []string {
+	var out []string
+	for _, exposure := range gatewayExposures(objects, backends, "") {
+		out = append(out, exposure.Hostnames...)
+	}
+	return sortedUnique(out)
+}
+
+// gatewayExposures keeps the evidence gatewayHosts deliberately reduces: the
+// Route, accepted listener and backend Service behind each set of hostnames.
+func gatewayExposures(objects []object, backends map[string]bool, basis catalog.GatewayExposureBasis) []catalog.GatewayExposure {
 	gateways := map[string]object{}
 	namespaces := namespaceLabelIndex(objects)
 	for _, o := range objects {
@@ -27,13 +43,14 @@ func gatewayHosts(objects []object, backends map[string]bool) []string {
 		}
 	}
 
-	var out []string
+	byID := map[string]catalog.GatewayExposure{}
 	for _, route := range objects {
 		if gatewayRouteProtocols[route.kind] == nil || !strings.HasPrefix(route.apiVersion, gatewayAPIGroup+"/") {
 			continue
 		}
 		spec := mapAt(route.body, "spec")
-		if !routeTargetsBackend(route, spec, objects, backends) {
+		targets := routeBackends(route, spec, objects, backends)
+		if len(targets) == 0 {
 			continue
 		}
 		for _, parent := range listAt(spec, "parentRefs") {
@@ -57,16 +74,49 @@ func gatewayHosts(objects []object, backends map[string]bool) []string {
 				continue
 			}
 			for _, listener := range listAt(mapAt(gateway.body, "spec"), "listeners") {
-				if listenerAcceptsRoute(listener, gateway, route, parent, namespaces) {
-					out = append(out, intersectHostnames(stringAt(listener, "hostname"), stringListAt(spec, "hostnames"))...)
+				if !listenerAcceptsRoute(listener, gateway, route, parent, namespaces) {
+					continue
+				}
+				listenerName := stringAt(listener, "name")
+				port, _ := strconv.Atoi(stringAt(listener, "port"))
+				for _, target := range targets {
+					id := route.kind + "/" + namespacedName(route.namespace, route.name) +
+						"->Gateway/" + namespacedName(gateway.namespace, gateway.name) + "#" + listenerName +
+						"->Service/" + target
+					byID[id] = catalog.GatewayExposure{
+						ID:               id,
+						Hostnames:        intersectHostnames(stringAt(listener, "hostname"), stringListAt(spec, "hostnames")),
+						RouteKind:        route.kind,
+						RouteNamespace:   objectNamespace(route.namespace),
+						RouteName:        route.name,
+						GatewayNamespace: objectNamespace(gateway.namespace),
+						GatewayName:      gateway.name,
+						Listener:         listenerName,
+						Protocol:         strings.ToUpper(stringAt(listener, "protocol")),
+						Port:             port,
+						BackendNamespace: strings.SplitN(target, "/", 2)[0],
+						BackendName:      strings.SplitN(target, "/", 2)[1],
+						Basis:            basis,
+						Source:           route.file,
+					}
 				}
 			}
 		}
 	}
-	return sortedUnique(out)
+	ids := make([]string, 0, len(byID))
+	for id := range byID {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	out := make([]catalog.GatewayExposure, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, byID[id])
+	}
+	return out
 }
 
-func routeTargetsBackend(route object, spec map[string]any, objects []object, backends map[string]bool) bool {
+func routeBackends(route object, spec map[string]any, objects []object, backends map[string]bool) []string {
+	targets := map[string]bool{}
 	for _, rule := range listAt(spec, "rules") {
 		for _, ref := range listAt(rule, "backendRefs") {
 			group := stringAt(ref, "group")
@@ -83,11 +133,16 @@ func routeTargetsBackend(route object, spec map[string]any, objects []object, ba
 				continue
 			}
 			if namespace == objectNamespace(route.namespace) || referenceGranted(objects, route, namespace, name) {
-				return true
+				targets[namespacedName(namespace, name)] = true
 			}
 		}
 	}
-	return false
+	out := make([]string, 0, len(targets))
+	for target := range targets {
+		out = append(out, target)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func referenceGranted(objects []object, route object, targetNamespace, targetName string) bool {
