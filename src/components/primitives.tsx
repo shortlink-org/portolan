@@ -5,6 +5,8 @@ import type {
   AdrScope,
   AdrStatus,
   Classification,
+  Rfc,
+  RfcLifecycle,
   Status,
 } from "../catalog";
 import { index } from "../data";
@@ -157,6 +159,45 @@ export function AdrNumber({
       title={struck ? `${adr.id} - no longer in force` : adr.id}
     >
       {adrNumber(adr)}
+    </span>
+  );
+}
+
+const RFC_LIFECYCLE_CLASS: Record<RfcLifecycle, string> = {
+  draft: "status-declared",
+  discussion: "status-declared",
+  accepted: "status-verified",
+  implemented: "status-verified",
+  rejected: "border-line-strong text-muted",
+  postponed: "border-line-strong text-muted",
+  withdrawn: "border-line-strong text-muted",
+  abandoned: "border-line-strong text-muted",
+  superseded: "border-line-strong text-muted",
+  unknown: "status-unresolved",
+};
+
+export function RfcStatusChip({ rfc }: { rfc: Rfc }) {
+  return (
+    <span
+      title={`source status: ${rfc.status}; lifecycle: ${rfc.lifecycle}`}
+      className={`chip ${RFC_LIFECYCLE_CLASS[rfc.lifecycle]}`}
+    >
+      <span aria-hidden className="dot" />
+      {rfc.status}
+    </span>
+  );
+}
+
+export function RfcDisplayId({
+  rfc,
+  className = "",
+}: {
+  rfc: Rfc;
+  className?: string;
+}) {
+  return (
+    <span className={cn("mono", className)} title={rfc.id}>
+      {rfc.displayId}
     </span>
   );
 }

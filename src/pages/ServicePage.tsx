@@ -15,7 +15,9 @@ import { bridges } from "../lib/centrality";
 import { treeHref } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
 import { adrsForService, isCurrent } from "../lib/adr";
+import { rfcsForService } from "../lib/rfc";
 import { ADR_ROW_COLUMNS, AdrRow } from "../components/AdrRow";
+import { RFC_ROW_COLUMNS, RfcRow } from "../components/RfcRow";
 import {
   EVENT_ANCHOR,
   OVERVIEW_ANCHOR,
@@ -179,6 +181,7 @@ export function ServicePage() {
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
   const retired = adrs.filter((a) => !isCurrent(a));
+  const rfcs = rfcsForService(catalog, service.id, context.id);
   // What the spec tab has to show: a document this repository holds, else the
   // schema module the interfaces were declared in, else nothing.
   const spec = pickSpec(
@@ -205,7 +208,7 @@ export function ServicePage() {
     bus: channels.length,
     data: stores.length,
     flows: flows.length,
-    decisions: adrs.length,
+    decisions: adrs.length + rfcs.length,
   };
 
   return (
@@ -822,42 +825,30 @@ export function ServicePage() {
         </TabPanel>
 
         <TabPanel>
-          {adrs.length === 0 ? (
+          {adrs.length === 0 && rfcs.length === 0 ? (
             <Empty>nothing on the record names this service</Empty>
           ) : (
-            /* number, title, status, scope, date - one column each, shared by
-               the rows in force and the retired ones below them, so a chip
-               sits under the chip above it rather than wherever the title
-               before it happened to end. */
-            <div
-              className={`rows max-w-table ${ADR_ROW_COLUMNS}`}
-              data-nav-list
-            >
-              {current.map((adr) => (
-                <AdrRow key={adr.id} adr={adr} />
-              ))}
-              {retired.length > 0 ? (
-                <>
-                  {/* A row of its own, so the button sits in the list's grid
-                      without being a grid itself. */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setShowRetired((v) => !v)}
-                      aria-expanded={showRetired}
-                      className="mono col-span-full mt-1 justify-self-start border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface"
-                    >
-                      {showRetired ? "hide" : "show"} {retired.length}{" "}
-                      {retired.every((a) => a.status === "superseded")
-                        ? "superseded"
-                        : "no longer in force"}
-                    </button>
-                  </div>
-                  {showRetired
-                    ? retired.map((adr) => <AdrRow key={adr.id} adr={adr} />)
-                    : null}
-                </>
-              ) : null}
+            <div className="flex max-w-table flex-col gap-section">
+              {adrs.length > 0 ? <section>
+                <h2 className="section-title mb-3">Architecture decisions</h2>
+                <div className={`rows ${ADR_ROW_COLUMNS}`} data-nav-list>
+                  {current.map((adr) => <AdrRow key={adr.id} adr={adr} />)}
+                  {retired.length > 0 ? <>
+                    <div>
+                      <button type="button" onClick={() => setShowRetired((v) => !v)} aria-expanded={showRetired} className="mono col-span-full mt-1 justify-self-start border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface">
+                        {showRetired ? "hide" : "show"} {retired.length} {retired.every((a) => a.status === "superseded") ? "superseded" : "no longer in force"}
+                      </button>
+                    </div>
+                    {showRetired ? retired.map((adr) => <AdrRow key={adr.id} adr={adr} />) : null}
+                  </> : null}
+                </div>
+              </section> : null}
+              {rfcs.length > 0 ? <section>
+                <h2 className="section-title mb-3">Requests for comments</h2>
+                <div className={`rows ${RFC_ROW_COLUMNS}`} data-nav-list>
+                  {rfcs.map((rfc) => <RfcRow key={rfc.id} rfc={rfc} />)}
+                </div>
+              </section> : null}
             </div>
           )}
         </TabPanel>

@@ -175,6 +175,13 @@ func (s *site) llmsIndex() string {
 	}
 	section(&b, "Decisions", list(adrs))
 
+	rfcs := make([]string, 0, len(s.cat.Rfcs))
+	for i := range s.cat.Rfcs {
+		rfc := &s.cat.Rfcs[i]
+		rfcs = append(rfcs, entry(s.ref(self, rfc.ID, rfc.DisplayID), rfc.Title+" ("+rfc.Status+", "+rfc.Lifecycle+")"))
+	}
+	section(&b, "Requests for comments", list(rfcs))
+
 	// What llmstxt.org calls Optional: pages a reader short on context can
 	// skip. The shape of a shared type or a table matters once a page above
 	// has named it, and not before.
@@ -230,6 +237,9 @@ func (s *site) llmsSummary() string {
 		plural(len(s.cat.Flows), "flow"),
 		plural(len(s.cat.Adrs), "decision record"),
 	)
+	if len(s.cat.Rfcs) > 0 {
+		parts = append(parts, plural(len(s.cat.Rfcs), "request for comments", "requests for comments"))
+	}
 
 	return "Architecture catalog of " + s.title() + ": " + strings.Join(parts[:len(parts)-1], ", ") +
 		" and " + parts[len(parts)-1] + ", read from the code, the specs and the traces of the estate."

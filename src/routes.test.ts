@@ -10,6 +10,7 @@ import {
   isLandingPath,
   isRoutable,
   paths,
+  rfcPath,
   servicePath,
   tablePath,
   viewPath,
@@ -21,11 +22,17 @@ import { registryCatalog } from "./lib/scenarios";
 
 describe("routes", () => {
   it("routes plugin-owned settings without a legacy global settings route", () => {
-    expect(paths.pluginSettings("work-items")).toBe("/plugins/work-items/settings");
+    expect(paths.pluginSettings("work-items")).toBe(
+      "/plugins/work-items/settings",
+    );
     expect(isRoutable(paths.pluginSettings("work-items"))).toBe(true);
-    expect(isRoutable("/plugins/work-items/settings?catalog=portolan")).toBe(true);
+    expect(isRoutable("/plugins/work-items/settings?catalog=portolan")).toBe(
+      true,
+    );
     expect(isRoutable("/settings/task-trackers")).toBe(false);
-    expect(paths.pluginSettings("some/plugin")).toBe("/plugins/some%2Fplugin/settings");
+    expect(paths.pluginSettings("some/plugin")).toBe(
+      "/plugins/some%2Fplugin/settings",
+    );
   });
   it("routes the public landing page", () => {
     expect(paths.landing()).toBe("/landing");
@@ -143,7 +150,34 @@ describe("routes", () => {
     expect(paths.editAdr("shop-oms-0007-cart-reads-via-repository")).toBe(
       "/adrs/shop-oms-0007-cart-reads-via-repository/edit",
     );
-    expect(isRoutable(paths.editAdr("shop-oms-0007-cart-reads-via-repository"))).toBe(true);
+    expect(
+      isRoutable(paths.editAdr("shop-oms-0007-cart-reads-via-repository")),
+    ).toBe(true);
+  });
+
+  it("routes RFCs independently from decision records", () => {
+    const withRfc = structuredClone(catalog);
+    withRfc.rfcs = [
+      {
+        id: "eventcatalog.rfc.2556",
+        slug: "eventcatalog-rfc-2556-secrets",
+        displayId: "RFC-2556",
+        title: "Secrets as a first-class resource",
+        status: "needs-discussion",
+        lifecycle: "discussion",
+        scope: { kind: "org" },
+        body: "proposal",
+        sourceKind: "github-issue",
+        source: "https://github.com/event-catalog/eventcatalog/issues/2556",
+        relates: {},
+      },
+    ];
+    expect(allCatalogPaths(withRfc)).toContain(
+      "/rfcs/eventcatalog-rfc-2556-secrets",
+    );
+    expect(isRoutable(paths.rfcs())).toBe(true);
+    expect(isRoutable(paths.rfc("eventcatalog-rfc-2556-secrets"))).toBe(true);
+    expect(rfcPath("not-in-the-loaded-catalog")).toBeNull();
   });
 
   it("links every supersession to a routable page", () => {
@@ -207,7 +241,8 @@ describe("routes", () => {
       paths.settingsIntegrations(),
       paths.settingsPreferences(),
       paths.settingsAbout(),
-    ]) expect(isRoutable(path)).toBe(true);
+    ])
+      expect(isRoutable(path)).toBe(true);
     expect(isRoutable("/settings/nope")).toBe(false);
     expect(allCatalogPaths(catalog)).toContain(paths.settings());
   });

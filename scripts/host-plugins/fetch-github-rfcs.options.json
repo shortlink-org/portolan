@@ -1,0 +1,69 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repo", "cache", "scope"],
+  "anyOf": [{ "required": ["labels"] }, { "required": ["titlePrefix"] }],
+  "properties": {
+    "repo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+      "description": "GitHub owner/repository, without a URL or credentials."
+    },
+    "cache": {
+      "type": "string",
+      "description": "Directory containing the committed RFC snapshot used offline or when GitHub is unavailable."
+    },
+    "scope": {
+      "type": "string",
+      "description": "Scope assigned to imported records: org, a context, or <context>.<service>."
+    },
+    "labels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Labels an issue or pull request must have. Multiple labels are combined with AND, matching GitHub's API."
+    },
+    "titlePrefix": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Case-insensitive title prefix, for repositories that identify RFCs by title instead of label."
+    },
+    "kind": {
+      "enum": ["issue", "pull-request", "both"],
+      "default": "both"
+    },
+    "state": {
+      "enum": ["open", "closed", "all"],
+      "default": "all"
+    },
+    "prefix": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9-]*$",
+      "default": "RFC"
+    },
+    "idPrefix": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9.-]*$",
+      "description": "Catalog id prefix. Defaults to the repository owner and name."
+    },
+    "statusMap": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "draft",
+          "discussion",
+          "accepted",
+          "implemented",
+          "rejected",
+          "postponed",
+          "withdrawn",
+          "abandoned",
+          "superseded",
+          "unknown"
+        ]
+      },
+      "description": "Maps a label or GitHub open/closed state to the normalized lifecycle. A matching label wins over state."
+    }
+  }
+}

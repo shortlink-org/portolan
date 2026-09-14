@@ -127,6 +127,9 @@ export function SidebarIconRail({ onExpand }: { onExpand: () => void }) {
       ? [{ key: "registry", kind: "module" as Kind, label: "Registry" }]
       : []),
     { key: "adrs", kind: "adr", label: "Decisions" },
+    ...((catalog.rfcs?.length ?? 0) > 0
+      ? [{ key: "rfcs", kind: "rfc" as Kind, label: "RFCs" }]
+      : []),
   ];
   return (
     <nav

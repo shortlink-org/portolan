@@ -390,6 +390,32 @@ describe("local project setup", { timeout: 30_000 }, () => {
     expect(plan.steps[0].options).toEqual({ files: ["docs/adr/*.md"], scope: "finance.billing", out: "adr.json" });
   });
 
+  it("discovers RFC markdown separately from ADRs and plans its own extractor", () => {
+    const root = workspace();
+    const rfcRoot = join(root, "services/billing/docs/rfcs");
+    mkdirSync(rfcRoot, { recursive: true });
+    writeFileSync(join(rfcRoot, "0012-streaming.md"), "---\nstatus: needs-discussion\n---\n# RFC-12: Streaming transport\n\n## Proposal\n\nUse streams.\n");
+
+    const discovery = discoverProject(root, "services/billing");
+    const rfc = discovery.detections.find((item) => item.plugin === "rfc");
+    expect(rfc).toMatchObject({
+      selected: true,
+      confidence: "high",
+      evidence: "docs/rfcs/*.md",
+      options: { files: ["docs/rfcs/*.md"] },
+    });
+    expect(rfc?.preview).toEqual([
+      { file: "docs/rfcs/0012-streaming.md", fields: { displayId: "RFC-12", title: "Streaming transport", status: "needs-discussion" } },
+    ]);
+
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "rfc", process: { command: "true" } });
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", plugins: ["rfc"],
+    });
+    expect(plan.steps[0].options).toEqual({ files: ["docs/rfcs/*.md"], scope: "finance.billing", out: "rfc.json" });
+  });
+
   it("names external projects from the repository or selected component instead of the inspection cache", () => {
     expect(externalProjectDefaults("https://github.com/batazor/microservice-template-ddd")).toEqual({
       id: "microservice-template-ddd",
@@ -798,6 +824,38 @@ describe("local project setup", { timeout: 30_000 }, () => {
     const written = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
     expect(written.extract[0].plugin).toBe("git");
     expect(written.sources).toContain("vendor/repos/*/*/git.repo.json");
+  });
+
+  it("keeps repository provenance when planning RFCs from a pinned external repository", () => {
+    const root = workspace();
+    const repository = "https://github.com/acme/architecture.git";
+    const commit = "b".repeat(40);
+    const inspected = join(root, inspectionRoot(repository, commit));
+    mkdirSync(join(inspected, "docs", "rfcs"), { recursive: true });
+    writeFileSync(join(inspected, "docs", "rfcs", "0001-payments.md"), "---\nstatus: draft\n---\n# RFC-1: Payments\n");
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "git", process: { command: "true" } });
+    manifest.plugins.push({ name: "rfc", process: { command: "true" } });
+
+    const plan = planProject(root, manifest, {
+      source: "external", root: "", repository, commit, id: "architecture", name: "Architecture",
+      group: "platform", component: "governance", plugins: ["rfc"],
+    });
+    expect(plan.fetch).toEqual({ repo: repository, commit, paths: [] });
+    expect(plan.steps[0].options).toMatchObject({
+      repo: "github.com/acme/architecture",
+      files: ["docs/rfcs/*.md"],
+      scope: "platform.governance",
+    });
+    const profile = manifestWithProject({
+      ...manifest,
+      defaultCatalog: "company",
+      catalogs: [{ id: "company", title: "Company", sources: ["portolan/*.json"], contexts: ["platform"], projects: [] }],
+    }, plan).catalogs[0];
+    expect(profile.sources).toEqual(expect.arrayContaining([
+      "vendor/repos/*/*/git.repo.json",
+      "vendor/repos/**/portolan/*.json",
+    ]));
   });
 
   it("renders generated file additions and changes without touching the workspace", () => {

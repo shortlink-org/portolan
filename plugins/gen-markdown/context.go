@@ -66,6 +66,7 @@ func (s *site) renderContext(ctx *catalog.BoundedContext) {
 	}
 
 	section(&b, "Decisions", s.adrTable(self, s.adrsFor[ctx.ID]))
+	section(&b, "Requests for comments", s.rfcTable(self, s.rfcsFor[ctx.ID]))
 
 	s.b.file(self, b.String())
 	s.renderGlossary(ctx)
@@ -73,6 +74,21 @@ func (s *site) renderContext(ctx *catalog.BoundedContext) {
 	for i := range ctx.Services {
 		s.renderService(ctx, &ctx.Services[i])
 	}
+}
+
+func (s *site) rfcTable(from string, rfcs []*catalog.Rfc) string {
+	rows := make([][]string, 0, len(rfcs))
+	for _, rfc := range rfcs {
+		activity := rfc.UpdatedAt
+		if activity == "" {
+			activity = rfc.CreatedAt
+		}
+		if len(activity) > 10 {
+			activity = activity[:10]
+		}
+		rows = append(rows, []string{s.ref(from, rfc.ID, rfc.DisplayID), rfc.Title, rfc.Status, rfc.Lifecycle, activity})
+	}
+	return table([]string{"RFC", "Title", "Source status", "Lifecycle", "Last activity"}, rows)
 }
 
 func (s *site) adrTable(from string, adrs []*catalog.Adr) string {

@@ -26,6 +26,7 @@ import {
   allExternals,
   allModules,
   allRepos,
+  allRfcs,
   allServices,
   allStores,
   allTerms,
@@ -904,6 +905,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateStores(catalog);
   validateModules(catalog);
   validateAdrs(catalog, eventIds);
+  validateRfcs(catalog, eventIds);
   validateTerms(catalog);
   validateRepos(catalog);
   validateWorkItems(catalog);
@@ -1940,6 +1942,66 @@ function validateAdrs(catalog: Catalog, eventIds: Set<string>): void {
           `decision ${adr.id}`,
         );
       }
+    }
+  }
+}
+
+function validateRfcs(catalog: Catalog, eventIds: Set<string>): void {
+  const rfcs = allRfcs(catalog);
+  const serviceIds = new Set(allServices(catalog).map((service) => service.id));
+  const contextIds = new Set(catalog.contexts.map((context) => context.id));
+  const flowSlugs = new Set(catalog.flows.map((flow) => flow.slug));
+  const adrIds = new Set(catalog.adrs.map((adr) => adr.id));
+  const rfcIds = new Set<string>();
+  const lifecycles = new Set([
+    "draft", "discussion", "accepted", "implemented", "rejected",
+    "postponed", "withdrawn", "abandoned", "superseded", "unknown",
+  ]);
+  const sourceKinds = new Set(["file", "github-issue", "github-pr"]);
+  const relations = new Set(["formalized-by", "informed-by", "supersedes", "related"]);
+
+  assertUniqueSlugs(rfcs.map((rfc) => rfc.slug), "catalog", "rfc");
+  for (const rfc of rfcs) {
+    const where = `rfc ${rfc.id || "?"}`;
+    if (!rfc.id) fail("an rfc has no id", where);
+    if (rfcIds.has(rfc.id)) fail(`rfc id "${rfc.id}" is not unique`, where);
+    rfcIds.add(rfc.id);
+    if (!rfc.displayId) fail(`rfc "${rfc.id}" has no displayId`, where);
+    if (!rfc.title) fail(`rfc "${rfc.id}" has no title`, where);
+    if (!rfc.status) fail(`rfc "${rfc.id}" has no source status`, where);
+    if (!lifecycles.has(rfc.lifecycle)) fail(`rfc "${rfc.id}" has unknown lifecycle "${rfc.lifecycle}"`, where);
+    if (!sourceKinds.has(rfc.sourceKind)) fail(`rfc "${rfc.id}" has unknown sourceKind "${rfc.sourceKind}"`, where);
+    if (!rfc.source) fail(`rfc "${rfc.id}" has no source`, where);
+    if (rfc.repository && !/^[a-z0-9.-]+\/[a-z0-9._-]+\/[a-z0-9._-]+$/i.test(rfc.repository)) {
+      fail(`rfc "${rfc.id}" has invalid repository "${rfc.repository}"; use host/owner/name`, where);
+    }
+    for (const [field, value] of [["createdAt", rfc.createdAt], ["updatedAt", rfc.updatedAt], ["resolvedAt", rfc.resolvedAt]] as const) {
+      if (value && Number.isNaN(new Date(value).getTime())) fail(`rfc "${rfc.id}" has an unparseable ${field} "${value}"`, where);
+    }
+    if (rfc.discussionUrl && !safeWorkItemUrl(rfc.discussionUrl)) fail(`rfc "${rfc.id}" has an unsafe discussionUrl`, where);
+
+    switch (rfc.scope.kind) {
+      case "context":
+        if (!contextIds.has(rfc.scope.context)) fail(`rfc "${rfc.id}" is scoped to unknown context "${rfc.scope.context}"`, where);
+        break;
+      case "service":
+        if (!serviceIds.has(rfc.scope.service)) fail(`rfc "${rfc.id}" is scoped to unknown service "${rfc.scope.service}"`, where);
+        break;
+      case "org":
+        break;
+    }
+    for (const id of rfc.relates.services ?? []) if (!serviceIds.has(id)) fail(`rfc "${rfc.id}" relates to unknown service "${id}"`, where);
+    for (const id of rfc.relates.events ?? []) if (!eventIds.has(id)) fail(`rfc "${rfc.id}" relates to unknown event "${id}"`, where);
+    for (const slug of rfc.relates.flows ?? []) if (!flowSlugs.has(slug)) fail(`rfc "${rfc.id}" relates to unknown flow "${slug}"`, where);
+  }
+  for (const rfc of rfcs) {
+    for (const link of rfc.links ?? []) {
+      const where = `rfc ${rfc.id}`;
+      if (!relations.has(link.relation)) fail(`rfc "${rfc.id}" has unknown record relation "${link.relation}"`, where);
+      if (link.kind === "adr" && !adrIds.has(link.id)) fail(`rfc "${rfc.id}" links to unknown adr "${link.id}"`, where);
+      if (link.kind === "rfc" && !rfcIds.has(link.id)) fail(`rfc "${rfc.id}" links to unknown rfc "${link.id}"`, where);
+      if (link.kind !== "adr" && link.kind !== "rfc") fail(`rfc "${rfc.id}" links to unknown record kind`, where);
+      if (link.kind === "rfc" && link.id === rfc.id) fail(`rfc "${rfc.id}" links to itself`, where);
     }
   }
 }

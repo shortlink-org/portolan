@@ -101,6 +101,11 @@ export function filterCatalogForProfile(catalog: Catalog, profile: CatalogProfil
       if (adr.scope.kind === "context") return contexts.has(adr.scope.context);
       return services.has(adr.scope.service);
     }),
+    rfcs: (catalog.rfcs ?? []).filter((rfc) => {
+      if (rfc.scope.kind === "org") return true;
+      if (rfc.scope.kind === "context") return contexts.has(rfc.scope.context);
+      return services.has(rfc.scope.service);
+    }),
     stores: (catalog.stores ?? []).filter((store) => services.has(store.owner)),
     terms: (catalog.terms ?? []).filter((term) => contexts.has(term.context)),
     modules: (catalog.modules ?? []).filter((module) => !module.owner || services.has(module.owner)),

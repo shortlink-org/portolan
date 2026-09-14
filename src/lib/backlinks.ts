@@ -14,9 +14,10 @@
 // a URL — a Backlink says WHAT points at the target and routes.ts says where
 // that thing lives, which keeps this file testable without a router.
 
-import type { Adr, Catalog, CatalogIndex, Flow, Status, Term } from "../catalog";
+import type { Adr, Catalog, CatalogIndex, Flow, Rfc, Status, Term } from "../catalog";
 import { allServices, walkSteps } from "../catalog";
 import { sortAdrs, adrNumber } from "./adr";
+import { sortRfcs } from "./rfc";
 import { readersOfStore } from "./data-model";
 import { flowsForService, usagesOfDef } from "./derive";
 import { usagesOfEnum } from "./shape";
@@ -70,6 +71,7 @@ const GROUP_ORDER: readonly Kind[] = [
   "service",
   "flow",
   "adr",
+  "rfc",
   "event",
   "aggregate",
   "entity",
@@ -187,6 +189,23 @@ function adrLink(index: CatalogIndex, adr: Adr, via: string): Backlink {
   };
 }
 
+function rfcLink(index: CatalogIndex, rfc: Rfc, via: string): Backlink {
+  const context =
+    rfc.scope.kind === "context"
+      ? rfc.scope.context
+      : rfc.scope.kind === "service"
+        ? (index.serviceContext.get(rfc.scope.service)?.id ?? null)
+        : null;
+  return {
+    kind: "rfc",
+    id: rfc.id,
+    name: rfc.displayId,
+    owner: rfc.title,
+    context,
+    via,
+  };
+}
+
 /**
  * A usage of a shared type, as a row. An RPC message has no page of its own,
  * so it is filed under the service that answers it and says "rpc" in its
@@ -293,6 +312,9 @@ function eventBacklinks(
   for (const adr of index.adrsByEvent.get(eventId) ?? []) {
     out.push(adrLink(index, adr, "relates.events"));
   }
+  for (const rfc of index.rfcsByEvent.get(eventId) ?? []) {
+    out.push(rfcLink(index, rfc, "relates.events"));
+  }
   return out;
 }
 
@@ -339,6 +361,17 @@ function aggregateBacklinks(
   }
   for (const { adr, events } of byAdr.values()) {
     out.push(adrLink(index, adr, `relates ${events.join(", ")}`));
+  }
+  const byRfc = new Map<string, { rfc: Rfc; events: string[] }>();
+  for (const event of aggregate.events) {
+    for (const rfc of index.rfcsByEvent.get(event.id) ?? []) {
+      const seen = byRfc.get(rfc.id) ?? { rfc, events: [] };
+      seen.events.push(event.name);
+      byRfc.set(rfc.id, seen);
+    }
+  }
+  for (const { rfc, events } of byRfc.values()) {
+    out.push(rfcLink(index, rfc, `relates ${events.join(", ")}`));
   }
   return out;
 }
@@ -387,6 +420,13 @@ function serviceBacklinks(
       out.push(adrLink(index, adr, "scope"));
     } else if ((adr.relates.services ?? []).includes(serviceId)) {
       out.push(adrLink(index, adr, "relates.services"));
+    }
+  }
+  for (const rfc of sortRfcs(catalog.rfcs ?? [])) {
+    if (rfc.scope.kind === "service" && rfc.scope.service === serviceId) {
+      out.push(rfcLink(index, rfc, "scope"));
+    } else if ((rfc.relates.services ?? []).includes(serviceId)) {
+      out.push(rfcLink(index, rfc, "relates.services"));
     }
   }
   return out;
@@ -454,6 +494,22 @@ function contextBacklinks(
             `relates ${named.map((e) => index.eventById.get(e)?.name ?? e).join(", ")}`,
           ),
         );
+      }
+    }
+  }
+  for (const rfc of sortRfcs(catalog.rfcs ?? [])) {
+    const scope = rfc.scope;
+    const services = (rfc.relates.services ?? []).filter((s) => inside.has(s));
+    if (scope.kind === "context" && scope.context === contextId) {
+      out.push(rfcLink(index, rfc, "scope"));
+    } else if (scope.kind === "service" && inside.has(scope.service)) {
+      out.push(rfcLink(index, rfc, `scope ${scope.service}`));
+    } else if (services.length > 0) {
+      out.push(rfcLink(index, rfc, `relates ${services.join(", ")}`));
+    } else {
+      const named = (rfc.relates.events ?? []).filter((e) => eventIds.has(e));
+      if (named.length > 0) {
+        out.push(rfcLink(index, rfc, `relates ${named.map((e) => index.eventById.get(e)?.name ?? e).join(", ")}`));
       }
     }
   }
@@ -553,9 +609,10 @@ function flowBacklinks(
   slug: string,
 ): Backlink[] {
   if (!index.flowBySlug.has(slug)) return [];
-  return sortAdrs(catalog.adrs)
-    .filter((adr) => (adr.relates.flows ?? []).includes(slug))
-    .map((adr) => adrLink(index, adr, "relates.flows"));
+  return [
+    ...sortAdrs(catalog.adrs).filter((adr) => (adr.relates.flows ?? []).includes(slug)).map((adr) => adrLink(index, adr, "relates.flows")),
+    ...sortRfcs(catalog.rfcs ?? []).filter((rfc) => (rfc.relates.flows ?? []).includes(slug)).map((rfc) => rfcLink(index, rfc, "relates.flows")),
+  ];
 }
 
 /**

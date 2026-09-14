@@ -122,6 +122,10 @@
       "host": "work-items"
     },
     {
+      "name": "github-rfcs",
+      "host": "fetch-github-rfcs"
+    },
+    {
       "name": "project",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
@@ -341,6 +345,12 @@
     },
     {
       "name": "adr",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
+      "name": "rfc",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
       }

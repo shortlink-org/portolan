@@ -643,6 +643,7 @@ function EventBody({
   // says "checkout · step 14" opens on the step.
   const steps = stepsInto(catalog, new Set([event.id]));
   const decisions = index.adrsByEvent.get(event.id) ?? [];
+  const rfcs = index.rfcsByEvent.get(event.id) ?? [];
 
   return (
     <>
@@ -748,6 +749,24 @@ function EventBody({
                 title={adr.title}
               >
                 {adr.id} · {adr.title}
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {rfcs.length > 0 ? (
+        <>
+          <Label>Requests for comments</Label>
+          <div className="flex flex-col gap-1">
+            {rfcs.map((rfc) => (
+              <Link
+                key={rfc.id}
+                to={paths.rfc(rfc.slug)}
+                className="mono truncate text-accent"
+                title={rfc.title}
+              >
+                {rfc.displayId} · {rfc.title}
               </Link>
             ))}
           </div>

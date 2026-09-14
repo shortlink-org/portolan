@@ -27,6 +27,8 @@ import { Language } from "../pages/Language";
 import { PluginIndex } from "../pages/PluginIndex";
 import { PluginSettings } from "../pages/PluginSettings";
 import { AdrDetail } from "../pages/AdrDetail";
+import { RfcIndex } from "../pages/RfcIndex";
+import { RfcDetail } from "../pages/RfcDetail";
 import { Overview } from "../pages/Overview";
 import { ContextMap } from "../pages/ContextMap";
 import { ContextPage } from "../pages/ContextPage";
@@ -60,6 +62,7 @@ import { DensityProvider } from "./density";
 import { useNarrow, usePhone } from "./responsive";
 import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
+import { UpdateNotice } from "./UpdateNotice";
 import { PeekLayer } from "../peek/PeekLayer";
 import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
@@ -127,6 +130,8 @@ function AppRoutes({
         }
       />
       <Route path="/adrs" element={<AdrIndex />} />
+      <Route path="/rfcs" element={<RfcIndex />} />
+      <Route path="/rfcs/:rfc" element={<RfcDetail />} />
       <Route path="/language" element={<Language />} />
       <Route path="/plugins" element={<PluginIndex />} />
       <Route path="/plugins/:name/settings" element={<PluginSettings />} />
@@ -403,6 +408,7 @@ function Shell() {
           Temporary project preview · the repository has not been changed · expires after 15 minutes
         </div>
       ) : null}
+      <UpdateNotice />
       {/* Under the bar, above everything: the trail is about the whole shell,
           not about the page inside it. */}
       <Trail />

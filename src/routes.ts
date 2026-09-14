@@ -19,6 +19,7 @@ export const paths = {
       id: flowStepId(slug, stepId),
     })}`,
   adrs: () => "/adrs",
+  rfcs: () => "/rfcs",
   newAdr: () => "/adrs/new",
   editAdr: (slug: string) => `/adrs/${slug}/edit`,
   /**
@@ -79,6 +80,7 @@ export const paths = {
    */
   module: (slug: string) => `/registry/${slug}`,
   adr: (slug: string) => `/adrs/${slug}`,
+  rfc: (slug: string) => `/rfcs/${slug}`,
   graph: () => "/graph",
   map: () => "/map",
   /** The map, with one relationship already open. */
@@ -296,6 +298,12 @@ export function adrPath(adrId: string): string | null {
   return adr ? paths.adr(adr.slug) : null;
 }
 
+/** Path to a request for comments, or null if the id is not in this catalog. */
+export function rfcPath(rfcId: string): string | null {
+  const rfc = index.rfcById.get(rfcId);
+  return rfc ? paths.rfc(rfc.slug) : null;
+}
+
 /** Path to a flow's page, or null if the id is not a catalog flow. */
 export function flowPath(flowId: string): string | null {
   const flow = index.catalog.flows.find((candidate) => candidate.id === flowId);
@@ -397,6 +405,8 @@ export function backlinkPath(link: Backlink): string | null {
         : null;
     case "adr":
       return adrPath(link.id);
+    case "rfc":
+      return rfcPath(link.id);
     case "term":
       return index.termById.has(link.id) ? paths.term(link.id) : null;
     // A shared type is only ever seen through the blocks that name it, and a
@@ -413,6 +423,7 @@ const ROUTES: RegExp[] = [
   /^\/flows$/,
   /^\/flows\/[^/]+$/,
   /^\/adrs$/,
+  /^\/rfcs$/,
   /^\/language$/,
   /^\/plugins$/,
   /^\/problems$/,
@@ -423,6 +434,7 @@ const ROUTES: RegExp[] = [
   /^\/map$/,
   /^\/adrs\/[^/]+\/edit$/,
   /^\/adrs\/[^/]+$/,
+  /^\/rfcs\/[^/]+$/,
   /^\/c\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/[^/]+$/,
@@ -450,6 +462,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.graph(),
     paths.map(),
     paths.adrs(),
+    paths.rfcs(),
     paths.language(),
     paths.plugins(),
     paths.problems(),
@@ -465,6 +478,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
   }
   for (const flow of catalog.flows) out.push(paths.flow(flow.slug));
   for (const adr of catalog.adrs) out.push(paths.adr(adr.slug));
+  for (const rfc of catalog.rfcs ?? []) out.push(paths.rfc(rfc.slug));
   for (const context of catalog.contexts) {
     out.push(paths.context(context.id));
     for (const service of context.services) {

@@ -34,6 +34,7 @@ import (
 	extractproject "github.com/shortlink-org/portolan/plugins/extract-project"
 	extractproto "github.com/shortlink-org/portolan/plugins/extract-proto"
 	extractredis "github.com/shortlink-org/portolan/plugins/extract-redis"
+	extractrfc "github.com/shortlink-org/portolan/plugins/extract-rfc"
 	extractriver "github.com/shortlink-org/portolan/plugins/extract-river"
 	extractsql "github.com/shortlink-org/portolan/plugins/extract-sql"
 	extractterraform "github.com/shortlink-org/portolan/plugins/extract-terraform"
@@ -71,6 +72,7 @@ var Plugins = map[string]func(io.Reader, io.Writer) error{
 	"csr-schemas":   extractcsr.Serve,
 	"debezium":      extractdebezium.Serve,
 	"adr":           extractadr.Serve,
+	"rfc":           extractrfc.Serve,
 	"glossary":      extractglossary.Serve,
 	"flows":         extractflows.Serve,
 	"otel":          verifyotel.Serve,

@@ -37,6 +37,12 @@ function git(args: string): string {
 
 const env = process.env;
 const workspace = resolve(env.PORTOLAN_WORKSPACE ?? ".");
+const portolanUpdate = env.PORTOLAN_CURRENT_VERSION && env.PORTOLAN_UPDATE_VERSION
+  ? {
+      current: env.PORTOLAN_CURRENT_VERSION,
+      latest: env.PORTOLAN_UPDATE_VERSION,
+    }
+  : null;
 
 // The stamp in the top bar, resolved at build time. Every field takes the
 // first answer it gets:
@@ -163,6 +169,7 @@ export default defineConfig({
     __BUILD_INFO__: JSON.stringify(buildInfo),
     __SETUP_INFO__: JSON.stringify(setupInfo),
     __PROJECT_PREVIEW__: JSON.stringify(env.PORTOLAN_PROJECT_PREVIEW === "1"),
+    __PORTOLAN_UPDATE__: JSON.stringify(portolanUpdate),
   },
   plugins: [
     // Inject the TypeScript projection from the staged Vite config rather than

@@ -1263,6 +1263,12 @@
     border-collapse: separate;
     border-spacing: 0;
   }
+  /* An RFC carries two status vocabularies on purpose: the source's exact
+     label and Portolan's normalized lifecycle. Keep enough reading width for
+     those columns instead of squeezing the proposal title word by word. */
+  .rfc-table .tbl {
+    min-width: 940px;
+  }
   .tbl td {
     height: var(--row-h);
   }

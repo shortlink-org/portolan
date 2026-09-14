@@ -6,6 +6,7 @@
 - **Date:** 2026-09-14
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0018-a-gateway-route-contributes-hosts-only-through-a-valid-attachment.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0018-a-gateway-route-contributes-hosts-only-through-a-valid-attachment.md)
+- **Committed:** Victor Login, 2026-09-14 (`4e46949`)
 
 ### Context and Problem Statement
 

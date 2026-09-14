@@ -396,6 +396,19 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
     });
   }
 
+  for (const rfc of catalog.rfcs ?? []) {
+    items.push({
+      kind: "rfc",
+      id: rfc.id,
+      name: rfc.displayId,
+      detail: rfc.title,
+      path: paths.rfc(rfc.slug),
+      context: rfc.scope.kind === "context" ? rfc.scope.context : null,
+      badge: rfc.status,
+      text: flattenProse(`${rfc.title} ${rfc.body}`),
+    });
+  }
+
   return items;
 }
 
@@ -523,6 +536,7 @@ const KIND_RANK: Record<Kind, number> = {
   view: 13,
   flow: 14,
   adr: 15,
+  rfc: 15,
   // Last, and on purpose. A reader typing "session" wants the aggregate they
   // can open, not the sentence about what the word means; the term is what
   // they fall back to when nothing they clicked explained it.

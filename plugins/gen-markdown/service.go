@@ -79,6 +79,7 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	section(&b, "Where it runs", s.deploymentsTable(svc))
 	section(&b, "Gateway API", s.gatewayExposuresTable(self, svc))
 	section(&b, "Decisions", s.adrTable(self, s.adrsFor[svc.ID]))
+	section(&b, "Requests for comments", s.rfcTable(self, s.rfcsFor[svc.ID]))
 
 	s.b.file(self, b.String())
 

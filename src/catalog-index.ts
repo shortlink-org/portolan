@@ -12,6 +12,7 @@ import type {
   External,
   Flow,
   ProtoModule,
+  Rfc,
   RedisKeyspace,
   RpcCall,
   RpcService,
@@ -25,6 +26,7 @@ import {
   allDeployments,
   allExternals,
   allModules,
+  allRfcs,
   allStores,
   allTerms,
   aggregateBlocks,
@@ -180,6 +182,10 @@ export interface CatalogIndex {
   adrBySlug: Map<string, Adr>;
   /** event id -> ADRs that name it in relates.events, newest first */
   adrsByEvent: Map<string, Adr[]>;
+  rfcById: Map<string, Rfc>;
+  rfcBySlug: Map<string, Rfc>;
+  /** event id -> RFCs that name it in relates.events, newest activity first */
+  rfcsByEvent: Map<string, Rfc[]>;
   termById: Map<string, Term>;
   /** context id -> its vocabulary, alphabetical, as the glossary was written */
   termsByContext: Map<string, Term[]>;
@@ -231,6 +237,9 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const adrById = new Map<string, Adr>();
   const adrBySlug = new Map<string, Adr>();
   const adrsByEvent = new Map<string, Adr[]>();
+  const rfcById = new Map<string, Rfc>();
+  const rfcBySlug = new Map<string, Rfc>();
+  const rfcsByEvent = new Map<string, Rfc[]>();
   const termById = new Map<string, Term>();
   const termsByContext = new Map<string, Term[]>();
   const storeById = new Map<string, Store>();
@@ -452,6 +461,19 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     }
   }
 
+  for (const rfc of [...allRfcs(catalog)].sort((a, b) =>
+    (b.updatedAt ?? b.createdAt ?? "").localeCompare(a.updatedAt ?? a.createdAt ?? "") ||
+    a.displayId.localeCompare(b.displayId, undefined, { numeric: true })
+  )) {
+    rfcById.set(rfc.id, rfc);
+    rfcBySlug.set(rfc.slug, rfc);
+    for (const eventId of rfc.relates.events ?? []) {
+      const list = rfcsByEvent.get(eventId) ?? [];
+      list.push(rfc);
+      rfcsByEvent.set(eventId, list);
+    }
+  }
+
   for (const term of allTerms(catalog)) {
     termById.set(term.id, term);
     const list = termsByContext.get(term.context) ?? [];
@@ -480,6 +502,9 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     adrById,
     adrBySlug,
     adrsByEvent,
+    rfcById,
+    rfcBySlug,
+    rfcsByEvent,
     termById,
     termsByContext,
     storeById,

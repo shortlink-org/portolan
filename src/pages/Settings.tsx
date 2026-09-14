@@ -666,6 +666,8 @@ const CAPABILITIES: Record<string, { title: string; summary: string }> = {
   proto: { title: "Protobuf contract", summary: "gRPC services, methods and messages." },
   sql: { title: "SQL data model", summary: "Stores, tables, columns and relationships." },
   adr: { title: "Architecture decisions", summary: "ADRs and their catalog relationships." },
+  rfc: { title: "Requests for comments", summary: "File-based RFC proposals, review state and architectural relationships." },
+  "github-rfcs": { title: "GitHub RFCs", summary: "RFC proposals discussed as GitHub issues or pull requests." },
   glossary: { title: "Glossary", summary: "Project language and shared definitions." },
 };
 

@@ -41,6 +41,16 @@ export function crumbsFor(pathname: string): Crumb[] {
     return crumbs;
   }
 
+  if (parts[0] === "rfcs") {
+    const crumbs: Crumb[] = [{ label: "rfcs", to: paths.rfcs() }];
+    const slug = parts[1];
+    if (slug) {
+      const rfc = index.rfcBySlug.get(slug);
+      crumbs.push({ label: rfc?.displayId ?? slug, to: paths.rfc(slug) });
+    }
+    return crumbs;
+  }
+
   if (parts[0] === "graph") return [{ label: "graph", to: "/graph" }];
 
   if (parts[0] === "map") return [{ label: "map", to: "/map" }];

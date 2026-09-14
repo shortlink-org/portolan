@@ -59,6 +59,15 @@ function targetsOf(catalog, repository) {
     // Org/context records do not identify one repository; leave them explicit.
     if (adr.scope.kind === "service" && belongs(services.find((service) => service.id === adr.scope.service))) add({ kind: "adr", id: adr.id }, adr.source);
   }
+  for (const rfc of catalog.rfcs ?? []) {
+    // Forge-backed RFCs already are work items. File-backed RFCs can be
+    // associated with the implementation keys carried by commits touching
+    // the proposal, without pretending the proposal and task are one thing.
+    const ownedByRepository = rfc.repository
+      ? bare(rfc.repository) === bare(repository)
+      : rfc.scope.kind === "service" && belongs(services.find((service) => service.id === rfc.scope.service));
+    if (rfc.sourceKind === "file" && ownedByRepository) add({ kind: "rfc", id: rfc.id }, rfc.source);
+  }
   return targets;
 }
 

@@ -248,6 +248,21 @@ function compatibleAdrs(root, candidates) {
   return candidates.map((name) => adrPreview(root, name)).filter(Boolean);
 }
 
+function rfcPreview(root, name) {
+  let source = "";
+  try { source = readFileSync(join(root, name), "utf8").replaceAll("\r\n", "\n"); } catch { return null; }
+  if (!source.startsWith("---\n")) return null;
+  const end = source.indexOf("\n---\n", 4);
+  if (end < 0) return null;
+  const meta = source.slice(4, end);
+  const body = source.slice(end + 5);
+  const heading = body.split("\n").find((line) => line.trim()) ?? "";
+  const match = /^#\s+(?:(RFC|RFD|KEP)[-\s#:]*)?([A-Za-z0-9._-]+)?\s*(?:[.:—-]\s*)?(.+?)\s*$/i.exec(heading);
+  const status = /^(?:status|state):\s*["']?(.+?)["']?\s*$/mi.exec(meta)?.[1]?.trim();
+  if (!match || !status) return null;
+  return { file: name, fields: { displayId: `${(match[1] ?? "RFC").toUpperCase()}-${match[2] ?? "?"}`, title: match[3].trim(), status } };
+}
+
 function goDomainEvidence(root, files) {
   const layout = /^internal\/(?:domain\/([^/]+)|([^/]+)\/domain)\/[^/]+\.go$/i;
   const candidates = matches(files, layout);
@@ -365,6 +380,9 @@ function detectionsFor(root, files) {
   const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i).filter((name) => posix.basename(name).toLowerCase() !== "readme.md");
   const adrPreviews = compatibleAdrs(root, adrs);
   const supportedAdrs = adrPreviews.map((item) => item.file);
+  const rfcs = matches(files, /(^|\/)(docs\/rfcs?|docs\/rfd|rfcs?|rfd)\/.*\.md$/i).filter((name) => posix.basename(name).toLowerCase() !== "readme.md");
+  const rfcPreviews = rfcs.map((name) => rfcPreview(root, name)).filter(Boolean);
+  const supportedRfcs = rfcPreviews.map((item) => item.file);
   const glossaries = matches(files, /(^|\/)glossary\.md$/i);
   // The app module is the one file a Celery project always has; the tasks
   // and the calls that enqueue them are found from there.
@@ -434,6 +452,15 @@ function detectionsFor(root, files) {
       !supportedAdrs.length,
       supportedAdrs.length > 0,
       adrPreviews,
+    ),
+    detected(
+      "rfc",
+      rfcs,
+      supportedRfcs[0] ? { files: [`${posix.dirname(supportedRfcs[0])}/*.md`] } : {},
+      supportedRfcs[0] ? `${posix.dirname(supportedRfcs[0])}/*.md` : `${posix.dirname(rfcs[0] ?? "docs/rfc/x.md")}/*.md (format not recognized)`,
+      !supportedRfcs.length,
+      supportedRfcs.length > 0,
+      rfcPreviews,
     ),
     detected("glossary", glossaries, glossaries.length ? { files: glossaries } : {}, glossaries.join(", ")),
   ].filter(Boolean);

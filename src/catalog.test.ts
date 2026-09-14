@@ -15,7 +15,7 @@ import {
   validateCatalog,
   walkSteps,
 } from "./catalog";
-import type { Adr, Alt, Catalog, Classification, Flow } from "./catalog";
+import type { Adr, Alt, Catalog, Classification, Flow, Rfc } from "./catalog";
 
 const catalog = raw as unknown as Catalog;
 
@@ -647,6 +647,50 @@ describe("validateCatalog: decision records", () => {
     expect(() => validateCatalog(bad)).toThrowError(
       /adr "org.0002" must end with its number, "0003"/,
     );
+  });
+});
+
+describe("validateCatalog: requests for comments", () => {
+  function withRfc(overrides: Partial<Rfc> = {}): Catalog {
+    const next = clone();
+    next.rfcs = [{
+      id: "eventcatalog.rfc.2556",
+      slug: "eventcatalog-rfc-2556-secrets",
+      displayId: "RFC-2556",
+      number: "2556",
+      title: "Secrets as a first-class resource",
+      status: "needs-discussion",
+      lifecycle: "discussion",
+      scope: { kind: "service", service: "shop.oms" },
+      body: "## Proposed solution\n",
+      sourceKind: "github-issue",
+      repository: "github.com/event-catalog/eventcatalog",
+      source: "https://github.com/event-catalog/eventcatalog/issues/2556",
+      discussionUrl: "https://github.com/event-catalog/eventcatalog/issues/2556",
+      relates: { events: ["shop.oms.order.OrderPlaced"], flows: ["checkout"] },
+      links: [{ kind: "adr", id: "shop.oms.0007", relation: "formalized-by" }],
+      ...overrides,
+    }];
+    return next;
+  }
+
+  it("keeps a source-specific status separate from the normalized lifecycle", () => {
+    expect(() => validateCatalog(withRfc())).not.toThrow();
+  });
+
+  it("rejects dangling architectural and record links", () => {
+    expect(() => validateCatalog(withRfc({ relates: { services: ["shop.nope"] } }))).toThrow(/relates to unknown service "shop.nope"/);
+    expect(() => validateCatalog(withRfc({ links: [{ kind: "adr", id: "org.9999", relation: "formalized-by" }] }))).toThrow(/links to unknown adr "org.9999"/);
+  });
+
+  it("rejects an unsafe discussion URL and an unknown lifecycle", () => {
+    expect(() => validateCatalog(withRfc({ discussionUrl: "javascript:alert(1)" }))).toThrow(/unsafe discussionUrl/);
+    expect(() => validateCatalog(withRfc({ lifecycle: "proposed" as never }))).toThrow(/unknown lifecycle "proposed"/);
+  });
+
+  it("rejects an ambiguous or credential-bearing RFC repository", () => {
+    expect(() => validateCatalog(withRfc({ repository: "architecture" }))).toThrow(/use host\/owner\/name/);
+    expect(() => validateCatalog(withRfc({ repository: "https:\/\/secret@github.com\/acme\/architecture" }))).toThrow(/invalid repository/);
   });
 });
 

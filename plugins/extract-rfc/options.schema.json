@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "RFC Markdown files as globs relative to the input root. Left out, docs/rfc/*.md, docs/rfcs/*.md and docs/rfd/*.md.",
+      "examples": [["docs/rfcs/*.md"]]
+    },
+    "scope": {
+      "type": "string",
+      "description": "Default scope when a document does not declare one: org, a context, or <context>.<service>.",
+      "examples": ["payments.ledger", "payments", "org"]
+    },
+    "prefix": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9-]*$",
+      "description": "Display prefix for documents whose heading and metadata do not name one. Defaults to RFC."
+    },
+    "repo": {
+      "type": "string",
+      "description": "Repository that owns these RFC files, as host/owner/name. The repository pin carries the extracted commit.",
+      "examples": ["github.com/acme/architecture"]
+    },
+    "history": {
+      "enum": ["git", "none"],
+      "default": "git",
+      "description": "Read authorship and activity from file history, or none for a non-checkout fixture."
+    },
+    "statusMap": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": ["draft", "discussion", "accepted", "implemented", "rejected", "postponed", "withdrawn", "abandoned", "superseded", "unknown"]
+      },
+      "description": "Company-specific source status to Portolan lifecycle mapping. Keys are matched case-insensitively."
+    },
+    "out": {
+      "type": "string",
+      "description": "Fragment file name. Defaults to rfc.json."
+    }
+  }
+}

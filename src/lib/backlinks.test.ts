@@ -8,6 +8,7 @@ import {
 } from "./backlinks";
 import type { BacklinkGroup, BacklinkTarget } from "./backlinks";
 import type { Kind } from "./kinds";
+import { buildIndex } from "../catalog";
 
 function groups(target: BacklinkTarget): BacklinkGroup[] {
   return backlinksFor(catalog, index, target);
@@ -84,6 +85,30 @@ describe("an event", () => {
     expect(adrs.map((l) => [l.id, l.name, l.via])).toEqual([
       ["org.0002", "ADR-0002", "relates.events"],
     ]);
+  });
+});
+
+describe("an RFC", () => {
+  it("appears as a distinct backlink on the architecture it proposes to change", () => {
+    const next = structuredClone(catalog);
+    next.rfcs = [{
+      id: "acme.rfc.12",
+      slug: "acme-rfc-12-streaming",
+      displayId: "RFC-12",
+      title: "Streaming transport",
+      status: "in-review",
+      lifecycle: "discussion",
+      scope: { kind: "service", service: "shop.oms" },
+      body: "Proposal",
+      sourceKind: "file",
+      source: "docs/rfcs/0012.md",
+      relates: { events: ["shop.oms.order.OrderPlaced"], flows: ["checkout"] },
+    }];
+    const nextIndex = buildIndex(next);
+    const event = backlinksFor(next, nextIndex, { kind: "event", id: "shop.oms.order.OrderPlaced" });
+    expect(event.find((group) => group.kind === "rfc")?.links[0]).toMatchObject({ id: "acme.rfc.12", name: "RFC-12", via: "relates.events" });
+    const flow = backlinksFor(next, nextIndex, { kind: "flow", id: "checkout" });
+    expect(flow.find((group) => group.kind === "rfc")?.links[0]?.via).toBe("relates.flows");
   });
 });
 

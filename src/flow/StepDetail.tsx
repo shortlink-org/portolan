@@ -13,7 +13,7 @@ import { Ident } from "../components/Ident";
 import { SourcePreviewLink } from "../components/SourcePreview";
 import { flowRepoService } from "../lib/derive";
 import { sourceLocation } from "../lib/source-link";
-import { AdrNumber, StatusChip } from "../components/primitives";
+import { AdrNumber, RfcDisplayId, StatusChip } from "../components/primitives";
 import { ShapeRows } from "../components/ShapeRows";
 import { shapeFor } from "../components/MethodRows";
 import { stepAnswer, stepRpcContract } from "./answers";
@@ -772,6 +772,7 @@ function StepExamples({ step, flow }: { step: Step; flow: Flow }) {
 
 export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   const decisions = step.ref ? (index.adrsByEvent.get(step.ref) ?? []) : [];
+  const rfcs = step.ref ? (index.rfcsByEvent.get(step.ref) ?? []) : [];
 
   return (
     <>
@@ -795,6 +796,24 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
               <AdrNumber adr={adr} />
               <span className="w-full truncate" title={adr.title}>
                 {adr.title}
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      {rfcs.length > 0 ? (
+        <div className="mb-3 flex flex-col gap-1">
+          {rfcs.map((rfc) => (
+            <Link
+              key={rfc.id}
+              to={paths.rfc(rfc.slug)}
+              className="flex flex-wrap items-baseline gap-x-1.5 border px-2 py-1 border-line hover:bg-surface"
+            >
+              <span className="label">RFC</span>
+              <RfcDisplayId rfc={rfc} />
+              <span className="w-full truncate" title={rfc.title}>
+                {rfc.title}
               </span>
             </Link>
           ))}

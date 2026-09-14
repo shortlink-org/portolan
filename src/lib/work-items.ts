@@ -15,6 +15,7 @@ export function workItemTargetExists(catalog: Catalog, target: WorkItemTarget): 
     case "flow": return catalog.flows.some((flow) => flow.id === target.id);
     case "service": return catalog.contexts.some((context) => context.services.some((service) => service.id === target.id));
     case "adr": return catalog.adrs.some((adr) => adr.id === target.id);
+    case "rfc": return (catalog.rfcs ?? []).some((rfc) => rfc.id === target.id);
     case "step": return catalog.flows.some((flow) => flow.id === target.flow && walkSteps(flow.steps).some((step) => step.id === target.id));
     default: return false;
   }

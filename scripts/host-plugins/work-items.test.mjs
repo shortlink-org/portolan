@@ -115,6 +115,23 @@ describe("work item Git evidence", () => {
     expect(JSON.parse(run(request).files[0].contents).workItemLinks.every((link) => link.target.kind === "service")).toBe(true);
   });
 
+  it("attributes an org-scoped RFC to the repository that owns its file", () => {
+    const { request, catalog, root, commit } = checkout();
+    mkdirSync(join(root, "docs", "rfcs"), { recursive: true });
+    catalog.rfcs = [{
+      id: "org.rfc.12", scope: { kind: "org" }, sourceKind: "file",
+      repository: "github.com/acme/shop", source: "docs/rfcs/0012-streaming.md",
+    }];
+    commit("RT-12: propose streaming", "docs/rfcs/0012-streaming.md", "proposal");
+    const local = JSON.parse(run(request).files[0].contents);
+    expect(local.workItemLinks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ workItem: "team:RT-12", target: { kind: "rfc", id: "org.rfc.12" } }),
+    ]));
+
+    catalog.rfcs[0].repository = "github.com/acme/architecture";
+    expect(JSON.parse(run(request).files[0].contents).workItems).toEqual([]);
+  });
+
   it("reports a bounded history and rejects ambiguous trackers or inherited Git roots", () => {
     const { request, root, commit } = checkout();
     commit("RT-101: first"); commit("RT-102: second");

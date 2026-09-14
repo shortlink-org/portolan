@@ -40,6 +40,7 @@ type Catalog struct {
 	Defs        map[string]TypeDef `json:"defs"`
 	Flows       []Flow             `json:"flows"`
 	Adrs        []Adr              `json:"adrs"`
+	Rfcs          []Rfc               `json:"rfcs,omitempty"`
 	Stores      []Store            `json:"stores,omitempty"`
 	Modules     []ProtoModule      `json:"modules,omitempty"`
 	Terms       []Term             `json:"terms,omitempty"`
@@ -1367,6 +1368,39 @@ type AdrRelates struct {
 	Services []string `json:"services,omitempty"`
 	Events   []string `json:"events,omitempty"`
 	Flows    []string `json:"flows,omitempty"`
+}
+
+// Rfc is a proposal and its review lifecycle. Status retains the source's
+// vocabulary; Lifecycle is only the common projection used by catalog lists.
+type Rfc struct {
+	ID            string          `json:"id"`
+	Slug          string          `json:"slug"`
+	DisplayID     string          `json:"displayId"`
+	Number        string          `json:"number,omitempty"`
+	Title         string          `json:"title"`
+	Status        string          `json:"status"`
+	Lifecycle     string          `json:"lifecycle"`
+	Scope         AdrScope        `json:"scope"`
+	Body          string          `json:"body"`
+	Authors       []string        `json:"authors,omitempty"`
+	Shepherds     []string        `json:"shepherds,omitempty"`
+	CreatedAt     string          `json:"createdAt,omitempty"`
+	UpdatedAt     string          `json:"updatedAt,omitempty"`
+	ResolvedAt    string          `json:"resolvedAt,omitempty"`
+	DiscussionURL string          `json:"discussionUrl,omitempty"`
+	SourceKind    string          `json:"sourceKind"`
+	Repository    string          `json:"repository,omitempty"`
+	Source        string          `json:"source"`
+	Relates       AdrRelates      `json:"relates"`
+	Links         []RfcRecordLink `json:"links,omitempty"`
+	Created       *AdrCommit      `json:"created,omitempty"`
+	Revised       *AdrCommit      `json:"revised,omitempty"`
+}
+
+type RfcRecordLink struct {
+	Kind     string `json:"kind"`
+	ID       string `json:"id"`
+	Relation string `json:"relation"`
 }
 
 // Term is one entry of a context's glossary: a word, and what it means inside

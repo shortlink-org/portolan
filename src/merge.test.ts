@@ -482,6 +482,33 @@ describe("mergeCatalogs", () => {
   });
 });
 
+describe("mergeCatalogs: requests for comments", () => {
+  const rfc = {
+    id: "acme.rfc.12",
+    slug: "acme-rfc-12-streaming",
+    displayId: "RFC-12",
+    title: "Streaming transport",
+    status: "in-review",
+    lifecycle: "discussion" as const,
+    scope: { kind: "org" as const },
+    body: "Proposal",
+    sourceKind: "file" as const,
+    source: "docs/rfcs/0012.md",
+    relates: {},
+  };
+
+  it("keeps RFCs in their own collection and reports duplicate ids", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { rfcs: [rfc] }),
+      source("b.json", { rfcs: [{ ...rfc, title: "Another proposal" }] }),
+    ]);
+    expect(merged.catalog.rfcs).toEqual([rfc]);
+    expect(merged.conflicts).toEqual([
+      expect.objectContaining({ path: "b.json", where: rfc.id, message: expect.stringContaining("RFC") }),
+    ]);
+  });
+});
+
 describe("mergeCatalogs: glossary terms", () => {
   const term = (id: string, context: string, slug: string) => ({
     id,

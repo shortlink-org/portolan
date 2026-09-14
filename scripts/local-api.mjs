@@ -627,6 +627,12 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   if (plugin === "proto") return { ...common, ...detectedOptions, out: "proto.json" };
   if (plugin === "glossary") return { context: group, ...detectedOptions, out: "glossary.json" };
   if (plugin === "adr") return { scope: [group, component].filter(Boolean).join(".") || "org", ...detectedOptions, out: "adr.json" };
+  if (plugin === "rfc") return {
+    scope: [group, component].filter(Boolean).join(".") || "org",
+    ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}),
+    ...detectedOptions,
+    out: "rfc.json",
+  };
   return {};
 }
 
@@ -816,7 +822,7 @@ export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
   const catalogs = !isolated && manifest.catalogs
     ? manifest.catalogs.map((catalog) => catalog.id === targetCatalog ? {
         ...catalog,
-        sources: [...new Set([...catalog.sources, plan.source])],
+        sources: [...new Set([...catalog.sources, ...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source])],
         contexts: [...new Set([...catalog.contexts, plan.project.group ?? plan.project.context].filter(Boolean))],
         projects: [...new Set([...catalog.projects, plan.project.id])],
       } : catalog)
@@ -1261,6 +1267,7 @@ const TRIAL_FACTS = [
   ["keyPatterns", "key patterns"],
   ["flows", "flows"],
   ["adrs", "ADRs"],
+  ["rfcs", "RFCs"],
   ["terms", "glossary terms"],
 ];
 
@@ -1321,6 +1328,7 @@ export function summarizeProjectTrial(snapshot, plan, events) {
     }
     for (const flow of fragment.flows ?? []) add("flows", flow.id ?? flow.slug ?? flow.name);
     for (const adr of fragment.adrs ?? []) add("adrs", adr.id ?? adr.slug ?? adr.title);
+    for (const rfc of fragment.rfcs ?? []) add("rfcs", rfc.id ?? rfc.slug ?? rfc.title);
     for (const term of fragment.terms ?? []) add("terms", term.id ?? term.slug ?? term.name);
   }
   const warnings = steps.flatMap((step) => step.warnings.map((message) => ({ plugin: step.plugin, message })));

@@ -19,6 +19,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { fileURLToPath } from "node:url";
 
 import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers, toolchainFor } from "./init.mjs";
+import { checkForUpdate } from "./update.mjs";
 import { loadManifest, readManifest } from "../scripts/manifest.mjs";
 
 const installRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -200,6 +201,7 @@ async function build(workspace, options) {
 }
 
 async function dev(workspace, options) {
+  const latestVersion = await checkForUpdate(VERSION);
   const stage = await prepareSite(workspace);
   generateLikeC4(stage);
   const args = [stage, "--config", resolve(stage, "vite.config.ts"), "--host", options.host ?? "127.0.0.1"];
@@ -207,6 +209,8 @@ async function dev(workspace, options) {
   runNode(packageBin("vite", "bin/vite.js"), args, workspace, {
     ...process.env,
     PORTOLAN_WORKSPACE: workspace,
+    PORTOLAN_CURRENT_VERSION: VERSION,
+    PORTOLAN_UPDATE_VERSION: latestVersion ?? "",
     BASE_PATH: options.base ?? process.env.BASE_PATH ?? "/",
   });
 }

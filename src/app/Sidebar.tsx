@@ -22,6 +22,7 @@ import type {
 } from "../catalog";
 import { allModules, allTerms, enumsOf, storeViews } from "../catalog";
 import { adrNumber, newestAccepted } from "../lib/adr";
+import { activeRfcs } from "../lib/rfc";
 import { contextStats } from "../lib/derive";
 import { vocabularies } from "../language/cards";
 import { groupFlowsByOwner } from "../lib/flow-tree";
@@ -265,6 +266,7 @@ export function Sidebar({
 
   // A standing list of what currently holds; every decision is on its page.
   const adrs = useMemo(() => newestAccepted(catalog, 5), []);
+  const rfcs = useMemo(() => activeRfcs(catalog, 5), []);
 
   // --- following the selection --------------------------------------------
 
@@ -693,6 +695,36 @@ export function Sidebar({
               </NavLink>
             ) : null}
           </Section>
+
+          {(catalog.rfcs?.length ?? 0) > 0 ? (
+            <Section
+              title="RFCs"
+              count={catalog.rfcs?.length ?? 0}
+              open={sectionOpen("rfcs")}
+              onToggle={() => toggleSection("rfcs")}
+            >
+              {rfcs.length === 0 ? <TreeNote>no active discussions</TreeNote> : null}
+              {rfcs.map((rfc) => (
+                <Leaf
+                  key={rfc.id}
+                  to={paths.rfc(rfc.slug)}
+                  depth={0}
+                  title={`${rfc.displayId} — ${rfc.title} · ${rfc.status}`}
+                >
+                  <KindIcon kind="rfc" />
+                  <span className="mono tnum shrink-0">{rfc.displayId.replace(/^(?:RFC|RFD)-?/i, "")}</span>
+                  <span className="truncate">{rfc.title}</span>
+                </Leaf>
+              ))}
+              <NavLink
+                to={paths.rfcs()}
+                data-nav-item
+                className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+              >
+                view all {catalog.rfcs?.length ?? 0} →
+              </NavLink>
+            </Section>
+          ) : null}
 
           {/* Guarded on the count, like Registry: an estate that has written no
               glossary would otherwise grow a permanent empty band teaching a

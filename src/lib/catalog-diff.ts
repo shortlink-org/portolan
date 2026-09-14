@@ -29,6 +29,7 @@
 import {
   allModules,
   allRepos,
+  allRfcs,
   allServices,
   allStores,
   allTerms,
@@ -46,6 +47,7 @@ import type {
   Flow,
   RpcMethod,
   RpcService,
+  Rfc,
   Service,
   Status,
   Step,
@@ -93,6 +95,7 @@ export function diffCatalogs(before: Catalog, after: Catalog): Change[] {
   diffModules(before, after, add);
   diffFlows(before, after, add);
   diffAdrs(before, after, add);
+  diffRfcs(before, after, add);
   diffTerms(before, after, add);
   diffRepos(before, after, add);
 
@@ -634,6 +637,36 @@ function diffAdrs(before: Catalog, after: Catalog, add: Add): void {
 
 function settled(adr: Adr): boolean {
   return adr.status === "accepted" || adr.status === "superseded";
+}
+
+function diffRfcs(before: Catalog, after: Catalog, add: Add): void {
+  const was = byId(allRfcs(before), (rfc) => rfc.id);
+  const now = byId(allRfcs(after), (rfc) => rfc.id);
+  const { added, removed, kept } = partition(was, now);
+
+  for (const id of added) {
+    const rfc = now.get(id)!;
+    add("rfc.added", "addition", id, `${rfc.displayId} — ${rfc.title}`);
+  }
+  for (const id of removed) add("rfc.removed", "change", id, `${was.get(id)!.displayId} is gone`);
+  for (const id of kept) {
+    const a = was.get(id)!;
+    const b = now.get(id)!;
+    if (a.status !== b.status || a.lifecycle !== b.lifecycle) {
+      const normalized = a.lifecycle !== b.lifecycle ? ` (${b.lifecycle}, was ${a.lifecycle})` : "";
+      add("rfc.status", "change", id, `${b.displayId} is ${b.status}, was ${a.status}${normalized}`);
+    }
+    if (a.repository !== b.repository) {
+      add("rfc.repository", "change", id, `${b.displayId} moved from ${a.repository || "the catalog repository"} to ${b.repository || "the catalog repository"}`);
+    }
+    if (settledRfc(a) && a.body !== b.body) {
+      add("rfc.body", "change", id, `${b.displayId} was edited after being ${a.lifecycle}`);
+    }
+  }
+}
+
+function settledRfc(rfc: Rfc): boolean {
+  return ["accepted", "implemented", "rejected", "withdrawn", "abandoned", "superseded"].includes(rfc.lifecycle);
 }
 
 function diffTerms(before: Catalog, after: Catalog, add: Add): void {

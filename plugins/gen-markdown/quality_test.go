@@ -188,3 +188,22 @@ func TestExternalSourceUsesItsImmutablePin(t *testing.T) {
 		t.Fatalf("source link = %s", got)
 	}
 }
+
+func TestExternalRfcSourceUsesItsRepositoryPin(t *testing.T) {
+	commit := strings.Repeat("c", 40)
+	cat := catalog.Catalog{
+		GeneratedAt: "2026-09-14T00:00:00Z",
+		Defs:        map[string]catalog.TypeDef{},
+		Rfcs: []catalog.Rfc{{
+			ID: "org.rfc.12", Slug: "org-rfc-12-streaming", DisplayID: "RFC-12", Title: "Streaming",
+			Status: "draft", Lifecycle: "draft", Scope: catalog.AdrScope{Kind: "org"}, Body: "# RFC-12 — Streaming\n",
+			SourceKind: "file", Repository: "github.com/acme/architecture", Source: "docs/rfcs/0012-streaming.md", Relates: catalog.AdrRelates{},
+		}},
+		Repos: []catalog.RepoPin{{Repo: "github.com/acme/architecture", Commit: commit}},
+	}
+	page := renderedFiles(render(plugin.Request{Catalog: cat}, Options{}))["rfc/org-rfc-12-streaming.md"]
+	want := "https://github.com/acme/architecture/blob/" + commit + "/docs/rfcs/0012-streaming.md"
+	if !strings.Contains(page, want) || !strings.Contains(page, "github.com/acme/architecture") {
+		t.Fatalf("RFC source did not retain its external repository and pin:\n%s", page)
+	}
+}

@@ -96,6 +96,112 @@
     }
   },
   {
+    "name": "github-rfcs",
+    "plugin": "fetch-github-rfcs",
+    "summary": "Imports RFCs kept as GitHub issues or pull requests, including their exact source status and discussion link.",
+    "category": "sources",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "host",
+    "source": "scripts/host-plugins/fetch-github-rfcs.mjs",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "cache",
+        "scope"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "labels"
+          ]
+        },
+        {
+          "required": [
+            "titlePrefix"
+          ]
+        }
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+          "description": "GitHub owner/repository, without a URL or credentials."
+        },
+        "cache": {
+          "type": "string",
+          "description": "Directory containing the committed RFC snapshot used offline or when GitHub is unavailable."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Scope assigned to imported records: org, a context, or <context>.<service>."
+        },
+        "labels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Labels an issue or pull request must have. Multiple labels are combined with AND, matching GitHub's API."
+        },
+        "titlePrefix": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Case-insensitive title prefix, for repositories that identify RFCs by title instead of label."
+        },
+        "kind": {
+          "enum": [
+            "issue",
+            "pull-request",
+            "both"
+          ],
+          "default": "both"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "closed",
+            "all"
+          ],
+          "default": "all"
+        },
+        "prefix": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9-]*$",
+          "default": "RFC"
+        },
+        "idPrefix": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9.-]*$",
+          "description": "Catalog id prefix. Defaults to the repository owner and name."
+        },
+        "statusMap": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "draft",
+              "discussion",
+              "accepted",
+              "implemented",
+              "rejected",
+              "postponed",
+              "withdrawn",
+              "abandoned",
+              "superseded",
+              "unknown"
+            ]
+          },
+          "description": "Maps a label or GitHub open/closed state to the normalized lifecycle. A matching label wins over state."
+        }
+      }
+    }
+  },
+  {
     "name": "project",
     "plugin": "extract-project",
     "summary": "Reads repository metadata and describes a group and component without assuming DDD or a particular language.",
@@ -2522,6 +2628,89 @@
     }
   },
   {
+    "name": "rfc",
+    "plugin": "extract-rfc",
+    "summary": "Reads RFC and RFD proposal documents while preserving their own review lifecycle and discussion metadata.",
+    "category": "documents",
+    "phases": [
+      "extract"
+    ],
+    "needs": [
+      "history"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-rfc",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "RFC Markdown files as globs relative to the input root. Left out, docs/rfc/*.md, docs/rfcs/*.md and docs/rfd/*.md.",
+          "examples": [
+            [
+              "docs/rfcs/*.md"
+            ]
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "description": "Default scope when a document does not declare one: org, a context, or <context>.<service>.",
+          "examples": [
+            "payments.ledger",
+            "payments",
+            "org"
+          ]
+        },
+        "prefix": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9-]*$",
+          "description": "Display prefix for documents whose heading and metadata do not name one. Defaults to RFC."
+        },
+        "repo": {
+          "type": "string",
+          "description": "Repository that owns these RFC files, as host/owner/name. The repository pin carries the extracted commit.",
+          "examples": [
+            "github.com/acme/architecture"
+          ]
+        },
+        "history": {
+          "enum": [
+            "git",
+            "none"
+          ],
+          "default": "git",
+          "description": "Read authorship and activity from file history, or none for a non-checkout fixture."
+        },
+        "statusMap": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "draft",
+              "discussion",
+              "accepted",
+              "implemented",
+              "rejected",
+              "postponed",
+              "withdrawn",
+              "abandoned",
+              "superseded",
+              "unknown"
+            ]
+          },
+          "description": "Company-specific source status to Portolan lifecycle mapping. Keys are matched case-insensitively."
+        },
+        "out": {
+          "type": "string",
+          "description": "Fragment file name. Defaults to rfc.json."
+        }
+      }
+    }
+  },
+  {
     "name": "glossary",
     "plugin": "extract-glossary",
     "summary": "Reads a context's GLOSSARY.md - one paragraph per term, what it is and what it is not - into a catalog fragment.",
@@ -2671,7 +2860,7 @@
   {
     "name": "git",
     "plugin": "fetch-git",
-    "summary": "Fetches pinned directories of another git repository into the tree, with a lock, so extractors can read a service that lives elsewhere.",
+    "summary": "Fetches a pinned source snapshot of another git repository, with a lock, so extractors can read services that live elsewhere.",
     "category": "sources",
     "phases": [
       "extract"
@@ -2711,19 +2900,6 @@
               "ref": {
                 "type": "string",
                 "description": "The branch or tag to resolve when there is no commit. Defaults to the remote's HEAD."
-              },
-              "paths": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "Directories to copy, relative to the repository's root; the rest is left behind. Left out, the whole tree.",
-                "examples": [
-                  [
-                    "services/oms",
-                    "proto"
-                  ]
-                ]
               }
             }
           }

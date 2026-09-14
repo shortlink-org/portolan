@@ -42,6 +42,7 @@ type site struct {
 	// adrsFor is keyed by what an ADR is scoped to: "org", a context id, or a
 	// service id.
 	adrsFor map[string][]*catalog.Adr
+	rfcsFor map[string][]*catalog.Rfc
 	// termsOf is a context's vocabulary, alphabetical. Keyed by context and
 	// not by service: a glossary belongs to the boundary, and the file it was
 	// read from happens to sit beside one of the services inside it.
@@ -64,6 +65,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 		eventPage: map[string]string{},
 		wireEvent: map[string]string{},
 		adrsFor:   map[string][]*catalog.Adr{},
+		rfcsFor:   map[string][]*catalog.Rfc{},
 		termsOf:   map[string][]*catalog.Term{},
 		methodOf:  map[string]catalog.RpcMethod{},
 
@@ -84,6 +86,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	s.renderExternals()
 	s.renderFlows()
 	s.renderAdrs()
+	s.renderRfcs()
 	s.renderLlms()
 
 	return s.b.Response()
@@ -191,6 +194,18 @@ func (s *site) layout() {
 			s.adrsFor[adr.Scope.Service] = append(s.adrsFor[adr.Scope.Service], adr)
 		default:
 			s.adrsFor["org"] = append(s.adrsFor["org"], adr)
+		}
+	}
+	for i := range s.cat.Rfcs {
+		rfc := &s.cat.Rfcs[i]
+		s.pathOf[rfc.ID] = "rfc/" + rfc.Slug + ".md"
+		switch rfc.Scope.Kind {
+		case "context":
+			s.rfcsFor[rfc.Scope.Context] = append(s.rfcsFor[rfc.Scope.Context], rfc)
+		case "service":
+			s.rfcsFor[rfc.Scope.Service] = append(s.rfcsFor[rfc.Scope.Service], rfc)
+		default:
+			s.rfcsFor["org"] = append(s.rfcsFor["org"], rfc)
 		}
 	}
 }

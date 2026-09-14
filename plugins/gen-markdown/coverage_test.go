@@ -13,7 +13,7 @@ import (
 // printed, others are structural (ids, slugs and union discriminators), but a
 // new field may not disappear from generated documentation by default.
 var catalogCoverage = map[reflect.Type]string{
-	reflect.TypeOf(catalog.Catalog{}):             "generatedAt commit contexts defs flows adrs stores modules terms repos deployments externals workItems workItemLinks",
+	reflect.TypeOf(catalog.Catalog{}):              "generatedAt commit contexts defs flows adrs rfcs stores modules terms repos deployments externals workItems workItemLinks annotations",
 	reflect.TypeOf(catalog.External{}):            "id slug name summary url provides",
 	reflect.TypeOf(catalog.RepoPin{}):             "repo commit",
 	reflect.TypeOf(catalog.Deployment{}):          "id name project environment cluster namespace repo path chart targetRevision revision tool url service images basis drift",
@@ -85,6 +85,8 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.Adr{}):                 "id slug number title status date scope body note supersededBy supersedes relates source created revised",
 	reflect.TypeOf(catalog.AdrCommit{}):           "commit author date",
 	reflect.TypeOf(catalog.AdrRelates{}):          "services events flows",
+	reflect.TypeOf(catalog.Rfc{}):                  "id slug displayId number title status lifecycle scope body authors shepherds createdAt updatedAt resolvedAt discussionUrl sourceKind repository source relates links created revised",
+	reflect.TypeOf(catalog.RfcRecordLink{}):        "kind id relation",
 	reflect.TypeOf(catalog.Term{}):                "id slug context name definition source",
 }
 

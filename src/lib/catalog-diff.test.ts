@@ -271,6 +271,47 @@ describe("diffCatalogs: an accepted decision is a frozen document", () => {
   });
 });
 
+describe("diffCatalogs: RFC lifecycle", () => {
+  function withRfc(): Catalog {
+    const next = JSON.parse(JSON.stringify(catalog)) as Catalog;
+    next.rfcs = [{
+      id: "acme.rfc.12",
+      slug: "acme-rfc-12-streaming",
+      displayId: "RFC-12",
+      title: "Streaming transport",
+      status: "needs-discussion",
+      lifecycle: "discussion",
+      scope: { kind: "org" },
+      body: "Proposal",
+      sourceKind: "github-issue",
+      source: "https://github.com/acme/architecture/issues/12",
+      relates: {},
+    }];
+    return next;
+  }
+
+  it("reports source status and normalized lifecycle as one transition", () => {
+    const before = withRfc();
+    const after = structuredClone(before);
+    after.rfcs![0]!.status = "published";
+    after.rfcs![0]!.lifecycle = "accepted";
+    expect(diffCatalogs(before, after)).toEqual([
+      expect.objectContaining({ kind: "rfc.status", summary: expect.stringContaining("published") }),
+    ]);
+    expect(diffCatalogs(before, after)[0]!.summary).toContain("accepted, was discussion");
+  });
+
+  it("reports when the repository owning an RFC moves", () => {
+    const before = withRfc();
+    before.rfcs![0]!.repository = "github.com/acme/architecture";
+    const after = structuredClone(before);
+    after.rfcs![0]!.repository = "github.com/acme/governance";
+    expect(diffCatalogs(before, after)).toEqual([
+      expect.objectContaining({ kind: "rfc.repository", summary: expect.stringContaining("github.com/acme/governance") }),
+    ]);
+  });
+});
+
 describe("diffCatalogs: order", () => {
   it("puts what broke first, then what is new, then what moved", () => {
     const changes = edited((c) => {
