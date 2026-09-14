@@ -413,6 +413,8 @@ github.com/shortlink-org/go-sdk/cache v0.0.0-20260905203440-c7a4f3ba3610 h1:sflm
 github.com/shortlink-org/go-sdk/cache v0.0.0-20260905203440-c7a4f3ba3610/go.mod h1:DCvmFbyWGW5NTt6DGJGADv8DfKGrqMNT2aAbLh+koSI=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610 h1:BMpKIaj46mTIPl/5JIGDWCH5Y1Qn9YoFe8G8LYHrcJc=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610/go.mod h1:kIQ53ijzeE5wqNfycurqzLhgLws9QIfGTcRg5OUHfeQ=
+github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582 h1:amwzYwcVnbVwqVyMRhcKsdFh7MUjYqUXKVweMHjSjYk=
+github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582/go.mod h1:kIQ53ijzeE5wqNfycurqzLhgLws9QIfGTcRg5OUHfeQ=
 github.com/shortlink-org/go-sdk/db v0.0.0-20260905203440-c7a4f3ba3610 h1:doQQhFZgxQidBJjGRNiQDlOCbasROII4nELGt56tzpA=
 github.com/shortlink-org/go-sdk/db v0.0.0-20260905203440-c7a4f3ba3610/go.mod h1:SGpePPRpW3q/l3uF31GmX8Jsc0dYsCyS9/Yef+iddQ0=
 github.com/shortlink-org/go-sdk/fsm v0.0.0-20260905203440-c7a4f3ba3610 h1:uNIVyJxbO52Cm0Ou9baiiMR2BuitxUQNZqPNDtSYetU=
