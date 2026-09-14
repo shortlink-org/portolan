@@ -1,5 +1,11 @@
 # Agent notes
 
+## Product design
+
+- Before changing the catalog UI, diagrams, navigation, responsive behavior, visual styling, or product copy, read and follow `design.md`.
+- Keep design judgment in `design.md`, reusable mechanics in `src/index.css` or shared components, and mechanically checkable behavior in focused tests.
+- When review reveals a repeated design correction, update the narrowest durable layer rather than hand-tuning only the reported instance.
+
 ## UI preview verification
 
 - A generated catalog is not a verified UI result. After extractor or catalog changes, run every derived presentation step used by the page, including `npm run gen` and `npm run likec4:gen` when diagrams are involved.
