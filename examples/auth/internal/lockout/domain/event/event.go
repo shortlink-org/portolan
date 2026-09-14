@@ -1,25 +1,16 @@
 // Package event holds the domain events of the lockout domain: facts that have
 // already happened.
 //
-// An event is immutable. Its fields are private and set once by its
-// constructor, because a fact that can be edited after the fact is not a fact.
+// What an event is - named, about one aggregate, at one moment - is not this
+// domain's to say; that is pkg/ddd/event. This package says which facts the
+// lockout domain announces and what each of them carries.
 package event
 
-import "time"
+import ddd "github.com/shortlink-org/portolan/pkg/ddd/event"
 
-// Event is what every domain event in this package answers.
-type Event interface {
-	// Name is the key the event travels under on the bus. Stable: renaming one
-	// is a breaking change for every consumer.
-	Name() string
-
-	// AggregateID says whose fact this is - the user id, which is also the
-	// lockout's identity.
-	AggregateID() string
-
-	// OccurredAt is when it happened in the domain, not when it was published.
-	OccurredAt() time.Time
-}
+// Event is what every domain event in this package answers. The aggregate id
+// on a lockout event is the user id, which is also the lockout's identity.
+type Event = ddd.Event
 
 // The names events travel under on the bus. Constants, because a subscriber
 // and a publisher have to agree on them.

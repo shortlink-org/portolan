@@ -142,10 +142,9 @@ Source: [`examples/auth/internal/session/domain/event/session_ended.go`](https:/
 
 | Field | Type |
 | --- | --- |
-| `sessionID` | `string` |
+| `ddd.Base` | `ddd.Base` |
 | `userID` | `string` |
 | `reason` | `Reason` |
-| `occurredAt` | `time.Time` |
 
 <a id="event-auth-auth-session-sessionstarted"></a>
 ### SessionStarted
@@ -162,7 +161,6 @@ Source: [`examples/auth/internal/session/domain/event/session_started.go`](https
 
 | Field | Type |
 | --- | --- |
-| `sessionID` | `string` |
+| `ddd.Base` | `ddd.Base` |
 | `userID` | `string` |
 | `expiresAt` | `time.Time` |
-| `occurredAt` | `time.Time` |

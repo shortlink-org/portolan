@@ -1,6 +1,10 @@
 package event
 
-import "time"
+import (
+	"time"
+
+	ddd "github.com/shortlink-org/portolan/pkg/ddd/event"
+)
 
 // AccountLocked is published when an account starts refusing logins because
 // of too many wrong passwords in a row. Until says when it stops.
@@ -14,22 +18,17 @@ import "time"
 // It carries no password, right or wrong, and nothing about which guesses
 // were made.
 type AccountLocked struct {
-	userID     string
-	until      time.Time
-	occurredAt time.Time
+	ddd.Base
+	until time.Time
 }
 
 func NewAccountLocked(userID string, until, occurredAt time.Time) AccountLocked {
-	return AccountLocked{userID: userID, until: until, occurredAt: occurredAt}
+	return AccountLocked{Base: ddd.New(userID, occurredAt), until: until}
 }
 
 func (AccountLocked) Name() string { return TopicAccountLocked }
 
-func (e AccountLocked) AggregateID() string { return e.userID }
-
-func (e AccountLocked) OccurredAt() time.Time { return e.occurredAt }
-
-func (e AccountLocked) UserID() string { return e.userID }
+func (e AccountLocked) UserID() string { return e.AggregateID() }
 
 // Until is when the account accepts a password again.
 func (e AccountLocked) Until() time.Time { return e.until }

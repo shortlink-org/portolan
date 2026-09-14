@@ -1,36 +1,34 @@
 package event
 
-import "time"
+import (
+	"time"
+
+	ddd "github.com/shortlink-org/portolan/pkg/ddd/event"
+)
 
 // QuoteIssued says a basket has a price, and for how long. Whoever places the
 // order needs both, so both are on the event rather than fetched again.
 type QuoteIssued struct {
-	quoteID     string
-	basketID    string
-	totalMinor  int64
-	currency    string
-	expiresAt   time.Time
-	occurredAt  time.Time
+	ddd.Base
+	basketID   string
+	totalMinor int64
+	currency   string
+	expiresAt  time.Time
 }
 
 func NewQuoteIssued(quoteID, basketID string, totalMinor int64, currency string, expiresAt, occurredAt time.Time) QuoteIssued {
 	return QuoteIssued{
-		quoteID:    quoteID,
+		Base:       ddd.New(quoteID, occurredAt),
 		basketID:   basketID,
 		totalMinor: totalMinor,
 		currency:   currency,
 		expiresAt:  expiresAt,
-		occurredAt: occurredAt,
 	}
 }
 
 func (QuoteIssued) Name() string { return "pricing.QuoteIssued" }
 
-func (e QuoteIssued) AggregateID() string { return e.quoteID }
-
-func (e QuoteIssued) OccurredAt() time.Time { return e.occurredAt }
-
-func (e QuoteIssued) QuoteID() string { return e.quoteID }
+func (e QuoteIssued) QuoteID() string { return e.AggregateID() }
 
 func (e QuoteIssued) BasketID() string { return e.basketID }
 

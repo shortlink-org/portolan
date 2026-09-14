@@ -1,6 +1,10 @@
 package event
 
-import "time"
+import (
+	"time"
+
+	ddd "github.com/shortlink-org/portolan/pkg/ddd/event"
+)
 
 // PasswordChanged is published when a user's password is replaced. It says the
 // password is different now; it does not carry the password, old or new, in any
@@ -12,22 +16,17 @@ import "time"
 // what such an identifier refers to. Somebody downstream may recognise one of
 // its own, and that is their business, not this package's.
 type PasswordChanged struct {
-	userID     string
-	by         string
-	occurredAt time.Time
+	ddd.Base
+	by string
 }
 
 func NewPasswordChanged(userID, by string, occurredAt time.Time) PasswordChanged {
-	return PasswordChanged{userID: userID, by: by, occurredAt: occurredAt}
+	return PasswordChanged{Base: ddd.New(userID, occurredAt), by: by}
 }
 
-func (PasswordChanged) Name() string { return "auth.PasswordChanged" }
+func (PasswordChanged) Name() string { return TopicPasswordChanged }
 
-func (e PasswordChanged) AggregateID() string { return e.userID }
-
-func (e PasswordChanged) OccurredAt() time.Time { return e.occurredAt }
-
-func (e PasswordChanged) UserID() string { return e.userID }
+func (e PasswordChanged) UserID() string { return e.AggregateID() }
 
 // By is whoever made the change, or empty when it was nobody in particular.
 func (e PasswordChanged) By() string { return e.by }

@@ -120,6 +120,5 @@ Source: [`examples/auth/internal/lockout/domain/event/account_locked.go`](https:
 
 | Field | Type |
 | --- | --- |
-| `userID` | `string` |
+| `ddd.Base` | `ddd.Base` |
 | `until` | `time.Time` |
-| `occurredAt` | `time.Time` |

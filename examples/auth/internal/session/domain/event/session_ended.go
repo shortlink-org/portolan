@@ -1,6 +1,10 @@
 package event
 
-import "time"
+import (
+	"time"
+
+	ddd "github.com/shortlink-org/portolan/pkg/ddd/event"
+)
 
 // Reason says why a session stopped being usable. It is a closed set: a
 // consumer that switches on it should not have to handle free text.
@@ -31,28 +35,22 @@ const (
 // whichever sweep noticed first.
 // See docs/adr/0003-expiry-publishes-nothing.md.
 type SessionEnded struct {
-	sessionID  string
-	userID     string
-	reason     Reason
-	occurredAt time.Time
+	ddd.Base
+	userID string
+	reason Reason
 }
 
 func NewSessionEnded(sessionID, userID string, reason Reason, occurredAt time.Time) SessionEnded {
 	return SessionEnded{
-		sessionID:  sessionID,
-		userID:     userID,
-		reason:     reason,
-		occurredAt: occurredAt,
+		Base:   ddd.New(sessionID, occurredAt),
+		userID: userID,
+		reason: reason,
 	}
 }
 
-func (SessionEnded) Name() string { return "auth.SessionEnded" }
+func (SessionEnded) Name() string { return TopicSessionEnded }
 
-func (e SessionEnded) AggregateID() string { return e.sessionID }
-
-func (e SessionEnded) OccurredAt() time.Time { return e.occurredAt }
-
-func (e SessionEnded) SessionID() string { return e.sessionID }
+func (e SessionEnded) SessionID() string { return e.AggregateID() }
 
 func (e SessionEnded) UserID() string { return e.userID }
 

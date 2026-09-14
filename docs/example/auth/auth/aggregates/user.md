@@ -102,9 +102,8 @@ Source: [`examples/auth/internal/user/domain/event/password_changed.go`](https:/
 
 | Field | Type |
 | --- | --- |
-| `userID` | `string` |
+| `ddd.Base` | `ddd.Base` |
 | `by` | `string` |
-| `occurredAt` | `time.Time` |
 
 <a id="event-auth-auth-user-userregistered"></a>
 ### UserRegistered
@@ -121,6 +120,5 @@ Source: [`examples/auth/internal/user/domain/event/user_registered.go`](https://
 
 | Field | Type |
 | --- | --- |
-| `userID` | `string` |
+| `ddd.Base` | `ddd.Base` |
 | `email` | `string` |
-| `occurredAt` | `time.Time` |

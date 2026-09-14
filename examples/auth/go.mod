@@ -2,6 +2,8 @@ module github.com/shortlink-org/portolan/examples/auth
 
 go 1.27.0
 
+replace github.com/shortlink-org/portolan/pkg/ddd => ../../pkg/ddd
+
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.3
 	github.com/go-chi/chi/v5 v5.3.2
@@ -19,6 +21,7 @@ require (
 	github.com/shortlink-org/go-sdk/specification v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/uow v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/shortlink-org/portolan/pkg/ddd v0.0.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0

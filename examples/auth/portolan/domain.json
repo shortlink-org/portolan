@@ -90,17 +90,12 @@
                       "source": "examples/auth/internal/lockout/domain/event/account_locked.go",
                       "fields": [
                         {
-                          "name": "userID",
-                          "type": "string",
+                          "name": "ddd.Base",
+                          "type": "ddd.Base",
                           "doc": ""
                         },
                         {
                           "name": "until",
-                          "type": "time.Time",
-                          "doc": ""
-                        },
-                        {
-                          "name": "occurredAt",
                           "type": "time.Time",
                           "doc": ""
                         }
@@ -252,8 +247,8 @@
                       "source": "examples/auth/internal/session/domain/event/session_ended.go",
                       "fields": [
                         {
-                          "name": "sessionID",
-                          "type": "string",
+                          "name": "ddd.Base",
+                          "type": "ddd.Base",
                           "doc": ""
                         },
                         {
@@ -264,11 +259,6 @@
                         {
                           "name": "reason",
                           "type": "Reason",
-                          "doc": ""
-                        },
-                        {
-                          "name": "occurredAt",
-                          "type": "time.Time",
                           "doc": ""
                         }
                       ]
@@ -291,8 +281,8 @@
                       "source": "examples/auth/internal/session/domain/event/session_started.go",
                       "fields": [
                         {
-                          "name": "sessionID",
-                          "type": "string",
+                          "name": "ddd.Base",
+                          "type": "ddd.Base",
                           "doc": ""
                         },
                         {
@@ -302,11 +292,6 @@
                         },
                         {
                           "name": "expiresAt",
-                          "type": "time.Time",
-                          "doc": ""
-                        },
-                        {
-                          "name": "occurredAt",
                           "type": "time.Time",
                           "doc": ""
                         }
@@ -474,18 +459,13 @@
                       "source": "examples/auth/internal/user/domain/event/password_changed.go",
                       "fields": [
                         {
-                          "name": "userID",
-                          "type": "string",
+                          "name": "ddd.Base",
+                          "type": "ddd.Base",
                           "doc": ""
                         },
                         {
                           "name": "by",
                           "type": "string",
-                          "doc": ""
-                        },
-                        {
-                          "name": "occurredAt",
-                          "type": "time.Time",
                           "doc": ""
                         }
                       ]
@@ -508,18 +488,13 @@
                       "source": "examples/auth/internal/user/domain/event/user_registered.go",
                       "fields": [
                         {
-                          "name": "userID",
-                          "type": "string",
+                          "name": "ddd.Base",
+                          "type": "ddd.Base",
                           "doc": ""
                         },
                         {
                           "name": "email",
                           "type": "string",
-                          "doc": ""
-                        },
-                        {
-                          "name": "occurredAt",
-                          "type": "time.Time",
                           "doc": ""
                         }
                       ]

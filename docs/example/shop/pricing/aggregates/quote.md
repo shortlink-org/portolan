@@ -75,9 +75,8 @@ Source: [`examples/shop/pricing/internal/domain/quote/event/quote_expired.go`](h
 
 | Field | Type |
 | --- | --- |
-| `quoteID` | `string` |
+| `ddd.Base` | `ddd.Base` |
 | `basketID` | `string` |
-| `occurredAt` | `time.Time` |
 
 <a id="event-shop-pricing-quote-quoteissued"></a>
 ### QuoteIssued
@@ -94,9 +93,8 @@ Source: [`examples/shop/pricing/internal/domain/quote/event/quote_issued.go`](ht
 
 | Field | Type |
 | --- | --- |
-| `quoteID` | `string` |
+| `ddd.Base` | `ddd.Base` |
 | `basketID` | `string` |
 | `totalMinor` | `int64` |
 | `currency` | `string` |
 | `expiresAt` | `time.Time` |
-| `occurredAt` | `time.Time` |

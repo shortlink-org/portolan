@@ -238,18 +238,13 @@
                       "source": "examples/shop/pricing/internal/domain/quote/event/quote_expired.go",
                       "fields": [
                         {
-                          "name": "quoteID",
-                          "type": "string",
+                          "name": "ddd.Base",
+                          "type": "ddd.Base",
                           "doc": ""
                         },
                         {
                           "name": "basketID",
                           "type": "string",
-                          "doc": ""
-                        },
-                        {
-                          "name": "occurredAt",
-                          "type": "time.Time",
                           "doc": ""
                         }
                       ]
@@ -272,8 +267,8 @@
                       "source": "examples/shop/pricing/internal/domain/quote/event/quote_issued.go",
                       "fields": [
                         {
-                          "name": "quoteID",
-                          "type": "string",
+                          "name": "ddd.Base",
+                          "type": "ddd.Base",
                           "doc": ""
                         },
                         {
@@ -293,11 +288,6 @@
                         },
                         {
                           "name": "expiresAt",
-                          "type": "time.Time",
-                          "doc": ""
-                        },
-                        {
-                          "name": "occurredAt",
                           "type": "time.Time",
                           "doc": ""
                         }
