@@ -109,7 +109,7 @@
     "lucide-react": "^1.45.0",
     "mermaid": "^12.0.0",
     "motion": "^13.2.0",
-    "oxc-parser": "^0.149.0",
+    "oxc-parser": "^0.150.0",
     "oxc-resolver": "^11.24.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
