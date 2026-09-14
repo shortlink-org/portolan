@@ -14,6 +14,12 @@
 - State which layer was verified: source fragment, merged catalog, generated model, or rendered UI. Do not describe an earlier layer as an end-to-end UI result.
 - Keep external-project source trees unchanged and keep their generated preview artifacts outside this repository.
 
+## Background process cleanup
+
+- Track every long-running process started for agent work, including dev servers, preview servers, watchers, and helper processes; keep its PID or process group and listening port so it can be stopped precisely.
+- Reuse an already-running task-owned process when practical. As soon as a process is no longer needed for implementation or verification, terminate it and confirm that both the process and its listening port are gone.
+- Before finishing a task, stop all long-running processes started for that task unless the user explicitly asked to leave one running. Do not kill pre-existing or user-owned processes merely because they appear idle.
+
 ## Direct answers and scope
 
 - Before answering any question about Git status, uncommitted or staged changes, or whether there is anything to commit, always run a fresh `git status`. Inspect the current staged diff or recent commits when needed to support the answer. Never rely on conversation history for Git state: other tasks may have changed it. Recheck immediately before committing.
