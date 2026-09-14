@@ -90,8 +90,13 @@
                       "source": "examples/auth/internal/lockout/domain/event/account_locked.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {
@@ -247,8 +252,13 @@
                       "source": "examples/auth/internal/session/domain/event/session_ended.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {
@@ -281,8 +291,13 @@
                       "source": "examples/auth/internal/session/domain/event/session_started.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {
@@ -459,8 +474,13 @@
                       "source": "examples/auth/internal/user/domain/event/password_changed.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {
@@ -488,8 +508,13 @@
                       "source": "examples/auth/internal/user/domain/event/user_registered.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {

@@ -44,6 +44,12 @@ func (t *Tree) TypeKey(expr ast.Expr, file *File) string {
 		if base, ok := value.X.(*ast.Ident); ok {
 			return file.Imports[base.Name] + "." + value.Sel.Name
 		}
+	case *ast.IndexExpr:
+		// An instantiated generic, Base[ID], is the generic type's methods
+		// and fields.
+		return t.TypeKey(value.X, file)
+	case *ast.IndexListExpr:
+		return t.TypeKey(value.X, file)
 	case *ast.ArrayType:
 		return "[]" + t.TypeKey(value.Elt, file)
 	case *ast.MapType:
@@ -96,4 +102,28 @@ func (t *Tree) PrintNode(node ast.Node) string {
 	var out bytes.Buffer
 	_ = printer.Fprint(&out, t.Fset, node)
 	return out.String()
+}
+
+// EmbeddedName is the name the language gives an embedded field: the type's
+// own name, without its package, its pointer or its type arguments -
+// `Base` for `*ddd.Base[ID]`. Empty for anything that cannot be embedded.
+func EmbeddedName(expr ast.Expr) string {
+	for {
+		switch value := expr.(type) {
+		case *ast.StarExpr:
+			expr = value.X
+		case *ast.ParenExpr:
+			expr = value.X
+		case *ast.IndexExpr:
+			expr = value.X
+		case *ast.IndexListExpr:
+			expr = value.X
+		case *ast.SelectorExpr:
+			return value.Sel.Name
+		case *ast.Ident:
+			return value.Name
+		default:
+			return ""
+		}
+	}
 }

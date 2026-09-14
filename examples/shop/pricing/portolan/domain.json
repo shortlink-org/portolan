@@ -238,8 +238,13 @@
                       "source": "examples/shop/pricing/internal/domain/quote/event/quote_expired.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {
@@ -267,8 +272,13 @@
                       "source": "examples/shop/pricing/internal/domain/quote/event/quote_issued.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {

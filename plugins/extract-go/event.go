@@ -59,7 +59,10 @@ func eventsIn(pkg *pkg, aggID, channel string) []catalog.Event {
 			continue
 		}
 
-		wire, named := returnedString(pkg, pkg.methods(decl.name)["Name"])
+		// Name may be promoted from an embedded type, and its constant is
+		// read in the package that declares it.
+		owner, nameFn := pkg.method(decl.name, "Name")
+		wire, named := returnedString(owner, nameFn)
 		if !named {
 			// Not every struct in the package is an event. One without a Name
 			// is a payload or a helper, and quietly documenting it as a
@@ -86,7 +89,7 @@ func eventsIn(pkg *pkg, aggID, channel string) []catalog.Event {
 				Version: "v1",
 				Doc:     decl.doc,
 				Source:  decl.source,
-				Fields:  fields(decl.fields),
+				Fields:  pkg.fieldsOf(decl),
 			}},
 			// Consumers live in other services, and this extractor is reading
 			// one. An empty list is the honest answer; the merge is where the

@@ -63,6 +63,8 @@ type Tree struct {
 	// when the extractor knows: river.QueueDefault is "default", and nothing
 	// in the tree says so. Nil when there is nothing to say.
 	Foreign func(importPath, name string) (string, bool)
+	// modules is how a package outside the tree is found; see Locate.
+	modules *modules
 }
 
 // Read parses the tree under root. Test files, generated files, vendored
@@ -72,7 +74,7 @@ func Read(root string) (*Tree, error) { return ReadWithOptions(root, ReadOptions
 
 func ReadWithOptions(root string, options ReadOptions) (*Tree, error) {
 	root = filepath.Clean(root)
-	t := &Tree{Root: root, Module: ModulePath(root), Fset: token.NewFileSet(), Constants: map[string]ConstExpr{}, ByDir: map[string][]*File{}, Options: options}
+	t := &Tree{Root: root, Module: ModulePath(root), Fset: token.NewFileSet(), Constants: map[string]ConstExpr{}, ByDir: map[string][]*File{}, Options: options, modules: readModules(root)}
 	buildContext := build.Default
 	if options.GOOS != "" {
 		buildContext.GOOS = options.GOOS

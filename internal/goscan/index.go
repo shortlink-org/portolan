@@ -18,6 +18,11 @@ type StructType struct {
 	// Env is the environment variable a field is configured by, when its
 	// `envconfig` or `env` tag says; documentation for the default's origin.
 	Env map[string]string
+	// Embedded is the type key of every embedded field, in declaration
+	// order. Fields holds each under its Go name as well - `Base` for an
+	// embedded `ddd.Base` - and, once the index is built, the fields each one
+	// promotes.
+	Embedded []string
 }
 
 // Function is one declared function or method: its parameters by name and
@@ -66,7 +71,11 @@ type CallArg struct {
 // walk for a NATS subject, a Watermill topic and a River queue.
 type Index struct {
 	*Tree
-	Structs    map[string]*StructType
+	Structs map[string]*StructType
+	// Interfaces is every interface by its method names, the embedded
+	// interfaces' included when the tree declares them. An interface whose
+	// names are all unknown still has a non-nil, empty entry: it is an
+	// interface, not a concrete type.
 	Interfaces map[string][]string
 	// Named is every type the tree declares, by key, whatever its shape.
 	Named     map[string]bool
@@ -86,6 +95,9 @@ type Index struct {
 	// passes a constant. Two is an assembly that itself was handed it.
 	// Further than that is not a declaration any more.
 	Hops int
+	// embeds is the interfaces each interface embeds, by key, until they are
+	// folded into Interfaces.
+	embeds map[string][]string
 	// typing is the locals whose type is being worked out right now, so a
 	// name shadowed by an expression of itself - `js := js.Sub()` in an
 	// inner block - ends rather than recurses.
@@ -103,6 +115,7 @@ func NewIndex(tree *Tree) *Index {
 		Methods:    map[string][]*Function{},
 		ByName:     map[string][]*Function{},
 		Hops:       2,
+		embeds:     map[string][]string{},
 		typing:     map[string]bool{},
 	}
 	for _, file := range tree.Files {
@@ -120,6 +133,8 @@ func NewIndex(tree *Tree) *Index {
 			}
 		}
 	}
+	s.foldInterfaces()
+	s.promoteFields()
 	return s
 }
 
@@ -138,6 +153,13 @@ func (s *Index) indexType(file *File, spec *ast.TypeSpec) {
 				def = tag.Get("default")
 				env = FirstNonEmpty(tag.Get("envconfig"), tag.Get("env"))
 			}
+			if len(field.Names) == 0 {
+				if name := EmbeddedName(field.Type); name != "" && typeKey != "" {
+					st.Fields[name] = typeKey
+					st.Embedded = append(st.Embedded, typeKey)
+				}
+				continue
+			}
 			for _, name := range field.Names {
 				st.Fields[name.Name] = typeKey
 				if def != "" {
@@ -150,10 +172,16 @@ func (s *Index) indexType(file *File, spec *ast.TypeSpec) {
 		}
 		s.Structs[key] = st
 	case *ast.InterfaceType:
-		// Embedded interfaces are not followed: the port a service writes for
-		// its bus names its methods itself.
-		var names []string
+		// An embedded interface is recorded and folded in once every type is
+		// known: a port written as `Reader; Writer` asks for both method sets.
+		names := []string{}
 		for _, method := range body.Methods.List {
+			if len(method.Names) == 0 {
+				if embedded := s.TypeKey(method.Type, file); embedded != "" {
+					s.embeds[key] = append(s.embeds[key], embedded)
+				}
+				continue
+			}
 			for _, name := range method.Names {
 				names = append(names, name.Name)
 			}
@@ -161,6 +189,211 @@ func (s *Index) indexType(file *File, spec *ast.TypeSpec) {
 		sort.Strings(names)
 		s.Interfaces[key] = names
 	}
+}
+
+// foldInterfaces adds to each interface the methods of the interfaces it
+// embeds, through as many levels as the tree declares. One the tree does not
+// declare - io.Reader - adds nothing, and the interface asks for what it
+// names itself.
+func (s *Index) foldInterfaces() {
+	folded := map[string][]string{}
+	var fold func(key string, visiting map[string]bool) []string
+	fold = func(key string, visiting map[string]bool) []string {
+		if names, done := folded[key]; done {
+			return names
+		}
+		if visiting[key] {
+			return nil
+		}
+		visiting[key] = true
+		defer delete(visiting, key)
+		set := map[string]bool{}
+		for _, name := range s.Interfaces[key] {
+			set[name] = true
+		}
+		for _, embedded := range s.embeds[key] {
+			for _, name := range fold(embedded, visiting) {
+				set[name] = true
+			}
+		}
+		names := make([]string, 0, len(set))
+		for name := range set {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		folded[key] = names
+		return names
+	}
+	for key := range s.embeds {
+		s.Interfaces[key] = fold(key, map[string]bool{})
+	}
+}
+
+// promoteFields gives each struct the fields its embedded structs promote,
+// under the rule the language selects them by: a shallower field hides a
+// deeper one of the same name, and two at the same depth hide each other.
+func (s *Index) promoteFields() {
+	// Read every struct's promotions before writing any, so a struct read
+	// after one it embeds does not see that one's promoted fields as its own
+	// and misjudge their depth.
+	promotions := map[string]map[string]promotedField{}
+	for key := range s.Structs {
+		promotions[key] = s.promoted(key)
+	}
+	for key, st := range s.Structs {
+		own := map[string]bool{}
+		for name := range st.Fields {
+			own[name] = true
+		}
+		for name, key := range promotions[key] {
+			if own[name] {
+				continue
+			}
+			st.Fields[name] = key.typeKey
+			if def := s.Structs[key.from].Defaults[name]; def != "" {
+				st.Defaults[name] = def
+			}
+			if env := s.Structs[key.from].Env[name]; env != "" {
+				st.Env[name] = env
+			}
+		}
+	}
+}
+
+type promotedField struct{ typeKey, from string }
+
+// promoted is the fields reachable through a struct's embedded structs, by
+// name, with the struct that declares each. Read breadth-first so depth
+// decides, as it does in a selector.
+func (s *Index) promoted(key string) map[string]promotedField {
+	out := map[string]promotedField{}
+	seen := map[string]bool{key: true}
+	hidden := map[string]bool{}
+	level := s.structEmbeds(key)
+	for len(level) > 0 {
+		found := map[string][]promotedField{}
+		var next []string
+		for _, embedded := range level {
+			if seen[embedded] {
+				continue
+			}
+			seen[embedded] = true
+			st := s.Structs[embedded]
+			if st == nil {
+				continue
+			}
+			for name, typeKey := range st.Fields {
+				found[name] = append(found[name], promotedField{typeKey: typeKey, from: embedded})
+			}
+			next = append(next, st.Embedded...)
+		}
+		for name, candidates := range found {
+			if _, taken := out[name]; taken || hidden[name] {
+				continue
+			}
+			if len(candidates) > 1 {
+				hidden[name] = true
+				continue
+			}
+			out[name] = candidates[0]
+		}
+		level = next
+	}
+	return out
+}
+
+func (s *Index) structEmbeds(key string) []string {
+	if st := s.Structs[key]; st != nil {
+		return st.Embedded
+	}
+	return nil
+}
+
+// Method is the function a method call on a receiver type runs: its own
+// method, or the one an embedded struct promotes under the same depth rule
+// as a field. Nil when neither declares it, or when two embedded types at
+// the same depth both do.
+func (s *Index) Method(receiver, name string) *Function {
+	if fn := s.Functions[receiver+"."+name]; fn != nil {
+		return fn
+	}
+	fn, _ := s.promotedMethod(receiver, name)
+	return fn
+}
+
+// promotedMethod is Method for what an embedded type supplies: the function
+// when a struct declares it, or the interface key when an embedded interface
+// asks for it - a call then runs whatever implements that interface.
+func (s *Index) promotedMethod(receiver, name string) (*Function, string) {
+	seen := map[string]bool{receiver: true}
+	level := s.structEmbeds(receiver)
+	for len(level) > 0 {
+		var fn *Function
+		iface := ""
+		hits := 0
+		var next []string
+		for _, embedded := range level {
+			if seen[embedded] {
+				continue
+			}
+			seen[embedded] = true
+			if found := s.Functions[embedded+"."+name]; found != nil {
+				fn, hits = found, hits+1
+				continue
+			}
+			if names, ok := s.Interfaces[embedded]; ok && contains(names, name) {
+				iface, hits = embedded, hits+1
+				continue
+			}
+			next = append(next, s.structEmbeds(embedded)...)
+		}
+		if hits > 1 {
+			return nil, ""
+		}
+		if hits == 1 {
+			return fn, iface
+		}
+		level = next
+	}
+	return nil, ""
+}
+
+// methodNames is every method a receiver type answers, its own and the ones
+// its embedded types promote.
+func (s *Index) methodNames(receiver string) map[string]bool {
+	have := map[string]bool{}
+	for _, fn := range s.Methods[receiver] {
+		have[fn.Name] = true
+	}
+	seen := map[string]bool{receiver: true}
+	level := s.structEmbeds(receiver)
+	for len(level) > 0 {
+		var next []string
+		for _, embedded := range level {
+			if seen[embedded] {
+				continue
+			}
+			seen[embedded] = true
+			for _, fn := range s.Methods[embedded] {
+				have[fn.Name] = true
+			}
+			for _, name := range s.Interfaces[embedded] {
+				have[name] = true
+			}
+			next = append(next, s.structEmbeds(embedded)...)
+		}
+		level = next
+	}
+	return have
+}
+
+func contains(values []string, value string) bool {
+	for _, candidate := range values {
+		if candidate == value {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Index) indexFunction(file *File, decl *ast.FuncDecl) {
@@ -213,10 +446,7 @@ func (s *Index) Implements(receiver, iface string) bool {
 	if len(want) == 0 {
 		return false
 	}
-	have := map[string]bool{}
-	for _, fn := range s.Methods[receiver] {
-		have[fn.Name] = true
-	}
+	have := s.methodNames(receiver)
 	for _, name := range want {
 		if !have[name] {
 			return false
@@ -374,6 +604,11 @@ func (s *Index) Targets(expr ast.Expr, fn *Function) []*Function {
 		}
 		if target := s.Functions[recv+"."+callee.Sel.Name]; target != nil {
 			return []*Function{target}
+		}
+		if target, iface := s.promotedMethod(recv, callee.Sel.Name); target != nil {
+			return []*Function{target}
+		} else if iface != "" {
+			recv = iface
 		}
 		if s.Interfaces[recv] != nil {
 			var out []*Function

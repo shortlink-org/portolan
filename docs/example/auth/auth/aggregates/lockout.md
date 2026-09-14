@@ -120,5 +120,6 @@ Source: [`examples/auth/internal/lockout/domain/event/account_locked.go`](https:
 
 | Field | Type |
 | --- | --- |
-| `ddd.Base` | `ddd.Base` |
+| `aggregateID` | `string` |
+| `occurredAt` | `time.Time` |
 | `until` | `time.Time` |

@@ -51,3 +51,16 @@ same context, service and store. SQL discovers `migrations`/`migration` director
 outside `internal` too. Without a matching domain root or an explicit
 `-- aggregate: <id>` annotation, tables and views remain independent of aggregates;
 their schema, foreign keys and SQL accesses are retained.
+
+Embedded types are unpacked the way the language composes them. An embedded
+struct's fields are listed where it is embedded, so an event that embeds
+`ddd.Base` shows the `aggregateID` and `occurredAt` it carries; a shallower
+field hides a deeper one of the same name, and two at one depth hide each
+other. A method may be promoted too: an event's `Name` from an embedded type,
+a domain method's results, and a port method an embedded interface asks for.
+The shared index folds embedded interfaces into their method sets and
+promotes fields and methods, so bus adapters bind through them as well.
+The type is found in the same package, elsewhere in the module, or in a
+module a go.mod `replace` points at a directory in the workspace. The module
+cache is outside the workspace a plugin reads (portolan.0006), so a type from
+there stays one row, named as the language names the field: `Reader io.Reader`.

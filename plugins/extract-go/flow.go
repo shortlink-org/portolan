@@ -1052,12 +1052,12 @@ func (r *flowReader) resultsOfMethod(ref domainRef, name string) []domainRef {
 		return nil
 	}
 
-	fn := pkg.methods(ref.name)[name]
+	owner, fn := pkg.method(ref.name, name)
 	if fn == nil {
 		return nil
 	}
 
-	return r.resultRefs(pkg, ref.aggregate, fn.Type)
+	return r.resultRefs(owner, ref.aggregate, fn.Type)
 }
 
 // resultsOfPortMethod reads the results of one method of a domain port:
@@ -1068,36 +1068,19 @@ func (r *flowReader) resultsOfPortMethod(aggregate, port, name string) []domainR
 		return nil
 	}
 
-	for _, file := range pkg.files {
-		for _, decl := range file.Decls {
-			gen, ok := decl.(*ast.GenDecl)
-			if !ok {
-				continue
-			}
-
-			for _, spec := range gen.Specs {
-				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok || typeSpec.Name.Name != port {
-					continue
-				}
-				iface, ok := typeSpec.Type.(*ast.InterfaceType)
-				if !ok || iface.Methods == nil {
-					continue
-				}
-
-				for _, method := range iface.Methods.List {
-					fn, ok := method.Type.(*ast.FuncType)
-					if !ok || len(method.Names) == 0 || method.Names[0].Name != name {
-						continue
-					}
-
-					return r.resultRefs(pkg, aggregate, fn)
-				}
-			}
-		}
+	decl, ok := pkg.typeNamed(port)
+	if !ok {
+		return nil
+	}
+	// A port may ask for the method through an interface it embeds -
+	// `Repository interface { Reader; Save(...) }` - and the signature is read
+	// with the imports of the file that writes it.
+	owner, fn := interfaceMethod(decl, name)
+	if fn == nil {
+		return nil
 	}
 
-	return nil
+	return r.resultRefs(owner, aggregate, fn)
 }
 
 // resultRefs turns a result list into what each position holds, by position, so

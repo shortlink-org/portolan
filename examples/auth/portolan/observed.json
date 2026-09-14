@@ -37,8 +37,13 @@
                       "source": "examples/auth/internal/user/domain/event/password_changed.go",
                       "fields": [
                         {
-                          "name": "ddd.Base",
-                          "type": "ddd.Base",
+                          "name": "aggregateID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
                           "doc": ""
                         },
                         {

@@ -75,7 +75,8 @@ Source: [`examples/shop/pricing/internal/domain/quote/event/quote_expired.go`](h
 
 | Field | Type |
 | --- | --- |
-| `ddd.Base` | `ddd.Base` |
+| `aggregateID` | `string` |
+| `occurredAt` | `time.Time` |
 | `basketID` | `string` |
 
 <a id="event-shop-pricing-quote-quoteissued"></a>
@@ -93,7 +94,8 @@ Source: [`examples/shop/pricing/internal/domain/quote/event/quote_issued.go`](ht
 
 | Field | Type |
 | --- | --- |
-| `ddd.Base` | `ddd.Base` |
+| `aggregateID` | `string` |
+| `occurredAt` | `time.Time` |
 | `basketID` | `string` |
 | `totalMinor` | `int64` |
 | `currency` | `string` |

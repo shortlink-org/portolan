@@ -142,7 +142,8 @@ Source: [`examples/auth/internal/session/domain/event/session_ended.go`](https:/
 
 | Field | Type |
 | --- | --- |
-| `ddd.Base` | `ddd.Base` |
+| `aggregateID` | `string` |
+| `occurredAt` | `time.Time` |
 | `userID` | `string` |
 | `reason` | `Reason` |
 
@@ -161,6 +162,7 @@ Source: [`examples/auth/internal/session/domain/event/session_started.go`](https
 
 | Field | Type |
 | --- | --- |
-| `ddd.Base` | `ddd.Base` |
+| `aggregateID` | `string` |
+| `occurredAt` | `time.Time` |
 | `userID` | `string` |
 | `expiresAt` | `time.Time` |

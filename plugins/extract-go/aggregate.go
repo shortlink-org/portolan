@@ -60,7 +60,7 @@ func extractAggregate(root, aggregateName, domainPath string, layout sourceLayou
 			Slug:   slug(decl.name),
 			Name:   decl.name,
 			Doc:    decl.doc,
-			Fields: fields(decl.fields),
+			Fields: pkg.fieldsOf(decl),
 		})
 	}
 
@@ -131,7 +131,7 @@ func extractValueObjects(root, domainPath, aggID string, b *plugin.Builder, inde
 				Slug:   slug(label),
 				Name:   label,
 				Doc:    doc,
-				Fields: fields(decl.fields),
+				Fields: pkg.fieldsOf(decl),
 			})
 			found = true
 		}

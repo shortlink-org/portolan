@@ -4,13 +4,11 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"go/types"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/internal/goscan"
 )
 
@@ -80,6 +78,7 @@ type structDecl struct {
 	doc    string
 	fields *ast.StructType
 	source string
+	file   *ast.File
 }
 
 func (p *pkg) structs() []structDecl {
@@ -114,6 +113,7 @@ func (p *pkg) structs() []structDecl {
 					doc:    firstSentenceOrAll(comment.Text()),
 					fields: structType,
 					source: p.paths[file],
+					file:   file,
 				})
 			}
 		}
@@ -150,42 +150,6 @@ func receiverName(expr ast.Expr) string {
 	}
 
 	return ""
-}
-
-// fields turns a struct's members into catalog fields.
-//
-// The type is rendered from the syntax rather than resolved: `email.Address`
-// is written down as `email.Address`, which is what a reader of the catalog
-// wants to see and what the shape of the schema asks for. Resolving it would
-// need the whole module built, and would answer a question nobody asked.
-func fields(st *ast.StructType) []catalog.Field {
-	if st == nil || st.Fields == nil {
-		return nil
-	}
-
-	var out []catalog.Field
-	for _, field := range st.Fields.List {
-		typeName := types.ExprString(field.Type)
-
-		doc := strings.TrimSpace(field.Doc.Text())
-		if doc == "" {
-			doc = strings.TrimSpace(field.Comment.Text())
-		}
-		doc = firstSentenceOrAll(doc)
-
-		if len(field.Names) == 0 {
-			// An embedded field: named by its type.
-			out = append(out, catalog.Field{Name: typeName, Type: typeName, Doc: doc})
-
-			continue
-		}
-
-		for _, name := range field.Names {
-			out = append(out, catalog.Field{Name: name.Name, Type: typeName, Doc: doc})
-		}
-	}
-
-	return out
 }
 
 // returnedString is the string a one-line method returns, which is how an
