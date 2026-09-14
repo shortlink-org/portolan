@@ -192,7 +192,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   "dx-source": { label: "DX catalog", icon: { lucide: "database" } },
   "dx-export": { label: "DX", icon: { lucide: "share" } },
   otel: { label: "OpenTelemetry", icon: { brand: "OpenTelemetry" } },
-  "work-items": { label: "YouTrack work items", icon: { lucide: "book" } },
+  "work-items": { label: "Task tracker work items", icon: { lucide: "book" } },
   "csr-compatibility": { label: "Schema compatibility", icon: { lucide: "shield" } },
   codeowners: { label: "CODEOWNERS", icon: { lucide: "users" } },
   adr: { label: "Decision records", icon: { lucide: "book" } },

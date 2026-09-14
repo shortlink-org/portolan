@@ -7,7 +7,7 @@ import { toClipboard } from "../../lib/clipboard";
 import { useToastStore } from "../../app/toast";
 import { taskTrackerSettings, saveTaskTrackers, fullScanTaskTrackers, subscribeToRun, cancelGeneration } from "../../lib/local-api";
 import type { SaveTaskTrackers, TaskTrackerState } from "../../lib/local-api";
-import { DEFAULT_KEY_FORMAT, DEFAULT_ISSUE_URL, detectTaskKeys, normalizeTrackers, taskUrl } from "../../lib/task-tracker-config.mjs";
+import { DEFAULT_KEY_FORMAT, DEFAULT_ISSUE_URL, TRACKER_PROVIDERS, detectTaskKeys, normalizeTrackers, taskUrl } from "../../lib/task-tracker-config.mjs";
 import type { TaskTracker } from "../../lib/task-tracker-config.mjs";
 
 const FIELD = "mono w-full min-w-0 rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
@@ -36,8 +36,14 @@ function CatalogScope({ catalogs, value, disabled, onChange }: { catalogs: TaskT
 const SCAN_HINT = "One-time scan of all locally available commits reachable from HEAD. Does not fetch missing history or change the regular history limit.";
 
 function TrackerFields({ tracker, onChange, onRemove, number }: { tracker: TaskTracker; onChange: (value: TaskTracker) => void; onRemove: () => void; number: number }) {
-  const [sample, setSample] = useState("RT-101: added toolbar");
+  const [sample, setSample] = useState(TRACKER_PROVIDERS[tracker.provider].numbered ? "Fixes #123: added toolbar" : "RT-101: added toolbar");
+  const provider = TRACKER_PROVIDERS[tracker.provider];
   const change = (patch: Partial<TaskTracker>) => onChange({ ...tracker, ...patch });
+  const selectProvider = (value: TaskTracker["provider"]) => {
+    const next = TRACKER_PROVIDERS[value];
+    change({ provider: value, baseUrl: "", projects: [], keyFormat: next.keyFormat, urlTemplate: next.urlTemplate, matchBareNumbers: next.numbered ? true : undefined });
+    setSample(next.numbered ? "Fixes #123: added toolbar" : "RT-101: added toolbar");
+  };
   let error = "";
   let links: Array<{ key: string; url: string }> = [];
   try {
@@ -47,25 +53,26 @@ function TrackerFields({ tracker, onChange, onRemove, number }: { tracker: TaskT
 
   return (
     <fieldset className="min-w-0 rounded-control border border-line bg-surface p-4">
-      <legend className="px-1 font-medium">YouTrack · {number}</legend>
+      <legend className="px-1 font-medium">{provider.label} · {number}</legend>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="min-w-0"><span className="label mb-1.5 block">Name</span><input className={FIELD} value={tracker.name ?? ""} placeholder="Team YouTrack" maxLength={100} onChange={(e) => change({ name: e.target.value })} /></label>
+        <label className="min-w-0 sm:col-span-2"><span className="label mb-1.5 block">Provider</span><select className={FIELD} value={tracker.provider} onChange={(e) => selectProvider(e.target.value as TaskTracker["provider"])}>{Object.entries(TRACKER_PROVIDERS).map(([id, definition]) => <option key={id} value={id}>{definition.label}</option>)}</select></label>
+        <label className="min-w-0"><span className="label mb-1.5 block">Name</span><input className={FIELD} value={tracker.name ?? ""} placeholder={`Team ${provider.label}`} maxLength={100} onChange={(e) => change({ name: e.target.value })} /></label>
         <label className="min-w-0"><span className="label mb-1.5 block">Tracker ID</span><input className={FIELD} value={tracker.id} placeholder="team" maxLength={60} spellCheck={false} onChange={(e) => change({ id: e.target.value })} /><span className="mt-1 block text-xs text-muted">Stable identity across repositories.</span></label>
-        <label className="min-w-0 sm:col-span-2"><span className="label mb-1.5 block">Tracker address</span><input type="url" className={FIELD} value={tracker.baseUrl} placeholder="https://youtrack.company.ru" spellCheck={false} onChange={(e) => change({ baseUrl: e.target.value })} /></label>
-        <label className="min-w-0"><span className="label mb-1.5 block">Project prefixes</span><input className={FIELD} value={tracker.projects.join(",")} placeholder="RT,CORE" spellCheck={false} onChange={(e) => change({ projects: e.target.value.split(",").map((value) => value.trim()) })} /><span className="mt-1 block text-xs text-muted">Comma-separated, case-sensitive.</span></label>
-        <label className="min-w-0"><span className="label mb-1.5 block">Key format</span><input className={FIELD} value={tracker.keyFormat ?? DEFAULT_KEY_FORMAT} spellCheck={false} onChange={(e) => change({ keyFormat: e.target.value })} /></label>
+        <label className="min-w-0 sm:col-span-2"><span className="label mb-1.5 block">{provider.addressLabel}</span><input type="url" className={FIELD} value={tracker.baseUrl} placeholder={provider.placeholder} spellCheck={false} onChange={(e) => change({ baseUrl: e.target.value })} /></label>
+        {provider.numbered ? <label className="flex items-start gap-2 sm:col-span-2"><input type="checkbox" className="mt-1 accent-accent" checked={tracker.matchBareNumbers !== false} onChange={(e) => change({ matchBareNumbers: e.target.checked })} /><span>Match short #123 references<span className="mt-1 block text-xs text-muted">Enable for only one tracker per checkout. Qualified references such as owner/repo#123 always match the configured project. GitLab !123 merge requests are excluded.</span></span></label> : <label className="min-w-0"><span className="label mb-1.5 block">Project prefixes</span><input className={FIELD} value={tracker.projects.join(",")} placeholder="RT,CORE" spellCheck={false} onChange={(e) => change({ projects: e.target.value.split(",").map((value) => value.trim()) })} /><span className="mt-1 block text-xs text-muted">Comma-separated, case-sensitive.</span></label>}
+        {!provider.numbered ? <label className="min-w-0"><span className="label mb-1.5 block">Key format</span><input className={FIELD} value={tracker.keyFormat ?? provider.keyFormat} spellCheck={false} onChange={(e) => change({ keyFormat: e.target.value })} /></label> : null}
       </div>
       <details className="mt-3">
         <summary className="cursor-pointer text-muted">Link format & detection rules</summary>
-        <label className="mt-3 block"><span className="label mb-1.5 block">Task URL template</span><input className={FIELD} value={tracker.urlTemplate ?? DEFAULT_ISSUE_URL} spellCheck={false} onChange={(e) => change({ urlTemplate: e.target.value })} /></label>
-        <p className="mt-2 text-xs text-muted">Keys use a project prefix, a literal separator (- _ : # / .), and a number. Commit subjects and bodies are scanned. The link stays on the tracker host. Templates are not regular expressions.</p>
+        <label className="mt-3 block"><span className="label mb-1.5 block">Task URL template</span><input className={FIELD} value={tracker.urlTemplate ?? provider.urlTemplate} spellCheck={false} onChange={(e) => change({ urlTemplate: e.target.value })} /></label>
+        <p className="mt-2 text-xs text-muted">{provider.numbered ? "Keys use # and a positive issue number. Use {number} in the URL to omit the #. Qualified references use the project path from the address above." : "Keys use a project prefix, a literal separator (- _ : # / .), and a number."} Commit subjects and bodies are scanned. The link stays on the tracker host. Templates are not regular expressions.</p>
       </details>
       <div className="mt-4 border-t border-line pt-3">
         <label className="block"><span className="label mb-1.5 block">Test a commit message</span><textarea rows={2} maxLength={4000} className={`${FIELD} resize-y`} value={sample} onChange={(e) => setSample(e.target.value)} /></label>
         <div aria-live="polite" className="mt-2 break-words text-sm">
           {error ? <p className="text-unresolved">{error}</p> : links.length ? <div className="space-y-1">{links.map((link) => <a key={link.key} className="flex min-w-0 items-start gap-2 text-accent hover:underline" href={link.url} target="_blank" rel="noreferrer"><span className="shrink-0 font-medium">{link.key}</span><span className="min-w-0 break-all text-muted">{link.url}</span><ExternalLink size={13} className="mt-1 shrink-0" aria-hidden /></a>)}</div> : <p className="text-muted">No task keys match this message.</p>}
         </div>
-        <p className="mt-2 text-xs text-faint">Local detection preview only. No request is sent to YouTrack; task existence and access are not checked.</p>
+        <p className="mt-2 text-xs text-faint">Local detection preview only. No request is sent to the tracker; task existence and access are not checked.{tracker.provider === "github" ? " GitHub shares issue and pull request numbers; distinguishing them requires API access." : ""}</p>
       </div>
       <button type="button" className="tbtn mt-3 px-2 py-1 text-unresolved" onClick={onRemove}><Trash2 size={13} aria-hidden />Remove tracker</button>
     </fieldset>
@@ -158,11 +165,11 @@ export function TaskTrackerSettings({ local }: { local: boolean }) {
     <section className="min-w-0 rounded-card border border-line bg-canvas p-card shadow-xs lg:col-span-2">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-control border border-line bg-surface"><Ticket size={18} aria-hidden /></span>
-        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">Task trackers</h2><span className="chip text-muted">{local ? "project configuration" : "read-only catalog"}</span></div><p className="mt-1 text-muted">Connect commit messages to YouTrack tasks. Address, key format and repository scope live in portolan.json, not browser storage.</p></div>
+        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">Task trackers</h2><span className="chip text-muted">{local ? "project configuration" : "read-only catalog"}</span></div><p className="mt-1 text-muted">Connect commits to YouTrack, Jira, Linear, GitHub or GitLab issues. Address, detection rules and repository scope live in portolan.json, not browser storage.</p></div>
       </div>
       <div className="mt-4 space-y-2">
-        {entries.map((entry) => <div key={entry.step} className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface px-3 py-2"><GitCommitHorizontal size={15} className="shrink-0 text-muted" aria-hidden /><div className="min-w-0 flex-1"><div className="break-all font-medium">{entry.input}</div><div className="break-words text-xs text-muted">{entry.trackers.length ? entry.trackers.map((tracker) => `${tracker.name || tracker.id} · ${tracker.projects.join(", ")}`).join(" / ") : "Disabled · next generation clears task links"}</div></div><span className="chip text-muted">{entry.maxCommits} commits</span>{local ? <button type="button" title={SCAN_HINT} disabled={busy || !!runId || !!draft || !state || !entry.trackers.length} className="tbtn px-2 py-1" onClick={() => void scan(entry.step)}><ScanSearch size={14} aria-hidden />Full scan</button> : null}<button type="button" disabled={busy || !!runId || !!draft} className="tbtn px-2 py-1" onClick={() => { setDraft({ step: entry.step, input: entry.input, catalogs: entry.catalogs, trackers: structuredClone(entry.trackers), maxCommits: entry.maxCommits }); setError(""); }}>{local ? "Configure" : "View configuration"}</button></div>)}
-        {!entries.length && !draft ? <p className="rounded-control border border-dashed border-line p-4 text-muted">{local && !state && !error ? "Loading tracker configuration…" : "No task tracker configured. Start with an address and the project prefixes used in commits. No API token is needed."}</p> : null}
+        {entries.map((entry) => <div key={entry.step} className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface px-3 py-2"><GitCommitHorizontal size={15} className="shrink-0 text-muted" aria-hidden /><div className="min-w-0 flex-1"><div className="break-all font-medium">{entry.input}</div><div className="break-words text-xs text-muted">{entry.trackers.length ? entry.trackers.map((tracker) => `${tracker.name || tracker.id} · ${TRACKER_PROVIDERS[tracker.provider].label} · ${tracker.projects.length ? tracker.projects.join(", ") : tracker.baseUrl}`).join(" / ") : "Disabled · next generation clears task links"}</div></div><span className="chip text-muted">{entry.maxCommits} commits</span>{local ? <button type="button" title={SCAN_HINT} disabled={busy || !!runId || !!draft || !state || !entry.trackers.length} className="tbtn px-2 py-1" onClick={() => void scan(entry.step)}><ScanSearch size={14} aria-hidden />Full scan</button> : null}<button type="button" disabled={busy || !!runId || !!draft} className="tbtn px-2 py-1" onClick={() => { setDraft({ step: entry.step, input: entry.input, catalogs: entry.catalogs, trackers: structuredClone(entry.trackers), maxCommits: entry.maxCommits }); setError(""); }}>{local ? "Configure" : "View configuration"}</button></div>)}
+        {!entries.length && !draft ? <p className="rounded-control border border-dashed border-line p-4 text-muted">{local && !state && !error ? "Loading tracker configuration…" : "No task tracker configured. Choose a provider and the address used for task links. No API token is needed."}</p> : null}
       </div>
       {draft ? <div className="mt-4 space-y-4">
         <div className="flex items-center justify-between"><h3 className="font-medium">{draft.step === null ? "Connect repository" : "Repository configuration"}</h3><button type="button" className="tbtn p-1" aria-label="Close tracker configuration" disabled={busy} onClick={() => setDraft(null)}><X size={16} /></button></div>

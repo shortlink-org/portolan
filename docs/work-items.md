@@ -10,7 +10,7 @@ not collide. Work items and links are optional catalog collections.
 1. Add the shared catalog contract, Go mirror, merge, validation and profile
    scoping for work items and evidence-bearing links.
 2. Ship `work-items`, a host verifier. Read bounded local Git history, recognize
-   configured YouTrack project keys, and join changed paths to source files
+   configured tracker references, and join changed paths to source files
    and service directories. Keep each commit's repository, SHA, subject,
    author, date and matching paths. Explicit links can be authored as catalog
    fragments, including tasks without a commit.
@@ -53,11 +53,34 @@ No fetch is performed: shallow repositories remain incomplete and report it.
 Other verifiers retain their normal limits, and subsequent regular builds
 use the saved limit again (so older links may disappear from their output).
 
-The form accepts a display name, stable tracker ID, HTTP(S) base address,
+The form accepts a provider, display name, stable tracker ID, HTTP(S) base address,
 project prefixes, key format and task URL template. A live test uses exactly
 the Git verifier's detector; it performs no network request and does not claim
-that the task exists. Default formats are `{project}-{number}` and
-`{baseUrl}/issue/{key}`. Key formats allow 1–4 literal separator characters
+that the task exists. Provider defaults are:
+
+| Provider | Base address | Keys | Default URL |
+| --- | --- | --- | --- |
+| YouTrack | Instance, including optional context path | `RT-101` | `{baseUrl}/issue/{key}` |
+| Jira | Instance, including optional context path | `RT-101` | `{baseUrl}/browse/{key}` |
+| Linear | Workspace, e.g. `https://linear.app/team` | `RT-101` | `{baseUrl}/issue/{key}` |
+| GitHub Issues | Repository, e.g. `https://github.com/owner/repo` | `#123`, `owner/repo#123` | `{baseUrl}/issues/{number}` |
+| GitLab Issues | Project, including nested groups | `#123`, `group/subgroup/project#123` | `{baseUrl}/-/issues/{number}` |
+
+GitHub/GitLab use `projects: []` and the fixed `#{number}` format. Only one
+tracker per checkout may accept short references; set `matchBareNumbers: false`
+on others to accept only qualified references to their configured project.
+Qualified references normalize to the same `#123` key and are deduplicated.
+GitLab `!123` merge requests are excluded. GitHub shares number references
+between issues and pull requests, so this offline detector cannot verify the
+resource type or existence. Self-hosted GitHub/GitLab addresses are supported.
+The detector reads reference tokens, not full issue URLs.
+
+URL/reference conventions: [Jira](https://support.atlassian.com/jira-align/kb/view-in-jira-links-fail-with-cannot-open-project-issue-with-characters-in-the-url-on-jira-align/),
+[Linear](https://linear.app/developers/graphql),
+[GitHub](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/autolinked-references-and-urls),
+[GitLab](https://docs.gitlab.com/user/markdown/).
+
+Prefixed key formats allow 1–4 literal separator characters
 from `- _ : # / .`; arbitrary regex is intentionally unsupported. Task links
 encode the key and must stay on the configured tracker host.
 
@@ -130,7 +153,7 @@ Start at `http://127.0.0.1:5191/flows/gen?catalog=portolan`.
   explicit metadata in authored `.flow.md` files and PR references.
 - Reverse navigation from task to affected entities; Changes grouped by task;
   event, RPC and store surfaces; opt-in task highlighting on diagrams.
-- Additional tracker adapters sharing the same work-item model.
+- API adapters for the supported trackers sharing the same work-item model.
 
 The first delivery is useful without these extensions. Branch names alone
 cannot establish which existing entities changed; blame only describes the

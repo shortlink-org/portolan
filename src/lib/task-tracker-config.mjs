@@ -1,6 +1,18 @@
 // Shared by the settings preview and the Git verifier: no browser-only rules.
 export const DEFAULT_KEY_FORMAT = "{project}-{number}";
 export const DEFAULT_ISSUE_URL = "{baseUrl}/issue/{key}";
+export const TRACKER_PROVIDERS = {
+  youtrack: { label: "YouTrack", numbered: false, keyFormat: DEFAULT_KEY_FORMAT, urlTemplate: DEFAULT_ISSUE_URL, addressLabel: "Tracker address", placeholder: "https://youtrack.company.ru" },
+  jira: { label: "Jira", numbered: false, keyFormat: DEFAULT_KEY_FORMAT, urlTemplate: "{baseUrl}/browse/{key}", addressLabel: "Jira address", placeholder: "https://team.atlassian.net" },
+  linear: { label: "Linear", numbered: false, keyFormat: DEFAULT_KEY_FORMAT, urlTemplate: DEFAULT_ISSUE_URL, addressLabel: "Workspace address", placeholder: "https://linear.app/team" },
+  github: { label: "GitHub Issues", numbered: true, keyFormat: "#{number}", urlTemplate: "{baseUrl}/issues/{number}", addressLabel: "Repository address", placeholder: "https://github.com/owner/repository" },
+  gitlab: { label: "GitLab Issues", numbered: true, keyFormat: "#{number}", urlTemplate: "{baseUrl}/-/issues/{number}", addressLabel: "Project address", placeholder: "https://gitlab.com/group/project" },
+};
+
+function providerFor(tracker) {
+  if (!Object.hasOwn(TRACKER_PROVIDERS, tracker.provider)) throw new Error("Choose a supported task tracker provider.");
+  return TRACKER_PROVIDERS[tracker.provider];
+}
 
 const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -18,17 +30,30 @@ export function keyPattern(projects, format = DEFAULT_KEY_FORMAT) {
 }
 
 export function detectTaskKeys(message, tracker) {
+  if (providerFor(tracker).numbered) {
+    const path = new URL(tracker.baseUrl).pathname.replace(/^\/+|\/+$/g, "");
+    const number = "([1-9][0-9]{0,19})(?![A-Za-z0-9_-])";
+    const qualified = new RegExp(`(?<![A-Za-z0-9_/\\\\-])${escape(path)}#${number}`, tracker.provider === "github" ? "gi" : "g");
+    const keys = [...String(message).matchAll(qualified)].map((match) => `#${match[1]}`);
+    if (tracker.matchBareNumbers !== false) {
+      const bare = new RegExp(`(?<![A-Za-z0-9_/#!\\\\-])#${number}`, "g");
+      keys.push(...[...String(message).matchAll(bare)].map((match) => `#${match[1]}`));
+    }
+    return [...new Set(keys)].sort();
+  }
   return [...new Set(String(message).match(keyPattern(tracker.projects, tracker.keyFormat)) ?? [])].sort();
 }
 
 export function taskUrl(tracker, key) {
-  const template = tracker.urlTemplate ?? DEFAULT_ISSUE_URL;
-  if (typeof template !== "string" || template.length > 500 || !template.startsWith("{baseUrl}/") || !template.includes("{key}") || /[{}]/.test(template.replaceAll("{baseUrl}", "").replaceAll("{key}", ""))) {
-    throw new Error("The link must start with {baseUrl}/ and include {key}; no other placeholders are supported.");
+  const provider = providerFor(tracker);
+  const template = tracker.urlTemplate ?? provider.urlTemplate;
+  if (typeof template !== "string" || template.length > 500 || !template.startsWith("{baseUrl}/") || !(template.includes("{key}") || (provider.numbered && template.includes("{number}"))) || /[{}]/.test(template.replaceAll("{baseUrl}", "").replaceAll("{key}", "").replaceAll(provider.numbered ? "{number}" : "{key}", ""))) {
+    throw new Error("The link must start with {baseUrl}/ and include {key} (or {number} for GitHub/GitLab); no other placeholders are supported.");
   }
   const base = new URL(tracker.baseUrl);
   if (!/^https?:$/.test(base.protocol) || base.username || base.password || base.search || base.hash) throw new Error("Enter an HTTP(S) tracker address without credentials, query or fragment.");
-  const value = template.replaceAll("{baseUrl}", tracker.baseUrl.replace(/\/+$/, "")).replaceAll("{key}", encodeURIComponent(key));
+  if (provider.numbered && !/^#[1-9][0-9]{0,19}$/.test(key)) throw new Error("Use a numeric issue key such as #123.");
+  const value = template.replaceAll("{baseUrl}", tracker.baseUrl.replace(/\/+$/, "")).replaceAll("{key}", encodeURIComponent(key)).replaceAll("{number}", encodeURIComponent(key.slice(1)));
   const url = new URL(value);
   if (url.origin !== base.origin || url.username || url.password || /[\s\\]/.test(value)) throw new Error("The task link must remain on the configured tracker host.");
   return url.href;
@@ -38,23 +63,39 @@ export function normalizeTrackers(value) {
   if (!Array.isArray(value) || value.length > 20) throw new Error("Configure up to 20 trackers per repository.");
   const ids = new Set();
   const projects = new Set();
+  let bareNumbers = false;
   return value.map((item) => {
-    if (!item || typeof item.id !== "string" || !/^[a-z0-9][a-z0-9-]{0,59}$/.test(item.id) || ids.has(item.id) || item.provider !== "youtrack") throw new Error("Use a unique tracker ID (lowercase letters, numbers and dashes) and the YouTrack provider.");
+    if (!item || typeof item.id !== "string" || !/^[a-z0-9][a-z0-9-]{0,59}$/.test(item.id) || ids.has(item.id)) throw new Error("Use a unique tracker ID (lowercase letters, numbers and dashes).");
+    const provider = providerFor(item);
     ids.add(item.id);
     if (item.name !== undefined && (typeof item.name !== "string" || item.name.length > 100)) throw new Error("Tracker name must be at most 100 characters.");
-    keyPattern(item.projects, item.keyFormat);
+    if (provider.numbered) {
+      if (!Array.isArray(item.projects) || item.projects.length || (item.keyFormat !== undefined && item.keyFormat !== "#{number}")) throw new Error("GitHub/GitLab use #{number} without project prefixes; set the repository/project address.");
+      if (item.matchBareNumbers !== undefined && typeof item.matchBareNumbers !== "boolean") throw new Error("Short issue references must be enabled or disabled.");
+      if (item.matchBareNumbers !== false) {
+        if (bareNumbers) throw new Error("Only one tracker per checkout can match short #123 references. Disable short references for the others; qualified project references still work.");
+        bareNumbers = true;
+      }
+    } else {
+      keyPattern(item.projects, item.keyFormat);
+      if (item.matchBareNumbers !== undefined) throw new Error("Short #123 references are only supported for GitHub/GitLab.");
+    }
     for (const project of item.projects) {
       if (projects.has(project)) throw new Error(`Project ${project} matches more than one tracker in this checkout.`);
       projects.add(project);
     }
     if (typeof item.baseUrl !== "string") throw new Error("Enter a tracker address.");
     const tracker = {
-      id: item.id, provider: "youtrack", baseUrl: item.baseUrl.trim().replace(/\/+$/, ""), projects: [...item.projects],
+      id: item.id, provider: item.provider, baseUrl: item.baseUrl.trim().replace(/\/+$/, ""), projects: [...item.projects],
       ...(item.name ? { name: item.name.trim() } : {}),
       ...(item.keyFormat ? { keyFormat: item.keyFormat } : {}),
       ...(item.urlTemplate ? { urlTemplate: item.urlTemplate } : {}),
+      ...(item.matchBareNumbers !== undefined ? { matchBareNumbers: item.matchBareNumbers } : {}),
     };
-    taskUrl(tracker, "RT-101");
+    taskUrl(tracker, provider.numbered ? "#123" : "RT-101");
+    const segments = new URL(tracker.baseUrl).pathname.split("/").filter(Boolean);
+    if (provider.numbered && (segments.length < 2 || segments.some((segment) => !/^[A-Za-z0-9_.-]+$/.test(segment)))) throw new Error("Enter the complete repository/project address, including owner or group and project name.");
+    if (item.provider === "linear" && !segments.length) throw new Error("Include the Linear workspace in its address, for example https://linear.app/team.");
     return tracker;
   });
 }

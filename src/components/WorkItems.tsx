@@ -2,6 +2,8 @@ import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { ExternalLink, Ticket, X } from "lucide-react";
 import type { Catalog, WorkItemLink, WorkItemTarget } from "../catalog";
 import { relatedWorkItems } from "../lib/work-items";
+import { TRACKER_PROVIDERS } from "../lib/task-tracker-config.mjs";
+import type { TaskTracker } from "../lib/task-tracker-config.mjs";
 import { CommitLink } from "./CommitLink";
 
 const basisLabel = {
@@ -36,7 +38,7 @@ export function WorkItems({ catalog, target, className = "", variant = "chips" }
             {group.map(({ item, links }) => <section key={item.id} className="p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <a className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline" href={item.url} target="_blank" rel="noreferrer">{item.key}<ExternalLink size={13} aria-hidden /></a>
-                <span className="ml-auto text-xs text-muted">{item.provider === "youtrack" ? "YouTrack" : item.provider} · {item.tracker}</span>
+                <span className="ml-auto text-xs text-muted">{Object.hasOwn(TRACKER_PROVIDERS, item.provider) ? TRACKER_PROVIDERS[item.provider as TaskTracker["provider"]].label : item.provider} · {item.tracker}</span>
               </div>
               {item.title ? <p className="mt-2 font-medium">{item.title}</p> : <p className="mt-2 text-muted">Open the task for its description and status.</p>}
               {item.status || item.assignee ? <div className="mt-2 flex flex-wrap gap-2 text-xs">{item.status ? <span className="chip">{item.status}</span> : null}{item.assignee ? <span className="text-muted">Assigned to {item.assignee}</span> : null}</div> : null}

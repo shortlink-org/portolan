@@ -2,7 +2,7 @@
   {
     "name": "work-items",
     "plugin": "work-items",
-    "summary": "Connects YouTrack issue keys in Git commits to flows, steps, services and decisions, retaining the source of each association.",
+    "summary": "Connects YouTrack, Jira, Linear, GitHub and GitLab issue references in Git commits to flows, steps, services and decisions, retaining the source of each association.",
     "category": "evidence",
     "phases": [
       "verify"
@@ -34,7 +34,13 @@
                 "pattern": "^[a-z0-9][a-z0-9-]*$"
               },
               "provider": {
-                "const": "youtrack"
+                "enum": [
+                  "youtrack",
+                  "jira",
+                  "linear",
+                  "gitlab",
+                  "github"
+                ]
               },
               "name": {
                 "type": "string",
@@ -43,14 +49,16 @@
               "keyFormat": {
                 "type": "string",
                 "maxLength": 100,
-                "default": "{project}-{number}",
-                "description": "Literal key template: {project}, 1–4 separator characters (- _ : # / .), then {number}."
+                "description": "Defaults to {project}-{number} for YouTrack/Jira/Linear; #{number} for GitHub/GitLab."
               },
               "urlTemplate": {
                 "type": "string",
                 "maxLength": 500,
-                "default": "{baseUrl}/issue/{key}",
-                "description": "Task link on the tracker host, using {baseUrl} and {key}."
+                "description": "Provider-specific task link using {baseUrl}, {key}, or {number} for GitHub/GitLab."
+              },
+              "matchBareNumbers": {
+                "type": "boolean",
+                "description": "GitHub/GitLab only. Match short #123 references (default true). Only one tracker per checkout can claim these; qualified project#123 references always work."
               },
               "baseUrl": {
                 "type": "string",
@@ -58,8 +66,9 @@
               },
               "projects": {
                 "type": "array",
-                "minItems": 1,
+                "maxItems": 50,
                 "uniqueItems": true,
+                "description": "Required prefixes for YouTrack/Jira/Linear; empty for GitHub/GitLab.",
                 "items": {
                   "type": "string",
                   "pattern": "^[A-Z][A-Z0-9_]*$"

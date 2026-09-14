@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { join, matchesGlob, relative, resolve, sep } from "node:path";
 import { readManifestText } from "./manifest.mjs";
-import { normalizeTrackers, publicTaskTrackers } from "../src/lib/task-tracker-config.mjs";
+import { normalizeTrackers, publicTaskTrackers, TRACKER_PROVIDERS } from "../src/lib/task-tracker-config.mjs";
 
 function read(workspace) {
   const path = join(workspace, "portolan.json");
@@ -59,7 +59,7 @@ export function saveTaskTrackerSettings(workspace, request, writeManifest) {
   if (!Number.isInteger(maxCommits) || maxCommits < 1 || maxCommits > 10000) throw new Error("History limit must be between 1 and 10000 commits.");
   // Tracker IDs identify an instance across the entire catalog, not one repo.
   for (const tracker of trackers) for (const entry of state.entries.filter((entry) => entry.step !== existing?.step)) {
-    if (entry.trackers.some((other) => other.id === tracker.id && (other.baseUrl !== tracker.baseUrl || (other.urlTemplate ?? "{baseUrl}/issue/{key}") !== (tracker.urlTemplate ?? "{baseUrl}/issue/{key}")))) throw new Error(`Tracker ${tracker.id} already names another address in ${entry.input}. Use a different ID.`);
+    if (entry.trackers.some((other) => other.id === tracker.id && (other.provider !== tracker.provider || other.baseUrl !== tracker.baseUrl || (other.urlTemplate ?? TRACKER_PROVIDERS[other.provider].urlTemplate) !== (tracker.urlTemplate ?? TRACKER_PROVIDERS[tracker.provider].urlTemplate)))) throw new Error(`Tracker ${tracker.id} already names another provider or address in ${entry.input}. Use a different ID.`);
   }
   if (!Array.isArray(request.catalogs) || request.catalogs.some((id) => !state.catalogs.some((catalog) => catalog.id === id)) || (state.catalogs.length && !request.catalogs.length)) throw new Error("Select at least one known catalog.");
   if (existing && !existing.managed && JSON.stringify([...request.catalogs].sort()) !== JSON.stringify([...existing.catalogs].sort())) throw new Error("This verifier has manually configured sources. Change its catalog scope in portolan.json.");

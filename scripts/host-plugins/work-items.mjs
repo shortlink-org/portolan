@@ -5,7 +5,7 @@ import options from "./work-items.options.json" with { type: "json" };
 import { detectTaskKeys, normalizeTrackers, taskUrl } from "../../src/lib/task-tracker-config.mjs";
 
 export function describe() {
-  return { name: "work-items", summary: "Connects YouTrack issue keys in Git commits to flows, steps, services and decisions, retaining the source of each association.", category: "evidence", phases: ["verify"], options };
+  return { name: "work-items", summary: "Connects YouTrack, Jira, Linear, GitHub and GitLab issue references in Git commits to flows, steps, services and decisions, retaining the source of each association.", category: "evidence", phases: ["verify"], options };
 }
 
 function webRepository(value) {
@@ -63,7 +63,7 @@ function targetsOf(catalog, repository) {
 }
 
 export function issueKeys(message, projects) {
-  return detectTaskKeys(message, { projects });
+  return detectTaskKeys(message, { provider: "youtrack", projects });
 }
 
 export function fullScanRequested(request, target = process.env.PORTOLAN_WORK_ITEMS_FULL_SCAN) {

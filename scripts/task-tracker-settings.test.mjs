@@ -23,6 +23,17 @@ function workspace() {
 const save = (root, request = {}) => saveTaskTrackerSettings(root, { revision: taskTrackerState(root).revision, step: null, input: ".", catalogs: ["app"], trackers: [tracker], maxCommits: 500, ...request }, writeManifest);
 
 describe("persisted tracker settings", () => {
+  it("persists every provider and the qualified-only numeric rule through schema validation", () => {
+    const { root } = workspace();
+    const trackers = [tracker,
+      { id: "jira", provider: "jira", baseUrl: "https://team.atlassian.net", projects: ["JIRA"] },
+      { id: "linear", provider: "linear", baseUrl: "https://linear.app/team", projects: ["LIN"] },
+      { id: "github", provider: "github", baseUrl: "https://github.com/owner/repo", projects: [] },
+      { id: "gitlab", provider: "gitlab", baseUrl: "https://gitlab.com/group/sub/repo", projects: [], matchBareNumbers: false },
+    ];
+    expect(save(root, { trackers }).entries[0].trackers).toEqual(trackers);
+    expect(taskTrackerState(root).entries[0].trackers).toEqual(trackers);
+  });
   it("full scan selects only a current saved verifier without modifying the manifest", () => {
     const { root } = workspace();
     const state = save(root);

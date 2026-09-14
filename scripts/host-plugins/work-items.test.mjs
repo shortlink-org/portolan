@@ -28,6 +28,27 @@ function checkout() {
 }
 
 describe("work item Git evidence", () => {
+  it("extracts all five providers together with correct URLs and commit evidence", () => {
+    const { request, commit } = checkout();
+    const sha = commit("RT-1 JIRA-2 LIN-3: toolbar\n\nFixes #4 and group/sub/repo#5; ignores other/repo#6 and !7");
+    request.options.trackers = [
+      ...trackers,
+      { id: "jira", provider: "jira", baseUrl: "https://jira.example.com", projects: ["JIRA"] },
+      { id: "linear", provider: "linear", baseUrl: "https://linear.app/team", projects: ["LIN"] },
+      { id: "github", provider: "github", baseUrl: "https://github.com/acme/shop", projects: [] },
+      { id: "gitlab", provider: "gitlab", baseUrl: "https://gitlab.com/group/sub/repo", projects: [], matchBareNumbers: false },
+    ];
+    const fragment = JSON.parse(run(request).files[0].contents);
+    expect(fragment.workItems.map(({ provider, key, url }) => ({ provider, key, url }))).toEqual(expect.arrayContaining([
+      { provider: "youtrack", key: "RT-1", url: "https://tasks.example.com/youtrack/issue/RT-1" },
+      { provider: "jira", key: "JIRA-2", url: "https://jira.example.com/browse/JIRA-2" },
+      { provider: "linear", key: "LIN-3", url: "https://linear.app/team/issue/LIN-3" },
+      { provider: "github", key: "#4", url: "https://github.com/acme/shop/issues/4" },
+      { provider: "gitlab", key: "#5", url: "https://gitlab.com/group/sub/repo/-/issues/5" },
+    ]));
+    expect(fragment.workItems).toHaveLength(5);
+    expect(fragment.workItemLinks.every((link) => link.commits[0].sha === sha)).toBe(true);
+  });
   it("full scan ignores the cap only for the selected verifier and preserves the normal limit", () => {
     const { request, root, commit } = checkout();
     commit("RT-1: old change"); commit("RT-2: recent change");
