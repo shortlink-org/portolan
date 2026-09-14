@@ -5,6 +5,7 @@ import {
   landingInputs,
   pluginIcon,
   pluginIndex,
+  pluginLabel,
   pluginsByCategory,
   runtimeLabel,
 } from "./plugins";
@@ -30,6 +31,11 @@ describe("plugin index", () => {
   it("has a display name for every plugin", () => {
     const unnamed = pluginIndex.filter((entry) => !hasPluginLabel(entry.name)).map((entry) => entry.name);
     expect(unnamed).toEqual([]);
+  });
+
+  it("presents the Schema Registry verifier as a compatibility check", () => {
+    expect(pluginLabel("csr-compatibility")).toBe("Schema compatibility");
+    expect(pluginIcon("csr-compatibility", "evidence")).toEqual({ lucide: "shield" });
   });
 
   // A brand named here that the mark list does not carry would draw as the
