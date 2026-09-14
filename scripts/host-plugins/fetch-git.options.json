@@ -24,6 +24,12 @@
           "ref": {
             "type": "string",
             "description": "The branch or tag to resolve when there is no commit. Defaults to the remote's HEAD."
+          },
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Directories to take from the repository, repo-relative; the rest of the tree is not fetched. Left out, the whole tree is.",
+            "examples": [["services/payments"]]
           }
         }
       }

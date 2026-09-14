@@ -90,6 +90,27 @@ describe("fetch-git", () => {
     expect(fragment.endsWith("\n")).toBe(true);
   });
 
+  it("takes only the named paths, records them in the lock, and refetches when they change", () => {
+    const remote = repository();
+    const cacheDir = cache();
+    const narrow = { cache: cacheDir, repos: [{ repo: remote.url, commit: remote.commit, paths: ["services/oms/"] }] };
+    const response = fetch(narrow, online);
+    const dir = remote.copyDir;
+    expect(names(response)).toEqual([
+      `${dir}/git.lock.json`,
+      `${dir}/git.repo.json`,
+      `${dir}/services/oms/README.md`,
+      `${dir}/services/oms/internal/domain/order/order.go`,
+    ]);
+    expect(JSON.parse(contentsOf(response, `${dir}/git.lock.json`)).repos[0].paths).toEqual(["services/oms"]);
+    write(cacheDir, response);
+
+    expect(names(fetch(narrow, offline))).toEqual(names(response));
+    // The whole tree is a different fetch than one directory of it.
+    expect(() => fetch(options(remote, cacheDir), offline)).toThrow(/holds services\/oms but the manifest asks for the whole tree/);
+    expect(() => fetch({ cache: cacheDir, repos: [{ repo: remote.url, commit: remote.commit, paths: ["nowhere"] }] }, online)).toThrow(/holds no files under nowhere/);
+  });
+
   it("replays the committed copy offline, byte for byte, and says so", () => {
     const remote = repository();
     const cacheDir = cache();

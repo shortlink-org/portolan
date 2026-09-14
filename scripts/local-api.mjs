@@ -792,8 +792,29 @@ export function planProject(workspace, manifest, request) {
     });
   });
   const source = external ? "vendor/repos/**/portolan/*.json" : `${out}/*.json`;
-  const fetch = external ? { repo: repo.value, commit: String(request.commit), paths: sourcePath ? [sourcePath] : [] } : null;
+  const fetch = external ? { repo: repo.value, commit: String(request.commit), ...(sourcePath ? { paths: [sourcePath] } : {}) } : null;
   return { project, plugins, steps, source, discovery, fetch };
+}
+
+/**
+ * One entry per repository and commit. Two projects from one repository at one
+ * commit share a fetch: their paths are joined, and an entry that asked for the
+ * whole tree keeps it.
+ */
+export function mergeRepos(repos) {
+  const merged = [];
+  for (const repo of repos) {
+    const key = `${repo.repo}\0${repo.commit ?? ""}\0${repo.ref ?? ""}`;
+    const held = merged.find((candidate) => `${candidate.repo}\0${candidate.commit ?? ""}\0${candidate.ref ?? ""}` === key);
+    if (!held) {
+      merged.push({ ...repo });
+      continue;
+    }
+    const whole = !held.paths?.length || !repo.paths?.length;
+    if (whole) delete held.paths;
+    else held.paths = [...new Set([...held.paths, ...repo.paths])].sort();
+  }
+  return merged;
 }
 
 export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
@@ -803,10 +824,7 @@ export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
     if (!builtinPluginNames().has("git") && !manifest.plugins?.some((plugin) => plugin.name === "git")) throw new Error("The built-in git fetcher is not available.");
     if (!isolated && fetchIndex >= 0) {
       const fetchStep = extract[fetchIndex];
-      const repos = [...(fetchStep.options?.repos ?? []), plan.fetch].filter((repo, index, all) => {
-        const key = `${repo.repo}\0${repo.commit}\0${[...(repo.paths ?? [])].sort().join("\0")}`;
-        return all.findIndex((candidate) => `${candidate.repo}\0${candidate.commit}\0${[...(candidate.paths ?? [])].sort().join("\0")}` === key) === index;
-      });
+      const repos = mergeRepos([...(fetchStep.options?.repos ?? []), plan.fetch]);
       extract[fetchIndex] = { ...fetchStep, options: { ...fetchStep.options, repos } };
     } else {
       extract.unshift({ plugin: "git", in: "vendor", out: "vendor/repos", options: { cache: "vendor/repos", repos: [plan.fetch] } });

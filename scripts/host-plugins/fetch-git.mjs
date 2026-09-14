@@ -187,6 +187,7 @@ export function encodeLock(entry) {
   const files = [...entry.files].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const skipped = [...(entry.skipped ?? [])].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const record = { repo: entry.repo, commit: entry.commit };
+  if (entry.paths?.length) record.paths = [...entry.paths];
   record.files = files.map((file) => ({ path: file.path, sha256: file.sha256, size: file.size }));
   if (skipped.length) record.skipped = skipped.map((file) => ({ path: file.path, size: file.size, reason: file.reason }));
   return `${JSON.stringify({ repos: [record] }, null, 2)}\n`;
@@ -205,15 +206,34 @@ function live(url, want, out, env) {
     commit = resolve(url, want.ref, env);
     out.warn(want.repo, `is not pinned; "${want.ref || "HEAD"}" resolved to ${commit}. Pin it in portolan.json or every run is a lottery.`);
   }
-  const fetched = download(url, commit, env);
+  const paths = wantedPaths(want);
+  const fetched = download(url, commit, env, paths);
   if (fetched.files.size === 0 && fetched.skipped.length === 0) {
-    throw new Error(`${want.repo} at ${commit} holds no files`);
+    throw new Error(paths.length ? `${want.repo} at ${commit} holds no files under ${paths.join(", ")}` : `${want.repo} at ${commit} holds no files`);
   }
   return { commit, ...fetched };
 }
 
+/**
+ * The directories the manifest narrows a repository to, as prefixes without a
+ * trailing slash. Empty means the whole tree.
+ */
+export function wantedPaths(want) {
+  const raw = Array.isArray(want.paths) ? want.paths : [];
+  const clean = raw.map((path) => posix.normalize(String(path).replaceAll("\\", "/")).replace(/^\.\/?/, "").replace(/\/+$/, "")).filter((path) => path && path !== ".");
+  for (const path of clean) {
+    if (path.startsWith("/") || path === ".." || path.startsWith("../")) throw new Error(`${want.repo}: path "${path}" leaves the repository`);
+  }
+  return [...new Set(clean)].sort();
+}
+
+function underPaths(path, paths) {
+  return paths.length === 0 || paths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
 function emitFetched(out, dir, want, commit, files, skipped, generatedAt) {
-  const entry = { repo: want.repo, commit, files: [], skipped };
+  const paths = wantedPaths(want);
+  const entry = { repo: want.repo, commit, ...(paths.length ? { paths } : {}), files: [], skipped };
   for (const path of [...files.keys()].sort()) {
     const contents = files.get(path);
     out.file(posix.join(dir, path), contents);
@@ -234,6 +254,11 @@ function emitCached(out, dir, at, want, why, generatedAt = "") {
   const held = replay(at);
   if (held.lock.commit !== want.commit) {
     throw new Error(`${want.repo} holds commit ${held.lock.commit} but the manifest pins ${want.commit}; fetch it`);
+  }
+  const heldPaths = (held.lock.paths ?? []).join(", ") || "the whole tree";
+  const wantPaths = wantedPaths(want).join(", ") || "the whole tree";
+  if (heldPaths !== wantPaths) {
+    throw new Error(`${want.repo} holds ${heldPaths} but the manifest asks for ${wantPaths}; fetch it`);
   }
   for (const file of held.lock.files) out.file(posix.join(dir, file.path), held.files.get(file.path));
   out.file(posix.join(dir, LOCK_NAME), encodeLock(held.lock));
@@ -300,7 +325,7 @@ function replay(dir) {
     files.set(want.path, contents);
     kept.push(want);
   }
-  return { lock: { repo: entry.repo, commit: entry.commit, files: kept, skipped }, files };
+  return { lock: { repo: entry.repo, commit: entry.commit, ...(Array.isArray(entry.paths) && entry.paths.length ? { paths: [...entry.paths].sort() } : {}), files: kept, skipped }, files };
 }
 
 // --- git --------------------------------------------------------------------
@@ -344,7 +369,7 @@ function resolve(url, ref, env) {
  *
  * @returns {{files: Map<string, Buffer>, skipped: {path: string, size: number, reason: string}[]}}
  */
-function download(url, commit, env) {
+function download(url, commit, env, paths = []) {
   const tmp = mkdtempSync(join(tmpdir(), "portolan-fetch-git-"));
   try {
     git(tmp, ["init", "--quiet"], env);
@@ -371,6 +396,7 @@ function download(url, commit, env) {
       const [sha, type, rawSize, ...rest] = line.split(" ");
       if (type !== "blob") continue;
       const path = posix.normalize(rest.join(" "));
+      if (!underPaths(path, paths)) continue;
       const size = Number(rawSize);
       const reason = knownBinaryReason(path);
       if (reason) skipped.push({ path, size, reason });

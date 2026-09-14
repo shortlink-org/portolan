@@ -736,7 +736,7 @@ describe("local project setup", { timeout: 30_000 }, () => {
   });
 
   it("does not duplicate an existing external fetch when a project is re-added", () => {
-    const fetch = { repo: "https://github.com/acme/orders", commit: "a".repeat(40), paths: [] };
+    const fetch = { repo: "https://github.com/acme/orders", commit: "a".repeat(40) };
     const manifest = {
       sources: ["vendor/repos/*/*/git.repo.json"], projects: [],
       extract: [{ plugin: "git", in: "vendor", out: "vendor/repos", options: { cache: "vendor/repos", repos: [fetch] } }],
@@ -841,7 +841,7 @@ describe("local project setup", { timeout: 30_000 }, () => {
       source: "external", root: "", repository, commit, id: "architecture", name: "Architecture",
       group: "platform", component: "governance", plugins: ["rfc"],
     });
-    expect(plan.fetch).toEqual({ repo: repository, commit, paths: [] });
+    expect(plan.fetch).toEqual({ repo: repository, commit });
     expect(plan.steps[0].options).toMatchObject({
       repo: "github.com/acme/architecture",
       files: ["docs/rfcs/*.md"],
