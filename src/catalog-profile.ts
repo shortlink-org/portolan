@@ -1,4 +1,5 @@
 import type { Catalog } from "./catalog";
+import { workItemTargetExists } from "./lib/work-items.ts";
 
 export interface CatalogProfile {
   id: string;
@@ -85,7 +86,7 @@ export function filterCatalogForProfile(catalog: Catalog, profile: CatalogProfil
   const selectedContexts = catalog.contexts.filter((context) => contexts.has(context.id));
   const services = new Set(selectedContexts.flatMap((context) => context.services.map((service) => service.id)));
 
-  return {
+  const scoped: Catalog = {
     ...catalog,
     contexts: selectedContexts,
     flows: catalog.flows.filter((flow) => contexts.has(flow.owner)),
@@ -98,4 +99,10 @@ export function filterCatalogForProfile(catalog: Catalog, profile: CatalogProfil
     terms: (catalog.terms ?? []).filter((term) => contexts.has(term.context)),
     modules: (catalog.modules ?? []).filter((module) => !module.owner || services.has(module.owner)),
   };
+  if (catalog.workItemLinks) {
+    scoped.workItemLinks = catalog.workItemLinks.filter((link) => workItemTargetExists(scoped, link.target));
+    const used = new Set(scoped.workItemLinks.map((link) => link.workItem));
+    scoped.workItems = (catalog.workItems ?? []).filter((item) => used.has(item.id));
+  }
+  return scoped;
 }

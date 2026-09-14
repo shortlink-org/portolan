@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FRAGMENT_NAME, LOCK_NAME, fragment, repositoryOf, run, serviceIdentity } from "./fetch-dx.mjs";
 
@@ -54,6 +54,34 @@ describe("fetch-dx", () => {
     const result = await run({ options: { cache: dir, defaultContext: "dx" } }, { env: { PORTOLAN_OFFLINE: "1" } });
     expect(result.files.map((file) => file.name)).toEqual([FRAGMENT_NAME, LOCK_NAME]);
     expect(result.warnings[0].message).toContain("offline");
+  });
+
+  it("fails on missing or rejected credentials instead of hiding them with a snapshot", async () => {
+    const dir = cache();
+    writeCached(dir);
+    await expect(run({ options: { cache: dir, defaultContext: "dx" } }, { env: {} })).rejects.toThrow(/DX_API_TOKEN is not set/);
+
+    const fetch = vi.fn(async () => new Response('{"ok":false,"error":"invalid_auth"}', { status: 401 }));
+    await expect(run(
+      { options: { cache: dir, defaultContext: "dx" } },
+      { env: { DX_API_TOKEN: "bad" }, fetch },
+    )).rejects.toThrow(/invalid_auth/);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("uses the snapshot only after transient retries are exhausted", async () => {
+    const dir = cache();
+    writeCached(dir);
+    const fetch = vi.fn(async () => new Response('{"ok":false,"error":"busy"}', { status: 503 }));
+    const wait = vi.fn();
+
+    const result = await run(
+      { options: { cache: dir, defaultContext: "dx" } },
+      { env: { DX_API_TOKEN: "secret" }, fetch, retries: 1, wait },
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenCalledOnce();
+    expect(result.warnings[0].message).toContain("busy");
   });
 });
 

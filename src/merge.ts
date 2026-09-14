@@ -16,6 +16,7 @@
 //    page, next to the other things that are true and unfortunate.
 
 import { deploymentBasis } from "./catalog-model.ts";
+import { workItemLinkKey } from "./lib/work-items.ts";
 import type {
   Aggregate,
   Deployment,
@@ -121,6 +122,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const defOrigin = new Map<string, string>();
   const flows: Catalog["flows"] = [];
   const adrs: Catalog["adrs"] = [];
+  const workItems = new Map<string, NonNullable<Catalog["workItems"]>[number]>();
+  const workItemLinks = new Map<string, NonNullable<Catalog["workItemLinks"]>[number]>();
   const stores: NonNullable<Catalog["stores"]> = [];
   const modules: NonNullable<Catalog["modules"]> = [];
   const terms: NonNullable<Catalog["terms"]> = [];
@@ -139,6 +142,28 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   }));
 
   for (const { path, catalog } of ordered) {
+    for (const item of catalog.workItems ?? []) {
+      const held = workItems.get(item.id);
+      if (!held) { workItems.set(item.id, { ...item }); continue; }
+      for (const field of ["tracker", "provider", "key", "url", "title", "status", "assignee", "updatedAt"] as const) {
+        if (!item[field]) continue;
+        if (!held[field]) held[field] = item[field];
+        else if (held[field] !== item[field]) conflicts.push({ path, where: item.id, message: `work item "${item.id}" has conflicting ${field}; the first value is used` });
+      }
+    }
+    for (const link of catalog.workItemLinks ?? []) {
+      const key = workItemLinkKey(link);
+      const held = workItemLinks.get(key);
+      if (!held) {
+        workItemLinks.set(key, { ...link, commits: link.commits.map((commit) => ({ ...commit, paths: [...commit.paths] })) });
+        continue;
+      }
+      for (const commit of link.commits) {
+        const existing = held.commits.find((entry) => entry.repository === commit.repository && entry.sha === commit.sha);
+        if (!existing) held.commits.push({ ...commit, paths: [...commit.paths] });
+        else existing.paths = [...new Set([...existing.paths, ...commit.paths])].sort();
+      }
+    }
     for (const context of catalog.contexts) {
       const existing = contexts.get(context.id);
       if (!existing) {
@@ -342,6 +367,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   if (repos.length > 0) merged.repos = repos;
   if (deployments.length > 0) merged.deployments = deployments;
   if (externals.size > 0) merged.externals = [...externals.values()];
+  if (workItems.size > 0) merged.workItems = [...workItems.values()];
+  if (workItemLinks.size > 0) merged.workItemLinks = [...workItemLinks.values()];
 
   return { catalog: merged, sources: stamps, conflicts };
 }

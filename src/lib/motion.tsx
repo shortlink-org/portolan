@@ -91,10 +91,8 @@ export const scaleIn: Presence = {
 };
 
 /**
- * A route: rises the eight pixels on the page duration while the old page
- * lifts four pixels and fades on the micro duration. Route presence uses
- * `popLayout`, so those two short movements overlap instead of inserting a
- * blank beat between pages.
+ * A route-like scene rises eight pixels while the old scene lifts four. Used
+ * inside the landing product tour; catalog routes use React View Transitions.
  */
 export const page: Presence = {
   initial: { opacity: 0, y: 8 },
@@ -102,7 +100,7 @@ export const page: Presence = {
   exit: { opacity: 0, y: -4, transition: transitions.micro },
 };
 
-/** A row, a toast: rises the same eight pixels a page rises. */
+/** A row, a toast: rises the same eight pixels as a scene. */
 export const rise: Presence = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: transitions.panel },

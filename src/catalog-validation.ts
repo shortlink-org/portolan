@@ -9,6 +9,7 @@ import type {
   Service,
   Step,
 } from "./catalog-model.ts";
+import { safeWorkItemUrl, workItemLinkKey, workItemTargetExists } from "./lib/work-items.ts";
 import {
   CLASSIFICATIONS,
   COMPONENT_KINDS,
@@ -839,9 +840,34 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateAdrs(catalog, eventIds);
   validateTerms(catalog);
   validateRepos(catalog);
+  validateWorkItems(catalog);
   validateDeployments(catalog);
 
   return catalog;
+}
+
+function validateWorkItems(catalog: Catalog): void {
+  const items = new Set<string>();
+  for (const item of catalog.workItems ?? []) {
+    if (!item.tracker || !item.key || !item.provider || item.id !== `${item.tracker}:${item.key}` || items.has(item.id))
+      fail("work item has invalid or duplicate identity", "workItems");
+    if (!safeWorkItemUrl(item.url)) fail(`work item "${item.id}" has an invalid URL`, "workItems");
+    items.add(item.id);
+  }
+  const links = new Set<string>();
+  for (const link of catalog.workItemLinks ?? []) {
+    if (!items.has(link.workItem)) fail(`unknown work item "${link.workItem}"`, "workItemLinks");
+    if (!workItemTargetExists(catalog, link.target)) fail(`work item "${link.workItem}" has an unknown target`, "workItemLinks");
+    if (!["declared", "source-file", "service-directory"].includes(link.basis)) fail("unknown work item link basis", "workItemLinks");
+    const key = workItemLinkKey(link);
+    if (links.has(key)) fail("duplicate work item link", "workItemLinks");
+    links.add(key);
+    if (!Array.isArray(link.commits) || (link.basis !== "declared" && !link.commits.length)) fail("derived work item link needs commits", "workItemLinks");
+    for (const commit of link.commits) {
+      if (!safeWorkItemUrl(commit.repository) || !/^[a-f0-9]{40,64}$/.test(commit.sha)) fail("invalid work item commit", "workItemLinks");
+      if (!Array.isArray(commit.paths) || (link.basis !== "declared" && !commit.paths.length) || commit.paths.some((path) => !path || path.startsWith("/") || path.split("/").includes(".."))) fail("invalid work item commit paths", "workItemLinks");
+    }
+  }
 }
 
 function validateServiceDependencies(catalog: Catalog): void {

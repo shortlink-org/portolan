@@ -1556,9 +1556,36 @@
     transform: scaleX(0);
   }
 }
-/* Anything that also LEAVES or moves - a route, the palette, the drawer, the
-   sheet, the toast, the light under a tab - is not here: that is Motion, in
-   lib/motion.tsx, on the same tokens. */
+@keyframes route-page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes route-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes route-page-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* React owns route snapshots: the old page leaves while the new page arrives,
+   using the same distances and clock as the former Motion presence pair. */
+::view-transition-old(.route-page) {
+  animation: route-page-out var(--dur-micro) var(--ease-out) both;
+}
+::view-transition-new(.route-page) {
+  animation: route-page-in var(--dur-page) var(--ease-out) both;
+}
+
+/* Everything else that also LEAVES or moves - the palette, the drawer, the
+   sheet, the toast, the light under a tab - is Motion, in lib/motion.tsx, on
+   the same tokens. */
 @utility panel-in {
   animation: panel-in var(--dur-panel) var(--ease-out) both;
 }
@@ -1603,6 +1630,15 @@
       opacity, background-color, border-color, color, fill, stroke !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Snapshot pseudo-elements do not match the universal rule above. Keep the
+     cross-fade Motion already provided for reduced motion, but remove travel. */
+  ::view-transition-old(.route-page) {
+    animation: route-page-fade-out var(--dur-micro) var(--ease-out) both;
+  }
+  ::view-transition-new(.route-page) {
+    animation: fade-in var(--dur-page) var(--ease-out) both;
   }
 }
 

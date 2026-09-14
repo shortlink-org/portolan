@@ -97,12 +97,27 @@ describe("presence", () => {
     expect(p.exit.transition).toBe(transitions.panel);
   });
 
-  it("a page and a row rise the same eight pixels", () => {
+  it("a route rises in and lifts out on the shared clock", () => {
+    expect(css).toMatch(
+      /@keyframes route-page-in \{[^}]*translateY\(8px\)/,
+    );
+    expect(css).toMatch(
+      /@keyframes route-page-out \{[^}]*translateY\(-4px\)/,
+    );
+    expect(css).toMatch(
+      /::view-transition-old\(\.route-page\) \{\s*animation: route-page-out var\(--dur-micro\) var\(--ease-out\) both;/,
+    );
+    expect(css).toMatch(
+      /::view-transition-new\(\.route-page\) \{\s*animation: route-page-in var\(--dur-page\) var\(--ease-out\) both;/,
+    );
+  });
+
+  it("a Motion scene and a row rise the same eight pixels", () => {
     expect(page.initial.y).toBe(8);
     expect(rise.initial.y).toBe(8);
   });
 
-  it("a page rises in and lifts out faster", () => {
+  it("a Motion scene rises in and lifts out faster", () => {
     expect(page.animate.transition).toBe(transitions.page);
     expect(page.exit.transition).toBe(transitions.micro);
     expect(page.initial.y).toBe(8);

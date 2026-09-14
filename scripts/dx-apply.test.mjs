@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { applyPlan, edgeBatches, validatePlan } from "./dx-apply.mjs";
+import { applyPlan, edgeBatches, preflightPlan, validatePlan } from "./dx-apply.mjs";
 
 const plan = {
   version: 1,
@@ -25,10 +25,70 @@ describe("DX apply plan", () => {
 
   it("upserts entities before relation edges", async () => {
     const paths = [];
-    const fetch = vi.fn(async (url) => { paths.push(new URL(url).pathname); return new Response('{"ok":true}'); });
+    const fetch = vi.fn(async (url, init) => {
+      const path = new URL(url).pathname;
+      paths.push(`${init.method} ${path}`);
+      if (path === "/catalog.entityTypes.info") {
+        return json({ ok: true, entity_type: { identifier: "service", properties: [] } });
+      }
+      if (path === "/catalog.relations.info") {
+        return json({
+          ok: true,
+          relation: {
+            identifier: "service-depends-on-service",
+            source_entity_type_identifier: "service",
+            target_entity_type_identifier: "service",
+          },
+        });
+      }
+      return json({ ok: true });
+    });
     const result = await applyPlan(plan, { token: "secret", fetch });
     expect(result.requests).toBe(3);
-    expect(paths).toEqual(["/catalog.entities.upsert", "/catalog.entities.upsert", "/catalog.relationEdges.bulkUpsert"]);
+    expect(result.checks).toBe(2);
+    expect(paths).toEqual([
+      "GET /catalog.entityTypes.info",
+      "GET /catalog.relations.info",
+      "POST /catalog.entities.upsert",
+      "POST /catalog.entities.upsert",
+      "POST /catalog.relationEdges.bulkUpsert",
+    ]);
+  });
+
+  it("rejects a missing property before the first write", async () => {
+    const withProperty = structuredClone(plan);
+    withProperty.entities[0].properties = { language: ["TypeScript"] };
+    const fetch = vi.fn(async () => json({
+      ok: true,
+      entity_type: { identifier: "service", properties: [] },
+    }));
+
+    await expect(applyPlan(withProperty, { token: "secret", fetch })).rejects.toThrow(
+      /property language does not exist on entity type service/,
+    );
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+  });
+
+  it("rejects a relation whose endpoint types do not match the plan", async () => {
+    const fetch = vi.fn(async (url) => {
+      const path = new URL(url).pathname;
+      if (path === "/catalog.entityTypes.info") {
+        return json({ ok: true, entity_type: { identifier: "service", properties: [] } });
+      }
+      return json({
+        ok: true,
+        relation: {
+          identifier: "service-depends-on-service",
+          source_entity_type_identifier: "application",
+          target_entity_type_identifier: "service",
+        },
+      });
+    });
+
+    await expect(preflightPlan(plan, { token: "secret", fetch })).rejects.toThrow(
+      /expects source type application, but shop.cart has type service/,
+    );
   });
 
   it("batches at the DX limit", () => {
@@ -36,3 +96,5 @@ describe("DX apply plan", () => {
     expect(edgeBatches(edges, 100)).toHaveLength(2);
   });
 });
+
+const json = (value, init) => new Response(JSON.stringify(value), init);

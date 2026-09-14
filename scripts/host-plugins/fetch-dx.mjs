@@ -6,9 +6,10 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { DX_API, isTransientDXError, requestJSON } from "../dx-api.mjs";
 import optionsSchema from "./fetch-dx.options.json" with { type: "json" };
 
-export const API = "https://api.getdx.com";
+export const API = DX_API;
 export const TOKEN_ENV = "DX_API_TOKEN";
 export const OFFLINE_ENV = "PORTOLAN_OFFLINE";
 export const FRAGMENT_NAME = "dx.catalog.json";
@@ -24,19 +25,19 @@ export function describe() {
   };
 }
 
-export async function run(request, { env = process.env, fetch: fetchFn = globalThis.fetch } = {}) {
+export async function run(request, { env = process.env, fetch: fetchFn = globalThis.fetch, retries = 3, wait } = {}) {
   const options = request.options ?? {};
   if (!options.cache) throw new Error("no cache directory: set cache to the step's out directory");
   if (!options.defaultContext) throw new Error("no default context: set defaultContext for unscoped DX identifiers");
   if (offline(env)) return cached(options.cache, "offline");
   const token = String(env[TOKEN_ENV] ?? "").trim();
-  if (!token) return cached(options.cache, `${TOKEN_ENV} is not set`);
+  if (!token) throw new Error(`${TOKEN_ENV} is not set; set ${OFFLINE_ENV}=1 to replay the committed snapshot`);
 
   const server = String(options.server ?? API).replace(/\/+$/, "");
   try {
     const types = Array.isArray(options.entityTypes) && options.entityTypes.length ? options.entityTypes : ["service"];
     const entities = [];
-    for (const type of types) entities.push(...await listAll(server, "/catalog.entities.list", { type }, token, fetchFn, "entities"));
+    for (const type of types) entities.push(...await listAll(server, "/catalog.entities.list", { type }, token, fetchFn, "entities", retries, wait));
     const relations = Array.isArray(options.relations) ? options.relations : [];
     const dependencies = new Map();
     for (const entity of entities) {
@@ -45,12 +46,13 @@ export async function run(request, { env = process.env, fetch: fetchFn = globalT
           entity_identifier: entity.identifier,
           relation_identifier: relation,
           direction: "outgoing",
-        }, token, fetchFn, "entity_relations");
+        }, token, fetchFn, "entity_relations", retries, wait);
         if (targets.length) dependencies.set(entity.identifier, [...(dependencies.get(entity.identifier) ?? []), ...targets.map((target) => target.identifier)]);
       }
     }
     return fetched(server, entities, dependencies, options);
   } catch (cause) {
+    if (!isTransientDXError(cause)) throw cause;
     return cached(options.cache, cause instanceof Error ? cause.message : String(cause));
   }
 }
@@ -120,20 +122,18 @@ export function repositoryOf(aliases = {}) {
   return "";
 }
 
-async function listAll(server, pathname, params, token, fetchFn, field) {
+async function listAll(server, pathname, params, token, fetchFn, field, retries, wait) {
   const out = [];
   let cursor = "";
   do {
-    const query = new URLSearchParams({ ...params, limit: "50", ...(cursor ? { cursor } : {}) });
-    const response = await fetchFn(`${server}${pathname}?${query}`, {
-      headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(60_000),
+    const answer = await requestJSON(pathname, {
+      server,
+      token,
+      fetch: fetchFn,
+      query: { ...params, limit: 50, ...(cursor ? { cursor } : {}) },
+      retries,
+      wait,
     });
-    const raw = await response.text();
-    if (!response.ok) throw new Error(`${pathname}: http ${response.status}`);
-    let answer;
-    try { answer = JSON.parse(raw); } catch { throw new Error(`${pathname}: the answer is not JSON`); }
-    if (answer?.ok === false) throw new Error(`${pathname}: ${answer.error ?? "DX rejected the request"}`);
     out.push(...(Array.isArray(answer?.[field]) ? answer[field] : []));
     cursor = String(answer?.response_metadata?.next_cursor ?? "");
   } while (cursor);

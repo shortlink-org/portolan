@@ -60,6 +60,45 @@ export interface Catalog {
    * `stores`: an estate that calls nobody outside renders as it did before.
    */
   externals?: External[];
+  /** Task identity and optional tracker metadata; independent of code history. */
+  workItems?: WorkItem[];
+  /** Why a task is associated with a catalog entity. */
+  workItemLinks?: WorkItemLink[];
+}
+
+export interface WorkItem {
+  /** `<tracker instance>:<issue key>`, not just a provider and key. */
+  id: string;
+  tracker: string;
+  provider: string;
+  key: string;
+  url: string;
+  title?: string;
+  status?: string;
+  assignee?: string;
+  updatedAt?: string;
+}
+
+export type WorkItemTarget =
+  | { kind: "flow" | "service" | "adr"; id: string }
+  | { kind: "step"; id: string; flow: string };
+
+export interface WorkItemCommit {
+  repository: string;
+  sha: string;
+  subject: string;
+  author: string;
+  date: string;
+  /** Matching changed paths, relative to this commit's repository. */
+  paths: string[];
+}
+
+export interface WorkItemLink {
+  workItem: string;
+  target: WorkItemTarget;
+  /** File/directory matches are deliberately weaker than explicit associations. */
+  basis: "declared" | "source-file" | "service-directory";
+  commits: WorkItemCommit[];
 }
 /**
  * A system outside the estate, with a contract.

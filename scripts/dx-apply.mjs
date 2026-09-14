@@ -5,27 +5,99 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const API = "https://api.getdx.com";
+import { DX_API, requestJSON } from "./dx-api.mjs";
 
-export async function applyPlan(plan, { token = process.env.DX_API_TOKEN, server = process.env.DX_API_URL ?? API, fetch: fetchFn = globalThis.fetch, dryRun = false } = {}) {
+export const API = DX_API;
+
+export async function applyPlan(plan, {
+  token = process.env.DX_API_TOKEN,
+  server = process.env.DX_API_URL ?? API,
+  fetch: fetchFn = globalThis.fetch,
+  dryRun = false,
+  retries = 3,
+  wait,
+} = {}) {
   validatePlan(plan);
   const entityCount = plan.entities.length;
   const edgeCount = plan.relationEdges.reduce((sum, relation) => sum + Object.values(relation.edges).reduce((n, targets) => n + targets.length, 0), 0);
   if (dryRun) return { entities: entityCount, edges: edgeCount, requests: 0 };
   if (!String(token ?? "").trim()) throw new Error("DX_API_TOKEN is not set");
   const base = String(server).replace(/\/+$/, "");
+  const checks = await preflightPlan(plan, { token, server: base, fetch: fetchFn, retries, wait });
   let requests = 0;
   for (const entity of plan.entities) {
-    await post(base, "/catalog.entities.upsert", entity, token, fetchFn);
+    await requestJSON("/catalog.entities.upsert", {
+      server: base, token, fetch: fetchFn, method: "POST", body: entity, retries, wait,
+    });
     requests += 1;
   }
   for (const relation of plan.relationEdges) {
     for (const edges of edgeBatches(relation.edges, 100)) {
-      await post(base, "/catalog.relationEdges.bulkUpsert", { relation_identifier: relation.relation_identifier, edges }, token, fetchFn);
+      await requestJSON("/catalog.relationEdges.bulkUpsert", {
+        server: base,
+        token,
+        fetch: fetchFn,
+        method: "POST",
+        body: { relation_identifier: relation.relation_identifier, edges },
+        retries,
+        wait,
+      });
       requests += 1;
     }
   }
-  return { entities: entityCount, edges: edgeCount, requests };
+  return { entities: entityCount, edges: edgeCount, requests, checks };
+}
+
+export async function preflightPlan(plan, { token, server = API, fetch: fetchFn = globalThis.fetch, retries = 3, wait } = {}) {
+  validatePlan(plan);
+  const entities = new Map(plan.entities.map((entity) => [entity.identifier, entity]));
+  const typeDefinitions = new Map();
+  const types = [...new Set(plan.entities.map((entity) => entity.type))].sort();
+
+  for (const identifier of types) {
+    const answer = await requestJSON("/catalog.entityTypes.info", {
+      server, token, fetch: fetchFn, query: { identifier }, retries, wait,
+    });
+    const definition = answer?.entity_type;
+    if (!definition || definition.identifier !== identifier) {
+      throw new Error(`DX preflight: entity type ${identifier} was not returned by DX`);
+    }
+    typeDefinitions.set(identifier, definition);
+  }
+
+  for (const entity of plan.entities) {
+    const available = new Set((typeDefinitions.get(entity.type)?.properties ?? []).map((property) => property.identifier));
+    for (const property of Object.keys(entity.properties ?? {})) {
+      if (!available.has(property)) {
+        throw new Error(`DX preflight: property ${property} does not exist on entity type ${entity.type}`);
+      }
+    }
+  }
+
+  const relations = [...plan.relationEdges].sort((a, b) => a.relation_identifier.localeCompare(b.relation_identifier));
+  for (const group of relations) {
+    const answer = await requestJSON("/catalog.relations.info", {
+      server, token, fetch: fetchFn, query: { identifier: group.relation_identifier }, retries, wait,
+    });
+    const relation = answer?.relation;
+    if (!relation || relation.identifier !== group.relation_identifier) {
+      throw new Error(`DX preflight: relation ${group.relation_identifier} was not returned by DX`);
+    }
+    for (const [source, targets] of Object.entries(group.edges)) {
+      const sourceType = entities.get(source)?.type;
+      if (sourceType !== relation.source_entity_type_identifier) {
+        throw new Error(`DX preflight: relation ${group.relation_identifier} expects source type ${relation.source_entity_type_identifier}, but ${source} has type ${sourceType}`);
+      }
+      for (const target of targets) {
+        const targetType = entities.get(target)?.type;
+        if (targetType !== relation.target_entity_type_identifier) {
+          throw new Error(`DX preflight: relation ${group.relation_identifier} expects target type ${relation.target_entity_type_identifier}, but ${target} has type ${targetType}`);
+        }
+      }
+    }
+  }
+
+  return types.length + relations.length;
 }
 
 export function validatePlan(plan) {
@@ -60,26 +132,13 @@ export function edgeBatches(edges, maximum) {
   return batches;
 }
 
-async function post(server, pathname, body, token, fetchFn) {
-  const response = await fetchFn(`${server}${pathname}`, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
-  });
-  const raw = await response.text();
-  let answer = null;
-  try { answer = JSON.parse(raw); } catch { /* handled by status below */ }
-  if (!response.ok || answer?.ok === false) throw new Error(`${pathname}: ${answer?.error ?? `http ${response.status}`}`);
-}
-
 async function main(argv = process.argv.slice(2)) {
   const path = argv.find((arg) => !arg.startsWith("-"));
   if (!path) throw new Error("usage: portolan dx apply PLAN [--dry-run]");
   const plan = JSON.parse(readFileSync(resolve(path), "utf8"));
   const dryRun = argv.includes("--dry-run");
   const result = await applyPlan(plan, { dryRun });
-  console.log(`DX plan: ${result.entities} entities, ${result.edges} edges${dryRun ? " (dry run)" : ` in ${result.requests} requests`}`);
+  console.log(`DX plan: ${result.entities} entities, ${result.edges} edges${dryRun ? " (dry run)" : ` in ${result.requests} writes after ${result.checks} preflight checks`}`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

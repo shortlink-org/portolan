@@ -185,7 +185,10 @@ A customer may configure either adapter or both. Portolan assigns neither side
 priority and keeps no cross-system reconciliation state.
 
 An input step needs a `DX_API_TOKEN` with `catalog:read`; its generated
-`dx.catalog.json` must also be included in the chosen catalog's `sources`:
+`dx.catalog.json` must also be included in the chosen catalog's `sources`.
+Authentication and configuration errors fail the run. Only temporary network,
+rate-limit and server failures may replay the verified snapshot after retries;
+`PORTOLAN_OFFLINE=1` selects the snapshot explicitly:
 
 ```json
 {
@@ -215,17 +218,19 @@ An output step only writes a reviewable plan; generation never changes DX:
 ```
 
 Validate it without network access, then apply it explicitly with a token that
-has `catalog:write:entities`:
+has both `catalog:read` and `catalog:write:entities`:
 
 ```bash
 portolan dx apply exports/dx/plan.json --dry-run
 DX_API_TOKEN=... portolan dx apply exports/dx/plan.json
 ```
 
-The configured entity type, optional property identifiers and relation type
-must already exist in DX. Apply upserts entities first and dependency edges in
-DX-sized batches; it deliberately does not prune DX entities or relations that
-are absent from Portolan.
+Before the first write, apply reads every configured entity type and relation
+from DX, verifies property identifiers and checks the source and target types of
+every edge. It then upserts entities first and dependency edges in DX-sized
+batches. Requests retry temporary `429` and `5xx` responses with bounded
+backoff; apply deliberately does not prune DX entities or relations that are
+absent from Portolan.
 
 Each plugin describes its own options; `npm run schema` asks all of them and
 composes `schema/portolan.schema.json`, which editors complete against and `gen`

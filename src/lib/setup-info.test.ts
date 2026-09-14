@@ -26,7 +26,7 @@ describe("publicSetupFrom", () => {
           options: { token: "secret" },
         },
       ],
-      generate: [{ plugin: "docs", out: "docs", options: { secret: true } }],
+      generate: [{ plugin: "docs", catalog: "example", out: "docs", options: { secret: true } }],
     });
 
     expect(setup.projects[1]?.root).toBe("services/shop/cart");
@@ -67,6 +67,7 @@ describe("publicSetupFrom", () => {
         projectIds: [],
       },
     ]);
+    expect(setup.steps[1]?.catalog).toBe("example");
     expect(JSON.stringify(setup)).not.toContain("secret");
     expect(JSON.stringify(setup)).not.toContain("command");
   });

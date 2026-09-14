@@ -46,6 +46,42 @@ type Catalog struct {
 	Repos       []RepoPin          `json:"repos,omitempty"`
 	Deployments []Deployment       `json:"deployments,omitempty"`
 	Externals   []External         `json:"externals,omitempty"`
+	WorkItems []WorkItem `json:"workItems,omitempty"`
+	WorkItemLinks []WorkItemLink `json:"workItemLinks,omitempty"`
+}
+
+type WorkItem struct {
+	ID string `json:"id"`
+	Tracker string `json:"tracker"`
+	Provider string `json:"provider"`
+	Key string `json:"key"`
+	URL string `json:"url"`
+	Title string `json:"title,omitempty"`
+	Status string `json:"status,omitempty"`
+	Assignee string `json:"assignee,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
+}
+
+type WorkItemTarget struct {
+	Kind string `json:"kind"`
+	ID string `json:"id"`
+	Flow string `json:"flow,omitempty"`
+}
+
+type WorkItemCommit struct {
+	Repository string `json:"repository"`
+	SHA string `json:"sha"`
+	Subject string `json:"subject"`
+	Author string `json:"author"`
+	Date string `json:"date"`
+	Paths []string `json:"paths"`
+}
+
+type WorkItemLink struct {
+	WorkItem string `json:"workItem"`
+	Target WorkItemTarget `json:"target"`
+	Basis string `json:"basis"`
+	Commits []WorkItemCommit `json:"commits"`
 }
 
 // Deployment is one place a service runs: an Argo CD Application as the

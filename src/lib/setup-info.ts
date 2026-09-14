@@ -30,6 +30,8 @@ export interface SetupStep {
   plugin: string;
   input?: string;
   output: string;
+  /** Catalog selected by a generator; safe to expose because catalog ids are routes. */
+  catalog?: string;
   projectId?: string;
 }
 
@@ -110,6 +112,7 @@ interface ManifestStep {
   plugin?: unknown;
   in?: unknown;
   out?: unknown;
+  catalog?: unknown;
 }
 
 interface ManifestProject {
@@ -280,6 +283,7 @@ function runStepFrom(
     plugin: item.plugin,
     ...(input ? { input } : {}),
     output: cleanPath(item.output),
+    ...(declared.catalog ? { catalog: declared.catalog } : {}),
     ...(declared.projectId
       ? { projectId: declared.projectId }
       : project
@@ -391,6 +395,7 @@ function stepFrom(
     plugin: item.plugin,
     ...(input ? { input } : {}),
     output: cleanPath(item.out),
+    ...(typeof item.catalog === "string" ? { catalog: item.catalog } : {}),
     ...(project ? { projectId: project.id } : {}),
   };
 }

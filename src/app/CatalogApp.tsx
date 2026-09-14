@@ -1,4 +1,11 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import {
+  Suspense,
+  ViewTransition,
+  lazy,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import {
   Navigate,
   Route,
@@ -58,7 +65,6 @@ import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./query-client";
-import { AnimatePresence, m, page } from "../lib/motion";
 import { useChatUi } from "../chat/store";
 import { projectPreview } from "../lib/project-preview";
 
@@ -97,9 +103,8 @@ function ChatLoading() {
 /**
  * Every route, once. Rendered inside a pane on wide layouts and alone below.
  *
- * The location is a prop, not read from the router: while a page is on its
- * way out the router already says the next address, and the page leaving
- * must keep drawing the one it was.
+ * The location is a prop, not read from the router, so the route tree and the
+ * transition boundary below always render from the same location snapshot.
  */
 function AppRoutes({
   location,
@@ -235,6 +240,35 @@ function AppRoutes({
 }
 
 /**
+ * One transition boundary per pathname. Replacing the keyed boundary makes a
+ * route change an enter/exit pair; updates within a page are deliberately not
+ * animated, including deferred filters and Suspense reveals.
+ */
+function RoutePage({
+  location,
+  onOpenSearch,
+  className,
+}: {
+  location: Location;
+  onOpenSearch: () => void;
+  className: string;
+}) {
+  return (
+    <ViewTransition
+      key={location.pathname}
+      enter="route-page"
+      exit="route-page"
+      update="none"
+      default="none"
+    >
+      <main className={className}>
+        <AppRoutes location={location} onOpenSearch={onOpenSearch} />
+      </main>
+    </ViewTransition>
+  );
+}
+
+/**
  * The catalog tree as an overlay, below the narrow breakpoint. It is the same
  * Sidebar; only the box around it changes, so nothing about the tree has two
  * implementations.
@@ -268,7 +302,6 @@ function Shell() {
   const [railed, setRailed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { pathname } = location;
   const settle = useCanvasResize();
   const sidebarRef = usePanelRef();
   const narrow = useNarrow();
@@ -374,21 +407,11 @@ function Shell() {
 
       {narrow ? (
         <>
-          {/* `key` on the route content is what makes the page transition
-              fire: a new pathname is a new element. `popLayout` lets the old
-              page lift away while the new one rises, without a blank frame. */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            <m.main
-              key={pathname}
-              {...page}
-              className="min-h-0 flex-1 overflow-hidden"
-            >
-              <AppRoutes
-                location={location}
-                onOpenSearch={() => setPalette(true)}
-              />
-            </m.main>
-          </AnimatePresence>
+          <RoutePage
+            location={location}
+            onOpenSearch={() => setPalette(true)}
+            className="min-h-0 flex-1 overflow-hidden"
+          />
           <SidebarDrawer />
         </>
       ) : (
@@ -418,18 +441,11 @@ function Shell() {
           <Panel id="main" className="h-full min-w-0" onResize={settle}>
             {/* The detail rail rides along with every page that draws a
                 diagram, so a selection made anywhere has somewhere to be read. */}
-            <AnimatePresence mode="popLayout" initial={false}>
-              <m.main
-                key={pathname}
-                {...page}
-                className="h-full overflow-hidden"
-              >
-                <AppRoutes
-                  location={location}
-                  onOpenSearch={() => setPalette(true)}
-                />
-              </m.main>
-            </AnimatePresence>
+            <RoutePage
+              location={location}
+              onOpenSearch={() => setPalette(true)}
+              className="h-full overflow-hidden"
+            />
           </Panel>
         </SavedGroup>
       )}
