@@ -3,6 +3,25 @@
 /* Theme is driven by a class on <html> so the toggle is instant and SSR-free. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Shared button interaction baseline, including icon-only and unstyled buttons.
+   Native buttons get it automatically; .button-base is the explicit opt-in.
+   Keep this in base so deliberate copy/drag/busy cursors can override it. */
+@layer base {
+  :where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], .button-base) {
+    cursor: pointer;
+  }
+  :where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], .button-base):is(:disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
+  }
+  /* An inset tint remains visible over utility background colours. Component
+     hover treatments (for example primary actions) can override this fallback. */
+  @media (hover: hover) {
+    :where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], .button-base):not(:disabled):not([aria-disabled="true"]):hover {
+      box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Tokens. Defined once, here. Nothing else in the app hard-codes a colour,
    a radius, a duration or a step of the spacing rhythm.
@@ -574,8 +593,8 @@
     @apply justify-self-start;
   }
 
-  /* Toolbar and filter buttons. Border colour is the only thing that changes
-     on hover or press, so nothing reflows underneath. */
+  /* Toolbar and filter buttons share a visible surface, border and ink change.
+     No geometry changes on hover or press. */
   .tbtn {
     @apply mono flex items-center gap-1.5 rounded-control border border-line px-2 py-1 text-muted;
     transition:
@@ -583,8 +602,10 @@
       border-color var(--dur-micro) var(--ease-out),
       color var(--dur-micro) var(--ease-out);
   }
-  .tbtn:hover {
-    @apply bg-surface;
+  @media (hover: hover) {
+    .tbtn:not(:disabled):not([aria-disabled="true"]):hover {
+      @apply bg-raised border-line-strong text-ink;
+    }
   }
   .tbtn-on {
     border-color: var(--accent);
@@ -625,9 +646,6 @@
       border-color var(--dur-micro) var(--ease-out),
       box-shadow var(--dur-panel) var(--ease-out);
   }
-  .product-primary {
-    cursor: pointer;
-  }
   :root:not(.dark) :is(.landing-primary, .product-primary) {
     color: var(--product-action-ink);
     border-color: color-mix(in srgb, var(--product-action) 52%, var(--border));
@@ -666,7 +684,7 @@
     transform: translateX(-135%);
     transition: transform 600ms var(--ease-out);
   }
-  :is(.landing-primary, .product-primary):hover {
+  :is(.landing-primary, .product-primary):not(:disabled):not([aria-disabled="true"]):hover {
     filter: none;
     border-color: color-mix(in srgb, var(--accent) 82%, white);
     box-shadow:
@@ -676,7 +694,7 @@
       0 16px 34px -17px color-mix(in srgb, var(--accent) 95%, transparent);
     transform: translateY(-1px);
   }
-  :root:not(.dark) :is(.landing-primary, .product-primary):hover {
+  :root:not(.dark) :is(.landing-primary, .product-primary):not(:disabled):not([aria-disabled="true"]):hover {
     border-color: color-mix(in srgb, var(--product-action) 78%, white);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.9),
@@ -684,16 +702,16 @@
       0 2px 4px rgb(91 45 8 / 0.12),
       0 16px 34px -17px color-mix(in srgb, var(--product-action) 76%, transparent);
   }
-  :is(.landing-primary, .product-primary):hover::before {
+  :is(.landing-primary, .product-primary):not(:disabled):not([aria-disabled="true"]):hover::before {
     transform: translateX(135%);
   }
   .landing-primary svg:last-child {
     transition: transform var(--dur-micro) var(--ease-out);
   }
-  .landing-primary:hover svg:last-child {
+  .landing-primary:not(:disabled):not([aria-disabled="true"]):hover svg:last-child {
     transform: translateX(2px);
   }
-  :is(.landing-primary, .product-primary):active {
+  :is(.landing-primary, .product-primary):not(:disabled):not([aria-disabled="true"]):active {
     transform: translateY(0);
   }
   :is(.landing-primary, .product-primary):focus-visible {
@@ -721,7 +739,7 @@
       0 12px 28px -18px color-mix(in srgb, var(--status-unresolved) 84%, transparent);
     text-shadow: 0 1px 0 rgb(0 0 0 / 0.32);
   }
-  .product-danger:hover {
+  .product-danger:not(:disabled):not([aria-disabled="true"]):hover {
     color: white;
     border-color: #c45a6b;
     background:
@@ -758,9 +776,9 @@
     .landing-primary svg:last-child {
       transition: none;
     }
-    .landing-primary:hover,
-    .product-primary:hover,
-    .landing-primary:hover svg:last-child {
+    .landing-primary:not(:disabled):not([aria-disabled="true"]):hover,
+    .product-primary:not(:disabled):not([aria-disabled="true"]):hover,
+    .landing-primary:not(:disabled):not([aria-disabled="true"]):hover svg:last-child {
       transform: none;
     }
   }

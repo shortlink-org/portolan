@@ -2,10 +2,23 @@ import type { SetupDiagnostic, SetupInfo, SetupPhase, SetupProject, SetupRunStep
 import type { DjangoAggregateCandidates } from "./django-aggregates";
 import type { ProblemRuleEntry } from "./problem-rules";
 import type { TaskTrackerEntry, TaskTracker } from "./task-tracker-config.mjs";
+import type { GitFetchRepo } from "./git-fetch-config.mjs";
+
+export interface GitFetchEntry { step: number; plugin: string; output: string; repos: GitFetchRepo[]; catalogs: string[]; error?: string }
+export interface GitFetchState { revision: string; workspaceKey: string; entries: GitFetchEntry[]; remotes: Array<{ repo: string; source: string; catalogs: string[] }>; catalogRepositories: Array<{ repo: string; source: string; catalogs: string[] }>; discoveryWarnings: string[]; catalogs: Array<{ id: string; title: string }> }
+export interface GitAccessResult { status: "accessible" | "unavailable"; message: string }
+export interface GitRemoteRef { ref: string; name: string; kind: "branch" | "tag" }
+export interface GitRefsResult { refs: GitRemoteRef[]; truncated: boolean }
+export function gitRepositoryRefs(repository: string): Promise<GitRefsResult> { return json("/git-fetch/refs", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ repository }) }); }
+export function checkGitRepositoryAccess(repository: string): Promise<GitAccessResult> { return json("/git-fetch/check-access", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ repository }) }); }
+export interface SaveGitFetch { revision: string; step: number | null; output: string; repos: GitFetchRepo[]; catalog: string | null; generate: boolean }
+export function gitFetchSettings(): Promise<GitFetchState> { return json("/git-fetch"); }
+export function saveGitFetch(request: SaveGitFetch): Promise<GitFetchState & { run: { runId: string } | null; generationError?: string }> { return json("/git-fetch", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(request) }); }
+
 export interface TaskTrackerState {
   revision: string;
   entries: Array<TaskTrackerEntry & { managed: boolean; catalogs: string[] }>;
-  repositories: Array<{ input: string; label: string; available: boolean; reason?: string }>;
+  repositories: Array<{ input: string; label: string; available: boolean; reason?: string; shallow?: boolean }>;
   catalogs: Array<{ id: string; title: string }>;
 }
 export interface SaveTaskTrackers {

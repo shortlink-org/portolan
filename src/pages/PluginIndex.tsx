@@ -1,12 +1,13 @@
 import { useDocumentTitle } from "../app/title";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { ArrowUpRight, Settings2, ShieldCheck, Terminal } from "lucide-react";
+import { ArrowUpRight, Settings, ShieldCheck, Terminal } from "lucide-react";
 import { CatIllustration } from "../components/CatIllustration";
 import { SectionTitle } from "../components/PageHeader";
 import { PluginIcon } from "../components/PluginIcon";
 import {
   pluginsByCategory,
+  pluginIndex,
   pluginIcon,
   pluginLabel,
   pluginSourceHref,
@@ -131,17 +132,21 @@ function PluginCard({ entry, highlighted }: { entry: PluginEntry; highlighted: b
       // while its cards scroll under it.
       className={`card card-static flex scroll-mt-14 flex-col gap-3 ${highlighted ? "border-accent" : ""}`}
     >
-      <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <PluginIcon icon={pluginIcon(entry.name, entry.category)} size={16} className="text-ink" />
         <h3 className="font-semibold text-ink">{pluginLabel(entry.name)}</h3>
         <span className="mono text-muted" title="the name a manifest step uses">{entry.name}</span>
         {entry.plugin !== entry.name ? (
           <span className="mono text-faint" title="the plugin's own name">{entry.plugin}</span>
         ) : null}
+        </div>
+        {["work-items", "fetch-eventbridge", "fetch-git"].includes(entry.plugin) ? <Link to={`${paths.pluginSettings(entry.name)}${search}`} className="tbtn inline-flex size-8 shrink-0 items-center justify-center" aria-label={`${pluginLabel(entry.name)} settings`} title="Plugin settings"><Settings size={16} aria-hidden /></Link> : null}
       </header>
 
       <p className="text-muted">{entry.summary}</p>
-      {["work-items", "fetch-eventbridge"].includes(entry.plugin) ? <Link to={`${paths.pluginSettings(entry.name)}${search}`} className="tbtn inline-flex self-start px-2.5 py-1.5"><Settings2 size={14} aria-hidden />Plugin settings</Link> : null}
+      {entry.plugin === "work-items" ? <p className="text-xs text-muted">Requires a Git checkout with local history. {pluginIndex.filter((plugin) => plugin.plugin === "fetch-git").map((plugin) => <Link key={plugin.name} to={`${paths.plugins()}${search}#plugin-${encodeURIComponent(plugin.name)}`} className="text-accent hover:underline">Related: fetch-git (source snapshots, not history)</Link>)}</p> : null}
+      {entry.plugin === "fetch-git" ? <p className="text-xs text-muted">Imports source snapshots without persistent Git history. <Link to={`${paths.pluginSettings("work-items")}${search}`} className="text-accent hover:underline">Task evidence: work-items requirements →</Link></p> : null}
 
       <div className="flex flex-wrap items-center gap-1.5">
         {entry.phases.map((phase) => (

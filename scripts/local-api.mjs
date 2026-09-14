@@ -26,6 +26,8 @@ import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import { formatLike } from "./json-format.mjs";
 import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
+import { gitFetchState, saveGitFetchSettings, checkGitAccess } from "./git-fetch-settings.mjs";
+import { listGitRefs } from "./git-refs.mjs";
 import { eventBridgeState, saveEventBridgeSettings } from "./eventbridge-settings.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
 import {
@@ -1601,6 +1603,7 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/task-trackers`) {
             return send(res, 200, taskTrackerState(workspace));
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/git-fetch`) return send(res, 200, gitFetchState(workspace));
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/eventbridge`) {
             return send(res, 200, eventBridgeState(workspace));
           }
@@ -1640,6 +1643,23 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             return send(res, 405, { error: "Use a local JSON request." });
           }
           const input = await body(req);
+          if (url.pathname === `${LOCAL_API_PREFIX}/git-fetch/refs`) {
+            return send(res, 200, await listGitRefs(input.repository));
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/git-fetch/check-access`) {
+            return send(res, 200, await checkGitAccess(input.repository));
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/git-fetch`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before saving Git sources." });
+            const saved = saveGitFetchSettings(workspace, input, writeManifest);
+            if (!input.generate) return send(res, 200, { ...saved, run: null });
+            try {
+              const job = startJob(workspace, "write", null);
+              return send(res, 200, { ...saved, run: { runId: job.id } });
+            } catch (cause) {
+              return send(res, 200, { ...saved, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
+            }
+          }
           if (url.pathname === `${LOCAL_API_PREFIX}/task-trackers/full-scan`) {
             if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before scanning." });
             const target = taskTrackerFullScanTarget(workspace, input);

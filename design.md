@@ -223,6 +223,8 @@ Empty states have three distinct jobs:
 Every apparent control must act, and every whole-surface hover treatment must correspond to a whole-surface action. Do not create a hover lie.
 
 - Preserve keyboard navigation, visible focus, accessible names, current/pressed state, and full touch targets.
+- Button cursors come from the shared `.button-base` baseline in `src/index.css`, applied automatically to native buttons and `[role="button"]`: `pointer` when enabled, `not-allowed` when disabled. Do not add `cursor-pointer` to each new button. Preserve deliberate copy, drag, or busy cursors; a class or ARIA role alone does not implement keyboard interaction or disable an action.
+- The button baseline also supplies a visible hover tint; `.tbtn` strengthens its surface, border and ink. Keep hover feedback in shared styles, not per-button patches. Custom primary/copy controls may retain their own treatment. Hover must not change geometry or signal availability on `:disabled` or `[aria-disabled="true"]` controls; use hover-capable media queries for hover-only feedback.
 - Use `Modal` and `SidePanel` from `src/components/Overlay.tsx` for modal surfaces. Verify focus stays inside, Escape dismisses only the active overlay, and focus returns to its trigger.
 - Do not nest links. Use the established card-link overlay pattern when a card represents one entity.
 - Preserve the user's light/dark theme, comfortable/compact density, panel sizes, and navigation state where the existing app does.

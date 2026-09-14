@@ -24,12 +24,6 @@
           "ref": {
             "type": "string",
             "description": "The branch or tag to resolve when there is no commit. Defaults to the remote's HEAD."
-          },
-          "paths": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Directories to copy, relative to the repository's root; the rest is left behind. Left out, the whole tree.",
-            "examples": [["services/oms", "proto"]]
           }
         }
       }

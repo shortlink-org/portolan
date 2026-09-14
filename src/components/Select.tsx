@@ -101,7 +101,7 @@ export function Select({
         className={detailed
           ? "palette-in z-50 max-h-72 overflow-y-auto rounded-card border bg-canvas p-1.5 border-line-strong shadow-md focus:outline-none"
           : "palette-in z-50 max-h-64 overflow-y-auto rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"}
-        style={menuWidth ? { width: menuWidth } : { minWidth: 160 }}
+        style={{ ...(menuWidth ? { width: menuWidth } : { minWidth: 160 }), maxWidth: "calc(100vw - 1rem)" }}
       >
         {options.map((option) => (
           <ListboxOption

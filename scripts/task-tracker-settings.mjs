@@ -18,7 +18,10 @@ function repository(workspace, input, label) {
     if (path !== root && !path.startsWith(`${root}${sep}`)) throw new Error("Repository must be inside this workspace.");
     const top = realpathSync(execFileSync("git", ["-C", path, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim());
     if (path !== top) throw new Error("Not a Git checkout root. Select the enclosing repository; vendored files do not carry their own history.");
-    return { input: relative(root, path).split(sep).join("/") || ".", label, available: true };
+    try { execFileSync("git", ["-C", path, "rev-parse", "--verify", "HEAD^{commit}"], { stdio: ["ignore", "pipe", "pipe"] }); }
+    catch { throw new Error("This checkout has no local commits to scan. Fetch its history or create an initial commit first."); }
+    const shallow = execFileSync("git", ["-C", path, "rev-parse", "--is-shallow-repository"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim() === "true";
+    return { input: relative(root, path).split(sep).join("/") || ".", label, available: true, shallow };
   } catch (cause) {
     return { input, label, available: false, reason: cause instanceof Error && !cause.message.startsWith("Command failed") ? cause.message : "No local Git checkout found." };
   }

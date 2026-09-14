@@ -1230,9 +1230,9 @@ written.
 ## Services in other repositories: fetch-git
 
 `fetch-git` is `fetch-bsr` for a repository rather than a registry, and it
-lives by the same four rules. A pin is a repository, a commit and the paths
-actually read; the step fetches exactly those directories at exactly that
-commit and hands their text files back, so the host writes them into the tree
+lives by the same four rules. A pin is a repository and a commit; the step
+fetches that commit and hands back text files from the whole source tree,
+so the host writes them into the tree
 beside a `git.lock.json` naming the commit and the digest of every file. The
 paths inside the copy are the repository's own, which is the point: the
 extract step that follows points its `in` at the vendored service and reads
@@ -1261,7 +1261,7 @@ The contract is the same: it names files, the host writes them.
       "options": {
         "cache": "vendor/repos",
         "repos": [
-          { "repo": "github.com/acme/shop", "commit": "c1d2e3f4…", "paths": ["services/oms", "proto"] }
+          { "repo": "github.com/acme/shop", "commit": "c1d2e3f4…" }
         ]
       }
     },
@@ -1276,8 +1276,8 @@ The contract is the same: it names files, the host writes them.
 ```
 
 It runs the `git` the host already needs for stamps: a fetch of the one
-commit into a directory that exists for one call, and an archive of the paths
-wanted, read straight into memory. Whatever git is configured to do about
+commit into a directory that exists for one call, with its text files
+read straight into memory. Whatever git is configured to do about
 credentials and hosts - a helper, a netrc entry, an ssh agent - it does here
 too, and the plugin reads none of it. `PORTOLAN_OFFLINE` (or any truthy `CI`)
 replays the committed copies against their locks; a commit the manifest does

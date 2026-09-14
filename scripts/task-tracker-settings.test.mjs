@@ -23,6 +23,19 @@ function workspace() {
 const save = (root, request = {}) => saveTaskTrackerSettings(root, { revision: taskTrackerState(root).revision, step: null, input: ".", catalogs: ["app"], trackers: [tracker], maxCommits: 500, ...request }, writeManifest);
 
 describe("persisted tracker settings", () => {
+  it("reports unborn repositories and warns about shallow history without disabling it", () => {
+    const { root, manifest } = workspace();
+    mkdirSync(join(root, "empty"));
+    execFileSync("git", ["init", "-q", join(root, "empty")]);
+    execFileSync("git", ["clone", "--quiet", "--depth=1", `file://${root}`, join(root, "shallow")]);
+    manifest.projects.push({ id: "empty", name: "Empty", root: "empty", context: "app", service: "empty" }, { id: "shallow", name: "Shallow", root: "shallow", context: "app", service: "shallow" });
+    writeFileSync(join(root, "portolan.json"), JSON.stringify(manifest));
+    const state = taskTrackerState(root);
+    expect(state.repositories.find((repo) => repo.input === ".")).toMatchObject({ available: true, shallow: false });
+    expect(state.repositories.find((repo) => repo.input === "empty")).toMatchObject({ available: false, reason: expect.stringMatching(/no local commits/) });
+    expect(state.repositories.find((repo) => repo.input === "shallow")).toMatchObject({ available: true, shallow: true });
+    expect(() => save(root, { input: "empty" })).toThrow(/no local commits/);
+  });
   it("persists every provider and the qualified-only numeric rule through schema validation", () => {
     const { root } = workspace();
     const trackers = [tracker,

@@ -8,19 +8,26 @@ vi.mock("../lib/queries", () => ({ localStatusQuery: () => ({}) }));
 vi.mock("../app/title", () => ({ useDocumentTitle: vi.fn() }));
 vi.mock("../routes", () => ({ paths: { plugins: () => "/plugins" } }));
 vi.mock("../lib/plugins", () => ({
-  pluginByName: (name: string) => ["work-items", "openapi", "eventbridge"].includes(name) ? { category: "evidence", plugin: name === "eventbridge" ? "fetch-eventbridge" : name } : undefined,
+  pluginByName: (name: string) => ["work-items", "openapi", "eventbridge", "git"].includes(name) ? { category: "evidence", plugin: name === "eventbridge" ? "fetch-eventbridge" : name === "git" ? "fetch-git" : name } : undefined,
   pluginLabel: (name: string) => name,
   pluginIcon: () => ({ lucide: "book" }),
 }));
 vi.mock("../components/PluginIcon", () => ({ PluginIcon: () => null }));
 vi.mock("./settings/TaskTrackerSettings", () => ({ TaskTrackerSettings: ({ local }: { local: boolean }) => <div>{local ? "editable tracker form" : "read-only tracker form"}</div> }));
 vi.mock("./settings/EventBridgeSettings", () => ({ EventBridgeSettings: ({ local }: { local: boolean }) => <div>{local ? "editable EventBridge form" : "read-only EventBridge form"}</div> }));
+vi.mock("./settings/GitFetchSettings", () => ({ GitFetchSettings: ({ local }: { local: boolean }) => <div>{local ? "editable Git form" : "read-only Git form"}</div> }));
 import { PluginSettings } from "./PluginSettings";
 
 const render = (name = "work-items") => renderToStaticMarkup(<MemoryRouter initialEntries={[`/plugins/${name}/settings?catalog=example`]}><Routes><Route path="/plugins/:name/settings" element={<PluginSettings />} /></Routes></MemoryRouter>);
 beforeEach(() => { query.isSuccess = true; query.isPending = false; });
 
 describe("plugin settings route", () => {
+  it("renders Git settings through its registered plugin route", () => {
+    expect(render("git")).toContain("editable Git form");
+    expect(render("git")).toContain('/plugins?catalog=example#plugin-git');
+    query.isSuccess = false;
+    expect(render("git")).toContain("read-only Git form");
+  });
   it("renders plugin-owned settings and preserves the catalog in its back link", () => {
     const html = render();
     expect(html).toContain("editable tracker form");

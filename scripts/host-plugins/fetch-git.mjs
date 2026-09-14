@@ -1,4 +1,4 @@
-// fetch-git, run by the host: a git repository on one side, a narrowed copy of
+// fetch-git, run by the host: a git repository on one side, a text snapshot of
 // it committed to this repository on the other.
 //
 // It exists for the estate whose services live in repositories of their own.
@@ -59,7 +59,7 @@ const BINARY_SUFFIXES = [
 export function describe() {
   return {
     name: "fetch-git",
-    summary: "Fetches pinned directories of another git repository into the tree, with a lock, so extractors can read a service that lives elsewhere.",
+    summary: "Fetches a pinned source snapshot of another git repository, with a lock, so extractors can read services that live elsewhere.",
     category: "sources",
     phases: ["extract"],
     options: optionsSchema,
@@ -187,7 +187,6 @@ export function encodeLock(entry) {
   const files = [...entry.files].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const skipped = [...(entry.skipped ?? [])].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const record = { repo: entry.repo, commit: entry.commit };
-  if (entry.paths?.length) record.paths = [...entry.paths].sort();
   record.files = files.map((file) => ({ path: file.path, sha256: file.sha256, size: file.size }));
   if (skipped.length) record.skipped = skipped.map((file) => ({ path: file.path, size: file.size, reason: file.reason }));
   return `${JSON.stringify({ repos: [record] }, null, 2)}\n`;
@@ -206,15 +205,15 @@ function live(url, want, out, env) {
     commit = resolve(url, want.ref, env);
     out.warn(want.repo, `is not pinned; "${want.ref || "HEAD"}" resolved to ${commit}. Pin it in portolan.json or every run is a lottery.`);
   }
-  const fetched = download(url, commit, want.paths ?? [], env);
+  const fetched = download(url, commit, env);
   if (fetched.files.size === 0 && fetched.skipped.length === 0) {
-    throw new Error(`${want.repo} at ${commit} holds no files under ${(want.paths ?? []).join(", ")}`);
+    throw new Error(`${want.repo} at ${commit} holds no files`);
   }
   return { commit, ...fetched };
 }
 
 function emitFetched(out, dir, want, commit, files, skipped, generatedAt) {
-  const entry = { repo: want.repo, commit, paths: want.paths ?? [], files: [], skipped };
+  const entry = { repo: want.repo, commit, files: [], skipped };
   for (const path of [...files.keys()].sort()) {
     const contents = files.get(path);
     out.file(posix.join(dir, path), contents);
@@ -301,7 +300,7 @@ function replay(dir) {
     files.set(want.path, contents);
     kept.push(want);
   }
-  return { lock: { repo: entry.repo, commit: entry.commit, paths: entry.paths ?? [], files: kept, skipped }, files };
+  return { lock: { repo: entry.repo, commit: entry.commit, files: kept, skipped }, files };
 }
 
 // --- git --------------------------------------------------------------------
@@ -338,14 +337,14 @@ function resolve(url, ref, env) {
 }
 
 /**
- * One commit, fetched, and the wanted paths read out of it. The commit is
+ * One commit, fetched, and its source tree read out of it. The commit is
  * fetched by name where the forge allows it - GitHub and GitLab do - and by
  * its branches where it does not, which is the case for a plain file://
  * remote; either way what is read is verified to be that commit.
  *
  * @returns {{files: Map<string, Buffer>, skipped: {path: string, size: number, reason: string}[]}}
  */
-function download(url, commit, paths, env) {
+function download(url, commit, env) {
   const tmp = mkdtempSync(join(tmpdir(), "portolan-fetch-git-"));
   try {
     git(tmp, ["init", "--quiet"], env);
@@ -364,7 +363,7 @@ function download(url, commit, paths, env) {
       throw new Error(`${commit} is not a commit ${url} has, or not one reachable from a branch`);
     }
 
-    const listing = git(tmp, ["ls-tree", "-r", "-z", "--format=%(objectname) %(objecttype) %(objectsize) %(path)", commit, "--", ...paths], env);
+    const listing = git(tmp, ["ls-tree", "-r", "-z", "--format=%(objectname) %(objecttype) %(objectsize) %(path)", commit], env);
     const blobs = [];
     const skipped = [];
     for (const line of listing.split("\0")) {

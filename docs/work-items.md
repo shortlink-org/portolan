@@ -37,10 +37,23 @@ No association changes a flow step's execution confidence.
 
 ### Settings UI
 
-Settings → Integrations → Task trackers configures one verifier per Git
+Plugins → work-items → Settings (`/plugins/work-items/settings`) configures one verifier per Git
 checkout, with several tracker instances supported in each verifier. The local
 form saves to `portolan.json` through the localhost-only API, with a manifest
 revision check. It never stores tracker configuration or tokens in localStorage.
+Integrations keeps a compact summary of configured providers and repository count,
+linking to this plugin-owned page; it is not a tab in the global Settings navigation.
+Repository forms open one at a time. Bundled provider marks
+appear in the summary, provider picker, repository rows and task popovers; no
+runtime icon CDN is used. Jira, Linear, GitHub and GitLab use Simple Icons;
+YouTrack uses the existing LikeC4 icon package.
+The Git history requirement shows a checkout → scan → task evidence sequence,
+available checkout counts and expandable per-path reasons. Empty repositories are
+unavailable; shallow checkouts remain selectable with an incomplete-history note.
+Recheck availability after connecting a checkout in Projects. Related-plugin
+links go both ways between work-items and fetch-git. This is not a hard dependency
+on fetch-git: it emits pinned source snapshots, not persistent Git history, and
+cannot by itself satisfy the work-items history requirement.
 `Save & rebuild` starts the normal generator and diagram refresh; saving only
 configuration is also available. Failures are distinguished from a saved
 configuration. Reload settings explicitly after a revision conflict.

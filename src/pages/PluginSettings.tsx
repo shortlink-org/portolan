@@ -8,6 +8,7 @@ import { localStatusQuery } from "../lib/queries";
 import { paths } from "../routes";
 import { TaskTrackerSettings } from "./settings/TaskTrackerSettings";
 import { EventBridgeSettings } from "./settings/EventBridgeSettings";
+import { GitFetchSettings } from "./settings/GitFetchSettings";
 
 /** Plugin-owned settings: deliberately outside the global Settings navigation. */
 export function PluginSettings() {
@@ -24,7 +25,7 @@ export function PluginSettings() {
         {entry ? <span className="flex size-10 shrink-0 items-center justify-center rounded-control border border-line bg-surface"><PluginIcon icon={pluginIcon(name, entry.category)} size={20} /></span> : null}
         <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="text-lg font-semibold">{entry ? pluginLabel(name) : "Plugin not found"}</h1>{entry ? <code className="chip text-muted">{name}</code> : null}</div><p className="mt-1 text-muted">Plugin settings</p></div>
       </header>
-      {!entry ? <p className="text-muted">This plugin is not in the catalog’s plugin index.</p> : !["work-items", "fetch-eventbridge"].includes(entry.plugin) ? <p className="text-muted">This plugin has no dedicated settings page. Its options are described in the plugin index and configured in portolan.json.</p> : status.isPending ? <p role="status" className="text-muted">Loading plugin settings…</p> : entry.plugin === "fetch-eventbridge" ? <EventBridgeSettings local={status.isSuccess} /> : <TaskTrackerSettings local={status.isSuccess} />}
+      {!entry ? <p className="text-muted">This plugin is not in the catalog’s plugin index.</p> : !["work-items", "fetch-eventbridge", "fetch-git"].includes(entry.plugin) ? <p className="text-muted">This plugin has no dedicated settings page. Its options are described in the plugin index and configured in portolan.json.</p> : status.isPending ? <p role="status" className="text-muted">Loading plugin settings…</p> : entry.plugin === "fetch-eventbridge" ? <EventBridgeSettings local={status.isSuccess} /> : entry.plugin === "fetch-git" ? <GitFetchSettings local={status.isSuccess} /> : <TaskTrackerSettings local={status.isSuccess} />}
     </div>
   </div>;
 }
