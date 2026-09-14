@@ -27,6 +27,18 @@
         "/portolan/"
       ],
       "port": 4183
+    },
+    {
+      "name": "etg-site",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "serve",
+        "-l",
+        "4184",
+        "-s",
+        "/Users/batazor/myproject/etg/portolan/.portolan/local-site"
+      ],
+      "port": 4184
     }
   ]
 }
