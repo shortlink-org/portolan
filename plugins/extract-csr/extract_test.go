@@ -104,6 +104,22 @@ func TestTopicsComeFromSubjects(t *testing.T) {
 	if !strings.Contains(orders.Messages[0].Doc, "version 3") {
 		t.Errorf("the message does not say which registration it is: %q", orders.Messages[0].Doc)
 	}
+	registration := orders.Messages[0].Schema
+	if registration == nil {
+		t.Fatal("the message lost its schema registration")
+	}
+	if registration.Registry != "http://localhost:8081" || registration.Subject != "shop.oms.order-value" || registration.Version != 3 || registration.ID != 100021 || registration.Type != "AVRO" || registration.Compatibility != "BACKWARD_TRANSITIVE" {
+		t.Errorf("schema registration: %+v", registration)
+	}
+	if len(registration.Versions) != 3 {
+		t.Fatalf("schema history: %+v", registration.Versions)
+	}
+	if got := registration.Versions[1]; got.Version != 2 || got.ID != 100011 || len(got.Fields) != 5 {
+		t.Errorf("schema version 2: %+v", got)
+	}
+	if got := registration.Versions[2]; got.Version != 3 || got.ID != 100021 || len(got.Fields) != 7 {
+		t.Errorf("schema version 3: %+v", got)
+	}
 	if orders.Source != "testdata/estate/vendor/schemas/shop.oms.order-value/v3.avsc" {
 		t.Errorf("source %q", orders.Source)
 	}

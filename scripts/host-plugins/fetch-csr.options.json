@@ -29,6 +29,13 @@
             "type": "integer",
             "minimum": 1,
             "description": "The version to fetch. A registered version is immutable, so a pinned fetch is byte-reproducible, which is what lets an offline run replay it from the tree. Left out, `latest` is resolved online and warned about, and refused offline."
+          },
+          "history": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 1,
+            "description": "How many versions to retain for comparison, ending at the selected version. One keeps only the selected version; larger values fetch the preceding registered versions, up to 50."
           }
         }
       }

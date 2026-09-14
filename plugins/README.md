@@ -1393,11 +1393,59 @@ version is part of the bytes we already have, so following one adds no lottery.
 Each lands in its own directory, and the referring subject's lock is what an
 offline run follows to find them.
 
+The fetch also asks for the subject's effective compatibility configuration,
+including the global value when the subject inherits it. The level is kept in
+the lock beside the immutable version and schema id, carried onto the channel
+message by `extract-csr`, and shown in the service's bus view. A registry that
+implements the schema API but not the configuration resource still yields the
+schema and a diagnostic names the governance fact that could not be read.
+
+Set `history` on a subject to retain a bounded window ending at the selected
+version. `fetch-csr` lists the registered versions and vendors the preceding
+schemas beside the current one; `extract-csr` keeps their top-level wire fields,
+and the bus row shows additions, type changes and removals from one version to
+the next. The default is one, so existing snapshots do not silently grow.
+
 Avro and JSON schemas arrive minified onto one line. They are written out
 indented — re-spaced token by token, never re-parsed, so the file still says
 what the registry said in the order it said it — because a version
 bump that is one unreadable line is a review nobody can do. The digest is over
 the bytes as written, so verifying needs no reformatting of anything.
+
+### Compatibility gate before registration
+
+`verify-csr` is the active half of the integration. It sends each local
+candidate to `POST /compatibility/subjects/{subject}/versions?verbose=true`,
+which applies the subject's effective policy exactly as registration would,
+including transitive checks. It never registers or changes a schema. An
+explicit incompatible answer fails the verify phase and keeps every explanation
+the registry returned in the error.
+
+```json
+{
+  "plugins": [
+    { "name": "csr-compatibility", "host": "verify-csr" }
+  ],
+  "verify": [
+    {
+      "plugin": "csr-compatibility",
+      "in": "schemas",
+      "out": "portolan",
+      "options": {
+        "registry": "https://psrc-00000.eu-central-1.aws.confluent.cloud",
+        "candidates": [
+          { "subject": "shop.orders-value", "path": "order.avsc" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Credentials use the same `CONFLUENT_SCHEMA_REGISTRY_API_KEY` and
+`CONFLUENT_SCHEMA_REGISTRY_API_SECRET` (or `CSR_*`) environment variables as
+the fetcher. References may be named on a candidate when the schema depends on
+other registered subjects.
 
 ### The strategy the registry does not record
 

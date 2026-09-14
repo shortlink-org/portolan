@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry", "candidates"],
+  "properties": {
+    "registry": {
+      "type": "string",
+      "description": "Base URL of the Confluent Schema Registry. Credentials come from the same CSR environment variables as fetch-csr."
+    },
+    "normalize": {
+      "type": "boolean",
+      "default": false,
+      "description": "Ask Schema Registry to normalize candidates before checking them."
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Local schemas that are about to be registered. Any incompatible candidate fails the verify phase before publication.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject", "path"],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Existing registry subject whose effective compatibility policy should be applied."
+          },
+          "path": {
+            "type": "string",
+            "description": "Candidate schema file, relative to the verify step input."
+          },
+          "schemaType": {
+            "enum": ["AVRO", "JSON", "PROTOBUF"],
+            "description": "Schema format. Inferred from .avsc, .json or .proto when omitted."
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "subject", "version"],
+              "properties": {
+                "name": { "type": "string" },
+                "subject": { "type": "string" },
+                "version": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

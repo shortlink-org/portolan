@@ -6,6 +6,7 @@
       "version": 1,
       "id": 100041,
       "schemaType": "PROTOBUF",
+      "compatibility": "FULL",
       "files": [
         {
           "path": "v1.proto",

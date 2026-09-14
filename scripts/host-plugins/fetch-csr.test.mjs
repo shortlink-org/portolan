@@ -13,8 +13,14 @@ const VALUE = "shop.oms.order-value";
 const PARTY = "shop.oms.Party";
 // The value schema references the party one, which is how a registry says a
 // record is shared between subjects.
-const ORDER = '{"type":"record","namespace":"shop.oms","name":"OrderPlaced","fields":[{"name":"order_id","type":"string"},{"name":"buyer","type":"shop.oms.Party"}]}';
-const PARTY_SCHEMA = '{"type":"record","namespace":"shop.oms","name":"Party","fields":[{"name":"id","type":"string"}]}';
+const ORDER =
+  '{"type":"record","namespace":"shop.oms","name":"OrderPlaced","fields":[{"name":"order_id","type":"string"},{"name":"buyer","type":"shop.oms.Party"}]}';
+const ORDER_V1 =
+  '{"type":"record","namespace":"shop.oms","name":"OrderPlaced","fields":[{"name":"order_id","type":"string"}]}';
+const ORDER_V2 =
+  '{"type":"record","namespace":"shop.oms","name":"OrderPlaced","fields":[{"name":"order_id","type":"string"},{"name":"buyer","type":"string"}]}';
+const PARTY_SCHEMA =
+  '{"type":"record","namespace":"shop.oms","name":"Party","fields":[{"name":"id","type":"string"}]}';
 
 const cleanups = [];
 afterEach(async () => {
@@ -45,7 +51,34 @@ function recorded() {
   return {
     "/subjects/shop.oms.order-value/versions/3": order,
     "/subjects/shop.oms.order-value/versions/latest": order,
-    "/subjects/shop.oms.Party/versions/1": { subject: PARTY, version: 1, id: 100014, schemaType: "AVRO", schema: PARTY_SCHEMA },
+    "/subjects/shop.oms.order-value/versions": [1, 2, 3],
+    "/subjects/shop.oms.order-value/versions/1": {
+      subject: VALUE,
+      version: 1,
+      id: 100001,
+      schemaType: "AVRO",
+      schema: ORDER_V1,
+    },
+    "/subjects/shop.oms.order-value/versions/2": {
+      subject: VALUE,
+      version: 2,
+      id: 100011,
+      schemaType: "AVRO",
+      schema: ORDER_V2,
+    },
+    "/subjects/shop.oms.Party/versions/1": {
+      subject: PARTY,
+      version: 1,
+      id: 100014,
+      schemaType: "AVRO",
+      schema: PARTY_SCHEMA,
+    },
+    "/config/shop.oms.order-value?defaultToGlobal=true": {
+      compatibilityLevel: "BACKWARD_TRANSITIVE",
+    },
+    "/config/shop.oms.Party?defaultToGlobal=true": {
+      compatibilityLevel: "FULL",
+    },
   };
 }
 
@@ -85,14 +118,81 @@ describe("fetch-csr", () => {
     const lock = JSON.parse(contentsOf(response, "shop.oms.order-value/csr.lock.json"));
     expect(lock).toEqual({
       registry: server.url,
-      subjects: [{
-        subject: VALUE, version: 3, id: 100021, guid: "8f0d", schemaType: "AVRO",
-        references: [{ name: "shop.oms.Party", subject: PARTY, version: 1 }],
-        files: [{ path: "v3.avsc", sha256: createHash("sha256").update(schema).digest("hex"), size: schema.length }],
-      }],
+      subjects: [
+        {
+          subject: VALUE,
+          version: 3,
+          id: 100021,
+          guid: "8f0d",
+          schemaType: "AVRO",
+          compatibility: "BACKWARD_TRANSITIVE",
+          references: [{ name: "shop.oms.Party", subject: PARTY, version: 1 }],
+          files: [
+            {
+              path: "v3.avsc",
+              sha256: createHash("sha256").update(schema).digest("hex"),
+              size: schema.length,
+            },
+          ],
+        },
+      ],
     });
-    expect(JSON.parse(contentsOf(response, "shop.oms.Party/csr.lock.json")).subjects[0]).not.toHaveProperty("guid");
+    expect(
+      JSON.parse(contentsOf(response, "shop.oms.Party/csr.lock.json"))
+        .subjects[0],
+    ).not.toHaveProperty("guid");
+    expect(
+      JSON.parse(contentsOf(response, "shop.oms.Party/csr.lock.json"))
+        .subjects[0].compatibility,
+    ).toBe("FULL");
     expect(response.warnings).toEqual([]);
+  });
+
+  it("keeps the schema when an API-compatible registry cannot report compatibility", async () => {
+    const answers = recorded();
+    delete answers["/config/shop.oms.Party?defaultToGlobal=true"];
+    const server = await registry(answers);
+    const response = await fetch(
+      options(server.url, cache(), { subject: PARTY, version: 1 }),
+    );
+    const lock = JSON.parse(
+      contentsOf(response, "shop.oms.Party/csr.lock.json"),
+    );
+    expect(lock.subjects[0]).not.toHaveProperty("compatibility");
+    expect(response.warnings[0].message).toContain(
+      "effective compatibility could not be read",
+    );
+  });
+
+  it("retains a bounded, oldest-first history ending at the selected version", async () => {
+    const server = await registry();
+    const response = await fetch(
+      options(server.url, cache(), { subject: VALUE, version: 3, history: 3 }),
+    );
+    expect(names(response)).toContain("shop.oms.order-value/v1.avsc");
+    expect(names(response)).toContain("shop.oms.order-value/v2.avsc");
+    const lock = JSON.parse(
+      contentsOf(response, "shop.oms.order-value/csr.lock.json"),
+    ).subjects[0];
+    expect(lock.historyDepth).toBe(3);
+    expect(
+      lock.history.map((version) => [
+        version.version,
+        version.id,
+        version.files[0].path,
+      ]),
+    ).toEqual([
+      [1, 100001, "v1.avsc"],
+      [2, 100011, "v2.avsc"],
+    ]);
+
+    const cacheDir = cache();
+    write(cacheDir, response);
+    const replayed = await fetch(
+      options(server.url, cacheDir, { subject: VALUE, version: 3, history: 3 }),
+      { [OFFLINE_ENV]: "1" },
+    );
+    expect(names(replayed)).toEqual(names(response));
   });
 
   it("reads an absent schema type as AVRO and resolves latest with a warning", async () => {
@@ -145,8 +245,16 @@ describe("fetch-csr", () => {
   it("sends the credential from the environment and gives a bare token a scheme", async () => {
     const server = await registry();
     await fetch(options(server.url, cache(), { subject: PARTY, version: 1 }));
-    await fetch(options(server.url, cache(), { subject: PARTY, version: 1 }), { [KEY_ENV]: "key", [SECRET_ENV]: "secret" });
-    expect(server.seen).toEqual(["", `Basic ${Buffer.from("key:secret").toString("base64")}`]);
+    await fetch(options(server.url, cache(), { subject: PARTY, version: 1 }), {
+      [KEY_ENV]: "key",
+      [SECRET_ENV]: "secret",
+    });
+    expect(server.seen).toEqual([
+      "",
+      "",
+      `Basic ${Buffer.from("key:secret").toString("base64")}`,
+      `Basic ${Buffer.from("key:secret").toString("base64")}`,
+    ]);
     expect(authorization({ [TOKEN_ENV]: "abc" })).toBe("Bearer abc");
     expect(authorization({ [TOKEN_ENV]: "Token abc" })).toBe("Token abc");
     expect(authorization({ CSR_API_KEY: "k", CSR_API_SECRET: "s" })).toBe(`Basic ${Buffer.from("k:s").toString("base64")}`);

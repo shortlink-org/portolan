@@ -6,6 +6,7 @@
       "version": 2,
       "id": 100033,
       "schemaType": "JSON",
+      "compatibility": "FORWARD",
       "files": [
         {
           "path": "v2.json",

@@ -20,7 +20,12 @@
 
 import { ArrowDownLeft, ArrowUpRight, ExternalLink, Layers } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
-import type { Channel, ChannelDirection, ChannelMessage } from "../catalog";
+import type {
+  Channel,
+  ChannelDirection,
+  ChannelMessage,
+  SchemaVersion,
+} from "../catalog";
 import { catalog, index } from "../data";
 import {
   isKafkaChannel,
@@ -67,6 +72,55 @@ function DirectionChip({ direction }: { direction: ChannelDirection }) {
       <Icon size={11} aria-hidden />
       {direction}
     </span>
+  );
+}
+
+export function schemaChanges(versions: readonly SchemaVersion[]) {
+  return versions.map((version, index) => {
+    const previous = versions[index - 1];
+    const before = new Map(
+      (previous?.fields ?? []).map((field) => [field.name, field.type]),
+    );
+    const after = new Map(
+      (version.fields ?? []).map((field) => [field.name, field.type]),
+    );
+    const added = [...after.keys()].filter((name) => !before.has(name)).length;
+    const removed = [...before.keys()].filter(
+      (name) => !after.has(name),
+    ).length;
+    const changed = [...after].filter(
+      ([name, type]) => before.has(name) && before.get(name) !== type,
+    ).length;
+    return { version, added: previous ? added : 0, removed, changed };
+  });
+}
+
+function SchemaHistory({ versions }: { versions: readonly SchemaVersion[] }) {
+  if (versions.length < 2) return null;
+  const changes = schemaChanges(versions);
+
+  return (
+    <details className="mt-2 rounded-control border border-line bg-canvas px-2 py-1.5">
+      <summary className="cursor-pointer text-muted">
+        schema history · {versions.length} versions
+      </summary>
+      <ol className="mt-1 divide-y divide-line">
+        {changes.map(({ version, added, removed, changed }, index) => (
+          <li
+            key={version.version}
+            className="flex flex-wrap items-center gap-x-2 py-1"
+          >
+            <span className="mono text-ink">v{version.version}</span>
+            <span className="mono text-muted">id {version.id}</span>
+            <span className="mono text-muted">
+              {index === 0
+                ? `${version.fields?.length ?? 0} fields`
+                : `+${added} ~${changed} −${removed}`}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 
@@ -119,9 +173,23 @@ function MessageRow({
               {message.encoding || message.contentType}
             </span>
           ) : null}
+          {message.schema ? (
+            <span
+              className="chip mono"
+              title={`${message.schema.subject} · schema ID ${message.schema.id} · ${message.schema.registry}`}
+            >
+              {message.schema.type.toLowerCase()} v{message.schema.version}
+              {message.schema.compatibility
+                ? ` · ${message.schema.compatibility.toLowerCase().replaceAll("_", " ")}`
+                : ""}
+            </span>
+          ) : null}
         </div>
         {message.title || message.doc ? (
           <p className="mt-0.5 text-muted">{message.doc || message.title}</p>
+        ) : null}
+        {message.schema?.versions ? (
+          <SchemaHistory versions={message.schema.versions} />
         ) : null}
       </div>
       <RowActions copy={message.name} />

@@ -13,7 +13,16 @@ type Lock struct {
 }
 
 type LockSubject struct {
-	Subject    string      `json:"subject"`
+	Subject       string        `json:"subject"`
+	Version       int           `json:"version"`
+	ID            int           `json:"id"`
+	SchemaType    string        `json:"schemaType"`
+	Compatibility string        `json:"compatibility,omitempty"`
+	History       []LockVersion `json:"history,omitempty"`
+	Files         []LockEntry   `json:"files"`
+}
+
+type LockVersion struct {
 	Version    int         `json:"version"`
 	ID         int         `json:"id"`
 	SchemaType string      `json:"schemaType"`

@@ -149,13 +149,90 @@ func readSubject(
 		return nil
 	}
 
+	versions, err := schemaHistory(entry, dir, declared, shapes)
+	if err != nil {
+		return fmt.Errorf("%s: %w", where, err)
+	}
+
 	channels.add(registered.Topic, catalog.ChannelMessage{
 		Name:      registered.Record,
 		Doc:       fmt.Sprintf("Registered as %s version %d.", entry.Subject, entry.Version),
 		Direction: directionFor(entry.Subject, opts),
+		Schema: &catalog.SchemaRegistration{
+			Registry:      lock.Registry,
+			Subject:       entry.Subject,
+			Version:       entry.Version,
+			ID:            entry.ID,
+			Type:          strings.ToUpper(entry.SchemaType),
+			Compatibility: entry.Compatibility,
+			Versions:      versions,
+		},
 	}, source)
 
 	return nil
+}
+
+// schemaHistory turns the optional historical files into compact top-level
+// snapshots. The current version is appended from the parse already done for
+// defs, so the schema is never read twice.
+func schemaHistory(entry LockSubject, dir, declared string, current map[string]catalog.TypeDef) ([]catalog.SchemaVersion, error) {
+	if len(entry.History) == 0 {
+		return nil, nil
+	}
+
+	history := append([]LockVersion(nil), entry.History...)
+	sort.Slice(history, func(i, j int) bool { return history[i].Version < history[j].Version })
+	versions := make([]catalog.SchemaVersion, 0, len(history)+1)
+	for _, version := range history {
+		if len(version.Files) == 0 {
+			return nil, fmt.Errorf("history version %d names no schema file", version.Version)
+		}
+		at := filepath.Join(dir, filepath.FromSlash(version.Files[0].Path))
+		raw, err := os.ReadFile(at)
+		if err != nil {
+			return nil, err
+		}
+		name, shapes, err := historicalShapes(version.SchemaType, entry.Subject, raw)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", filepath.ToSlash(at), err)
+		}
+		versions = append(versions, catalog.SchemaVersion{
+			Version: version.Version,
+			ID:      version.ID,
+			Type:    strings.ToUpper(version.SchemaType),
+			Fields:  compactFields(shapes[name].Fields),
+		})
+	}
+	versions = append(versions, catalog.SchemaVersion{
+		Version: entry.Version,
+		ID:      entry.ID,
+		Type:    strings.ToUpper(entry.SchemaType),
+		Fields:  compactFields(current[declared].Fields),
+	})
+
+	return versions, nil
+}
+
+func historicalShapes(kind, subject string, raw []byte) (string, map[string]catalog.TypeDef, error) {
+	switch strings.ToUpper(kind) {
+	case "", "AVRO":
+		return avro(raw)
+	case "JSON":
+		return jsonSchema(raw, subject)
+	case "PROTOBUF":
+		return "", nil, nil
+	}
+
+	return "", nil, fmt.Errorf("unknown schema type %q", kind)
+}
+
+func compactFields(fields []catalog.Field) []catalog.SchemaField {
+	out := make([]catalog.SchemaField, 0, len(fields))
+	for _, field := range fields {
+		out = append(out, catalog.SchemaField{Name: field.Name, Type: field.Type})
+	}
+
+	return out
 }
 
 // shapesOf reads the schema according to its declared type.

@@ -803,6 +803,57 @@ describe("mergeCatalogs: schema modules", () => {
     expect(merged.conflicts.map((conflict) => conflict.message).join(" ")).toMatch(/encoding json.*msgpack/);
     expect(merged.conflicts.map((conflict) => conflict.message).join(" ")).toMatch(/contentType application\/json.*application\/msgpack/);
   });
+
+  it("adds a schema registration to a declared message and reports a competing pin", () => {
+    const declared = context("shop", ["shop.cart"]);
+    declared.services[0]!.channels = [
+      {
+        address: "shop.cart.basket",
+        messages: [{ name: "cart.BasketCreated", direction: "send" }],
+      },
+    ];
+    const registered = context("shop", ["shop.cart"]);
+    registered.services[0]!.channels = [
+      {
+        address: "shop.cart.basket",
+        messages: [
+          {
+            name: "cart.BasketCreated",
+            direction: "send",
+            schema: {
+              registry: "http://registry:8081",
+              subject: "shop.cart.basket-value",
+              version: 3,
+              id: 42,
+              type: "AVRO",
+              compatibility: "BACKWARD",
+            },
+          },
+        ],
+      },
+    ];
+
+    const enriched = mergeCatalogs([
+      source("a-asyncapi.json", { contexts: [declared] }),
+      source("b-csr.json", { contexts: [registered] }),
+    ]);
+    const message =
+      enriched.catalog.contexts[0]!.services[0]!.channels![0]!.messages[0]!;
+    expect(message.schema).toEqual(
+      registered.services[0]!.channels![0]!.messages[0]!.schema,
+    );
+    expect(enriched.conflicts).toEqual([]);
+
+    const competing = structuredClone(registered);
+    competing.services[0]!.channels![0]!.messages[0]!.schema!.version = 4;
+    const conflicted = mergeCatalogs([
+      source("a-csr.json", { contexts: [registered] }),
+      source("b-csr.json", { contexts: [competing] }),
+    ]);
+    expect(conflicted.conflicts[0]?.message).toMatch(
+      /schema registration.*v4.*v3/,
+    );
+  });
 });
 
 describe("a second source that has seen the flow run", () => {

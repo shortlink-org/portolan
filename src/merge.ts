@@ -695,6 +695,20 @@ function mergeService(
               }
             }
 
+            if (!held.schema && offered.schema) {
+              held.schema = copySchema(offered.schema);
+            } else if (
+              held.schema &&
+              offered.schema &&
+              JSON.stringify(held.schema) !== JSON.stringify(offered.schema)
+            ) {
+              conflicts.push({
+                path,
+                where: incoming.id,
+                message: `message "${held.name}" on channel "${mine.address}" of service "${incoming.id}" has schema registration ${offered.schema.subject} v${offered.schema.version} here and ${held.schema.subject} v${held.schema.version} in ${owner}; the first one is used`,
+              });
+            }
+
             return undefined;
           },
         );
@@ -709,7 +723,31 @@ function mergeService(
 }
 
 function copyChannel(channel: Channel): Channel {
-  return { ...channel, messages: channel.messages.map((message) => ({ ...message })) };
+  return {
+    ...channel,
+    messages: channel.messages.map((message) => ({
+      ...message,
+      ...(message.schema ? { schema: copySchema(message.schema) } : {}),
+    })),
+  };
+}
+
+function copySchema(
+  schema: NonNullable<Channel["messages"][number]["schema"]>,
+) {
+  return {
+    ...schema,
+    ...(schema.versions
+      ? {
+          versions: schema.versions.map((version) => ({
+            ...version,
+            ...(version.fields
+              ? { fields: version.fields.map((field) => ({ ...field })) }
+              : {}),
+          })),
+        }
+      : {}),
+  };
 }
 
 /**

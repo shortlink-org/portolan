@@ -690,6 +690,36 @@ type ChannelMessage struct {
 	// client code commonly proves an encoding without declaring a media type,
 	// so the two facts are independent.
 	ContentType string `json:"contentType,omitempty"`
+	// Schema is the exact Schema Registry registration behind this message,
+	// when a registry extractor supplied one.
+	Schema *SchemaRegistration `json:"schema,omitempty"`
+}
+
+// SchemaRegistration identifies one immutable subject version and the
+// compatibility policy the registry says applies to it.
+type SchemaRegistration struct {
+	Registry      string          `json:"registry"`
+	Subject       string          `json:"subject"`
+	Version       int             `json:"version"`
+	ID            int             `json:"id"`
+	Type          string          `json:"type"`
+	Compatibility string          `json:"compatibility,omitempty"`
+	Versions      []SchemaVersion `json:"versions,omitempty"`
+}
+
+// SchemaVersion is one registration retained for comparison with the current
+// subject version. Fields are the top-level wire shape when Portolan can read
+// the schema format; protobuf history still keeps the version and id.
+type SchemaVersion struct {
+	Version int           `json:"version"`
+	ID      int           `json:"id"`
+	Type    string        `json:"type"`
+	Fields  []SchemaField `json:"fields,omitempty"`
+}
+
+type SchemaField struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 type EventConsumer struct {

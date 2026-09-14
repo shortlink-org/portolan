@@ -1,0 +1,10 @@
+{
+  "type": "record",
+  "namespace": "shop.oms",
+  "name": "OrderPlaced",
+  "fields": [
+    { "name": "order_id", "type": "string" },
+    { "name": "buyer", "type": "shop.oms.Party" },
+    { "name": "total", "type": "long" }
+  ]
+}

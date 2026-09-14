@@ -838,6 +838,33 @@ export interface ChannelMessage {
   encoding?: string;
   /** Exact media type declared by the source contract. */
   contentType?: string;
+  /** Exact Schema Registry registration that supplies this message contract. */
+  schema?: SchemaRegistration;
+}
+
+/** One immutable subject version, with its effective compatibility policy. */
+export interface SchemaRegistration {
+  registry: string;
+  subject: string;
+  version: number;
+  id: number;
+  type: string;
+  compatibility?: string;
+  /** Oldest first, including the current version, when history was fetched. */
+  versions?: SchemaVersion[];
+}
+
+export interface SchemaVersion {
+  version: number;
+  id: number;
+  type: string;
+  /** Top-level wire fields; absent for formats this extractor does not parse. */
+  fields?: SchemaField[];
+}
+
+export interface SchemaField {
+  name: string;
+  type: string;
 }
 export interface EventConsumer {
   service: string;

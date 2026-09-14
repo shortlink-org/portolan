@@ -29,6 +29,15 @@ export const TOKEN_ENV = "CSR_TOKEN";
 // The registry's own media type first and plain JSON second, so the same
 // client works against Confluent's registry and the API-compatible ones.
 const ACCEPT = "application/vnd.schemaregistry.v1+json, application/json";
+const COMPATIBILITY_LEVELS = new Set([
+  "NONE",
+  "BACKWARD",
+  "BACKWARD_TRANSITIVE",
+  "FORWARD",
+  "FORWARD_TRANSITIVE",
+  "FULL",
+  "FULL_TRANSITIVE",
+]);
 
 export function describe() {
   return {
@@ -55,8 +64,15 @@ export async function run(request, { env = process.env, fetch: fetchFn = globalT
   }
 
   const out = new Builder();
-  const queue = [...subjects].map((want) => ({ subject: String(want.subject ?? ""), version: Number(want.version ?? 0) || 0 }))
-    .sort((a, b) => (a.subject < b.subject ? -1 : a.subject > b.subject ? 1 : 0));
+  const queue = [...subjects]
+    .map((want) => ({
+      subject: String(want.subject ?? ""),
+      version: Number(want.version ?? 0) || 0,
+      history: historyDepth(want.history),
+    }))
+    .sort((a, b) =>
+      a.subject < b.subject ? -1 : a.subject > b.subject ? 1 : 0,
+    );
   const client = new Client(registry, authorization(env), fetchFn);
   const skip = offline(env);
 
@@ -73,6 +89,11 @@ export async function run(request, { env = process.env, fetch: fetchFn = globalT
       const held = claimed.get(want.subject);
       if (held.version !== want.version) {
         throw new Error(`${want.subject} is wanted at version ${pinOf(held.version)} and at version ${pinOf(want.version)}; the tree keeps one version per subject, so pin one`);
+      }
+      if (held.history !== want.history) {
+        throw new Error(
+          `${want.subject} is wanted with history depths ${held.history} and ${want.history}; keep one request for the subject`,
+        );
       }
       continue;
     }
@@ -101,8 +122,14 @@ export async function run(request, { env = process.env, fetch: fetchFn = globalT
     // following one needs no permission from the manifest.
     const following = references
       .filter((ref) => ref.subject && !claimed.has(ref.subject))
-      .map((ref) => ({ subject: ref.subject, version: Number(ref.version) || 0 }))
-      .sort((a, b) => (a.subject < b.subject ? -1 : a.subject > b.subject ? 1 : 0));
+      .map((ref) => ({
+        subject: ref.subject,
+        version: Number(ref.version) || 0,
+        history: 1,
+      }))
+      .sort((a, b) =>
+        a.subject < b.subject ? -1 : a.subject > b.subject ? 1 : 0,
+      );
     queue.push(...following);
   }
 
@@ -221,10 +248,38 @@ export function encodeLock(registry, entry) {
   const record = { subject: entry.subject, version: entry.version, id: entry.id };
   if (entry.guid) record.guid = entry.guid;
   record.schemaType = entry.schemaType;
+  if (entry.compatibility) record.compatibility = entry.compatibility;
+  if (entry.historyDepth > 1) record.historyDepth = entry.historyDepth;
   if (entry.references?.length) {
     record.references = [...entry.references]
       .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
       .map((ref) => ({ name: ref.name, subject: ref.subject, version: ref.version }));
+  }
+  if (entry.history?.length) {
+    record.history = [...entry.history]
+      .sort((a, b) => a.version - b.version)
+      .map((version) => {
+        const held = { version: version.version, id: version.id };
+        if (version.guid) held.guid = version.guid;
+        held.schemaType = version.schemaType;
+        if (version.references?.length) {
+          held.references = [...version.references]
+            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+            .map((ref) => ({
+              name: ref.name,
+              subject: ref.subject,
+              version: ref.version,
+            }));
+        }
+        held.files = [...version.files]
+          .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+          .map((file) => ({
+            path: file.path,
+            sha256: file.sha256,
+            size: file.size,
+          }));
+        return held;
+      });
   }
   record.files = [...entry.files]
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
@@ -240,29 +295,88 @@ function pinOf(version) {
   return version === 0 ? "latest" : String(version);
 }
 
+function historyDepth(value) {
+  const depth = value == null ? 1 : Number(value);
+  if (!Number.isInteger(depth) || depth < 1 || depth > 50) {
+    throw new Error("schema history must be an integer between 1 and 50");
+  }
+  return depth;
+}
+
+function schemaFile(got) {
+  let extension;
+  try {
+    extension = extensionFor(got.schemaType);
+  } catch (cause) {
+    throw new Error(`version ${got.version}: ${cause.message}`);
+  }
+  const name = `v${got.version}${extension}`;
+  const contents = body(got.schemaType, got.schema);
+  return {
+    name,
+    contents,
+    registration: {
+      version: got.version,
+      id: got.id ?? 0,
+      guid: got.guid ?? "",
+      schemaType: schemaType(got.schemaType),
+      references: got.references ?? [],
+      files: [
+        {
+          path: name,
+          sha256: digestOf(contents),
+          size: Buffer.byteLength(contents),
+        },
+      ],
+    },
+  };
+}
+
 async function live(client, out, registry, dir, want) {
   const got = await client.version(want.subject, want.version);
   if (want.version === 0) {
     out.warn(want.subject, `is not pinned; "latest" resolved to version ${got.version}. Pin it in portolan.json or every run is a lottery.`);
   }
-  let extension;
-  try {
-    extension = extensionFor(got.schemaType);
-  } catch (cause) {
-    throw new Error(`${want.subject} at version ${got.version}: ${cause.message}`);
+  const current = schemaFile(got);
+  const history = [];
+  if (want.history > 1) {
+    const available = await client.versions(want.subject);
+    if (!available.includes(got.version)) {
+      throw new Error(
+        `${want.subject}: version ${got.version} disappeared while its history was being read`,
+      );
+    }
+    const previous = available
+      .filter((version) => version < got.version)
+      .slice(-(want.history - 1));
+    for (const version of previous) {
+      const historical = schemaFile(
+        await client.version(want.subject, version),
+      );
+      history.push(historical.registration);
+      out.file(posix.join(dir, historical.name), historical.contents);
+    }
   }
-  const name = `v${got.version}${extension}`;
-  const contents = body(got.schemaType, got.schema);
+  let compatibility = "";
+  try {
+    compatibility = await client.compatibility(want.subject);
+  } catch (cause) {
+    // A schema registration is still useful when an API-compatible registry
+    // does not expose Confluent's configuration resource. Keep the schema and
+    // say which governance fact could not be read instead of failing the fetch.
+    out.warn(
+      want.subject,
+      `its effective compatibility could not be read (${cause.message})`,
+    );
+  }
   const entry = {
     subject: want.subject,
-    version: got.version,
-    id: got.id ?? 0,
-    guid: got.guid ?? "",
-    schemaType: schemaType(got.schemaType),
-    references: got.references ?? [],
-    files: [{ path: name, sha256: digestOf(contents), size: Buffer.byteLength(contents) }],
+    ...current.registration,
+    compatibility,
+    historyDepth: want.history,
+    history,
   };
-  out.file(posix.join(dir, name), contents);
+  out.file(posix.join(dir, current.name), current.contents);
   out.file(posix.join(dir, LOCK_NAME), encodeLock(registry, entry));
   return entry.references;
 }
@@ -270,10 +384,29 @@ async function live(client, out, registry, dir, want) {
 function emitCached(out, registry, dir, at, want, why) {
   if (want.version === 0) throw new Error(`${want.subject} is not pinned to a version, so there is nothing to replay`);
   const held = replay(at);
-  if (held.lock.version !== want.version) throw new Error(`${want.subject} holds version ${held.lock.version} but the manifest pins ${want.version}; fetch it`);
-  if (held.lock.subject !== want.subject) throw new Error(`${want.subject} vendors into ${at.split("\\").join("/")}, which holds ${held.lock.subject}`);
-  if (held.registry && held.registry !== registry) throw new Error(`${want.subject} was fetched from ${held.registry} but the manifest names ${registry}; fetch it again`);
-  for (const file of held.lock.files) out.file(posix.join(dir, file.path), held.files.get(file.path).toString("utf8"));
+  if (held.lock.version !== want.version)
+    throw new Error(
+      `${want.subject} holds version ${held.lock.version} but the manifest pins ${want.version}; fetch it`,
+    );
+  if (held.lock.subject !== want.subject)
+    throw new Error(
+      `${want.subject} vendors into ${at.split("\\").join("/")}, which holds ${held.lock.subject}`,
+    );
+  if (held.registry && held.registry !== registry)
+    throw new Error(
+      `${want.subject} was fetched from ${held.registry} but the manifest names ${registry}; fetch it again`,
+    );
+  if (want.history > held.lock.historyDepth)
+    throw new Error(
+      `${want.subject} keeps history depth ${held.lock.historyDepth} but the manifest asks for ${want.history}; fetch it`,
+    );
+  for (const version of [...(held.lock.history ?? []), held.lock]) {
+    for (const file of version.files)
+      out.file(
+        posix.join(dir, file.path),
+        held.files.get(file.path).toString("utf8"),
+      );
+  }
   out.file(posix.join(dir, LOCK_NAME), encodeLock(registry, held.lock));
   out.warn(want.subject, `not fetched (${why}); the copy committed in this repository is used unchanged`);
   return held.lock.references ?? [];
@@ -298,22 +431,36 @@ function replay(dir) {
   if (subjects.length !== 1) throw new Error(`${lockPath} names ${subjects.length} subjects; expected exactly one`);
   const entry = subjects[0];
   const files = new Map();
-  for (const want of entry.files ?? []) {
-    let contents;
-    try {
-      contents = readFileSync(join(dir, ...String(want.path).split("/")));
-    } catch (cause) {
-      if (cause.code === "ENOENT") throw new Error(`${want.path} is in the lock but not on disk`);
-      throw cause;
+  const versions = [...(entry.history ?? []), entry];
+  for (const version of versions)
+    for (const want of version.files ?? []) {
+      let contents;
+      try {
+        contents = readFileSync(join(dir, ...String(want.path).split("/")));
+      } catch (cause) {
+        if (cause.code === "ENOENT")
+          throw new Error(`${want.path} is in the lock but not on disk`);
+        throw cause;
+      }
+      if (digestOf(contents) !== want.sha256)
+        throw new Error(
+          `${want.path} does not match its digest; the vendored copy was edited by hand`,
+        );
+      files.set(want.path, contents);
     }
-    if (digestOf(contents) !== want.sha256) throw new Error(`${want.path} does not match its digest; the vendored copy was edited by hand`);
-    files.set(want.path, contents);
-  }
   return {
     registry: String(lock.registry ?? ""),
     lock: {
-      subject: entry.subject, version: Number(entry.version) || 0, id: entry.id ?? 0, guid: entry.guid ?? "",
-      schemaType: entry.schemaType ?? "", references: entry.references ?? [], files: entry.files ?? [],
+      subject: entry.subject,
+      version: Number(entry.version) || 0,
+      id: entry.id ?? 0,
+      guid: entry.guid ?? "",
+      schemaType: entry.schemaType ?? "",
+      compatibility: entry.compatibility ?? "",
+      references: entry.references ?? [],
+      historyDepth: Number(entry.historyDepth) || 1,
+      history: Array.isArray(entry.history) ? entry.history : [],
+      files: entry.files ?? [],
     },
     files,
   };
@@ -340,6 +487,53 @@ class Client {
     if (!String(got.schema ?? "").trim()) throw new Error(`${subject} at version ${which}: the registry answered with no schema`);
     if (!(Number(got.version) > 0)) throw new Error(`${subject} at version ${which}: the registry did not say which version it answered with`);
     return { ...got, version: Number(got.version) };
+  }
+
+  /** Registered, non-deleted versions, in ascending order. */
+  async versions(subject) {
+    const at = `${this.base}/subjects/${encodeURIComponent(subject)}/versions`;
+    let got;
+    try {
+      got = await this.get(at);
+    } catch (cause) {
+      throw new Error(
+        `${subject}: its versions could not be listed: ${cause.message}`,
+      );
+    }
+    if (
+      !Array.isArray(got) ||
+      got.some(
+        (version) => !Number.isInteger(Number(version)) || Number(version) < 1,
+      )
+    ) {
+      throw new Error(
+        `${subject}: the registry answered with an invalid version list`,
+      );
+    }
+    return [...new Set(got.map(Number))].sort((a, b) => a - b);
+  }
+
+  /** The subject's effective compatibility, including an inherited global value. */
+  async compatibility(subject) {
+    const at = `${this.base}/config/${encodeURIComponent(subject)}?defaultToGlobal=true`;
+    let got;
+    try {
+      got = await this.get(at);
+    } catch (cause) {
+      throw new Error(`${subject}: ${cause.message}`);
+    }
+    const level = String(got.compatibilityLevel ?? got.compatibility ?? "")
+      .trim()
+      .toUpperCase();
+    if (!level)
+      throw new Error(
+        `${subject}: the registry did not say which compatibility level applies`,
+      );
+    if (!COMPATIBILITY_LEVELS.has(level))
+      throw new Error(
+        `${subject}: the registry answered with unknown compatibility level ${JSON.stringify(level)}`,
+      );
+    return level;
   }
 
   async get(at) {

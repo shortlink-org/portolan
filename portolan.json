@@ -363,6 +363,10 @@
       "host": "fetch-csr"
     },
     {
+      "name": "csr-compatibility",
+      "host": "verify-csr"
+    },
+    {
       "name": "k8s-cluster",
       "host": "fetch-k8s"
     },

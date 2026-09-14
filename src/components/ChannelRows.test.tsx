@@ -2,7 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import type { Channel } from "../catalog";
-import { ChannelRowsContent, countDirections, rowsOf } from "./ChannelRows";
+import {
+  ChannelRowsContent,
+  countDirections,
+  rowsOf,
+  schemaChanges,
+} from "./ChannelRows";
 
 const kafka: Channel = {
   address: "orders/created",
@@ -125,5 +130,99 @@ describe("ChannelRows direction", () => {
 
   it("counts what travels each way across every channel", () => {
     expect(countDirections([queue, kafka])).toEqual({ send: 1, receive: 2 });
+  });
+});
+
+describe("ChannelRows Schema Registry presentation", () => {
+  it("shows the pinned registration and its effective compatibility", () => {
+    const channel: Channel = {
+      address: "shop.orders",
+      messages: [
+        {
+          name: "shop.OrderPlaced",
+          direction: "send",
+          schema: {
+            registry: "http://registry:8081",
+            subject: "shop.orders-value",
+            version: 3,
+            id: 42,
+            type: "AVRO",
+            compatibility: "BACKWARD_TRANSITIVE",
+            versions: [
+              {
+                version: 1,
+                id: 21,
+                type: "AVRO",
+                fields: [
+                  { name: "id", type: "string" },
+                  { name: "total", type: "long" },
+                ],
+              },
+              {
+                version: 2,
+                id: 31,
+                type: "AVRO",
+                fields: [
+                  { name: "id", type: "string" },
+                  { name: "total", type: "decimal" },
+                  { name: "note", type: "string?" },
+                ],
+              },
+              {
+                version: 3,
+                id: 42,
+                type: "AVRO",
+                fields: [
+                  { name: "id", type: "string" },
+                  { name: "note", type: "string?" },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <ChannelRowsContent
+          channels={[channel]}
+          service="shop.orders"
+          kafkaUi=""
+        />
+      </MemoryRouter>,
+    );
+
+    expect(markup).toContain("avro v3 · backward transitive");
+    expect(markup).toContain(
+      "shop.orders-value · schema ID 42 · http://registry:8081",
+    );
+    expect(markup).toContain("schema history · 3 versions");
+    expect(markup).toContain("+1 ~1 −0");
+    expect(markup).toContain("+0 ~0 −1");
+  });
+
+  it("compares fields by wire name and type", () => {
+    expect(
+      schemaChanges([
+        {
+          version: 1,
+          id: 1,
+          type: "AVRO",
+          fields: [{ name: "id", type: "string" }],
+        },
+        {
+          version: 2,
+          id: 2,
+          type: "AVRO",
+          fields: [
+            { name: "id", type: "long" },
+            { name: "note", type: "string?" },
+          ],
+        },
+      ]).map(({ added, changed, removed }) => ({ added, changed, removed })),
+    ).toEqual([
+      { added: 0, changed: 0, removed: 0 },
+      { added: 1, changed: 1, removed: 0 },
+    ]);
   });
 });

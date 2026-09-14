@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"testing"
 )
@@ -85,6 +86,10 @@ func TestChannelMessageWireFormatRoundTrip(t *testing.T) {
 	before := ChannelMessage{
 		Name: "cart.BasketCreated", Direction: ChannelSend,
 		Encoding: "msgpack", ContentType: "application/msgpack",
+		Schema: &SchemaRegistration{
+			Registry: "http://registry:8081", Subject: "cart.basket-value", Version: 3, ID: 42, Type: "AVRO", Compatibility: "BACKWARD",
+			Versions: []SchemaVersion{{Version: 2, ID: 32, Type: "AVRO", Fields: []SchemaField{{Name: "id", Type: "string"}}}, {Version: 3, ID: 42, Type: "AVRO", Fields: []SchemaField{{Name: "id", Type: "string"}, {Name: "note", Type: "string?"}}}},
+		},
 	}
 	raw, err := json.Marshal(before)
 	if err != nil {
@@ -94,7 +99,7 @@ func TestChannelMessageWireFormatRoundTrip(t *testing.T) {
 	if err := json.Unmarshal(raw, &after); err != nil {
 		t.Fatal(err)
 	}
-	if after.Encoding != before.Encoding || after.ContentType != before.ContentType {
+	if after.Encoding != before.Encoding || after.ContentType != before.ContentType || !reflect.DeepEqual(after.Schema, before.Schema) {
 		t.Fatalf("wire format changed: %+v", after)
 	}
 }

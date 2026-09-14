@@ -2711,6 +2711,13 @@
                 "type": "integer",
                 "minimum": 1,
                 "description": "The version to fetch. A registered version is immutable, so a pinned fetch is byte-reproducible, which is what lets an offline run replay it from the tree. Left out, `latest` is resolved online and warned about, and refused offline."
+              },
+              "history": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 1,
+                "description": "How many versions to retain for comparison, ending at the selected version. One keeps only the selected version; larger values fetch the preceding registered versions, up to 50."
               }
             }
           }
@@ -2721,6 +2728,91 @@
           "examples": [
             "examples/shop/oms/vendor/schemas"
           ]
+        }
+      }
+    }
+  },
+  {
+    "name": "csr-compatibility",
+    "plugin": "verify-csr",
+    "summary": "Checks local candidate schemas against each subject's effective Confluent Schema Registry compatibility policy without registering them.",
+    "category": "evidence",
+    "phases": [
+      "verify"
+    ],
+    "runtime": "host",
+    "source": "scripts/host-plugins/verify-csr.mjs",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry",
+        "candidates"
+      ],
+      "properties": {
+        "registry": {
+          "type": "string",
+          "description": "Base URL of the Confluent Schema Registry. Credentials come from the same CSR environment variables as fetch-csr."
+        },
+        "normalize": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ask Schema Registry to normalize candidates before checking them."
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Local schemas that are about to be registered. Any incompatible candidate fails the verify phase before publication.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "subject",
+              "path"
+            ],
+            "properties": {
+              "subject": {
+                "type": "string",
+                "description": "Existing registry subject whose effective compatibility policy should be applied."
+              },
+              "path": {
+                "type": "string",
+                "description": "Candidate schema file, relative to the verify step input."
+              },
+              "schemaType": {
+                "enum": [
+                  "AVRO",
+                  "JSON",
+                  "PROTOBUF"
+                ],
+                "description": "Schema format. Inferred from .avsc, .json or .proto when omitted."
+              },
+              "references": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "name",
+                    "subject",
+                    "version"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "subject": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

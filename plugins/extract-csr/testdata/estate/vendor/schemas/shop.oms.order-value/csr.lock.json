@@ -6,6 +6,34 @@
       "version": 3,
       "id": 100021,
       "schemaType": "AVRO",
+      "compatibility": "BACKWARD_TRANSITIVE",
+      "historyDepth": 3,
+      "history": [
+        {
+          "version": 1,
+          "id": 100001,
+          "schemaType": "AVRO",
+          "files": [
+            {
+              "path": "v1.avsc",
+              "sha256": "58e81c74671868a6976ddf2b6dc2a081408acd9f65916f202d5335b21c598164",
+              "size": 231
+            }
+          ]
+        },
+        {
+          "version": 2,
+          "id": 100011,
+          "schemaType": "AVRO",
+          "files": [
+            {
+              "path": "v2.avsc",
+              "sha256": "7328353a13bbabb7d443a6a597f63b9e5ea24537a58ec0c1c6ec6e6835bb212a",
+              "size": 396
+            }
+          ]
+        }
+      ],
       "references": [
         {
           "name": "shop.oms.Party",
