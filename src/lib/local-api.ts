@@ -123,6 +123,28 @@ export interface ProjectDraft {
   plugins: string[];
 }
 
+export interface AnnotationState {
+  catalog: string;
+  target: import("../catalog").AnnotationTarget;
+  path: string;
+  revision: string;
+  fileRevision: string | null;
+  document: import("../catalog").AnnotationDocument;
+  writable: boolean;
+  reason?: string;
+  workspace: string;
+}
+export interface SavedAnnotation extends AnnotationState {
+  run: { runId: string } | null;
+  generationError?: string;
+}
+export function getAnnotation(catalog: string, target: import("../catalog").AnnotationTarget): Promise<AnnotationState> {
+  return json(`/annotations?${new URLSearchParams({ catalog, ...target })}`);
+}
+export function saveAnnotation(input: Pick<AnnotationState, "revision" | "fileRevision" | "document">): Promise<SavedAnnotation> {
+  return json("/annotations", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(input) });
+}
+
 export interface AdrProject {
   id: string;
   name: string;

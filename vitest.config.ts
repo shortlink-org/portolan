@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 // that imports src/data.ts needs the same virtual module the site gets.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { provenancePlugin } from "./scripts/provenance.mjs";
+// @ts-expect-error Node-only authoring module
+import { annotationsPlugin } from "./scripts/annotations.mjs";
 
 const exampleCatalogTests = [
   "src/routes.test.ts",
@@ -26,7 +28,7 @@ const allTests = [
 const excludedTests = ["**/node_modules/**", "plugins/extract-ts/testdata/**"];
 
 export default defineConfig({
-  plugins: [provenancePlugin(".")],
+  plugins: [provenancePlugin("."), annotationsPlugin(".")],
   test: {
     projects: [
       {

@@ -29,6 +29,7 @@ import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } 
 import { gitFetchState, saveGitFetchSettings, checkGitAccess } from "./git-fetch-settings.mjs";
 import { listGitRefs } from "./git-refs.mjs";
 import { eventBridgeState, saveEventBridgeSettings } from "./eventbridge-settings.mjs";
+import { annotationState, saveAnnotation } from "./annotations.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
 import {
   discoverProject,
@@ -1607,6 +1608,9 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/eventbridge`) {
             return send(res, 200, eventBridgeState(workspace));
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/annotations`) {
+            return send(res, 200, annotationState(workspace, url.searchParams.get("catalog"), { kind: url.searchParams.get("kind"), id: url.searchParams.get("id") }));
+          }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
             const features = url.searchParams.has("features")
               ? url.searchParams.get("features").split(",").filter(Boolean)
@@ -1643,6 +1647,16 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             return send(res, 405, { error: "Use a local JSON request." });
           }
           const input = await body(req);
+          if (url.pathname === `${LOCAL_API_PREFIX}/annotations`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before saving properties." });
+            const saved = saveAnnotation(workspace, input);
+            try {
+              const job = startJob(workspace, "write", null);
+              return send(res, 200, { ...saved, run: { runId: job.id } });
+            } catch (cause) {
+              return send(res, 200, { ...saved, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
+            }
+          }
           if (url.pathname === `${LOCAL_API_PREFIX}/git-fetch/refs`) {
             return send(res, 200, await listGitRefs(input.repository));
           }

@@ -8,7 +8,9 @@
 
 import { readFileSync } from "node:fs";
 import { glob } from "node:fs/promises";
-import { normalize } from "node:path";
+import { dirname, normalize, resolve } from "node:path";
+import { readAnnotations } from "./annotations.mjs";
+import { applyAnnotations } from "../src/lib/annotations.mjs";
 
 import { validateCatalog } from "../src/catalog.ts";
 import { filterCatalogForProfile } from "../src/catalog-profile.ts";
@@ -52,13 +54,15 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
   // A source is dated by the history, not by itself (portolan.0010): the
   // commit that last changed the file, and its date, read here and never
   // written into the file.
+  const entries = readAnnotations(dirname(resolve(manifestPath)), manifest).filter((entry) => !profile || entry.catalog === profile);
+  const annotationStamps = stampsFor(dirname(resolve(manifestPath)), entries.map((entry) => entry.source));
   const stamps = stampsFor(process.cwd(), paths);
   const merged = mergeCatalogs(
-    paths.map((path) => ({
+    [...paths.map((path) => ({
       path,
       catalog: JSON.parse(readFileSync(path, "utf8")),
       stamp: stamps.get(path),
-    })),
+    })), ...entries.map((entry) => ({ path: entry.source, catalog: { contexts: [], defs: {}, flows: [], adrs: [] }, stamp: annotationStamps.get(entry.source) }))],
   );
   if (paths.length === 0) {
     // An intentionally empty workspace still needs a valid, deterministic
@@ -70,10 +74,14 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
 
   // The edges the flows imply are added before validation, the same way the
   // app does it, so a generator draws the same estate the reader sees.
+  const annotated = applyAnnotations(merged.catalog, entries, profile);
   const scoped = selected
-    ? filterCatalogForProfile(merged.catalog, selected)
-    : merged.catalog;
+    ? filterCatalogForProfile(annotated, selected)
+    : annotated;
   const enriched = enrichCatalog(scoped);
+  for (const entry of enriched.catalog.annotations ?? []) {
+    if (entry.unresolved) merged.conflicts.push({ path: entry.source, where: entry.target.id, message: `Custom properties target missing ${entry.target.kind} ${entry.target.id}; preserve or retarget ${entry.source}.` });
+  }
 
   try {
     validateCatalog(enriched.catalog);

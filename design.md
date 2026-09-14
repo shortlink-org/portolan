@@ -177,6 +177,12 @@ Every status, source link, build stamp, owner, deployment, and trace is part of 
 - When a fact is derived, make its basis inspectable.
 - When evidence is missing, say what is missing; do not render a confident zero or a completed-looking empty panel.
 
+### Authored resource properties
+
+Keep actionable links in compact Resources rows and other authored values in Properties, with each value appearing once. Link purpose chooses an icon, never a health claim. Show the destination host and keep open/copy actions available without hover. Preserve explicit `false`, `0`, empty strings, and empty collections. Group labels organize values without adding nested cards.
+
+Show `declared` provenance next to authored content and expose its file and exact keys in a disclosure. Editing belongs to the local workspace capability and uses the shared SidePanel. Keep save/discard and the difference between a saved file and an updated catalog explicit; a rebuild error must retain a retry action. Static catalogs omit editing controls and empty property sections.
+
 ### Tables and repeated rows
 
 Use semantic tables for stable multi-column lookup and rows/subgrid for shorter interactive records.

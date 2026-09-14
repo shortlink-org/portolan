@@ -10,6 +10,7 @@ import { CONTEXT_ANCHOR, EVENT_ANCHOR, LINKS_HERE, paths } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { DocsLinks } from "../components/DocsLinks";
+import { CustomProperties } from "../components/CustomProperties";
 import { ClassificationBadge } from "../components/primitives";
 import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
@@ -123,6 +124,7 @@ export function ContextPage() {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
+          <CustomProperties key={context.id} target={{ kind: "context", id: context.id }} />
           <SectionTitle right={<LevelBadge level={2} />}>Model</SectionTitle>
           {/* The derived `ctx_<id>` view unless the catalog names another one.
               Containers: the services of this context, the stores they own,

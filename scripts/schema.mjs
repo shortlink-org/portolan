@@ -137,6 +137,7 @@ function compose() {
     properties: {
       $schema: { type: "string" },
       $comment: { type: "string" },
+      annotations: { type: "string", const: "annotations/default", description: "Authored properties for a single-catalog workspace." },
       sources: {
         type: "array",
         minItems: 1,
@@ -235,6 +236,7 @@ function compose() {
             description: "Stable profile id used in URLs and generator steps.",
           },
           title: { type: "string", minLength: 1 },
+          annotations: { type: "string", pattern: "^annotations/[a-z0-9]+(?:-[a-z0-9]+)*$", description: "Authored properties in annotations/<catalog id>." },
           sources: {
             type: "array",
             minItems: 1,

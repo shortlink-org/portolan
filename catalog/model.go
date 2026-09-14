@@ -48,6 +48,31 @@ type Catalog struct {
 	Externals   []External         `json:"externals,omitempty"`
 	WorkItems []WorkItem `json:"workItems,omitempty"`
 	WorkItemLinks []WorkItemLink `json:"workItemLinks,omitempty"`
+	Annotations   []CatalogAnnotation `json:"annotations,omitempty"`
+}
+
+type AnnotationTarget struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
+}
+
+type CustomProperty struct {
+	Type  string          `json:"type"`
+	Label string          `json:"label"`
+	Group string          `json:"group,omitempty"`
+	Unit  string          `json:"unit,omitempty"`
+	Value json.RawMessage `json:"value"`
+}
+
+type CatalogAnnotation struct {
+	Version    int                       `json:"version"`
+	Catalog    string                    `json:"catalog"`
+	Target     AnnotationTarget          `json:"target"`
+	Properties map[string]CustomProperty `json:"properties"`
+	Order      []string                  `json:"order"`
+	Source     string                    `json:"source"`
+	Basis      string                    `json:"basis"`
+	Unresolved bool                      `json:"unresolved,omitempty"`
 }
 
 type WorkItem struct {

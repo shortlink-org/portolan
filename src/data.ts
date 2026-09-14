@@ -37,6 +37,8 @@ import { catalogDocs } from "./catalog-docs";
 // scripts/provenance.mjs at build time, because a fragment carries no
 // provenance of its own (portolan.0010) and a browser cannot ask git.
 import provenance from "virtual:portolan-provenance";
+import authored from "virtual:portolan-annotations";
+import { applyAnnotations } from "./lib/annotations.mjs";
 
 const manifest = manifestJson as CatalogProfileManifest & { sources: string[] };
 export const catalogProfiles: CatalogProfile[] = profilesFromManifest(manifest);
@@ -171,21 +173,26 @@ function load(): Loaded {
     .filter((source) => profileIncludesSource(activeCatalogProfile, source.imported))
     .map(({ imported: _imported, ...source }) => source);
 
-  const merged = mergeCatalogs(sources);
+  const entries = authored.entries.filter((entry) => entry.catalog === activeCatalogProfile.id);
+  const merged = mergeCatalogs([...sources, ...entries.map((entry) => ({ path: entry.source, catalog: { contexts: [], defs: {}, flows: [], adrs: [] }, stamp: authored.stamps[entry.source] }))]);
   // Enriched before it is validated: the edges the flows imply are part of
   // the union the way a peer named by another source is, and the validator
   // resolves a step's call against them.
-  const scoped = filterCatalogForProfile(merged.catalog, activeCatalogProfile);
-  const enriched = enrichCatalog(scoped);
-
   try {
+    if (authored.error) throw new CatalogError(authored.error, "annotations");
+    const annotated = applyAnnotations(merged.catalog, authored.entries, activeCatalogProfile.id);
+    const scoped = filterCatalogForProfile(annotated, activeCatalogProfile);
+    const enriched = enrichCatalog(scoped);
+    for (const entry of enriched.catalog.annotations ?? []) {
+      if (entry.unresolved) merged.conflicts.push({ path: entry.source, where: entry.target.id, message: `Custom properties target missing ${entry.target.kind} ${entry.target.id}; preserve or retarget ${entry.source}.` });
+    }
     return {
       catalog: validateCatalog(enriched.catalog),
       sources: merged.sources,
       conflicts: merged.conflicts,
       derived: enriched.derived,
       error: null,
-      raw: merged.catalog,
+      raw: annotated,
     };
   } catch (cause) {
     const error =

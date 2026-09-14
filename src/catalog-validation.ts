@@ -10,6 +10,7 @@ import type {
   Step,
 } from "./catalog-model.ts";
 import { safeWorkItemUrl, workItemLinkKey, workItemTargetExists } from "./lib/work-items.ts";
+import { validateCatalogAnnotations } from "./lib/annotations.mjs";
 import {
   CLASSIFICATIONS,
   COMPONENT_KINDS,
@@ -152,6 +153,10 @@ function validateChannels(service: Service): void {
 }
 
 export function validateCatalog(catalog: Catalog): Catalog {
+  if (catalog.annotations !== undefined) {
+    try { validateCatalogAnnotations(catalog.annotations); }
+    catch (cause) { fail(cause instanceof Error ? cause.message : String(cause), "annotations"); }
+  }
   if (!catalog.generatedAt) fail("catalog.generatedAt is missing", "catalog");
   if (!catalog.commit) fail("catalog.commit is missing", "catalog");
 

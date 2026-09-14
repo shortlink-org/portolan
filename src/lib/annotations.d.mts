@@ -1,0 +1,10 @@
+import type { AnnotationDocument, AnnotationTarget, Catalog, CatalogAnnotation, CustomProperty } from "../catalog-model";
+export const PROPERTY_TYPES: readonly CustomProperty["type"][];
+export const LINK_PURPOSES: readonly Extract<CustomProperty, { type: "link" }>["value"]["purpose"][];
+export function safePropertyUrl(value: unknown): boolean;
+export function annotationTargetKey(target: AnnotationTarget): string;
+export function annotationTargetExists(catalog: Pick<Catalog, "contexts">, target: AnnotationTarget): boolean;
+export function propertyError(property: unknown): string | null;
+export function validateAnnotationDocument(doc: unknown): AnnotationDocument;
+export function validateCatalogAnnotations(annotations: unknown): void;
+export function applyAnnotations(catalog: Catalog, annotations: CatalogAnnotation[], profile?: string): Catalog;

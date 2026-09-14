@@ -64,6 +64,32 @@ export interface Catalog {
   workItems?: WorkItem[];
   /** Why a task is associated with a catalog entity. */
   workItemLinks?: WorkItemLink[];
+  /** Workspace-authored metadata; it never upgrades extracted evidence. */
+  annotations?: CatalogAnnotation[];
+}
+
+export type AnnotationTarget = { kind: "service" | "context"; id: string };
+export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export type CustomProperty = { label: string; group?: string } & (
+  | { type: "link"; value: { url: string; label: string; purpose: "runbook" | "dashboard" | "documentation" | "repository" | "generic" } }
+  | { type: "text"; value: string }
+  | { type: "number"; value: number; unit?: string }
+  | { type: "boolean"; value: boolean }
+  | { type: "tags"; value: string[] }
+  | { type: "json"; value: JsonValue[] | { [key: string]: JsonValue } }
+);
+export interface AnnotationDocument {
+  version: 1;
+  catalog: string;
+  target: AnnotationTarget;
+  properties: Record<string, CustomProperty>;
+  order: string[];
+}
+export interface CatalogAnnotation extends AnnotationDocument {
+  source: string;
+  basis: "declared";
+  /** Missing in the complete source set, not merely excluded by a profile. */
+  unresolved?: boolean;
 }
 
 export interface WorkItem {

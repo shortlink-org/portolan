@@ -21,6 +21,8 @@ import { siteDocsPlugin } from "./scripts/site-docs.mjs";
 // served to the app as one virtual module (portolan.0010).
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { provenancePlugin } from "./scripts/provenance.mjs";
+// @ts-expect-error Node-only authoring module
+import { annotationsPlugin } from "./scripts/annotations.mjs";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -170,6 +172,7 @@ export default defineConfig({
     localApiPlugin(workspace, publicSetupFrom),
     siteDocsPlugin(workspace),
     provenancePlugin(workspace),
+    annotationsPlugin(workspace),
     react(),
     tailwindcss(),
     // The AsyncAPI reference brings a parser written for Node, and it calls

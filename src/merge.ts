@@ -371,6 +371,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   if (externals.size > 0) merged.externals = [...externals.values()];
   if (workItems.size > 0) merged.workItems = [...workItems.values()];
   if (workItemLinks.size > 0) merged.workItemLinks = [...workItemLinks.values()];
+  const annotations = ordered.flatMap((source) => source.catalog.annotations ?? []);
+  if (annotations.length) merged.annotations = structuredClone(annotations);
 
   return { catalog: merged, sources: stamps, conflicts };
 }

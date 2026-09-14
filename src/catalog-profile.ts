@@ -1,11 +1,14 @@
 import type { Catalog } from "./catalog";
 import { workItemTargetExists } from "./lib/work-items.ts";
+import { annotationTargetExists } from "./lib/annotations.mjs";
 
 export interface CatalogProfile {
   id: string;
   title: string;
   /** Catalog fragments merged for this profile. */
   sources: string[];
+  /** Dedicated workspace directory containing authored resource properties. */
+  annotations?: string;
   /** Top-level groups retained after the profile sources are merged. */
   contexts: string[];
   /** Projects shown as belonging to this profile in setup UI. */
@@ -13,6 +16,7 @@ export interface CatalogProfile {
 }
 
 export interface CatalogProfileManifest {
+  annotations?: string;
   defaultCatalog?: string;
   catalogs?: CatalogProfile[];
 }
@@ -27,6 +31,7 @@ export function catalogProfiles(
       id: "default",
       title: "Catalog",
       sources: manifest.sources ?? [],
+      ...(manifest.annotations ? { annotations: manifest.annotations } : {}),
       contexts: [],
       projects: [],
     },
@@ -81,7 +86,8 @@ export function profileIncludesSource(profile: CatalogProfile, path: string): bo
  * keeps such overlays from reintroducing another profile's top-level group.
  */
 export function filterCatalogForProfile(catalog: Catalog, profile: CatalogProfile): Catalog {
-  if (profile.contexts.length === 0) return catalog;
+  const annotations = catalog.annotations?.filter((entry) => entry.catalog === profile.id);
+  if (profile.contexts.length === 0) return annotations ? { ...catalog, annotations } : catalog;
   const contexts = new Set(profile.contexts);
   const selectedContexts = catalog.contexts.filter((context) => contexts.has(context.id));
   const services = new Set(selectedContexts.flatMap((context) => context.services.map((service) => service.id)));
@@ -104,5 +110,6 @@ export function filterCatalogForProfile(catalog: Catalog, profile: CatalogProfil
     const used = new Set(scoped.workItemLinks.map((link) => link.workItem));
     scoped.workItems = (catalog.workItems ?? []).filter((item) => used.has(item.id));
   }
+  if (annotations) scoped.annotations = annotations.filter((entry) => entry.unresolved || annotationTargetExists(scoped, entry.target));
   return scoped;
 }

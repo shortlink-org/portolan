@@ -40,6 +40,7 @@ import {
 } from "../components/AsyncApiReference";
 import { ChannelRows } from "../components/ChannelRows";
 import { DocsLinks } from "../components/DocsLinks";
+import { CustomProperties } from "../components/CustomProperties";
 import { DeploymentRows } from "../components/DeploymentRows";
 import { GatewayExposureFlow } from "../components/GatewayExposureFlow";
 import { CommandRows } from "../components/CommandRows";
@@ -334,6 +335,7 @@ export function ServicePage() {
       <TabPanels className="p-gutter">
         <TabPanel>
           <>
+            <CustomProperties key={service.id} target={{ kind: "service", id: service.id }} />
             {/* Two scopes of the same service: the box among the ones it
                 touches, and the box opened up. The page already lists the
                 aggregates below, so it opens on the level the list cannot
