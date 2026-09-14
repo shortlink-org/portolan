@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CompassRose } from "../components/logo";
+import { cn } from "../lib/cn";
 
 export function ProductFrame({
   title,
@@ -17,7 +18,10 @@ export function ProductFrame({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-[18px] border border-line bg-canvas shadow-md ${className}`}
+      className={cn(
+        "overflow-hidden rounded-[18px] border border-line bg-canvas shadow-md",
+        className,
+      )}
     >
       <div className="flex h-11 items-center gap-3 border-b border-line bg-surface px-4">
         <div className="flex gap-1.5" aria-hidden>
@@ -32,9 +36,10 @@ export function ProductFrame({
         <span className="w-[35px]" aria-hidden />
       </div>
       <div
-        className={`grid min-h-0 grid-cols-1 ${
-          aside ? "sm:grid-cols-[132px_minmax(0,1fr)]" : ""
-        }`}
+        className={cn(
+          "grid min-h-0 grid-cols-1",
+          aside && "sm:grid-cols-[132px_minmax(0,1fr)]",
+        )}
       >
         {aside ? (
         <aside className="hidden border-r border-line bg-canvas p-3 sm:block">

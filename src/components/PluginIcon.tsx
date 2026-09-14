@@ -29,6 +29,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import type { PluginGlyph, PluginIconSpec } from "../lib/plugins";
+import { cn } from "../lib/cn";
 import { techGlyph } from "../lib/tech";
 import { TechIcon } from "./TechIcon";
 
@@ -70,8 +71,8 @@ export function PluginIcon({
     // A brand the mark list does not carry is a mistake the test catches; at
     // run time it falls back to the generic code glyph rather than to nothing.
     if (glyph) return <TechIcon glyph={glyph} size={size} className={className} />;
-    return <CodeXml size={size} aria-hidden className={`block shrink-0 ${className}`} />;
+    return <CodeXml size={size} aria-hidden className={cn("block shrink-0", className)} />;
   }
   const Glyph = GLYPHS[icon.lucide];
-  return <Glyph size={size} aria-hidden className={`block shrink-0 ${className}`} />;
+  return <Glyph size={size} aria-hidden className={cn("block shrink-0", className)} />;
 }

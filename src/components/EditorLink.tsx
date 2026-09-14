@@ -15,6 +15,7 @@ import { create } from "zustand";
 import { editorHref, editorName, editorWhere } from "../lib/editor-link";
 import type { EditorId } from "../lib/editor-link";
 import { readEditor, writeEditor } from "../lib/editor-prefs";
+import { cn } from "../lib/cn";
 import { localStatusQuery } from "../lib/queries";
 import type { SourceLocation } from "../lib/source-link";
 
@@ -74,7 +75,10 @@ export function EditorLink({
   return variant === "icon" ? (
     <a
       href={href}
-      className={`rounded-control p-1 text-muted hover:bg-raised hover:text-accent ${className}`}
+      className={cn(
+        "rounded-control p-1 text-muted hover:bg-raised hover:text-accent",
+        className,
+      )}
       aria-label={`Open in ${name}`}
       title={`Open in ${name}`}
     >
@@ -83,7 +87,7 @@ export function EditorLink({
   ) : (
     <a
       href={href}
-      className={`mono rounded-control text-accent hover:underline ${className}`}
+      className={cn("mono rounded-control text-accent hover:underline", className)}
       title={`Open in ${name}, at this line`}
     >
       edit ↗

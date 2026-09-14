@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "../lib/cn";
 
 type CatScene = "about" | "clear" | "unchanged" | "onboarding" | "search" | "trial";
 
@@ -12,13 +13,13 @@ const IMAGE: Record<CatScene, string> = {
 };
 
 export function CatIllustration({ scene, className = "" }: { scene: CatScene; className?: string }) {
-  return <img src={`${import.meta.env.BASE_URL}${IMAGE[scene]}`} alt="" aria-hidden draggable={false} className={`cat-illustration ${className}`} />;
+  return <img src={`${import.meta.env.BASE_URL}${IMAGE[scene]}`} alt="" aria-hidden draggable={false} className={cn("cat-illustration", className)} />;
 }
 
 /** A rare, positive empty state. Ordinary missing rows keep using `Empty`. */
 export function CatEmptyState({ scene, title, children, meta, className = "" }: { scene: Extract<CatScene, "clear" | "unchanged" | "onboarding">; title: string; children: ReactNode; meta?: ReactNode; className?: string }) {
   return (
-    <div className={`cat-empty-state ${className}`}>
+    <div className={cn("cat-empty-state", className)}>
       <CatIllustration scene={scene} className="cat-empty-illustration" />
       <div className="min-w-0">
         <h2 className="text-md font-semibold text-ink">{title}</h2>

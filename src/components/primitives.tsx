@@ -9,6 +9,7 @@ import type {
 } from "../catalog";
 import { index } from "../data";
 import { adrNumber } from "../lib/adr";
+import { cn } from "../lib/cn";
 import { ctxStyle } from "../lib/context-color";
 import { paths } from "../routes";
 
@@ -152,7 +153,7 @@ export function AdrNumber({
   const struck = isStruck(adr.status);
   return (
     <span
-      className={`mono ${struck ? "line-through text-muted" : ""} ${className}`}
+      className={cn("mono", struck && "line-through text-muted", className)}
       title={struck ? `${adr.id} - no longer in force` : adr.id}
     >
       {adrNumber(adr)}

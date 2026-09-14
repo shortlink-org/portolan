@@ -6,6 +6,7 @@
 // two units on every side and the two families weigh the same.
 
 import type { TechGlyph } from "../lib/tech";
+import { cn } from "../lib/cn";
 
 export function TechIcon({
   glyph,
@@ -26,7 +27,7 @@ export function TechIcon({
       aria-hidden
       /* `block` for the same reason KindIcon is: no inline baseline gap, so
          the mark centres on the text beside it. */
-      className={`block shrink-0 ${className}`}
+      className={cn("block shrink-0", className)}
     >
       <path d={glyph.path} />
     </svg>

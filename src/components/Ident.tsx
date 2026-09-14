@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { toClipboard } from "../lib/clipboard";
+import { cn } from "../lib/cn";
 
 /** How long "copied" stays up. One second: long enough to read, short enough. */
 const SHOWN_MS = 1000;
@@ -67,14 +68,17 @@ export function Ident({
 
   return (
     <span
-      className={`relative max-w-full align-baseline ${block ? "flex" : "inline-flex"}`}
+      className={cn(
+        "relative max-w-full align-baseline",
+        block ? "flex" : "inline-flex",
+      )}
     >
       <button
         type="button"
         onClick={copy}
         title={title ?? `${value} — click to copy`}
         aria-label={`Copy ${value}`}
-        className={`ident ${mono ? "mono" : ""} ${className}`}
+        className={cn("ident", mono && "mono", className)}
         style={style}
       >
         {children ?? value}

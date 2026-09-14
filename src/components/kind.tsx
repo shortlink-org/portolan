@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Kind } from "../lib/kinds";
 import { ctxStyle } from "../lib/context-color";
+import { cn } from "../lib/cn";
 import {
   CommandIcon,
   EntityIcon,
@@ -133,7 +134,7 @@ export function KindIcon({
     return (
       <span
         aria-hidden
-        className={`inline-block shrink-0 rounded-full ${className}`}
+        className={cn("inline-block shrink-0 rounded-full", className)}
         style={{
           width: size - 3,
           height: size - 3,
@@ -150,7 +151,7 @@ export function KindIcon({
       aria-hidden
       /* `block` drops the inline baseline gap so the glyph centres on the
          cap-height of the text beside it rather than sitting on its baseline. */
-      className={`block shrink-0 ${className}`}
+      className={cn("block shrink-0", className)}
       style={{ color: KIND_COLOR[kind] }}
     />
   );

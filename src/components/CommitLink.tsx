@@ -15,6 +15,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useForgeAccess } from "../app/forge-access";
 import { buildInfo, repositoryCommitHref } from "../lib/build-info";
+import { cn } from "../lib/cn";
 import { forgeRepoFromUrl } from "../lib/github-catalog";
 import type { ForgeCommit, ForgeRepo } from "../lib/github-catalog";
 import { forgeCommitQuery } from "../lib/queries";
@@ -64,7 +65,7 @@ export function CommitLink({
 
   if (!resolvedHref) return <Ident value={commit} className={className}>{label}</Ident>;
   if (!resolvedRepo) {
-    return <a href={resolvedHref} target="_blank" rel="noreferrer" className={`rounded-[4px] text-accent underline-offset-4 hover:underline ${className}`}>{label}</a>;
+    return <a href={resolvedHref} target="_blank" rel="noreferrer" className={cn("rounded-[4px] text-accent underline-offset-4 hover:underline", className)}>{label}</a>;
   }
 
   return <CommitPopover commit={commit} repo={resolvedRepo} href={resolvedHref} label={label} className={className} />;
@@ -100,7 +101,10 @@ function CommitPopover({ commit, repo, href, label, className }: { commit: strin
         target="_blank"
         rel="noreferrer"
         aria-label={`Open commit ${commit} on the forge`}
-        className={`rounded-[4px] text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${className}`}
+        className={cn(
+          "rounded-[4px] text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent",
+          className,
+        )}
         {...getReferenceProps()}
       >
         {label}
