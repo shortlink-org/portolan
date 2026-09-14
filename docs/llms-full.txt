@@ -554,7 +554,10 @@ endpoint and constructor topic become `namespace/topic`. Event types are read
 from Event Grid-schema `EventType` fields and `messaging.NewCloudEvent` calls,
 and are emitted as sent messages with the publishing source line. Credential
 arguments are never resolved or copied. Dynamic endpoints remain warnings
-rather than guessed channels.
+rather than guessed channels. A custom topic and an event domain have the same
+endpoint shape, so domain endpoints are named explicitly with the `domains`
+option. For those endpoints, the Event Grid-schema `Topic` field or CloudEvent
+`source` becomes the domain topic and the channel address is `domain/topic`.
 
 `extract-terraform` reads the other half: the AWS and Azure infrastructure the
 code runs on, from the `*.tf` files of the directory given as `dir` - or the root, or

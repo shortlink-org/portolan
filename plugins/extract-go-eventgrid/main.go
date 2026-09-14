@@ -12,9 +12,10 @@ import (
 )
 
 type Options struct {
-	Context string `json:"context"`
-	Service string `json:"service"`
-	Out     string `json:"out,omitempty"`
+	Context string   `json:"context"`
+	Service string   `json:"service"`
+	Domains []string `json:"domains,omitempty"`
+	Out     string   `json:"out,omitempty"`
 }
 
 func Serve(stdin io.Reader, stdout io.Writer) error {

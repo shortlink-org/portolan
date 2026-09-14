@@ -399,6 +399,48 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "thumbnails" {
 	}
 }
 
+func TestAzureEventGridDomainTopic(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "event-grid-domain.tf", `
+resource "azurerm_eventgrid_domain" "estate" {
+  name         = "estate"
+  input_schema = "CloudEventSchemaV1_0"
+}
+
+resource "azurerm_eventgrid_domain_topic" "orders" {
+  name        = "orders"
+  domain_name = azurerm_eventgrid_domain.estate.name
+}
+
+resource "azurerm_function_app_function" "project" {
+  name            = "project-order"
+  function_app_id = azurerm_linux_function_app.app.id
+}
+
+resource "azurerm_eventgrid_event_subscription" "project" {
+  name                 = "project-orders"
+  scope                = azurerm_eventgrid_domain_topic.orders.id
+  included_event_types = ["shop.OrderPlaced"]
+
+  azure_function_endpoint {
+    function_id = azurerm_function_app_function.project.id
+  }
+}
+`)
+
+	out, resp := extracted(t, root, Options{})
+	if got := warnings(resp); len(got) != 0 {
+		t.Fatalf("warnings: %v", got)
+	}
+	topic := channel(t, service(t, out, "shop.project-order"), "estate/orders")
+	if topic.Title != "Azure Event Grid domain topic" || topic.Kind != catalog.ChannelKindEvent {
+		t.Errorf("domain topic: %+v", topic)
+	}
+	if len(topic.Messages) != 1 || topic.Messages[0].Name != "shop.OrderPlaced" || topic.Messages[0].Direction != catalog.ChannelReceive {
+		t.Errorf("domain topic messages: %+v", topic.Messages)
+	}
+}
+
 func TestAzureEventGridFirstClassMessagingDestinations(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "main.tf", `

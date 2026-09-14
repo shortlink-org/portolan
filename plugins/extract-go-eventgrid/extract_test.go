@@ -23,8 +23,12 @@ func write(t *testing.T, root, name, contents string) {
 }
 
 func extracted(t *testing.T, root string) (catalog.Catalog, plugin.Response) {
+	return extractedWithOptions(t, root, Options{Context: "shop", Service: "fulfillment"})
+}
+
+func extractedWithOptions(t *testing.T, root string, opts Options) (catalog.Catalog, plugin.Response) {
 	t.Helper()
-	resp, err := extract(plugin.Input{Root: root}, Options{Context: "shop", Service: "fulfillment"})
+	resp, err := extract(plugin.Input{Root: root}, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,6 +37,62 @@ func extracted(t *testing.T, root string) (catalog.Catalog, plugin.Response) {
 		t.Fatal(err)
 	}
 	return out, resp
+}
+
+func TestReadsCloudEventDomainTopics(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "go.mod", "module example.com/svc\n")
+	write(t, root, "publisher/publisher.go", `package publisher
+
+import (
+	"context"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid"
+)
+
+const endpoint = "https://estate.westus2-1.eventgrid.azure.net/api/events"
+
+func Publish(ctx context.Context, credential *azeventgrid.AzureKeyCredential) error {
+	client, err := azeventgrid.NewClient(endpoint, credential, nil)
+	if err != nil { return err }
+	placed, _ := messaging.NewCloudEvent("orders", "shop.OrderPlaced", []byte("{}"), nil)
+	cancelled, _ := messaging.NewCloudEvent("billing", "shop.InvoiceCancelled", []byte("{}"), nil)
+	if err := client.PublishCloudEvents(ctx, []messaging.CloudEvent{placed, cancelled}, nil); err != nil {
+		return err
+	}
+	return client.PublishEvents(ctx, []azeventgrid.Event{{
+		Topic: to.Ptr("returns"), EventType: to.Ptr("shop.ReturnRequested"),
+	}}, nil)
+}
+`)
+
+	out, resp := extractedWithOptions(t, root, Options{
+		Context: "shop", Service: "fulfillment",
+		Domains: []string{"https://estate.westus2-1.eventgrid.azure.net/api/events"},
+	})
+	if got := warnings(resp); len(got) != 0 {
+		t.Fatalf("warnings: %v", got)
+	}
+	got := channels(out)
+	if len(got) != 3 {
+		t.Fatalf("channels: %+v", got)
+	}
+	for address, message := range map[string]string{
+		"estate/orders":  "shop.OrderPlaced",
+		"estate/billing": "shop.InvoiceCancelled",
+		"estate/returns": "shop.ReturnRequested",
+	} {
+		topic := got[address]
+		if topic.Title != "Azure Event Grid domain topic" || topic.Kind != catalog.ChannelKindEvent {
+			t.Errorf("domain topic %s: %+v", address, topic)
+			continue
+		}
+		if len(topic.Messages) != 1 || topic.Messages[0].Name != message || topic.Messages[0].Direction != catalog.ChannelSend {
+			t.Errorf("domain topic %s messages: %+v", address, topic.Messages)
+		}
+	}
 }
 
 func channels(out catalog.Catalog) map[string]catalog.Channel {

@@ -1807,6 +1807,19 @@
             "fulfillment"
           ]
         },
+        "domains": {
+          "type": "array",
+          "description": "Event Grid domain names or endpoint URLs. Event Grid uses the same endpoint shape for custom topics and domains, so listing domains lets CloudEvent source values be read as domain topic names.",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            [
+              "estate",
+              "https://notifications.westus2-1.eventgrid.azure.net/api/events"
+            ]
+          ]
+        },
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",

@@ -21,7 +21,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	if len(sites) == 0 {
 		b.Warn(in.Root, "no Azure Event Grid publisher call was found")
 	}
-	channels := s.catalog(sites, b)
+	channels := s.catalog(sites, opts.Domains, b)
 	serviceID := opts.Context + "." + opts.Service
 	fragment := catalog.Catalog{
 		Contexts: []catalog.BoundedContext{{
@@ -48,8 +48,14 @@ type channelState struct {
 	messages map[string]catalog.ChannelMessage
 }
 
-func (s *scanner) catalog(sites []site, b *plugin.Builder) []catalog.Channel {
+func (s *scanner) catalog(sites []site, domains []string, b *plugin.Builder) []catalog.Channel {
 	states := map[string]*channelState{}
+	domainNames := map[string]bool{}
+	for _, domain := range domains {
+		if name := endpointName(domain); name != "" {
+			domainNames[name] = true
+		}
+	}
 	for _, found := range sites {
 		configs := s.clientConfigs(found.client, found.fn)
 		if len(configs) == 0 {
@@ -58,16 +64,25 @@ func (s *scanner) catalog(sites []site, b *plugin.Builder) []catalog.Channel {
 		}
 		messages := s.eventTypes(found.events, found.fn)
 		for _, config := range configs {
-			state := states[config.address]
-			if state == nil {
-				state = &channelState{config: config, notes: map[string]bool{}, messages: map[string]catalog.ChannelMessage{}}
-				states[config.address] = state
+			if domainNames[config.address] {
+				events := s.domainEvents(found.events, found.fn, found.method)
+				if len(events) == 0 {
+					b.Warn(found.at.String(), "domain topic of "+found.method+" could not be resolved from the published event")
+					continue
+				}
+				for _, event := range events {
+					domainConfig := config
+					domainConfig.address += "/" + event.topic
+					domainConfig.title = "Azure Event Grid domain topic"
+					domainMessages := []string{}
+					if event.eventType != "" {
+						domainMessages = append(domainMessages, event.eventType)
+					}
+					addPublishedSite(states, domainConfig, found, domainMessages)
+				}
+				continue
 			}
-			state.sources = append(state.sources, found.at.String())
-			state.notes[publishNote(found)] = true
-			for _, name := range messages {
-				state.messages[name] = catalog.ChannelMessage{Name: name, Title: name, Direction: catalog.ChannelSend}
-			}
+			addPublishedSite(states, config, found, messages)
 		}
 	}
 
@@ -97,6 +112,19 @@ func (s *scanner) catalog(sites []site, b *plugin.Builder) []catalog.Channel {
 		})
 	}
 	return out
+}
+
+func addPublishedSite(states map[string]*channelState, config clientConfig, found site, messages []string) {
+	state := states[config.address]
+	if state == nil {
+		state = &channelState{config: config, notes: map[string]bool{}, messages: map[string]catalog.ChannelMessage{}}
+		states[config.address] = state
+	}
+	state.sources = append(state.sources, found.at.String())
+	state.notes[publishNote(found)] = true
+	for _, name := range messages {
+		state.messages[name] = catalog.ChannelMessage{Name: name, Title: name, Direction: catalog.ChannelSend}
+	}
 }
 
 func publishNote(found site) string {
