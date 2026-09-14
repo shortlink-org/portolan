@@ -37,10 +37,10 @@
     "openapi-fetch": "^0.17.0",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@bufbuild/buf": "^1.72.0",
+    "@bufbuild/buf": "^1.73.0",
     "@bufbuild/protoc-gen-es": "^2.15.0",
     "@testcontainers/postgresql": "^12.1.0",
     "@types/node": "^26.5.1",
