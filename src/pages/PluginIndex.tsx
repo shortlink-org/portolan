@@ -1,7 +1,7 @@
 import { useDocumentTitle } from "../app/title";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { ArrowUpRight, ShieldCheck, Terminal } from "lucide-react";
+import { ArrowUpRight, Settings2, ShieldCheck, Terminal } from "lucide-react";
 import { CatIllustration } from "../components/CatIllustration";
 import { SectionTitle } from "../components/PageHeader";
 import { PluginIcon } from "../components/PluginIcon";
@@ -118,6 +118,7 @@ export function PluginIndex() {
 }
 
 function PluginCard({ entry, highlighted }: { entry: PluginEntry; highlighted: boolean }) {
+  const { search } = useLocation();
   const options = Object.entries(entry.options.properties ?? {});
   const required = new Set(entry.options.required ?? []);
   const RuntimeIcon = entry.runtime === "wasm" ? ShieldCheck : Terminal;
@@ -140,6 +141,7 @@ function PluginCard({ entry, highlighted }: { entry: PluginEntry; highlighted: b
       </header>
 
       <p className="text-muted">{entry.summary}</p>
+      {["work-items", "fetch-eventbridge"].includes(entry.plugin) ? <Link to={`${paths.pluginSettings(entry.name)}${search}`} className="tbtn inline-flex self-start px-2.5 py-1.5"><Settings2 size={14} aria-hidden />Plugin settings</Link> : null}
 
       <div className="flex flex-wrap items-center gap-1.5">
         {entry.phases.map((phase) => (

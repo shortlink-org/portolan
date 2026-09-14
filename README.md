@@ -175,6 +175,10 @@ dials, and replays the committed fragment when there is no cluster to ask.
 `fetch-argocd` reads the applications an Argo CD server manages into a snapshot
 of where each service runs - environment, cluster, namespace, revision, images -
 against the same kind of lock; the service page shows it under "Where it runs".
+`fetch-eventbridge` reads deployed buses, enabled event-pattern rules and their
+targets through the AWS API. Explicit source and target mappings (or rule tags)
+place publishers and consumers on services; credentials and event payload
+values never enter its checked offline snapshot.
 
 ### DX Software Catalog
 

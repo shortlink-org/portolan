@@ -828,6 +828,67 @@ where the person at the keyboard can read the connection error, and not into
 the build report, which is committed. Nothing but the fragment is written to
 disk: the objects live in the process for the length of one call.
 
+#### The event control plane: fetch-eventbridge
+
+Terraform says what should be deployed; the EventBridge API says which buses,
+rules and targets are deployed now. `fetch-eventbridge` asks that read-only API
+in every region named in the step and writes service message channels from
+enabled event-pattern rules. The bus ARN is the channel address, a literal
+`detail-type` is the message name, a mapped event `source` sends it, and a
+mapped target receives it. A disabled rule is not an active route. Scheduled
+rules are left to the separate EventBridge Scheduler integration instead of
+being made to look like bus messages.
+
+```json
+{ "name": "eventbridge", "host": "fetch-eventbridge" }
+
+{
+  "plugin": "eventbridge",
+  "in": ".",
+  "out": "data/eventbridge",
+  "options": {
+    "regions": ["eu-west-1", "us-east-1"],
+    "buses": ["orders"],
+    "sources": {
+      "com.acme.orders": "shop.orders"
+    },
+    "targets": {
+      "lambda:invoice-handler": "shop.billing",
+      "arn:aws:sqs:eu-west-1:123456789012:audit-events": "shop.audit"
+    },
+    "ruleTags": {
+      "context": "portolan.context",
+      "service": "portolan.service"
+    },
+    "cache": "data/eventbridge"
+  }
+}
+```
+
+Authentication is the standard AWS SDK credential chain: environment,
+workload role, shared credentials or an `AWS_PROFILE`. A separate step and
+output directory can be used for each account. The smallest useful policy is
+read-only and grants `events:ListEventBuses`, `events:ListRules` and
+`events:ListTargetsByRule`; add `events:ListTagsForResource` only when
+`ruleTags` is configured. No profile, credential, token, full event pattern,
+fixed target input or input-transformer template is retained. `source` and
+`detail-type` are kept because they are the event's routing identity; other
+pattern values are reduced to field names.
+
+In a local catalog, `/plugins/eventbridge/settings` edits these options,
+catalog scope and explicit service mappings in `portolan.json`. It can save
+without contacting AWS or save and run the reader immediately. A published
+catalog keeps the page read-only and offers a starter step to copy; credentials
+are never form fields.
+
+The control plane cannot say which application calls `PutEvents`, and a target
+ARN does not identify a Portolan service by itself. That is why `sources` and
+`targets` are explicit maps and an unmapped identity is a warning, not a name
+inferred from the ARN. `ruleTags` is a fallback for a rule whose targets all
+belong to one service. With `PORTOLAN_OFFLINE` set, in CI, or after a failed
+AWS call, the plugin replays `eventbridge.json` only when its digest matches
+`eventbridge.lock.json`.
+
 portolan.0011 records why both readers keep names and nothing else.
 
 ### Where it runs: the GitOps tree, and the deployer

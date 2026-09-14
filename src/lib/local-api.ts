@@ -2,7 +2,6 @@ import type { SetupDiagnostic, SetupInfo, SetupPhase, SetupProject, SetupRunStep
 import type { DjangoAggregateCandidates } from "./django-aggregates";
 import type { ProblemRuleEntry } from "./problem-rules";
 import type { TaskTrackerEntry, TaskTracker } from "./task-tracker-config.mjs";
-
 export interface TaskTrackerState {
   revision: string;
   entries: Array<TaskTrackerEntry & { managed: boolean; catalogs: string[] }>;
@@ -27,6 +26,42 @@ export function fullScanTaskTrackers(revision: string, step: number): Promise<{ 
 }
 export function saveTaskTrackers(request: SaveTaskTrackers): Promise<TaskTrackerState & { run: { runId: string } | null; generationError?: string }> {
   return json("/task-trackers", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(request) });
+}
+
+export interface EventBridgeEntry {
+  step: number;
+  input: string;
+  output: string;
+  cache: string;
+  regions: string[];
+  buses: string[];
+  sources: Record<string, string>;
+  targets: Record<string, string>;
+  ruleTags?: { context: string; service: string };
+  managed: boolean;
+  catalogs: string[];
+}
+export interface EventBridgeState {
+  revision: string;
+  entries: EventBridgeEntry[];
+  catalogs: Array<{ id: string; title: string }>;
+}
+export interface SaveEventBridge {
+  revision: string;
+  step: number | null;
+  catalogs: string[];
+  regions: string[];
+  buses: string[];
+  sources: Record<string, string>;
+  targets: Record<string, string>;
+  ruleTags?: { context: string; service: string };
+  generate: boolean;
+}
+export function eventBridgeSettings(): Promise<EventBridgeState> {
+  return json("/eventbridge");
+}
+export function saveEventBridge(request: SaveEventBridge): Promise<EventBridgeState & { run: { runId: string } | null; generationError?: string }> {
+  return json("/eventbridge", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(request) });
 }
 
 const ROOT = `${import.meta.env.BASE_URL}__portolan`;

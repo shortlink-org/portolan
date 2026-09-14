@@ -26,6 +26,7 @@ import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import { formatLike } from "./json-format.mjs";
 import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
+import { eventBridgeState, saveEventBridgeSettings } from "./eventbridge-settings.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
 import {
   discoverProject,
@@ -1600,6 +1601,9 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/task-trackers`) {
             return send(res, 200, taskTrackerState(workspace));
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/eventbridge`) {
+            return send(res, 200, eventBridgeState(workspace));
+          }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
             const features = url.searchParams.has("features")
               ? url.searchParams.get("features").split(",").filter(Boolean)
@@ -1650,6 +1654,17 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
               const entry = saved.entries.find((entry) => entry.input === input.input);
               const target = input.fullScan === true ? taskTrackerFullScanTarget(workspace, { revision: saved.revision, step: entry?.step }) : "";
               const job = startJob(workspace, "write", null, null, target);
+              return send(res, 200, { ...saved, run: { runId: job.id, mode: job.mode } });
+            } catch (cause) {
+              return send(res, 200, { ...saved, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
+            }
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/eventbridge`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before saving EventBridge settings." });
+            const saved = saveEventBridgeSettings(workspace, input, writeManifest);
+            if (!input.generate) return send(res, 200, { ...saved, run: null });
+            try {
+              const job = startJob(workspace, "write", null);
               return send(res, 200, { ...saved, run: { runId: job.id, mode: job.mode } });
             } catch (cause) {
               return send(res, 200, { ...saved, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });

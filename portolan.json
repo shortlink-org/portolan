@@ -382,6 +382,10 @@
       "host": "fetch-argocd"
     },
     {
+      "name": "eventbridge",
+      "host": "fetch-eventbridge"
+    },
+    {
       "name": "csr-schemas",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"

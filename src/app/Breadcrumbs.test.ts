@@ -34,6 +34,11 @@ describe("crumbsFor", () => {
       { label: "settings", to: "/settings" },
       { label: "delivery", to: "/settings/delivery" },
     ]);
+    expect(crumbsFor("/plugins/work-items/settings")).toEqual([
+      { label: "plugins", to: "/plugins" },
+      { label: "work-items", to: "/plugins#plugin-work-items" },
+      { label: "settings", to: "/plugins/work-items/settings" },
+    ]);
     expect(crumbsFor("/settings/integrations")).toEqual([
       { label: "settings", to: "/settings" },
       { label: "integrations", to: "/settings/integrations" },

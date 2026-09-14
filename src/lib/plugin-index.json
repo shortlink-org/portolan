@@ -3047,6 +3047,94 @@
     }
   },
   {
+    "name": "eventbridge",
+    "plugin": "fetch-eventbridge",
+    "summary": "Reads deployed Amazon EventBridge buses, enabled rules and targets through the read-only AWS API into service message channels, with a checked snapshot for offline builds.",
+    "category": "infrastructure",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "host",
+    "source": "scripts/host-plugins/fetch-eventbridge.mjs",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "regions",
+        "cache"
+      ],
+      "properties": {
+        "regions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "AWS regions whose EventBridge control planes are read. Authentication uses the standard AWS SDK credential chain and is never stored in the manifest or snapshot.",
+          "examples": [
+            [
+              "eu-west-1",
+              "us-east-1"
+            ]
+          ]
+        },
+        "buses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Event bus names or ARNs to include. Left out, every bus the current AWS identity can list in the selected regions."
+        },
+        "sources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^.+\\..+$"
+          },
+          "description": "Exact EventBridge source values mapped to Portolan service ids, for example {\"com.acme.orders\": \"shop.orders\"}. These mappings identify publishers."
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^.+\\..+$"
+          },
+          "description": "EventBridge target identifiers mapped to Portolan service ids. A key may be a full ARN, target id, resource name, or service-qualified name such as lambda:invoice-handler. These mappings identify consumers."
+        },
+        "ruleTags": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "context",
+            "service"
+          ],
+          "description": "Optional rule tags that identify the consumer service when a target has no explicit targets mapping. This is suitable for rules whose targets all belong to one service.",
+          "properties": {
+            "context": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tag whose value is the bounded context slug."
+            },
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tag whose value is the service slug."
+            }
+          }
+        },
+        "cache": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the last run's eventbridge.json and eventbridge.lock.json were written, repo-relative: the same path as the step's out. Offline and failed API runs replay this checked snapshot."
+        }
+      }
+    }
+  },
+  {
     "name": "csr-schemas",
     "plugin": "extract-csr",
     "summary": "Reads schemas vendored out of a Confluent Schema Registry and answers with the topics they are registered against and the shapes they declare.",

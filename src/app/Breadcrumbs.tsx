@@ -85,8 +85,14 @@ export function crumbsFor(pathname: string): Crumb[] {
   if (parts[0] === "problems")
     return [{ label: "problems", to: paths.problems() }];
 
-  if (parts[0] === "plugins")
-    return [{ label: "plugins", to: paths.plugins() }];
+  if (parts[0] === "plugins") {
+    const name = parts[1];
+    return [
+      { label: "plugins", to: paths.plugins() },
+      ...(name ? [{ label: name, to: paths.plugin(name) }] : []),
+      ...(name && parts[2] === "settings" ? [{ label: "settings", to: paths.pluginSettings(name) }] : []),
+    ];
+  }
 
   if (parts[0] === "registry") {
     const crumbs: Crumb[] = [{ label: "registry", to: paths.registry() }];

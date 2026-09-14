@@ -20,6 +20,13 @@ import { allAggregates, allStores, allViews, enumsOf } from "./catalog";
 import { registryCatalog } from "./lib/scenarios";
 
 describe("routes", () => {
+  it("routes plugin-owned settings without a legacy global settings route", () => {
+    expect(paths.pluginSettings("work-items")).toBe("/plugins/work-items/settings");
+    expect(isRoutable(paths.pluginSettings("work-items"))).toBe(true);
+    expect(isRoutable("/plugins/work-items/settings?catalog=portolan")).toBe(true);
+    expect(isRoutable("/settings/task-trackers")).toBe(false);
+    expect(paths.pluginSettings("some/plugin")).toBe("/plugins/some%2Fplugin/settings");
+  });
   it("routes the public landing page", () => {
     expect(paths.landing()).toBe("/landing");
     expect(isLandingPath("/landing")).toBe(true);
