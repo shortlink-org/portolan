@@ -51,16 +51,3 @@ same context, service and store. SQL discovers `migrations`/`migration` director
 outside `internal` too. Without a matching domain root or an explicit
 `-- aggregate: <id>` annotation, tables and views remain independent of aggregates;
 their schema, foreign keys and SQL accesses are retained.
-
-## Roadmap
-
-- **Unpack embedded structs and interfaces.** An embedded field is read as one
-  field named after its type, so an event that embeds `ddd.Base` lists a
-  `ddd.Base` row instead of the `aggregateID` and `occurredAt` it actually
-  carries, and an interface that embeds another lists nothing of the embedded
-  method set. The reader should resolve the embedded type - in the same
-  package, or in an imported one reached through the module's `replace`
-  directives and the module cache - and splice its fields and methods in
-  place of the embedded row, recursively. When the package cannot be found,
-  today's behaviour stays. Follows the `pkg/ddd/event` change that made
-  embedding `Base` the house style for domain events.
