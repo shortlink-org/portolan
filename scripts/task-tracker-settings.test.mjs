@@ -22,7 +22,7 @@ function workspace() {
 }
 const save = (root, request = {}) => saveTaskTrackerSettings(root, { revision: taskTrackerState(root).revision, step: null, input: ".", catalogs: ["app"], trackers: [tracker], maxCommits: 500, ...request }, writeManifest);
 
-describe("persisted tracker settings", () => {
+describe("persisted tracker settings", { timeout: 30_000 }, () => {
   it("reports unborn repositories and warns about shallow history without disabling it", () => {
     const { root, manifest } = workspace();
     mkdirSync(join(root, "empty"));

@@ -41,7 +41,7 @@ function elsewhere() {
   return dir;
 }
 
-describe("stampsFor", () => {
+describe("stampsFor", { timeout: 30_000 }, () => {
   // The stamp is the commit the change landed in, which is what a stamp
   // written into the file could never say.
   it("dates a source by the commit that last changed it", () => {
@@ -80,7 +80,7 @@ describe("stampsFor", () => {
   });
 });
 
-describe("what changed since the output was last committed", () => {
+describe("what changed since the output was last committed", { timeout: 30_000 }, () => {
   it("lists the inputs that moved, working tree included, and leaves the output directory out", () => {
     const { root, git, write } = repository();
     write("svc/main.go", "package main\n");

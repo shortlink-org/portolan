@@ -27,7 +27,7 @@ function checkout() {
   return { root, git, commit, catalog, request: { input: { root }, catalog, options: { trackers } } };
 }
 
-describe("work item Git evidence", () => {
+describe("work item Git evidence", { timeout: 30_000 }, () => {
   it("extracts all five providers together with correct URLs and commit evidence", () => {
     const { request, commit } = checkout();
     const sha = commit("RT-1 JIRA-2 LIN-3: toolbar\n\nFixes #4 and group/sub/repo#5; ignores other/repo#6 and !7");

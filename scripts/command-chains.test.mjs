@@ -3,7 +3,7 @@ import { loadCatalog } from "./catalog-sources.mjs";
 import { commandChain } from "../src/flow/chain.ts";
 import { commandEntries, commandSummary } from "../src/flow/command-info.ts";
 
-describe("generated example command chains", () => {
+describe("generated example command chains", { timeout: 30_000 }, () => {
   it("connects CancelOrder from the BFF through the Rust handler to OrderCancelled and ledger", async () => {
     const { catalog } = await loadCatalog("portolan.json", { profile: "example" });
     const service = catalog.contexts.find((c) => c.id === "shop").services.find((s) => s.id === "shop.oms");

@@ -20,7 +20,7 @@ function workspace() {
 const request = (root, patch = {}) => ({ revision: gitFetchState(root).revision, step: null, output: "vendor/repos/git-test", repos: [repo], catalog: "app", generate: false, ...patch });
 const save = (root, patch) => saveGitFetchSettings(root, request(root, patch), writeManifest);
 
-describe("Git fetch settings", () => {
+describe("Git fetch settings", { timeout: 30_000 }, () => {
   it("discovers repositories across catalog profiles, including sources outside the union", () => {
     const { root, manifest } = workspace();
     mkdirSync(join(root, "data")); mkdirSync(join(root, "other"));

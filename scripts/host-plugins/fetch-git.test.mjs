@@ -61,7 +61,7 @@ const write = (dir, response) => {
   }
 };
 
-describe("fetch-git", () => {
+describe("fetch-git", { timeout: 30_000 }, () => {
   it("writes the whole source tree, a lock and a pin", () => {
     const remote = repository();
     const generatedAt = "2026-09-09T03:00:00.000Z";

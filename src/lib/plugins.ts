@@ -196,6 +196,8 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   "csr-compatibility": { label: "Schema compatibility", icon: { lucide: "shield" } },
   codeowners: { label: "CODEOWNERS", icon: { lucide: "users" } },
   adr: { label: "Decision records", icon: { lucide: "book" } },
+  rfc: { label: "Proposals", icon: { lucide: "book" } },
+  "github-rfcs": { label: "GitHub proposals", icon: { lucide: "message" } },
   glossary: { label: "Glossary", icon: { lucide: "spell-check" } },
   flows: { label: "Flows", icon: { lucide: "route" } },
   bsr: { label: "Buf Schema Registry", icon: { lucide: "package" } },

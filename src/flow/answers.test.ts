@@ -55,11 +55,13 @@ describe("stepAnswer", () => {
   });
 
   it("collects a flow's answers by step id", () => {
-    // Three, now that pricing is a service rather than a hand-written entry:
-    // its contract says what a quote comes back as.
+    // Two. The inbound checkout has an explicit reply: enrichment synthesizes
+    // a response step from the proven synchronous handler return, and a
+    // request with a reply of its own is left to that step. The auth call
+    // and the pricing quote have none, so their contracts say what comes
+    // back.
     const answers = flowAnswers(index, flow("cart-checkout"));
     expect([...answers.entries()].sort()).toEqual([
-      ["s1", "CheckedOut"],
       ["s2", "SessionInfo"],
       ["s4", "GetQuoteResponse"],
     ]);
