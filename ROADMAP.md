@@ -1,10 +1,39 @@
-# Roadmap
+# Portolan roadmap
 
-What is planned and not yet built. An item leaves this file when it lands.
+Этот документ собирает открытые идеи и проблемы Portolan. Завершённые задачи
+из roadmap удаляются.
 
-## Extractors
+## Статусы
 
-### Go: unpack embedded structs and interfaces
+- **open** — проблема подтверждена, решения ещё нет.
+- **investigate** — симптом подтверждён, но сначала нужно выбрать модель решения.
+- **source quality** — Portolan корректно сообщает о недостатке в исходном
+  проекте; можно улучшить диагностику или добавить явную конфигурацию.
+
+## P2 — качество извлечения и UX
+
+### PORTOLAN-21. Показывать feature-ветки в общем каталоге как draft
+
+**Status:** open
+
+Если feature-ветка добавляет то, чего на main ещё нет (flow, шаг, сервис,
+событие), читатель должен видеть это в общем каталоге на своём месте с
+пометкой `draft`, именем ветки и ссылкой на PR.
+
+- Пикер веток: на каждую feature-ветку своя галочка, по умолчанию все
+  выключены. Выбор живёт у читателя и не меняет сгенерированный main-каталог.
+- Draft-сущность несёт source evidence из своей ветки и исчезает после мержа
+  или удаления ветки.
+- Конфликт (один идентификатор изменён и на main, и в ветке): показывать обе
+  версии, ветвевая помечена `draft`.
+
+Открытые вопросы: откуда брать список веток и PR (fetch-git, forge API), где
+хранить извлечение по ветке (отдельный snapshot на ветку), как считать
+«добавляет», а не «меняет».
+
+### PORTOLAN-22. Go extractor: unpack embedded structs and interfaces
+
+**Status:** open
 
 An embedded field is read as one field named after its type, so an event that
 embeds `ddd.Base` lists a `ddd.Base` row instead of the `aggregateID` and
