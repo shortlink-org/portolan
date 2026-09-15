@@ -138,6 +138,27 @@ Check(warnings.Contains("UserRegistrationsController sits under no module's dire
 Check(warnings.Contains("MemberCreatedIntegrationEvent is declared and published nowhere"), "an integration event nobody publishes is reported");
 Check(warnings.Contains("Domain/Users has no aggregate root"), "a domain directory with no root and no group is reported");
 
+// The fixture read as if it were a copy fetched into the workspace: every path
+// is the one the copy's own repository has, which is the fragment with the
+// directory holding the copy taken off - except the inferred documents, which
+// the host writes into this workspace.
+var fetched = Extract.Run(root, new Request
+{
+    PortolanVersion = "0.1.0",
+    Input = new Input { Root = fixture, Output = fixture, Repository = fixture },
+    Options = request.Options,
+}).Files.ToDictionary(f => f.Name, f => f.Contents, StringComparer.Ordinal);
+foreach (var name in new[] { "domain.json", "stores.json" })
+{
+    var kept = " ";
+    var want = files[name]
+        .Replace($"\"{fixture}/openapi.", $"\"{kept}openapi.")
+        .Replace($"\"{fixture}/", "\"")
+        .Replace($"\"{fixture}\"", "\"\"")
+        .Replace($"\"{kept}openapi.", $"\"{fixture}/openapi.");
+    Check(fetched[name] == want, $"{name} of a fetched copy is the plain one spelled from its repository{FirstDifference(want, fetched[name])}");
+}
+
 if (failures.Count > 0)
 {
     Console.Error.WriteLine($"{failures.Count} failure(s):");

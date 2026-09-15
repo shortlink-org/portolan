@@ -25,7 +25,14 @@ final class Extract {
 
     static void run(Protocol.Input input, Protocol.Options opts, Protocol.Builder b, Path cwd) throws IOException {
         Path root = cwd.resolve(input.root()).normalize();
-        java.util.function.Function<Path, String> rel = path -> cwd.relativize(path).toString().replace('\\', '/');
+        // Every path is spelled from the repository the file is in: a fetched
+        // copy's own paths, not the directory holding the copy.
+        Path repository = cwd.resolve(input.repository()).normalize();
+        java.util.function.Function<Path, String> rel = path -> {
+            Path normal = path.toAbsolutePath().normalize();
+            Path base = normal.startsWith(repository) ? repository : cwd;
+            return base.relativize(normal).toString().replace('\\', '/');
+        };
 
         String context = opts.context.isEmpty() ? root.getFileName().toString() : opts.context;
         String service = opts.service.isEmpty() ? root.getFileName().toString() : opts.service;

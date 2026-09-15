@@ -21,6 +21,10 @@ public sealed class Input
 {
     [JsonPropertyName("root")] public string Root { get; set; } = "";
     [JsonPropertyName("output")] public string Output { get; set; } = "";
+    /// Where the repository the root belongs to begins, relative to the
+    /// working directory: a fetched copy's directory, or "" when the workspace
+    /// is the repository. Paths are spelled from it.
+    [JsonPropertyName("repository")] public string Repository { get; set; } = "";
 }
 
 /// What the manifest tells the extractor: the things a tree does not say

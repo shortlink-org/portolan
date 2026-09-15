@@ -18,11 +18,20 @@ final class Protocol {
 
     private Protocol() {}
 
-    /** Where the source is. */
-    record Input(String root) {
+    /**
+     * Where the source is. {@code repository} is where the repository the root
+     * belongs to begins, relative to the working directory: the directory a
+     * fetched copy was written to, or empty when the workspace is the
+     * repository. Paths are spelled from it.
+     */
+    record Input(String root, String repository) {
+        Input(String root) {
+            this(root, "");
+        }
+
         static Input of(Object raw) {
             Map<String, Object> map = Json.object(raw);
-            return new Input(Json.string(map.get("root")));
+            return new Input(Json.string(map.get("root")), Json.string(map.get("repository")));
         }
     }
 

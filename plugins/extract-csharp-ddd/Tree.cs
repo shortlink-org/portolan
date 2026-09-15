@@ -15,8 +15,12 @@ namespace Portolan.Extract.CSharp;
 
 public sealed class Tree
 {
-    /// The input root as the request gave it, the prefix of every path written.
+    /// The input root as the request gave it.
     public string Root { get; }
+    /// Where the repository the root belongs to begins, as the request gave
+    /// it: a fetched copy's directory, or "" when the workspace is the
+    /// repository. Every path written is spelled from it.
+    public string Repository { get; }
     public string AbsRoot { get; }
     public Options Options { get; }
     public Builder Out { get; }
@@ -52,6 +56,8 @@ public sealed class Tree
         Out = output;
         Root = input.Root.Replace('\\', '/').TrimEnd('/');
         if (Root == "") Root = ".";
+        Repository = input.Repository.Replace('\\', '/').Trim('/');
+        if (Repository == ".") Repository = "";
         AbsRoot = System.IO.Path.GetFullPath(System.IO.Path.Combine(cwd, Root));
 
         var files = Directory.Exists(AbsRoot)
@@ -149,7 +155,11 @@ public sealed class Tree
     public string Rel(string absolute)
     {
         var rel = System.IO.Path.GetRelativePath(AbsRoot, absolute).Replace('\\', '/');
-        return Root == "." ? rel : Root + "/" + rel;
+        var workspace = Root == "." ? rel : Root + "/" + rel;
+        // A fetched copy's own path, not the directory holding the copy.
+        if (Repository == "") return workspace;
+        if (workspace == Repository) return "";
+        return workspace.StartsWith(Repository + "/", StringComparison.Ordinal) ? workspace[(Repository.Length + 1)..] : workspace;
     }
 
     public string PathOf(SyntaxNode node) => Rel(node.SyntaxTree.FilePath);

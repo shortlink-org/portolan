@@ -36,6 +36,24 @@ describe("the fixture, as a whole", () => {
   });
 });
 
+// The fixture read as if it were a copy fetched into the workspace: every path
+// is the one the copy's own repository has, which is the golden with the
+// directory holding the copy taken off.
+describe("a fetched copy", () => {
+  it("is spelled from its own repository", () => {
+    const fetched = extract({ root: ROOT, repository: ROOT }, options).files[0]!.contents;
+    expect(fetched).not.toContain(`${ROOT}/`);
+    const respell = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(respell);
+      if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, respell(v)]));
+      if (value === ROOT) return "";
+      if (typeof value === "string" && value.startsWith(`${ROOT}/`)) return value.slice(ROOT.length + 1);
+      return value;
+    };
+    expect(JSON.parse(fetched)).toEqual(respell(fragment()));
+  });
+});
+
 describe("the service", () => {
   const svc = fragment().contexts[0].services[0];
 

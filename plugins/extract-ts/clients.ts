@@ -45,9 +45,13 @@ class Peer {
   }
 }
 
-const peers = new Map<string, Peer>();
+// Per run: a peer carries paths spelled by that run's `rel`, and another run
+// in the same process may spell them from another repository.
+const peersByRun = new WeakMap<(abs: string) => string, Map<string, Peer>>();
 
 function peerOf(src: Source, rel: (abs: string) => string, b: WarningSink): Peer {
+  let peers = peersByRun.get(rel);
+  if (!peers) peersByRun.set(rel, (peers = new Map()));
   const hit = peers.get(src.path);
   if (hit) return hit;
 

@@ -3,7 +3,7 @@
 // everything else before anything validates it.
 
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Catalog, Service } from "../../src/catalog.ts";
 
 /** What an extractor writes: a catalog less the stamps, which are the history's to give (portolan.0010). */
@@ -42,6 +42,12 @@ export interface Options {
 export interface Input {
   root: string;
   output?: string;
+  /**
+   * Where the repository `root` belongs to begins, relative to the working
+   * directory: the directory a fetched copy was written to, or absent when the
+   * workspace is the repository. Paths are spelled from it.
+   */
+  repository?: string;
 }
 
 export interface Warning {
@@ -70,7 +76,14 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
   // hands back, and a `rel` between the two must not cross a symlink.
   cwd = realpathSync(cwd);
   const root = existsSync(resolve(cwd, input.root)) ? realpathSync(resolve(cwd, input.root)) : resolve(cwd, input.root);
-  const rel = (abs: string): string => relative(cwd, abs).split("\\").join("/");
+  // Every path is spelled from the repository the file is in: a fetched
+  // copy's own paths, not the directory holding the copy.
+  const repository = input.repository ? resolve(cwd, input.repository) : cwd;
+  const rel = (abs: string): string => {
+    const inside = relative(repository, abs);
+    const path = inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside) ? relative(cwd, abs) : inside;
+    return path.split("\\").join("/");
+  };
   const src = join(root, opts.source ?? "src");
 
   const context = opts.context || basename(root);

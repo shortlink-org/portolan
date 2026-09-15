@@ -51,6 +51,7 @@ public final class ExtractTest {
 
         golden(cwd.resolve("plugins/extract-java/testdata/ledger/expected.json"), fragment);
         claims(Json.object(Json.parse(fragment)), b.warnings());
+        fetched(cwd, options, fragment);
 
         if (FAILURES.isEmpty()) {
             System.out.println("extract-java: every claim holds");
@@ -58,6 +59,26 @@ public final class ExtractTest {
         }
         FAILURES.forEach(failure -> System.out.println("FAIL " + failure));
         System.exit(1);
+    }
+
+    /**
+     * The fixture read as if it were a copy fetched into the workspace: every
+     * path is the one the copy's own repository has, which is the fragment with
+     * the directory holding the copy taken off.
+     */
+    private static void fetched(Path cwd, Protocol.Options options, String plain) throws Exception {
+        String root = "plugins/extract-java/testdata/ledger";
+        Protocol.Builder b = new Protocol.Builder();
+        Extract.run(new Protocol.Input(root, root), options, b, cwd);
+        List<?> files = (List<?>) b.response().get("files");
+        String copy = String.valueOf(((Map<?, ?>) files.get(0)).get("contents"));
+        if (copy.contains(root + "/")) {
+            FAILURES.add("a fetched copy's fragment still names the directory holding the copy");
+        }
+        String want = plain.replace("\"" + root + "/", "\"").replace("\"" + root + "\"", "\"\"");
+        if (!want.equals(copy)) {
+            FAILURES.add("a fetched copy's fragment is not the plain one spelled from its repository" + firstDifference(want, copy));
+        }
     }
 
     /** The whole fragment, against the record of what it was. */
