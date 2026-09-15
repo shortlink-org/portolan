@@ -73,6 +73,7 @@ the saved tip, that failed to regenerate, or that is gone.
 - Bad: a draft generated with the current extractors does not show a change the
   branch makes to an extractor itself.
 - Bad: saved drafts are files in the repository and have to be deleted by hand.
-- Neutral: a flow step is identified by an id stable across a step inserted
-  before it, so an insertion reads as one added step rather than a renumbered
-  flow.
+- Neutral: flow steps at the base and on the branch are paired by what they
+  do - their ends, kind and call - rather than by their positional ids, so a
+  step inserted near the top reads as one added step rather than a renumbered
+  flow. Extractors keep their ids as they are.
