@@ -409,6 +409,14 @@
       "diagram": "ledger-list-refunds.mmd"
     },
     {
+      "id": "flow.ledger-refund-payment-on-order-cancelled",
+      "slug": "ledger-refund-payment-on-order-cancelled",
+      "name": "Refund payment on order cancelled",
+      "owner": "payments",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/RefundPaymentOnOrderCancelled.java",
+      "diagram": "ledger-refund-payment-on-order-cancelled.mmd"
+    },
+    {
       "id": "flow.ledger-void-payment-on-order-cancelled",
       "slug": "ledger-void-payment-on-order-cancelled",
       "name": "Void payment on order cancelled",

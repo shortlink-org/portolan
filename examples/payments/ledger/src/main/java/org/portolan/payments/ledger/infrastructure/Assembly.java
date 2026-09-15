@@ -14,8 +14,10 @@ import org.portolan.payments.ledger.application.payment.usecase.CapturePayment;
 import org.portolan.payments.ledger.application.payment.usecase.GetPayment;
 import org.portolan.payments.ledger.application.payment.usecase.Orders;
 import org.portolan.payments.ledger.application.payment.usecase.VoidPayment;
+import org.portolan.payments.ledger.application.policy.RefundPaymentOnOrderCancelled;
 import org.portolan.payments.ledger.application.policy.VoidPaymentOnOrderCancelled;
 import org.portolan.payments.ledger.application.refund.usecase.IssueRefund;
+import org.portolan.payments.ledger.application.refund.usecase.RefundCancelledOrder;
 import org.portolan.payments.ledger.application.refund.usecase.ListRefunds;
 import org.portolan.payments.ledger.domain.payment.PaymentGateway;
 import org.portolan.payments.ledger.domain.payment.PaymentRepository;
@@ -123,6 +125,11 @@ public class Assembly {
     }
 
     @Bean
+    RefundCancelledOrder refundCancelledOrder(PaymentRepository payments, RefundRepository refunds, IssueRefund issueRefund) {
+        return new RefundCancelledOrder(payments, refunds, issueRefund);
+    }
+
+    @Bean
     ListRefunds listRefunds(RefundRepository refunds) {
         return new ListRefunds(refunds);
     }
@@ -131,5 +138,11 @@ public class Assembly {
     @Bean
     VoidPaymentOnOrderCancelled voidPaymentOnOrderCancelled(VoidPayment voidPayment) {
         return new VoidPaymentOnOrderCancelled(voidPayment);
+    }
+
+    /** The policy is a bean so its listener is registered; nothing else calls it. */
+    @Bean
+    RefundPaymentOnOrderCancelled refundPaymentOnOrderCancelled(RefundCancelledOrder refundCancelledOrder) {
+        return new RefundPaymentOnOrderCancelled(refundCancelledOrder);
     }
 }

@@ -63,6 +63,8 @@ structure World where
   shipment : Option Ship
   /-- `PaymentCaptured` facts on the bus to delivery. -/
   capturedFacts : Nat
+  /-- Ledger has sent the capture back for a cancelled order (ledger.0006). -/
+  refunded : Bool
 
 inductive Action where
   /-- `RequestPaymentOnOrderPlaced`: a placed order asks ledger to authorize. -/
@@ -86,7 +88,7 @@ inductive Action where
   | deliverDeclined (keep : Bool)
   /-- The customer cancels over gRPC. -/
   | cancel
-  /-- Ledger's `VoidPaymentOnOrderCancelled`. -/
+  /-- Ledger's `VoidPaymentOnOrderCancelled` and `RefundPaymentOnOrderCancelled`. -/
   | deliverCancelled (keep : Bool)
   /-- Delivery's `create_shipment`: store the shipment, and while it waits ask ledger to capture. -/
   | deliverConfirmed (keep published : Bool)
@@ -100,7 +102,7 @@ namespace World
 def fresh (o : Order) : World :=
   { order := o, payment := none, rpc := .idle,
     authorizedFacts := 0, declinedFacts := 0, cancelledFacts := 0, confirmedFacts := 0,
-    shipment := none, capturedFacts := 0 }
+    shipment := none, capturedFacts := 0, refunded := false }
 
 /-- OMS handles a message with the proved `Order.step`; what it emits goes on the bus. -/
 def oms (w : World) (m : Msg) : World :=
@@ -177,8 +179,9 @@ def act (w : World) : Action → World
   | .cancel => w.oms .cancelRequested
   | .deliverCancelled keep =>
     if w.cancelledFacts > 0 then
-      -- VoidPayment: only a hold is given back; anything else is "nothing released"
+      -- VoidPayment gives back a hold; RefundCancelledOrder sends back a capture (ledger.0006)
       { w with payment := if w.payment = some .authorized then some .voided else w.payment,
+               refunded := w.refunded || w.payment = some .captured,
                cancelledFacts := taken w.cancelledFacts keep }
     else w
   | .deliverConfirmed keep published =>

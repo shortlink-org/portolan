@@ -86,6 +86,7 @@
 | [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
 | [Issue refund](flows/ledger-issue-refund.md) | [payments](payments/README.md) | Sends money back against a captured payment, in full or in part. |
 | [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
+| [Refund payment on order cancelled](flows/ledger-refund-payment-on-order-cancelled.md) | [payments](payments/README.md) | Sends captured money back once the order it was captured for is gone. |
 | [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
@@ -144,6 +145,7 @@
 | [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 | [ledger.0004](adr/ledger.0004.md) | A repeated capture says PaymentCaptured again | accepted | 2026-09-15 |
 | [ledger.0005](adr/ledger.0005.md) | A hold is recorded before the order is asked about again | accepted | 2026-09-15 |
+| [ledger.0006](adr/ledger.0006.md) | A cancelled order gets its captured money back | accepted | 2026-09-16 |
 | [oms.0001](adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
 | [oms.0002](adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |

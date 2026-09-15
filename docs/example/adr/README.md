@@ -40,6 +40,7 @@
 | [ledger.0003](ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0004](ledger.0004.md) | A repeated capture says PaymentCaptured again | accepted | 2026-09-15 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0005](ledger.0005.md) | A hold is recorded before the order is asked about again | accepted | 2026-09-15 | [payments.ledger](../payments/ledger/README.md) |
+| [ledger.0006](ledger.0006.md) | A cancelled order gets its captured money back | accepted | 2026-09-16 | [payments.ledger](../payments/ledger/README.md) |
 | [oms.0001](oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0002](oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0003](oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |

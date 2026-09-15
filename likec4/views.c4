@@ -1096,6 +1096,63 @@ PaymentDeclined' }
     }
   }
 
+  dynamic view flow_ledger_refund_payment_on_order_cancelled {
+    title 'Refund payment on order cancelled'
+    description 'Sends captured money back once the order it was captured for is gone.'
+    bus -> payments.ledger 'OrderCancelled' {
+      color declared  line solid  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/RefundPaymentOnOrderCancelled.java:22'
+    }
+    payments.ledger -> ledger_pg 'byOrder' {
+      color declared  line solid  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java:38'
+    }
+    payments.ledger -> ledger_pg 'byPayment' {
+      color declared  line solid  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java:44'
+    }
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line solid  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java:45'
+    }
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line solid  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:47'
+    }
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line solid  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:52'
+    }
+    payments.ledger -> ledger_pg 'byPayment' {
+      color declared  line solid  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56'
+    }
+    payments.ledger -> stripe 'PostRefunds → refund' {
+      color declared  line solid  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62'
+    }
+    alt {
+      when '!answer.sent()' {
+        break 'ends the flow' {
+          payments.ledger -> ledger_pg 'save' {
+            color declared  line solid  head none
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:65'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
+    }
+    payments.ledger -> ledger_pg 'save' {
+      color declared  line solid  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:69'
+    }
+    payments.ledger -> bus 'RefundIssued' {
+      color declared  line solid  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70'
+    }
+  }
+
   dynamic view flow_ledger_void_payment_on_order_cancelled {
     title 'Void payment on order cancelled'
     description 'Gives back what was held once the order it was held for is gone.'

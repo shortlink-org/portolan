@@ -2,14 +2,15 @@ import Checkout.World
 import Oms.Scenarios
 
 /-!
-What holds in every world a checkout can reach, proved, and what does not,
-shown by a trace.
+What holds in every world a checkout can reach, proved, and the traces the
+model found before ledger.0004, ledger.0005 and ledger.0006, each pinned as it
+ends now.
 
-The two properties that hold are proved by one invariant that every action
-keeps. It says more than the properties do, because that is what makes it
-survive a step: an authorization OMS has not heard yet is still backed by a
-payment that was held, and a void or an `OrderCancelled` only ever follows a
-cancelled order.
+Every property is proved by one invariant that every action keeps. It says more
+than the properties do, because that is what makes it survive a step: an
+authorization OMS has not heard yet is still backed by a payment that was held,
+a void or an `OrderCancelled` only ever follows a cancelled order, and nothing
+is confirmed while ledger has yet to take its second look at the order.
 -/
 
 namespace Checkout
@@ -24,6 +25,10 @@ theorem step_confirmed {o : Order} {m : Msg} (h : (o.step m).1.status = .confirm
 
 theorem step_cancelled_emits {o : Order} {m : Msg} (hn : o.status ≠ .cancelled)
     (h : (o.step m).1.status = .cancelled) : (o.step m).2.count .cancelled > 0 := by
+  cases m <;> cases hs : o.status <;> simp_all [Order.step] <;> split at h <;> simp_all
+
+theorem step_confirmed_emitted {o : Order} {m : Msg} (h : (o.step m).2.count .confirmed > 0) :
+    ∃ pid a, m = .authorized pid a := by
   cases m <;> cases hs : o.status <;> simp_all [Order.step] <;> split at h <;> simp_all
 
 theorem step_cancelled_after {o : Order} {m : Msg} (h : o.status = .cancelled) :
@@ -66,6 +71,14 @@ structure Inv (w : World) : Prop where
   `OrderCancelled` on its way, or ledger's second look at the order (ledger.0005). -/
   holdReleased : w.payment = some .authorized →
     w.order.status ≠ .cancelled ∨ w.cancelledFacts > 0 ∨ w.rpc = .saved
+  /-- Nothing is confirmed, or heard as authorized, while ledger has yet to take its second look. -/
+  savedQuiet : w.rpc = .saved → w.authorizedFacts = 0 ∧ w.confirmedFacts = 0
+  /-- No order is confirmed before there is a payment. -/
+  noneUnconfirmed : w.payment = none → w.confirmedFacts = 0
+  /-- A capture beside a cancelled order has been sent back, or `OrderCancelled` is still on its
+  way to ledger to send it back (ledger.0006). -/
+  refundDue : w.payment = some .captured → w.order.status = .cancelled →
+    w.refunded = true ∨ w.cancelledFacts > 0
 
 theorem inv_fresh {o : Order} (h : o.status = .placed) : Inv (World.fresh o) where
   confirmed := by simp [World.fresh, h]
@@ -79,6 +92,9 @@ theorem inv_fresh {o : Order} (h : o.status = .placed) : Inv (World.fresh o) whe
   capturedReleases := by simp [World.fresh]
   savedGranted := by simp [World.fresh]
   holdReleased := by simp [World.fresh, h]
+  savedQuiet := by simp [World.fresh]
+  noneUnconfirmed := by simp [World.fresh]
+  refundDue := by simp [World.fresh, h]
 
 theorem granted_cases {p : Option PayStatus} (h : grantedOpt p = true) :
     p = some .authorized ∨ p = some .captured ∨ p = some .voided := by
@@ -88,13 +104,14 @@ theorem granted_cases {p : Option PayStatus} (h : grantedOpt p = true) :
 
 /-- OMS handling a message keeps the invariant, as long as an authorization it hears is backed. -/
 theorem inv_oms {w : World} {m : Msg} (hw : Inv w)
-    (hm : ∀ pid a, m = .authorized pid a → grantedOpt w.payment = true) : Inv (w.oms m) where
+    (hm : ∀ pid a, m = .authorized pid a → grantedOpt w.payment = true ∧ w.rpc ≠ .saved) :
+    Inv (w.oms m) where
   confirmed := by
     intro h
     simp only [World.oms] at h ⊢
     rcases step_confirmed h with hc | ⟨hp, pid, a, rfl⟩
     · exact hw.confirmed hc
-    · rcases granted_cases (hm pid a rfl) with hA | hC | hV
+    · rcases granted_cases (hm pid a rfl).1 with hA | hC | hV
       · exact .inl hA
       · exact .inr hC
       · have := hw.voided hV
@@ -134,10 +151,36 @@ theorem inv_oms {w : World} {m : Msg} (hw : Inv w)
       · have := step_cancelled_emits hn hc
         exact .inr (.inl (by omega))
       · exact .inl hc
+  savedQuiet := by
+    intro hr
+    simp only [World.oms] at hr ⊢
+    obtain ⟨ha, hc⟩ := hw.savedQuiet hr
+    refine ⟨ha, ?_⟩
+    by_cases he : (w.order.step m).2.count .confirmed > 0
+    · obtain ⟨pid, a, rfl⟩ := step_confirmed_emitted he
+      exact absurd hr (hm pid a rfl).2
+    · omega
+  noneUnconfirmed := by
+    intro hn
+    simp only [World.oms] at hn ⊢
+    have := hw.noneUnconfirmed hn
+    by_cases he : (w.order.step m).2.count .confirmed > 0
+    · obtain ⟨pid, a, rfl⟩ := step_confirmed_emitted he
+      have := (hm pid a rfl).1
+      simp [hn, grantedOpt] at this
+    · omega
+  refundDue := by
+    intro hC hc
+    simp only [World.oms] at hC hc ⊢
+    by_cases hn : w.order.status = .cancelled
+    · rcases hw.refundDue hC hn with hr | hf
+      · exact .inl hr
+      · exact .inr (by omega)
+    · exact .inr (by have := step_cancelled_emits hn hc; omega)
 
 theorem answer_backed {w : World} {held : Bool}
-    (h : held = true → grantedOpt w.payment = true) :
-    ∀ pid a, w.answer held = .authorized pid a → grantedOpt w.payment = true := by
+    (h : held = true → grantedOpt w.payment = true ∧ w.rpc ≠ .saved) :
+    ∀ pid a, w.answer held = .authorized pid a → grantedOpt w.payment = true ∧ w.rpc ≠ .saved := by
   intro pid a ha
   cases held
   · simp [World.answer] at ha
@@ -146,11 +189,12 @@ theorem answer_backed {w : World} {held : Bool}
 /-- Takes the invariant apart into its fields, rebuilds it for the world after an action, and
 lets `simp_all` and `omega` settle each field against the old ones. -/
 macro "inv_fields" hw:ident : tactic => `(tactic| (
-  obtain ⟨h₁, h₂, h₃, h₄, h₅, h₆, h₇, h₈, h₉, h₁₀, h₁₁⟩ := $hw
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+  obtain ⟨h₁, h₂, h₃, h₄, h₅, h₆, h₇, h₈, h₉, h₁₀, h₁₁, h₁₂, h₁₃, h₁₄⟩ := $hw
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
     simp_all [World.said, World.taken, World.replied, grantedOpt, PayStatus.granted] <;>
     omega))
 
+set_option maxHeartbeats 1000000 in
 /-- Every action keeps the invariant. -/
 theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
   cases a with
@@ -193,11 +237,12 @@ theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
     simp only [World.act]; split
     · rename_i held hr
       have ho := inv_oms (m := w.answer held) hw
-        (answer_backed fun h => hw.answeredHeld (by simp [hr, h]))
+        (answer_backed fun h => ⟨hw.answeredHeld (by simp [hr, h]), by simp [hr]⟩)
       exact { ho with
         answeredHeld := by simp
         checked := by simp
         savedGranted := by simp
+        savedQuiet := by simp
         holdReleased := by
           intro hA
           rcases ho.holdReleased hA with hc | hf | hs
@@ -213,10 +258,15 @@ theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
     simp only [World.act]; split
     · rename_i hf
       have ho := inv_oms (m := w.answer true) hw
-        (answer_backed fun _ => hw.authorizedFacts hf)
+        (answer_backed fun _ => ⟨hw.authorizedFacts hf, fun hs => by
+          have := (hw.savedQuiet hs).1; omega⟩)
       exact { ho with
         authorizedFacts := fun _ => by
-          simpa [World.oms] using hw.authorizedFacts hf }
+          simpa [World.oms] using hw.authorizedFacts hf
+        savedQuiet := fun hs => by
+          simp only [World.oms] at hs
+          have := (hw.savedQuiet hs).1
+          omega }
     · exact hw
   | deliverDeclined keep =>
     simp only [World.act]; split
@@ -235,22 +285,32 @@ theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
     · exact hw
   | deliverConfirmed keep published =>
     simp only [World.act]; split
-    · split
+    · rename_i hf
+      split
       · inv_fields hw
       · split
-        · cases published <;> inv_fields hw
+        · rename_i _ hA
+          -- a hold is captured only where a cancellation would still reach it
+          have hR : w.order.status = .cancelled → w.cancelledFacts > 0 := by
+            intro hc
+            rcases hw.holdReleased hA with hn | hc' | hs
+            · exact absurd hc hn
+            · exact hc'
+            · have := (hw.savedQuiet hs).2; omega
+          cases published <;> inv_fields hw
         · split
           · cases published <;> inv_fields hw
           · inv_fields hw
     · exact hw
   | deliverCaptured keep =>
     simp only [World.act]; split
-    · have := hw.capturedShipment
-      have := hw.capturedReleases
-      split <;>
-        (cases hsh : w.shipment with
-          | none => inv_fields hw
-          | some ship => cases ship <;> inv_fields hw)
+    · refine { hw with capturedShipment := ?_, capturedReleases := ?_ }
+      · intro hC
+        have := hw.capturedShipment hC
+        split <;> simp_all
+      · intro hC
+        have := hw.capturedShipment hC
+        rcases hsh : w.shipment with _ | _ | _ <;> simp_all
     · exact hw
 
 theorem inv_reachable {w : World} (h : Reachable w) : Inv w := by
@@ -272,7 +332,7 @@ theorem declined_is_not_confirmed {w : World} (h : Reachable w) (hd : w.payment 
   intro hc
   rcases confirmed_is_paid h hc with hA | hC <;> simp_all
 
-/-! ## What does not hold -/
+/-! ## The traces the fixes were found by -/
 
 /-- The checkout every finding starts from: the one order OMS's scenarios place. -/
 def start : World := World.fresh Oms.Scenarios.start
@@ -284,19 +344,30 @@ theorem run_reachable {w : World} (h : Reachable w) (as : List Action) : Reachab
   | nil => exact h
   | cons a as ih => exact ih (.act a h)
 
-/-- Cancellation after capture: the order is confirmed, the customer cancels, delivery
-captures on the `OrderConfirmed` it already had, the void that follows finds nothing held,
-and `PaymentCaptured` releases the shipment. Everything is delivered: a cancelled order has
-been charged, and its goods are on their way. -/
+/-! ## What ledger.0006 fixed -/
+
+/-- Once everything is delivered, a cancelled order whose money was captured has had it sent
+back. A customer may cancel until the parcel moves, and the money moves before that; ledger
+now answers `OrderCancelled` for a captured payment with a refund (ledger.0006). -/
+theorem cancelled_charge_is_refunded {w : World} (h : Reachable w) (hq : w.quiet)
+    (hc : w.order.status = .cancelled) (hp : w.payment = some .captured) : w.refunded = true := by
+  obtain ⟨_, _, _, hcan, _, _⟩ := hq
+  rcases (inv_reachable h).refundDue hp hc with hr | hf
+  · exact hr
+  · omega
+
+/-- The trace that used to leave a cancelled order charged: the order is confirmed, the customer
+cancels, delivery captures on the `OrderConfirmed` it already had, and the void that follows
+finds nothing held. `OrderCancelled` now sends the capture back. -/
 def chargeOnCancelled : List Action :=
   [.request, .check true, .hold, .recheck true, .reply, .cancel, .deliverAuthorized false,
    .deliverConfirmed false true, .deliverCancelled false, .deliverCaptured false]
 
-theorem charge_left_on_cancelled_order :
+theorem charge_on_cancelled_order_is_sent_back :
     Reachable (start.run chargeOnCancelled) ∧ (start.run chargeOnCancelled).quiet ∧
       (start.run chargeOnCancelled).order.status = .cancelled ∧
       (start.run chargeOnCancelled).payment = some .captured ∧
-      (start.run chargeOnCancelled).shipment = some .planned :=
+      (start.run chargeOnCancelled).refunded = true :=
   ⟨run_reachable start_reachable _, by decide, by decide, by decide, by decide⟩
 
 /-! ## What ledger.0005 fixed -/

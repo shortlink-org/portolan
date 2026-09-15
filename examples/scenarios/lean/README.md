@@ -19,14 +19,16 @@ order handles goes through its proved `Order.step`.
 | A declined payment never stands beside a confirmed order | `Checkout.declined_is_not_confirmed` |
 | Once everything is delivered, captured money has released its shipment | `Checkout.captured_releases_shipment` |
 | Once everything is delivered, a cancelled order holds no money | `Checkout.cancelled_holds_nothing` |
+| Once everything is delivered, a cancelled order whose money was captured has had it sent back | `Checkout.cancelled_charge_is_refunded` |
 
-All four follow from one invariant every action keeps (`Checkout.Inv`): an
+All five follow from one invariant every action keeps (`Checkout.Inv`): an
 authorization OMS has not heard yet is backed by a payment that was held, a
 hold is given back only for a cancelled order, `OrderCancelled` is only said of
 one, captured money has released its shipment or a fact that will is still on
 its way, and a hold beside a cancelled order still has `OrderCancelled` or
-ledger's second look at the order coming. Losing ledger's events breaks none of
-them.
+ledger's second look at the order coming, and a capture beside a cancelled
+order has been sent back or `OrderCancelled` is still on its way to ledger.
+Losing ledger's events breaks none of them.
 
 The third held only after [ledger.0004](../../payments/ledger/docs/adr/0004-a-repeated-capture-says-payment-captured-again.md).
 Before it, a capture whose `PaymentCaptured` did not leave was asked again and
@@ -42,36 +44,34 @@ and asks about the order again. `AuthorizePaymentTest` holds the code to that
 trace, and `Checkout.cancel_racing_hold_gives_it_back` shows it now ending with
 the hold given back.
 
+The fifth held only after [ledger.0006](../../payments/ledger/docs/adr/0006-a-cancelled-order-gets-its-captured-money-back.md).
+Before it, an order confirmed, cancelled and then captured on the
+`OrderConfirmed` delivery already had was charged for good: the void that
+followed found nothing held. `OrderCancelled` now sends the capture back as a
+refund; `RefundCancelledOrderTest` holds the code to that trace, and
+`Checkout.charge_on_cancelled_order_is_sent_back` shows it now ending refunded.
+
 The search also finds that no order is left placed once nothing more can
 happen: a lost `PaymentAuthorized` or `PaymentDeclined` is recovered by the RPC
 answer, or by OMS asking again and ledger answering from its record. That one is
 searched, not proved: a repeated capture says its fact again, so the worlds do
 not run out, and the search covers those within 40 steps.
 
-## What does not hold
-
-Pinned by a theorem on the trace that shows it; the
-[checkout scenario](../README.md) lists it as unsolved.
-
-**Cancellation after capture** — `Checkout.charge_left_on_cancelled_order`.
-The order is confirmed, the customer cancels, delivery captures on the
-`OrderConfirmed` it already had, the void that follows finds nothing held, and
-`PaymentCaptured` releases the shipment. With everything delivered, a cancelled
-order has been charged and its shipment is planned.
-
 ## Not modelled
 
 Two Authorize calls for the same id at once; a gateway result lost before
 ledger saves it; ledger stopping between recording a hold and asking about the
 order again, or the gateway not answering the give-back (ledger.0005 names both);
-refunds; delivery past the release; more than one order.
+a gateway refusing a refund; delivery past the release, so a cancelled
+order's released shipment is left as it is here, where delivery writes it off
+when dispatch asks the order; more than one order.
 
 ## Layout
 
 - `Checkout/Payment.lean` — ledger's `PaymentStatus` and its table.
 - `Checkout/World.lean` — the world, the actions, `Reachable`.
-- `Checkout/Invariants.lean` — the invariant, the four theorems that hold, the
-  trace that breaks, and the traces ledger.0004 and ledger.0005 fixed.
+- `Checkout/Invariants.lean` — the invariant, the five theorems that hold, and
+  the traces ledger.0004, ledger.0005 and ledger.0006 fixed.
 - `Checkout/Search.lean`, `Search.lean` — breadth-first search over every
   interleaving; prints, for each property, where it holds or the shortest trace
   that breaks it, preferring one in which ledger loses nothing.

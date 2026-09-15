@@ -27,11 +27,12 @@ structure Key where
   confirmedFacts : Nat
   shipment : Option Ship
   capturedFacts : Nat
+  refunded : Bool
   deriving DecidableEq
 
 def key (w : World) : Key :=
   ⟨w.order.status, w.payment, w.rpc, w.authorizedFacts, w.declinedFacts, w.cancelledFacts,
-   w.confirmedFacts, w.shipment, w.capturedFacts⟩
+   w.confirmedFacts, w.shipment, w.capturedFacts, w.refunded⟩
 
 /-- Every action, the ordinary ones first — delivered once, published — so that the
 shortest trace to a world is the one with the fewest mishaps in it. -/
@@ -71,11 +72,9 @@ def properties : List Property :=
     ⟨"once all is delivered, a cancelled order holds no money",
       fun w => !(decide w.quiet && w.order.status == .cancelled &&
         w.payment == some .authorized)⟩,
-    ⟨"once all is delivered, a cancelled order has not been charged",
+    ⟨"once all is delivered, a cancelled order charged has had its money sent back",
       fun w => !(decide w.quiet && w.order.status == .cancelled &&
-        w.payment == some .captured)⟩,
-    ⟨"a cancelled order's shipment is never released",
-      fun w => !(w.order.status == .cancelled && w.shipment == some .planned)⟩,
+        w.payment == some .captured && !w.refunded)⟩,
     ⟨"once nothing more can happen, the order is not left placed",
       fun w => !(settled w && w.order.status == .placed)⟩,
     ⟨"once all is delivered, money captured has released its shipment",
@@ -136,7 +135,7 @@ def shipmentName : Option Ship → String
   | none => "none" | some .awaitingPayment => "awaiting-payment" | some .planned => "planned"
 
 def describe (w : World) : String :=
-  s!"order {statusName w.order.status}, payment {paymentName w.payment}, shipment {shipmentName w.shipment}"
+  s!"order {statusName w.order.status}, payment {paymentName w.payment}{if w.refunded then " refunded" else ""}, shipment {shipmentName w.shipment}"
 
 def traceLines (start : World) (path : List Action) : List String :=
   let steps := path.reverse

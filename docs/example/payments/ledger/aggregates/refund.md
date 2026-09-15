@@ -58,6 +58,7 @@ stateDiagram-v2
 | --- | --- | --- | --- |
 | `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. |
 | `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. |
+| `RefundCancelledOrder` | query | *internal* | Sends back what was captured for an order that was cancelled. |
 
 ## Events
 

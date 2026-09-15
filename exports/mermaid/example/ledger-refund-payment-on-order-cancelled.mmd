@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    participant p3 as stripe
+    p0-)p1: OrderCancelled
+    p1->>p2: byOrder
+    p1->>p2: byPayment
+    p1->>p2: byId
+    p1->>p2: byId
+    p1->>p2: byId
+    p1->>p2: byPayment
+    p1->>p3: PostRefunds → refund
+    alt !answer.sent()
+        p1->>p2: save
+        Note over p2: flow ends here
+    else otherwise
+    end
+    p1->>p2: save
+    p1-)p0: RefundIssued

@@ -92,6 +92,7 @@
 | [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
 | [Issue refund](flows/ledger-issue-refund.md) | [payments](payments/README.md) | Sends money back against a captured payment, in full or in part. |
 | [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
+| [Refund payment on order cancelled](flows/ledger-refund-payment-on-order-cancelled.md) | [payments](payments/README.md) | Sends captured money back once the order it was captured for is gone. |
 | [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
@@ -150,6 +151,7 @@
 | [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 | [ledger.0004](adr/ledger.0004.md) | A repeated capture says PaymentCaptured again | accepted | 2026-09-15 |
 | [ledger.0005](adr/ledger.0005.md) | A hold is recorded before the order is asked about again | accepted | 2026-09-15 |
+| [ledger.0006](adr/ledger.0006.md) | A cancelled order gets its captured money back | accepted | 2026-09-16 |
 | [oms.0001](adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
 | [oms.0002](adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
@@ -2788,7 +2790,8 @@ that sum to zero, and a correction is another pair.
 - Sends money back against a captured payment, in full or in part, and says
   `RefundIssued`.
 - Gives back a hold nobody will be charged for, when the order it was held for
-  is cancelled. The fact arrives from the order service over the bus.
+  is cancelled, and sends back what was captured for a cancelled order as a
+  refund. The fact arrives from the order service over the bus.
 
 ## What it does not do
 
@@ -2879,6 +2882,9 @@ Stripe's routes instead of at Stripe.
   — a hold is recorded and then the order is asked about again, so a
   cancellation that arrived while the gateway was holding has the hold given
   back.
+- [ledger.0006](../../adr/ledger.0006.md)
+  — `OrderCancelled` for a captured payment issues one refund of what is left
+  of the capture, so a customer who cancels after the money moved gets it back.
 
 ## Status
 
@@ -2888,7 +2894,7 @@ use cases with closed answers, a policy fed from the bus, and the records
 above. What it deliberately does not have yet, and the review skill will
 name: no version on the aggregates, so a stale copy is not refused; events
 published after the save rather than with it, so there is no outbox and a
-crash between the two loses the fact; tests only for the checkout wire contract and the authorize and capture races the checkout model found; no tracing. Each is a known
+crash between the two loses the fact; tests only for the checkout wire contract and the authorize, capture and cancellation traces the checkout model found; no tracing. Each is a known
 gap, not an oversight, and none of them changes what the catalog shows.
 
 The [checkout scenario](https://github.com/shortlink-org/portolan/blob/main/examples/scenarios/README.md) runs the real cart and OMS
@@ -2900,7 +2906,7 @@ consumer/provider protobuf subsets and the authorization event payload.
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
 | [Payment](aggregates/payment.md) | `Payment` | 3 commands | 1 query | 3 events |
-| [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
+| [Refund](aggregates/refund.md) | `Refund` | 1 command | 2 queries | 1 event |
 
 ## Provides
 
@@ -3091,6 +3097,7 @@ consumer/provider protobuf subsets and the authorization event payload.
 | [ledger.0003](../../adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 | [ledger.0004](../../adr/ledger.0004.md) | A repeated capture says PaymentCaptured again | accepted | 2026-09-15 |
 | [ledger.0005](../../adr/ledger.0005.md) | A hold is recorded before the order is asked about again | accepted | 2026-09-15 |
+| [ledger.0006](../../adr/ledger.0006.md) | A cancelled order gets its captured money back | accepted | 2026-09-16 |
 
 <!-- payments/ledger/aggregates/payment.md -->
 
@@ -3351,6 +3358,7 @@ stateDiagram-v2
 | --- | --- | --- | --- |
 | `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. |
 | `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. |
+| `RefundCancelledOrder` | query | *internal* | Sends back what was captured for an order that was cancelled. |
 
 ## Events
 
@@ -4647,7 +4655,7 @@ On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
 
 | Consumer | Status | Via |
 | --- | --- | --- |
-| [payments.ledger](../../../payments/ledger/README.md) | declared | `ledger-void-payment-on-order-cancelled#s1` |
+| [payments.ledger](../../../payments/ledger/README.md) | declared | `ledger-refund-payment-on-order-cancelled#s1` |
 
 #### v1 — current
 
@@ -6435,6 +6443,7 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [Get payment](ledger-get-payment.md) | [payments](../payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
 | [Issue refund](ledger-issue-refund.md) | [payments](../payments/README.md) | Sends money back against a captured payment, in full or in part. |
 | [List refunds](ledger-list-refunds.md) | [payments](../payments/README.md) | Every refund against one payment, newest first. |
+| [Refund payment on order cancelled](ledger-refund-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Sends captured money back once the order it was captured for is gone. |
 | [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Observed: CancelOrder](observed-oms-cancelorder.md) | [shop](../shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Observed: GetOrder](observed-oms-getorder.md) | [shop](../shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
@@ -9316,6 +9325,99 @@ sequenceDiagram
 2. **payments.ledger** → **ledger-pg** — byPayment
    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:27`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java#L27)
 
+<!-- flows/ledger-refund-payment-on-order-cancelled.md -->
+
+# Refund payment on order cancelled
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Id:** `flow.ledger-refund-payment-on-order-cancelled`
+- **Owner:** [payments](../payments/README.md)
+- **Trigger:** `event` · OrderCancelled
+- **Root confidence:** high
+- **Source:** [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/RefundPaymentOnOrderCancelled.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/RefundPaymentOnOrderCancelled.java)
+
+Sends captured money back once the order it was captured for is gone.
+
+## Participants
+
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | [payments.ledger.pg](../payments/ledger/stores/pg.md) |
+| `stripe` | external | — | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    participant p3 as stripe
+    p0-)p1: OrderCancelled
+    p1->>p2: byOrder
+    p1->>p2: byPayment
+    p1->>p2: byId
+    p1->>p2: byId
+    p1->>p2: byId
+    p1->>p2: byPayment
+    p1->>p3: PostRefunds → refund
+    alt !answer.sent()
+        p1->>p2: save
+        Note over p2: flow ends here
+    else otherwise
+    end
+    p1->>p2: save
+    p1-)p0: RefundIssued
+```
+
+## Steps
+
+<a id="step-s1"></a>
+1. **bus** → **payments.ledger** — OrderCancelled
+   [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/RefundPaymentOnOrderCancelled.java:22`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/RefundPaymentOnOrderCancelled.java#L22)
+<a id="step-s2"></a>
+2. **payments.ledger** → **ledger-pg** — byOrder
+   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java:38`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java#L38)
+<a id="step-s3"></a>
+3. **payments.ledger** → **ledger-pg** — byPayment
+   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java:44`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java#L44)
+<a id="step-s4"></a>
+4. **payments.ledger** → **ledger-pg** — byId
+   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java:45`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/RefundCancelledOrder.java#L45)
+<a id="step-s5"></a>
+5. **payments.ledger** → **ledger-pg** — byId
+   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:47`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L47)
+<a id="step-s6"></a>
+6. **payments.ledger** → **ledger-pg** — byId
+   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:52`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L52)
+<a id="step-s7"></a>
+7. **payments.ledger** → **ledger-pg** — byPayment
+   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L56)
+<a id="step-s8"></a>
+8. **payments.ledger** → **stripe** — PostRefunds → refund
+   `stripe.v1/PostRefunds` · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L62)
+
+> **One of**
+>
+> *!answer.sent() — *ends the flow**
+>
+> <a id="step-s9"></a>
+> 9. **payments.ledger** → **ledger-pg** — save
+>    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:65`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L65)
+>
+> *otherwise*
+
+<a id="step-s11"></a>
+10. **payments.ledger** → **ledger-pg** — save
+   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:69`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L69)
+<a id="step-s12"></a>
+11. **payments.ledger** → **bus** — RefundIssued
+   [`payments.ledger.refund.RefundIssued`](../payments/ledger/aggregates/refund.md#event-payments-ledger-refund-refundissued) · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L70)
+
 <!-- flows/ledger-void-payment-on-order-cancelled.md -->
 
 # Void payment on order cancelled
@@ -10383,6 +10485,7 @@ sequenceDiagram
 | [ledger.0003](ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0004](ledger.0004.md) | A repeated capture says PaymentCaptured again | accepted | 2026-09-15 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0005](ledger.0005.md) | A hold is recorded before the order is asked about again | accepted | 2026-09-15 | [payments.ledger](../payments/ledger/README.md) |
+| [ledger.0006](ledger.0006.md) | A cancelled order gets its captured money back | accepted | 2026-09-16 | [payments.ledger](../payments/ledger/README.md) |
 | [oms.0001](oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0002](oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0003](oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
@@ -12389,6 +12492,7 @@ supersedes this one when it lands.
 - **Date:** 2026-09-15
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0005-a-hold-is-recorded-before-the-order-is-asked-again.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0005-a-hold-is-recorded-before-the-order-is-asked-again.md)
+- **Committed:** Victor Login, 2026-09-15 (`496688f`)
 
 ### Context and Problem Statement
 
@@ -12461,6 +12565,82 @@ to recover what this decision leaves open, below.
   holds, and a sweep over authorized payments of cancelled orders closes both.
 - Neutral: a standing order costs one more call to the order service on the
   way to `PaymentAuthorized`.
+
+<!-- adr/ledger.0006.md -->
+
+# ledger.0006 — A cancelled order gets its captured money back
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-16
+- **Scope:** [payments.ledger](../payments/ledger/README.md)
+- **Source:** [`examples/payments/ledger/docs/adr/0006-a-cancelled-order-gets-its-captured-money-back.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0006-a-cancelled-order-gets-its-captured-money-back.md)
+
+### Context and Problem Statement
+
+What happens to money already captured for an order the customer cancels?
+
+A customer may cancel until the parcel moves (oms.0004). The money moves
+earlier: delivery asks for the capture when it creates the shipment, on
+`OrderConfirmed` (core.0003). So a confirmed order can be cancelled with its
+payment captured. `VoidPaymentOnOrderCancelled` gives back only a hold, and
+for a captured payment answered "nothing released": the order was cancelled
+and the customer stayed charged. The shipment does not leave - delivery asks
+the order again at dispatch and writes a cancelled order's shipment off - but
+nothing sent the money back.
+
+The checkout model in `examples/scenarios/lean` found this as the shortest
+trace breaking "once all is delivered, a cancelled order has not been
+charged"; the checkout scenario listed it as unsolved.
+
+### Decision Drivers
+
+- The order service decides cancellation; a cancelled order is not charged.
+- Money that moved comes back as a refund, the aggregate that already says
+  so, never by rewriting the payment.
+- The fact arrives at least once: nothing goes back twice.
+
+### Considered Options
+
+1. **Refund on the cancellation** — a second policy on `OrderCancelled` sends
+   back whatever is left of a capture, as one refund per cancelled order.
+2. **Capture at dispatch instead** — the money moves only when the parcel
+   does, so a cancellation always finds a hold.
+3. **Refuse to cancel a captured order** — the order service asks the ledger
+   before cancelling.
+
+### Decision Outcome
+
+Chosen option: **refund on the cancellation**.
+
+| | customer charged for a cancelled order | changes elsewhere | cost |
+|---|---|---|---|
+| refund on the cancellation | no, once the fact is delivered | none | a use case and a policy |
+| capture at dispatch | no | delivery's release rule (core.0002, core.0003) | a hold that may expire before dispatch |
+| refuse to cancel | no, and the customer cannot cancel | oms.0004 and a call from OMS to ledger | a rule customers see |
+
+`RefundCancelledOrder` finds the order's payment, and when it is captured
+issues a refund of what is left of the capture after earlier refunds, under
+the id `order-cancelled-<order id>`. The same fact again answers from that
+refund's record; a capture already given back in full sends nothing. A hold
+is still `VoidPayment`'s: a payment is held or captured, never both, so the
+two policies on the fact never meet. Option 2 reverses two delivery decisions
+and trades this problem for an expiring hold; option 3 takes away a choice
+oms.0004 gives the customer.
+
+#### Consequences
+
+- Good: the model proves "once all is delivered, a cancelled order whose money
+  was captured has had it sent back" for every reachable world, and
+  `RefundCancelledOrderTest` holds the code to the trace.
+- Good: the refund says `RefundIssued` with the cancellation's reason, so
+  whoever reconciles a cancelled order sees the money come back.
+- Bad: a gateway that refuses the refund leaves it `REJECTED`, and the fact
+  arriving again answers from that record: money a gateway would not take back
+  needs a person, as any other rejected refund does.
+- Neutral: delivery is unchanged. A released shipment of a cancelled order
+  waits until dispatch asks the order and writes it off.
 
 <!-- adr/oms.0001.md -->
 

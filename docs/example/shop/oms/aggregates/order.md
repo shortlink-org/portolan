@@ -122,7 +122,7 @@ On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
 
 | Consumer | Status | Via |
 | --- | --- | --- |
-| [payments.ledger](../../../payments/ledger/README.md) | declared | `ledger-void-payment-on-order-cancelled#s1` |
+| [payments.ledger](../../../payments/ledger/README.md) | declared | `ledger-refund-payment-on-order-cancelled#s1` |
 
 #### v1 — current
 

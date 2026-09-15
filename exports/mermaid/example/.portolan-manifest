@@ -53,6 +53,7 @@
     "ledger-get-payment.mmd",
     "ledger-issue-refund.mmd",
     "ledger-list-refunds.mmd",
+    "ledger-refund-payment-on-order-cancelled.mmd",
     "ledger-void-payment-on-order-cancelled.mmd",
     "observed-oms-cancelorder.mmd",
     "observed-oms-getorder.mmd",

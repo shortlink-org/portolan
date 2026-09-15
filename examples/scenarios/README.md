@@ -49,11 +49,12 @@ Ledger still lacks an outbox and gateway idempotency; a lost gateway result
 before ledger persistence, cancellation racing authorization, and cancellation
 after capture (a refund, not a void) are not solved by this scenario.
 Cancellation racing authorization is closed by ledger.0005: the hold is
-recorded and the order is asked about again.
+recorded and the order is asked about again. Cancellation after capture is
+closed by ledger.0006: `OrderCancelled` sends a capture back as a refund.
 
 [lean/](lean/README.md) models the same checkout and checks every interleaving:
 it proves that a confirmed order always has its money held or captured, that
-captured money always releases its shipment, and that a cancelled order holds
-no money, even when ledger's events are lost, and gives the shortest trace for
-cancellation after capture. The shipment held only after ledger.0004, the hold
-only after ledger.0005.
+captured money always releases its shipment, and that a cancelled order neither
+holds money nor stays charged, even when ledger's events are lost. The shipment
+held only after ledger.0004, the hold only after ledger.0005, the refund only
+after ledger.0006.
