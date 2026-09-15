@@ -277,7 +277,11 @@ async function catalogAt(workspace, commit, projectId, holder, label) {
  * renders a draft's flow the way it renders main's.
  */
 export async function draftViews(entities, sides) {
-  const { likec4Sources } = await import("./gen-likec4.mjs");
+  // By URL, not by specifier: Vite bundles its config, this module with it,
+  // and a specifier it can follow pulls gen-likec4.mjs and its top-level
+  // await into a bundle that cannot hold one - `portolan build` then fails
+  // to load the config. The file is read where it lies, only when drawn.
+  const { likec4Sources } = await import(/* @vite-ignore */ new URL("./gen-likec4.mjs", import.meta.url).href);
   const { LikeC4 } = await import("likec4");
   const views = {};
   // The model elements those views draw, ancestors included: a lane the
