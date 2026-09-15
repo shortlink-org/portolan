@@ -131,6 +131,11 @@
         "commit": "243180950de27ec33b0b6c860cbb4aeab5b161bc",
         "author": "Victor Login",
         "date": "2026-09-10T21:59:11+07:00"
+      },
+      "revised": {
+        "commit": "fd6553763d8e350fa7c0409930291b51a970598a",
+        "author": "Victor Login",
+        "date": "2026-09-15T16:49:03+07:00"
       }
     },
     {
@@ -152,7 +157,12 @@
           "shop.oms.order.OrderCancelled"
         ]
       },
-      "source": "examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md"
+      "source": "examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md",
+      "created": {
+        "commit": "fd6553763d8e350fa7c0409930291b51a970598a",
+        "author": "Victor Login",
+        "date": "2026-09-15T16:49:03+07:00"
+      }
     }
   ]
 }

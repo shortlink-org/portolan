@@ -6,6 +6,7 @@
 - **Date:** 2026-09-15
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md)
+- **Committed:** Victor Login, 2026-09-15 (`fd65537`)
 - **Note:** Replaces the paragraph of oms.0006 that left a declined order placed; the rest of oms.0006 stands.
 
 ### Context and Problem Statement

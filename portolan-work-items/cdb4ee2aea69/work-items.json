@@ -10,6 +10,13 @@
       "provider": "linear",
       "key": "SHO-11",
       "url": "https://linear.app/shortlink/issue/SHO-11"
+    },
+    {
+      "id": "shortlink:SHO-20",
+      "tracker": "shortlink",
+      "provider": "linear",
+      "key": "SHO-20",
+      "url": "https://linear.app/shortlink/issue/SHO-20"
     }
   ],
   "workItemLinks": [
@@ -37,6 +44,654 @@
             "src/pages/LazyFlowDetail.tsx",
             "src/pages/Overview.tsx",
             "src/pages/ServicePage.tsx"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "adr",
+        "id": "oms.0006"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "adr",
+        "id": "oms.0007"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "flow",
+        "id": "flow.oms-cancel-order-on-payment-declined"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs",
+            "examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "flow",
+        "id": "flow.oms-cancel-order"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs",
+            "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "flow",
+        "id": "flow.oms-confirm-order-on-payment-authorized"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "flow",
+        "id": "flow.oms-get-order"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "flow",
+        "id": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs",
+            "examples/shop/oms/src/application/order/usecases/request_payment/mod.rs",
+            "examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "service",
+        "id": "payments.ledger"
+      },
+      "basis": "service-directory",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/payments/ledger/src/test/java/org/portolan/payments/ledger/infrastructure/bus/CheckoutContractTest.java"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "service",
+        "id": "shop.oms"
+      },
+      "basis": "service-directory",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/GLOSSARY.md",
+            "examples/shop/oms/README.md",
+            "examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md",
+            "examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md",
+            "examples/shop/oms/docs/adr/README.md",
+            "examples/shop/oms/portolan/adr.json",
+            "examples/shop/oms/portolan/domain.json",
+            "examples/shop/oms/portolan/glossary.json",
+            "examples/shop/oms/src/application/order/usecases/cancel_order/README.md",
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs",
+            "examples/shop/oms/src/application/order/usecases/request_payment/README.md",
+            "examples/shop/oms/src/application/order/usecases/request_payment/mod.rs",
+            "examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs",
+            "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
+            "examples/shop/oms/src/application/policy/mod.rs",
+            "examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs",
+            "examples/shop/oms/src/domain/order/README.md",
+            "examples/shop/oms/src/domain/order/event/order_placed.rs",
+            "examples/shop/oms/src/infrastructure/ledger/mod.rs",
+            "examples/shop/oms/src/infrastructure/mod.rs",
+            "examples/shop/oms/src/infrastructure/payments/mod.rs",
+            "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+            "examples/shop/oms/src/main.rs",
+            "examples/shop/oms/tests/usecases.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s1",
+        "flow": "flow.oms-cancel-order-on-payment-declined"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s1",
+        "flow": "flow.oms-cancel-order"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s1",
+        "flow": "flow.oms-confirm-order-on-payment-authorized"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s1",
+        "flow": "flow.oms-get-order"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s1",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s10",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s11",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s12",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s2",
+        "flow": "flow.oms-cancel-order-on-payment-declined"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s2",
+        "flow": "flow.oms-cancel-order"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s2",
+        "flow": "flow.oms-confirm-order-on-payment-authorized"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s2",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s3",
+        "flow": "flow.oms-cancel-order-on-payment-declined"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s3",
+        "flow": "flow.oms-cancel-order"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s3",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/request_payment/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s4",
+        "flow": "flow.oms-cancel-order-on-payment-declined"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s4",
+        "flow": "flow.oms-cancel-order"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s4",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/request_payment/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s5",
+        "flow": "flow.oms-cancel-order-on-payment-declined"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s5",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-20",
+      "target": {
+        "kind": "step",
+        "id": "s9",
+        "flow": "flow.oms-request-payment-on-order-placed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "fd6553763d8e350fa7c0409930291b51a970598a",
+          "subject": "feat(oms): cancel an order whose payment is declined (SHO-20)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:49:03+07:00",
+          "paths": [
+            "examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs"
           ]
         }
       ]
