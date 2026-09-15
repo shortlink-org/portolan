@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import { glob } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers, toolchainFor } from "./init.mjs";
 import { checkForUpdate } from "./update.mjs";
@@ -185,7 +185,7 @@ function doctor(workspace) {
 
 async function build(workspace, options) {
   const stage = await prepareSite(workspace);
-  generateLikeC4(stage);
+  await generateLikeC4(stage);
   const output = safeOutput(workspace, options.output ?? "dist");
   const env = {
     ...process.env,
@@ -204,7 +204,7 @@ async function build(workspace, options) {
 async function dev(workspace, options) {
   const latestVersion = await checkForUpdate(VERSION);
   const stage = await prepareSite(workspace);
-  generateLikeC4(stage);
+  await generateLikeC4(stage);
   const args = [stage, "--config", resolve(stage, "vite.config.ts"), "--host", options.host ?? "127.0.0.1"];
   if (options.port) args.push("--port", options.port, "--strictPort");
   runNode(packageBin("vite", "bin/vite.js"), args, workspace, {
@@ -293,12 +293,14 @@ export async function prepareSite(workspace) {
   return stage;
 }
 
-function generateLikeC4(stage) {
+async function generateLikeC4(stage) {
   runNode(resolve(stage, "scripts/gen-likec4.mjs"), [], stage);
-  // Inside a container likec4 switches to a graphviz binary by default and,
-  // finding none, reports "no views found". The wasm engine it uses
-  // everywhere else is the one wanted, so it is asked for by name.
-  runNode(packageBin("likec4", "bin/likec4.mjs"), ["gen", "react", "likec4", "-o", "src/likec4/generated.jsx", "--no-use-dot"], stage);
+  // The arguments ask for the wasm layout engine by name (see
+  // LIKEC4_REACT_ARGS). The stamp tells the Vite plugin in the stage that
+  // this bundle came from the installed likec4, so it is not written twice.
+  const { LIKEC4_REACT_ARGS, writeLikeC4Stamp } = await import(pathToFileURL(resolve(stage, "scripts/likec4-bundle.mjs")).href);
+  runNode(packageBin("likec4", "bin/likec4.mjs"), LIKEC4_REACT_ARGS, stage);
+  writeLikeC4Stamp(stage);
 }
 
 async function matchedFiles(workspace, patterns) {
