@@ -637,14 +637,23 @@ func (s *scanner) callbackBody(expr ast.Expr, fn *goscan.Function, outer *analys
 	default:
 		for _, target := range s.Targets(expr, fn) {
 			if target.Decl.Body != nil {
-				return target.Decl.Body, s.stateFor(target), functionKey(target)
+				return target.Decl.Body, s.stateFor(target), s.functionKey(target)
 			}
 		}
 	}
 	return nil, nil, ""
 }
 
-func functionKey(fn *goscan.Function) string {
+// functionKey is the source-function key a flow continues at: the package
+// directory and the (receiver-qualified) name, spelled from the service's
+// repository like every other plugin's key (plugin.RootFunction), so the
+// merge finds the flow another reader extracted from the same function.
+func (s *scanner) functionKey(fn *goscan.Function) string {
+	return s.in.RootFunction(rootFunctionKey(fn))
+}
+
+// rootFunctionKey is the key as the tree spells it, from the input root.
+func rootFunctionKey(fn *goscan.Function) string {
 	name := fn.Name
 	if fn.Receiver != "" {
 		name = goscan.LastSegment(fn.Receiver) + "." + name
@@ -685,7 +694,7 @@ func (s *scanner) indexSubscribes(fn *goscan.Function, b *plugin.Builder) {
 				b.Warn(s.At(call.Pos()).String(), "Subscribe in "+fn.Name+" names topic `"+goscan.FirstNonEmpty(value.expr, "?")+"`, which this reader cannot resolve to a literal, a constant, a config default or a caller's argument; the subscription is kept with its topic unresolved")
 			}
 			value.at = s.At(call.Args[1].Pos())
-			s.handlers = append(s.handlers, handler{name: fn.Name, input: value, entrypoint: functionKey(fn), at: s.At(call.Pos()), direct: true})
+			s.handlers = append(s.handlers, handler{name: fn.Name, input: value, entrypoint: s.functionKey(fn), at: s.At(call.Pos()), direct: true})
 		}
 		return true
 	})

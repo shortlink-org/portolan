@@ -248,7 +248,7 @@ func (s *scanner) indexWorkers() {
 		}
 		s.workers[fn.Receiver] = &worker{
 			key: fn.Receiver, name: goscan.LastSegment(fn.Receiver), args: args,
-			entrypoint: functionKey(fn),
+			entrypoint: s.functionKey(fn),
 			at:         s.At(fn.Decl.Pos()),
 		}
 	}
@@ -404,7 +404,7 @@ func (s *scanner) producer(fn *goscan.Function, method string, argsExpr, optsExp
 			queues = []string{"default"}
 		}
 		for _, queue := range queues {
-			s.producers = append(s.producers, producer{args: key, queue: queue, entrypoint: functionKey(fn), at: at})
+			s.producers = append(s.producers, producer{args: key, queue: queue, entrypoint: s.functionKey(fn), at: at})
 		}
 	}
 }
@@ -668,9 +668,16 @@ func producerEntrypoint(producers []producer) string {
 	return entrypoint
 }
 
-// functionKey is the source-function key a flow continues at: the
-// directory of the file and the (receiver-qualified) name.
-func functionKey(fn *goscan.Function) string {
+// functionKey is the source-function key a flow continues at: the package
+// directory and the (receiver-qualified) name, spelled from the service's
+// repository like every other plugin's key (plugin.RootFunction), so the
+// merge finds the flow another reader extracted from the same function.
+func (s *scanner) functionKey(fn *goscan.Function) string {
+	return s.in.RootFunction(rootFunctionKey(fn))
+}
+
+// rootFunctionKey is the key as the tree spells it, from the input root.
+func rootFunctionKey(fn *goscan.Function) string {
 	name := fn.Name
 	if fn.Receiver != "" {
 		name = goscan.LastSegment(fn.Receiver) + "." + name

@@ -106,7 +106,8 @@ func setup(workers *river.Workers, client interface { Insert(context.Context, ri
 
 // A source is spelled from the service's repository: the workspace in a
 // monorepo, the fetched copy's directory for a copy fetch-git brought in.
-// Function keys (entrypoint, continuesAt) stay keys, spelled from the root.
+// Function keys (entrypoint, continuesAt) are spelled the same way, which is
+// what lets the merge join them to another reader's flow.
 func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
 	cases := []struct {
 		name, root, repository, prefix string
@@ -152,7 +153,7 @@ func setup(workers *river.Workers, client interface { Insert(context.Context, ri
 			if flow.Source != producer || enqueue.Line != producer || work.Line != worker {
 				t.Fatalf("flow source %q, enqueue line %q, work line %q; want %q and %q", flow.Source, enqueue.Line, work.Line, producer, worker)
 			}
-			if work.ContinuesAt != "jobs:SendWorker.Work" || flow.EntryPoint != "jobs:setup" {
+			if work.ContinuesAt != tc.prefix+"jobs:SendWorker.Work" || flow.EntryPoint != tc.prefix+"jobs:setup" {
 				t.Fatalf("function keys = %q %q", work.ContinuesAt, flow.EntryPoint)
 			}
 		})
