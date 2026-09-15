@@ -34,21 +34,21 @@ type Catalog struct {
 	// and a mirror that wrote `"generatedAt": ""` would be inventing an answer
 	// to a question the file does not answer. The merge dates the estate from
 	// the sources that do carry one.
-	GeneratedAt string             `json:"generatedAt,omitempty"`
-	Commit      string             `json:"commit,omitempty"`
-	Contexts    []BoundedContext   `json:"contexts"`
-	Defs        map[string]TypeDef `json:"defs"`
-	Flows       []Flow             `json:"flows"`
-	Adrs        []Adr              `json:"adrs"`
+	GeneratedAt   string              `json:"generatedAt,omitempty"`
+	Commit        string              `json:"commit,omitempty"`
+	Contexts      []BoundedContext    `json:"contexts"`
+	Defs          map[string]TypeDef  `json:"defs"`
+	Flows         []Flow              `json:"flows"`
+	Adrs          []Adr               `json:"adrs"`
 	Rfcs          []Rfc               `json:"rfcs,omitempty"`
-	Stores      []Store            `json:"stores,omitempty"`
-	Modules     []ProtoModule      `json:"modules,omitempty"`
-	Terms       []Term             `json:"terms,omitempty"`
-	Repos       []RepoPin          `json:"repos,omitempty"`
-	Deployments []Deployment       `json:"deployments,omitempty"`
-	Externals   []External         `json:"externals,omitempty"`
-	WorkItems []WorkItem `json:"workItems,omitempty"`
-	WorkItemLinks []WorkItemLink `json:"workItemLinks,omitempty"`
+	Stores        []Store             `json:"stores,omitempty"`
+	Modules       []ProtoModule       `json:"modules,omitempty"`
+	Terms         []Term              `json:"terms,omitempty"`
+	Repos         []RepoPin           `json:"repos,omitempty"`
+	Deployments   []Deployment        `json:"deployments,omitempty"`
+	Externals     []External          `json:"externals,omitempty"`
+	WorkItems     []WorkItem          `json:"workItems,omitempty"`
+	WorkItemLinks []WorkItemLink      `json:"workItemLinks,omitempty"`
 	Annotations   []CatalogAnnotation `json:"annotations,omitempty"`
 }
 
@@ -77,37 +77,37 @@ type CatalogAnnotation struct {
 }
 
 type WorkItem struct {
-	ID string `json:"id"`
-	Tracker string `json:"tracker"`
-	Provider string `json:"provider"`
-	Key string `json:"key"`
-	URL string `json:"url"`
-	Title string `json:"title,omitempty"`
-	Status string `json:"status,omitempty"`
-	Assignee string `json:"assignee,omitempty"`
+	ID        string `json:"id"`
+	Tracker   string `json:"tracker"`
+	Provider  string `json:"provider"`
+	Key       string `json:"key"`
+	URL       string `json:"url"`
+	Title     string `json:"title,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Assignee  string `json:"assignee,omitempty"`
 	UpdatedAt string `json:"updatedAt,omitempty"`
 }
 
 type WorkItemTarget struct {
 	Kind string `json:"kind"`
-	ID string `json:"id"`
+	ID   string `json:"id"`
 	Flow string `json:"flow,omitempty"`
 }
 
 type WorkItemCommit struct {
-	Repository string `json:"repository"`
-	SHA string `json:"sha"`
-	Subject string `json:"subject"`
-	Author string `json:"author"`
-	Date string `json:"date"`
-	Paths []string `json:"paths"`
+	Repository string   `json:"repository"`
+	SHA        string   `json:"sha"`
+	Subject    string   `json:"subject"`
+	Author     string   `json:"author"`
+	Date       string   `json:"date"`
+	Paths      []string `json:"paths"`
 }
 
 type WorkItemLink struct {
-	WorkItem string `json:"workItem"`
-	Target WorkItemTarget `json:"target"`
-	Basis string `json:"basis"`
-	Commits []WorkItemCommit `json:"commits"`
+	WorkItem string           `json:"workItem"`
+	Target   WorkItemTarget   `json:"target"`
+	Basis    string           `json:"basis"`
+	Commits  []WorkItemCommit `json:"commits"`
 }
 
 // Deployment is one place a service runs: an Argo CD Application as the

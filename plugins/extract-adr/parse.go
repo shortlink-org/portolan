@@ -73,12 +73,12 @@ var (
 	toolsDate  = regexp.MustCompile(`(?i)^Date:\s*(.+?)\s*$`)
 	// A metadata line other than the date: a capitalised label, a colon, a value.
 	toolsMetaLine = regexp.MustCompile(`^[A-Z][A-Za-z -]{0,40}:\s*\S`)
-	toolsLink  = regexp.MustCompile(`\[\s*(\d+)\.[^\]]*\]\([^)]*\)`)
-	toolsBare  = regexp.MustCompile(`(?i)^(?:adr[-\s]?)?0*(\d+)$`)
-	statusHead = regexp.MustCompile(`(?i)^#{2,6}\s+(?:Status|Статус)\s*:?\s*(.*?)\s*$`)
-	sectionAny = regexp.MustCompile(`^#{1,6}\s`)
-	bulletLine = regexp.MustCompile(`^-\s+\*\*([^*:]+):\*\*\s*(.*?)\s*$`)
-	bodyStart  = regexp.MustCompile(`^#{2,6}\s`)
+	toolsLink     = regexp.MustCompile(`\[\s*(\d+)\.[^\]]*\]\([^)]*\)`)
+	toolsBare     = regexp.MustCompile(`(?i)^(?:adr[-\s]?)?0*(\d+)$`)
+	statusHead    = regexp.MustCompile(`(?i)^#{2,6}\s+(?:Status|Статус)\s*:?\s*(.*?)\s*$`)
+	sectionAny    = regexp.MustCompile(`^#{1,6}\s`)
+	bulletLine    = regexp.MustCompile(`^-\s+\*\*([^*:]+):\*\*\s*(.*?)\s*$`)
+	bodyStart     = regexp.MustCompile(`^#{2,6}\s`)
 	// A kebab slug, with an underscore allowed inside a word: adr-tools writes
 	// dashes, and a hand-named record ("0002-use_modular-monolith...") is a
 	// record all the same.

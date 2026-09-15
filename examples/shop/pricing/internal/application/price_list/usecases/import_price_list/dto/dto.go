@@ -9,7 +9,7 @@ type Input struct {
 }
 
 type Row struct {
-	SKU        string
+	SKU         string
 	AmountMinor int64
 }
 

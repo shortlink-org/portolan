@@ -18,8 +18,10 @@ func TestPluginsMatchTheManifest(t *testing.T) {
 	}
 	var manifest struct {
 		Plugins []struct {
-			Name    string `json:"name"`
-			Wasm    *struct{ URL string `json:"url"` }
+			Name string `json:"name"`
+			Wasm *struct {
+				URL string `json:"url"`
+			}
 			Process *struct {
 				Command string   `json:"command"`
 				Args    []string `json:"args"`
