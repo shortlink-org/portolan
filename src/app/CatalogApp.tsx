@@ -50,7 +50,7 @@ import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
 import { activeCatalogProfile, catalogError, index } from "../data";
 import { paths } from "../routes";
-import { CanonicalSlug, slugForId } from "./canonical";
+import { CanonicalSlug, IdEntry, slugForId } from "./canonical";
 import { SidePanel } from "../components/Overlay";
 import { Empty } from "../components/PageHeader";
 import { WithDetail } from "../selection/DetailPanel";
@@ -300,6 +300,10 @@ function AppRoutes({
             <GraphPage />
           </WithDetail>
         }
+      />
+      <Route
+        path="/id/*"
+        element={<IdEntry index={index} notFound={<NotFoundPage onOpenSearch={onOpenSearch} />} />}
       />
       <Route path="/index.html" element={<Navigate to="/" replace />} />
       <Route

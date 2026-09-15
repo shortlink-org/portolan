@@ -9,6 +9,11 @@ import { flowStepId } from "./selection/model";
 
 export const paths = {
   landing: () => "/landing",
+  /**
+   * Any catalog id, for a link written where only the id is known. The app
+   * replaces it with the entity's own URL; in-app links use that URL directly.
+   */
+  byId: (id: string) => `/id/${id.split("/").map(encodeURIComponent).join("/")}`,
   overview: () => "/",
   flows: () => "/flows",
   flow: (slug: string) => `/flows/${slug}`,
@@ -455,6 +460,7 @@ const ROUTES: RegExp[] = [
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/enum\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/data\/[^/]+$/,
   /^\/graph$/,
+  /^\/id\/.+$/,
   /^\/registry$/,
   /^\/registry\/[^/]+$/,
 ];
