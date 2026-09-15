@@ -18,7 +18,7 @@ import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
-import { C4View } from "../likec4/C4View";
+import { C4View } from "../likec4/LazyC4View";
 import { LevelBadge } from "../likec4/levels";
 import { contextViewId } from "../likec4/ids";
 

@@ -196,6 +196,29 @@ export default defineConfig({
       globals: { Buffer: true, global: true, process: true },
     }),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          // LikeC4's renderer and the generated model are only reached through
+          // lazy imports (a C4 view, a flow page), but two lazy chunks share
+          // them, and left alone the bundler hoists what they share into the
+          // chunk that imports both: the catalog shell every page waits for.
+          // A group of their own keeps them off the first load, together with
+          // the app modules that import them. Icons are excluded: the shell
+          // draws one of them. Only the modules named here move, not what
+          // they depend on, or React would move with them.
+          includeDependenciesRecursively: false,
+          groups: [
+            {
+              name: "likec4",
+              test: /[\\/]node_modules[\\/](likec4|@likec4[\\/](?!icons[\\/]))|[\\/]src[\\/]likec4[\\/](generated\.jsx|C4View\.tsx|FlowView\.tsx|InteractiveView\.tsx|CanvasBridge\.tsx|view-index\.ts|container-layout\.ts)$|[\\/]src[\\/]drafts[\\/]branch-view\.ts$/,
+            },
+          ],
+        },
+      },
+    },
+  },
   resolve: {
     // One React, whatever a dependency asks for. The api reference ships its
     // own React wrapper around a Vue app, and a second copy of React reaching

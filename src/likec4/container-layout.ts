@@ -1,8 +1,6 @@
-import ELK from "elkjs/lib/elk.bundled.js";
 import type { ElkNode, ElkExtendedEdge } from "elkjs/lib/elk-api";
 import type { DiagramView } from "@likec4/core";
-
-const elk = new ELK();
+import { loadElk } from "../graph/elk";
 
 /** Cubic segments with small rounded elbows, entirely inside the routed corridor. */
 function roundedRoute(points: [number, number][]): [number, number][] {
@@ -44,7 +42,7 @@ export async function layoutContainers<T extends DiagramView>(view: T): Promise<
         : { width: source.width, height: source.height }),
     };
   };
-  const result: ElkNode = await elk.layout({
+  const result: ElkNode = await (await loadElk()).layout({
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",

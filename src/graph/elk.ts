@@ -8,10 +8,18 @@
 // back with the positions, and the canvas draws those rather than a curve of
 // its own invention.
 
-import ELK from "elkjs/lib/elk.bundled.js";
-import type { ElkNode, ElkExtendedEdge } from "elkjs/lib/elk-api";
+import type { ELK, ElkNode, ElkExtendedEdge } from "elkjs/lib/elk-api";
 
-const elk = new ELK();
+// elk is 1.4 MB of transpiled Java, as big as the rest of the first load put
+// together. Every call into it is async already, so it is fetched on the first
+// layout rather than with the page.
+let engine: Promise<ELK> | undefined;
+
+/** The one elk instance, loaded on first use. */
+export function loadElk(): Promise<ELK> {
+  engine ??= import("elkjs/lib/elk.bundled.js").then((module) => new module.default());
+  return engine;
+}
 
 export interface Point {
   x: number;
@@ -163,7 +171,7 @@ export async function layoutWithElk(input: LayoutInput): Promise<LayoutResult> {
     edges,
   };
 
-  const laid = await elk.layout(graph);
+  const laid = await (await loadElk()).layout(graph);
   const positions: Record<string, Point> = {};
   for (const child of laid.children ?? []) {
     positions[child.id] = { x: child.x ?? 0, y: child.y ?? 0 };
@@ -254,7 +262,7 @@ export async function layoutGroupsWithElk(input: GroupLayoutInput): Promise<Grou
     edges: [],
   };
 
-  const laid = await elk.layout(graph);
+  const laid = await (await loadElk()).layout(graph);
   const positions: Record<string, Point> = {};
   const frames: GroupLayoutResult["frames"] = {};
   for (const group of laid.children ?? []) {

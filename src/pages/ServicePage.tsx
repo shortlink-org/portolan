@@ -60,7 +60,7 @@ import { RowActions } from "../components/RowActions";
 import { ContextPill, StatusChip } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
-import { C4View } from "../likec4/C4View";
+import { C4View } from "../likec4/LazyC4View";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
 import {

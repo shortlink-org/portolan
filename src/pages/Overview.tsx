@@ -13,7 +13,7 @@ import { useCountUp, staggerStyle } from "../lib/motion";
 import { usePhone } from "../app/responsive";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths, servicePath } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
-import { C4View } from "../likec4/C4View";
+import { C4View } from "../likec4/LazyC4View";
 import {
   deploymentViewId,
   environmentsOf,

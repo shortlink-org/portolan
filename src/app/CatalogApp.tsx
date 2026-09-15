@@ -20,7 +20,6 @@ import {
   useCanvasResize,
   usePanelRef,
 } from "./panels";
-import { FlowDetail } from "../pages/FlowDetail";
 import { FlowIndex } from "../pages/FlowIndex";
 import { AdrIndex } from "../pages/AdrIndex";
 import { Language } from "../pages/Language";
@@ -40,7 +39,6 @@ import { EventPage } from "../pages/EventPage";
 import { StorePage } from "../pages/StorePage";
 import { GraphPage } from "../pages/GraphPage";
 import { Problems } from "../pages/Problems";
-import { Settings } from "../pages/Settings";
 import { Changes } from "../pages/Changes";
 import { Drafts } from "../pages/Drafts";
 import { DraftCompare } from "../pages/DraftCompare";
@@ -74,6 +72,8 @@ import { queryClient } from "./query-client";
 import { useChatUi } from "../chat/store";
 import { projectPreview } from "../lib/project-preview";
 import { SuspenseReveal } from "../components/SuspenseReveal";
+import { preloadC4View } from "../likec4/LazyC4View";
+import { FlowDetail, preloadFlowDetail } from "../pages/LazyFlowDetail";
 
 // The chat is a chunk of its own, and a build with VITE_CHAT=off has no such
 // chunk: the test is on the literal Vite substitutes, so the import below is
@@ -84,6 +84,30 @@ const ChatPanel =
     : null;
 
 const AdrCreate = lazy(() => import("../pages/AdrCreate"));
+
+// Settings is an editor few readers open, and a flow page or a C4 view is
+// LikeC4 and elk: none of them belongs in the chunk every page waits for. They
+// are fetched once the first page has painted and the browser is idle, so going
+// to them afterwards is as quick as it was when they were bundled in.
+const loadSettings = () => import("../pages/Settings");
+const Settings = lazy(() => loadSettings().then((module) => ({ default: module.Settings })));
+
+function usePreloadHeavyPages() {
+  useEffect(() => {
+    const preload = () => {
+      void loadSettings();
+      preloadFlowDetail();
+      preloadC4View();
+    };
+    if (typeof requestIdleCallback === "function") {
+      const handle = requestIdleCallback(preload, { timeout: 5000 });
+      return () => cancelIdleCallback(handle);
+    }
+    const timer = setTimeout(preload, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+}
+
 
 /**
  * What the click shows while that chunk is on its way: the same sheet, at the
@@ -156,7 +180,14 @@ function AppRoutes({
       />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
-      <Route path="/settings/*" element={<Settings />} />
+      <Route
+        path="/settings/*"
+        element={
+          <SuspenseReveal fallback={<div className="h-full p-gutter text-muted">Loading settings…</div>}>
+            <Settings />
+          </SuspenseReveal>
+        }
+      />
       <Route path="/changes" element={<Changes />} />
       <Route path="/drafts" element={<Drafts />} />
       <Route path="/drafts/:project/:branch" element={<DraftCompare />} />
@@ -309,6 +340,7 @@ function SidebarDrawer() {
 }
 
 function Shell() {
+  usePreloadHeavyPages();
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const chatOpen = useChatUi((s) => s.open);

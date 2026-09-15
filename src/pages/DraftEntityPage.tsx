@@ -3,7 +3,7 @@
 
 import { EventPage } from "./EventPage";
 import { WithDetail } from "../selection/DetailPanel";
-import { FlowDetail } from "./FlowDetail";
+import { FlowDetail } from "./LazyFlowDetail";
 import { GitBranch } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { useDocumentTitle } from "../app/title";
