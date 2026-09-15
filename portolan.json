@@ -6,7 +6,7 @@
     {
       "id": "portolan",
       "title": "Portolan",
-      "sources": ["portolan/*.json"],
+      "sources": ["portolan/*.json", "portolan-work-items/cdb4ee2aea69/work-items.json"],
       "contexts": ["portolan"],
       "projects": ["portolan"]
     },
@@ -1187,6 +1187,24 @@
       "out": "data",
       "options": {
         "out": "owners.json"
+      }
+    },
+    {
+      "plugin": "work-items",
+      "in": ".",
+      "out": "portolan-work-items/cdb4ee2aea69",
+      "options": {
+        "trackers": [
+          {
+            "id": "shortlink",
+            "provider": "linear",
+            "baseUrl": "https://linear.app/shortlink",
+            "projects": ["SHO"],
+            "name": "Linear"
+          }
+        ],
+        "maxCommits": 500,
+        "out": "work-items.json"
       }
     }
   ],

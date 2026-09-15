@@ -1,0 +1,45 @@
+{
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "workItems": [
+    {
+      "id": "shortlink:SHO-11",
+      "tracker": "shortlink",
+      "provider": "linear",
+      "key": "SHO-11",
+      "url": "https://linear.app/shortlink/issue/SHO-11"
+    }
+  ],
+  "workItemLinks": [
+    {
+      "workItem": "shortlink:SHO-11",
+      "target": {
+        "kind": "service",
+        "id": "portolan.site"
+      },
+      "basis": "service-directory",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "6a089494343c6ac2782fa7682c9df82c284f7b67",
+          "subject": "perf(ui): keep LikeC4 and elk off the catalog's first load (SHO-11)",
+          "author": "Victor Login",
+          "date": "2026-09-15T13:54:20+07:00",
+          "paths": [
+            "src/app/CatalogApp.tsx",
+            "src/graph/elk.ts",
+            "src/likec4/LazyC4View.tsx",
+            "src/likec4/container-layout.ts",
+            "src/pages/ContextPage.tsx",
+            "src/pages/DraftEntityPage.tsx",
+            "src/pages/LazyFlowDetail.tsx",
+            "src/pages/Overview.tsx",
+            "src/pages/ServicePage.tsx"
+          ]
+        }
+      ]
+    }
+  ]
+}
