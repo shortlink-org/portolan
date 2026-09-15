@@ -457,7 +457,7 @@ func (r *flowReader) walkBody(d *flowDraft, s *scope, fn *ast.FuncDecl, depth in
 	previous := d.evidence
 	source, line := s.pkg.position(fn.Pos())
 	d.evidence = append(append([]catalog.RelationEvidence{}, previous...), catalog.RelationEvidence{
-		Kind: "function", Rule: "source-function", Source: at(source, line), Symbol: key,
+		Kind: "function", Rule: "source-function", Source: at(source, line), Symbol: functionEntry(s.pkg.dir, s.recvType, fn.Name.Name),
 	})
 	defer func() { d.evidence = previous }()
 	r.walkStmts(d, s, fn.Body.List, depth)

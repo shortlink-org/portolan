@@ -139,8 +139,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 // it reads - a handler a flow already covers, a step's call-site evidence - so
 // the respelling happens once, on the finished fragment. In a monorepo the
 // workspace is the repository and nothing changes; a fetched copy loses the
-// directory it sits in. Function keys (entrypoint, continuesAt, reaches) are
-// names, not places, and stay.
+// directory it sits in. Function keys are spelled the same way
+// (plugin.RootFunction): a flow's entrypoint and a step's continuesAt are
+// spelled from the root by the reader, a source-function symbol from the
+// workspace, and every one of them leaves here spelled from the repository,
+// which is the spelling the merge joins them on.
 func spellFromRepository(in plugin.Input, fragment *catalog.Catalog) {
 	for c := range fragment.Contexts {
 		services := fragment.Contexts[c].Services
@@ -171,18 +174,34 @@ func spellFromRepository(in plugin.Input, fragment *catalog.Catalog) {
 			}
 		}
 	}
+	// A root-spelled key gains the root each time it is respelled, so a step
+	// two flows share is respelled once.
+	seen := map[*catalog.Step]bool{}
 	for f := range fragment.Flows {
 		fragment.Flows[f].Source = in.RepositorySource(fragment.Flows[f].Source)
-		spellNodes(in, fragment.Flows[f].Steps)
+		fragment.Flows[f].EntryPoint = in.RootFunction(fragment.Flows[f].EntryPoint)
+		spellNodes(in, fragment.Flows[f].Steps, seen)
 	}
 }
 
-func spellNodes(in plugin.Input, nodes catalog.FlowNodes) {
+func spellNodes(in plugin.Input, nodes catalog.FlowNodes, seen map[*catalog.Step]bool) {
 	for _, node := range nodes {
 		switch node := node.(type) {
 		case *catalog.Step:
+			if seen[node] {
+				continue
+			}
+			seen[node] = true
 			node.Line = in.RepositorySource(node.Line)
 			node.Evidence = spelledEvidence(in, node.Evidence)
+			node.ContinuesAt = in.RootFunction(node.ContinuesAt)
+			if node.Reaches != nil {
+				reaches := make([]string, len(node.Reaches))
+				for r, key := range node.Reaches {
+					reaches[r] = in.RootFunction(key)
+				}
+				node.Reaches = reaches
+			}
 			if node.HTTP != nil {
 				response := *node.HTTP
 				response.Source = in.RepositorySource(response.Source)
@@ -190,14 +209,14 @@ func spellNodes(in plugin.Input, nodes catalog.FlowNodes) {
 			}
 		case *catalog.Alt:
 			for branch := range node.Branches {
-				spellNodes(in, node.Branches[branch].Steps)
+				spellNodes(in, node.Branches[branch].Steps, seen)
 			}
 		case *catalog.Parallel:
 			for _, branch := range node.Branches {
-				spellNodes(in, branch)
+				spellNodes(in, branch, seen)
 			}
 		case *catalog.Loop:
-			spellNodes(in, node.Steps)
+			spellNodes(in, node.Steps, seen)
 		}
 	}
 }
@@ -212,15 +231,9 @@ func spelledEvidence(in plugin.Input, evidence []catalog.RelationEvidence) []cat
 	for i, item := range evidence {
 		item.Source = in.RepositorySource(item.Source)
 		// The enclosing function is named by its package directory as the
-		// reader opened it, `<dir>:<Recv>.<Method>`: a place too.
+		// reader opened it, `<dir>:<Recv>.<Method>`: a function key.
 		if item.Rule == "source-function" {
-			if dir, name, ok := strings.Cut(item.Symbol, ":"); ok {
-				if dir = in.RepositoryPath(dir); dir == "" {
-					item.Symbol = name
-				} else {
-					item.Symbol = dir + ":" + name
-				}
-			}
+			item.Symbol = in.RepositoryFunction(item.Symbol)
 		}
 		out[i] = item
 	}

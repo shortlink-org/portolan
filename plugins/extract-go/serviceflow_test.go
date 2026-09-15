@@ -245,6 +245,7 @@ func Register(h *Handler) { http.HandleFunc("POST /orders", h.Create) }
 				t.Fatalf("flows = %+v", fragment.Flows)
 			}
 			flow := fragment.Flows[0]
+			functions := 0
 			file := tc.prefix + "web/routes.go"
 			if !strings.HasPrefix(flow.Source, file) {
 				t.Fatalf("flow source = %q", flow.Source)
@@ -258,7 +259,17 @@ func Register(h *Handler) { http.HandleFunc("POST /orders", h.Create) }
 					if evidence.Source != "" && !strings.HasPrefix(evidence.Source, file) {
 						t.Errorf("step %s evidence source = %q", step.ID, evidence.Source)
 					}
+					// A function key is spelled like a place.
+					if evidence.Rule == "source-function" {
+						functions++
+						if evidence.Symbol != tc.prefix+"web:Handler.Create" && evidence.Symbol != tc.prefix+"web:Service.Execute" {
+							t.Errorf("step %s function symbol = %q", step.ID, evidence.Symbol)
+						}
+					}
 				}
+			}
+			if functions == 0 {
+				t.Error("no step carries its enclosing function")
 			}
 
 			if err := os.RemoveAll(tc.root); err != nil {
