@@ -58,7 +58,7 @@
                     {
                       "service": "auth.auth",
                       "status": "verified",
-                      "note": "Seen consuming it in telemetry/traces.jsonl."
+                      "note": "Seen consuming it in examples/auth/telemetry/traces.jsonl."
                     }
                   ]
                 }
@@ -123,7 +123,7 @@
           "kind": "rpc",
           "label": "changePassword",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
           "line": "examples/auth/internal/user/infrastructure/http/change_password.go:20",
           "seen": {
             "traces": 2
@@ -254,7 +254,7 @@
           "ref": "auth.auth.user.PasswordChanged",
           "label": "PasswordChanged",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
           "line": "examples/auth/internal/user/application/change_password/usecase.go:48",
           "seen": {
             "traces": 1
@@ -375,7 +375,7 @@
           "kind": "rpc",
           "label": "getUser",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (3 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (3 traces).",
           "line": "examples/auth/internal/user/infrastructure/http/get.go:11",
           "seen": {
             "traces": 3
@@ -551,7 +551,7 @@
           "kind": "rpc",
           "label": "login",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (10 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (10 traces).",
           "line": "examples/auth/internal/session/infrastructure/http/login.go:11",
           "seen": {
             "traces": 10
@@ -1269,7 +1269,7 @@
           "ref": "auth.auth.session.SessionStarted",
           "label": "SessionStarted",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (10 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (10 traces).",
           "line": "examples/auth/internal/session/application/login/usecase.go:77",
           "seen": {
             "traces": 3
@@ -1491,7 +1491,7 @@
           "kind": "rpc",
           "label": "logout",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (1 trace).",
           "line": "examples/auth/internal/session/infrastructure/http/logout.go:15",
           "seen": {
             "traces": 1
@@ -1588,7 +1588,7 @@
           "ref": "auth.auth.session.SessionEnded",
           "label": "SessionEnded",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (1 trace).",
           "line": "examples/auth/internal/session/application/logout/usecase.go:48",
           "seen": {
             "traces": 1
@@ -1693,7 +1693,7 @@
           "kind": "rpc",
           "label": "registerUser",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
           "line": "examples/auth/internal/user/infrastructure/http/register.go:16",
           "seen": {
             "traces": 2
@@ -1790,7 +1790,7 @@
           "ref": "auth.auth.user.UserRegistered",
           "label": "UserRegistered",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
           "line": "examples/auth/internal/user/application/register/usecase.go:53",
           "seen": {
             "traces": 2
@@ -1917,7 +1917,7 @@
           "ref": "auth.auth.user.PasswordChanged",
           "label": "PasswordChanged",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (1 trace).",
           "line": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47",
           "seen": {
             "traces": 1
@@ -2019,7 +2019,7 @@
           "kind": "rpc",
           "label": "validateSession",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
           "line": "examples/auth/internal/session/infrastructure/http/validate.go:12",
           "seen": {
             "traces": 2

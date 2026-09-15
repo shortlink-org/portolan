@@ -19,7 +19,7 @@
               "id": "auth.v1/validateSession",
               "peer": "auth.auth",
               "status": "verified",
-              "source": "telemetry/traces.jsonl"
+              "source": "examples/shop/cart/telemetry/traces.jsonl"
             }
           ],
           "aggregates": []
@@ -73,7 +73,7 @@
           "kind": "rpc",
           "label": "addItem",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (3 traces).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (3 traces).",
           "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43",
           "seen": {
             "traces": 3
@@ -98,7 +98,7 @@
           "ref": "shop.cart.basket.BasketItemAdded",
           "label": "BasketItemAdded",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (3 traces).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (3 traces).",
           "line": "examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27",
           "seen": {
             "traces": 3
@@ -269,7 +269,7 @@
           "kind": "rpc",
           "label": "checkout",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60",
           "seen": {
             "traces": 1
@@ -284,7 +284,7 @@
           "ref": "auth.v1/validateSession",
           "label": "validateSession",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44",
           "seen": {
             "traces": 1
@@ -330,7 +330,7 @@
           "ref": "shop.cart.basket.BasketCheckedOut",
           "label": "BasketCheckedOut",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57",
           "seen": {
             "traces": 1
@@ -438,7 +438,7 @@
           "kind": "rpc",
           "label": "createBasket",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces).",
           "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33",
           "seen": {
             "traces": 2
@@ -463,7 +463,7 @@
           "ref": "shop.cart.basket.BasketCreated",
           "label": "BasketCreated",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces).",
           "line": "examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22",
           "seen": {
             "traces": 2
@@ -581,7 +581,7 @@
           "kind": "rpc",
           "label": "getBasket",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces).",
           "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38",
           "seen": {
             "traces": 2
@@ -693,7 +693,7 @@
           "kind": "rpc",
           "label": "mergeBaskets",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54",
           "seen": {
             "traces": 1
@@ -708,7 +708,7 @@
           "ref": "auth.v1/validateSession",
           "label": "validateSession",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28",
           "seen": {
             "traces": 1
@@ -743,7 +743,7 @@
           "ref": "shop.cart.basket.BasketCreated",
           "label": "BasketCreated",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46",
           "seen": {
             "traces": 1
@@ -758,7 +758,7 @@
           "ref": "shop.cart.basket.BasketItemAdded",
           "label": "BasketItemAdded",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46",
           "seen": {
             "traces": 1
@@ -783,7 +783,7 @@
           "ref": "shop.cart.basket.BasketMerged",
           "label": "BasketMerged",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47",
           "seen": {
             "traces": 1
@@ -913,7 +913,7 @@
           "kind": "rpc",
           "label": "removeItem",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49",
           "seen": {
             "traces": 1
@@ -938,7 +938,7 @@
           "ref": "shop.cart.basket.BasketItemRemoved",
           "label": "BasketItemRemoved",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22",
           "seen": {
             "traces": 1

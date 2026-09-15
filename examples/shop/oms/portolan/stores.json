@@ -39,7 +39,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/order/migrations/0001_orders.sql",
+              "source": "examples/shop/oms/src/infrastructure/repository/order/migrations/0001_orders.sql",
               "symbol": "orders"
             }
           ],
@@ -103,7 +103,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/order/mod.rs",
+                "source": "examples/shop/oms/src/domain/order/mod.rs",
                 "symbol": "shop.oms.order"
               }
             ],
@@ -116,7 +116,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/order/migrations/0001_orders.sql",
+              "source": "examples/shop/oms/src/infrastructure/repository/order/migrations/0001_orders.sql",
               "symbol": "order_lines"
             }
           ],
@@ -165,7 +165,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/order/mod.rs",
+                "source": "examples/shop/oms/src/domain/order/mod.rs",
                 "symbol": "shop.oms.order"
               }
             ],
@@ -178,7 +178,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/order/migrations/0002_outbox.sql",
+              "source": "examples/shop/oms/src/infrastructure/repository/order/migrations/0002_outbox.sql",
               "symbol": "outbox"
             }
           ],

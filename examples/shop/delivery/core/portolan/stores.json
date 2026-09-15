@@ -39,7 +39,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/route/migrations/0001_routes.sql",
+              "source": "examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0001_routes.sql",
               "symbol": "routes"
             }
           ],
@@ -87,7 +87,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/route/route.ts",
+                "source": "examples/shop/delivery/core/src/domain/route/route.ts",
                 "symbol": "delivery.core.route"
               }
             ],
@@ -100,7 +100,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/route/migrations/0001_routes.sql",
+              "source": "examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0001_routes.sql",
               "symbol": "route_stops"
             }
           ],
@@ -170,7 +170,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/route/route.ts",
+                "source": "examples/shop/delivery/core/src/domain/route/route.ts",
                 "symbol": "delivery.core.route"
               }
             ],
@@ -183,13 +183,13 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/shipment/migrations/0001_packages.sql",
+              "source": "examples/shop/delivery/core/src/infrastructure/repository/shipment/migrations/0001_packages.sql",
               "symbol": "packages"
             },
             {
               "kind": "contract",
               "rule": "sql-alter-table",
-              "source": "src/infrastructure/repository/shipment/migrations/0003_ship_to_later.sql",
+              "source": "examples/shop/delivery/core/src/infrastructure/repository/shipment/migrations/0003_ship_to_later.sql",
               "symbol": "packages"
             }
           ],
@@ -265,7 +265,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/shipment/shipment.ts",
+                "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts",
                 "symbol": "delivery.core.shipment"
               }
             ],
@@ -278,7 +278,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/shipment/migrations/0001_packages.sql",
+              "source": "examples/shop/delivery/core/src/infrastructure/repository/shipment/migrations/0001_packages.sql",
               "symbol": "parcels"
             }
           ],
@@ -321,7 +321,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/shipment/shipment.ts",
+                "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts",
                 "symbol": "delivery.core.shipment"
               }
             ],
@@ -334,7 +334,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/shipment/migrations/0001_packages.sql",
+              "source": "examples/shop/delivery/core/src/infrastructure/repository/shipment/migrations/0001_packages.sql",
               "symbol": "scans"
             }
           ],
@@ -386,7 +386,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/shipment/shipment.ts",
+                "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts",
                 "symbol": "delivery.core.shipment"
               }
             ],
@@ -399,7 +399,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/shipment/migrations/0002_outbox.sql",
+              "source": "examples/shop/delivery/core/src/infrastructure/repository/shipment/migrations/0002_outbox.sql",
               "symbol": "outbox"
             }
           ],
@@ -515,7 +515,7 @@
           "persists": {
             "aggregate": "delivery.core.route"
           },
-          "source": "src/infrastructure/repository/route/migrations/0002_route_load.sql"
+          "source": "examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql"
         }
       ],
       "source": "examples/shop/delivery/core/src/infrastructure/repository"

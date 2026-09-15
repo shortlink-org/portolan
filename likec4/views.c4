@@ -706,7 +706,7 @@ PaymentDeclined' }
     description 'Ends the sessions issued against a password that has just been replaced.'
     bus -> auth.auth 'PasswordChanged' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
     }
     auth.auth -> bus 'SessionEnded' {
       color verified  line solid  head onormal
@@ -1924,7 +1924,7 @@ PaymentDeclined' }
     description 'Places the order the basket was checked out for (ADR oms.0002). The order takes the basket\'s id, so the same checkout heard twice places one order.'
     bus -> shop.oms 'BasketCheckedOut' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19'
+      notes 'Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19'
     }
     shop.oms -> shop.oms 'PlaceOrder' {
       color declared  line solid  head none
@@ -1940,7 +1940,7 @@ PaymentDeclined' }
     }
     shop.oms -> bus 'OrderPlaced' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31'
+      notes 'Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31'
     }
   }
 
@@ -2025,7 +2025,7 @@ PaymentDeclined' }
 
   dynamic view flow_observed_oms_cancelorder {
     title 'Observed: CancelOrder'
-    description 'Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
+    description 'Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
     client -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
       color verified  line solid  head normal
     }
@@ -2057,7 +2057,7 @@ PaymentDeclined' }
 
   dynamic view flow_observed_oms_getorder {
     title 'Observed: GetOrder'
-    description 'Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
+    description 'Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
     client -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color verified  line solid  head normal
     }

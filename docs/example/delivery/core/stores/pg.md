@@ -134,4 +134,4 @@ SELECT r.id          AS route_id,
  GROUP BY r.id;
 ```
 
-Source: [`src/infrastructure/repository/route/migrations/0002_route_load.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql)
+Source: [`examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql)

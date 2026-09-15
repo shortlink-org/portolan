@@ -37,7 +37,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **bus** → **shop.oms** — BasketCheckedOut
-   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L19) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L19) · Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
 2. **shop.oms** ↺ **shop.oms** — PlaceOrder
    `shop.oms.order/PlaceOrder` · status: declared · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L29)
@@ -49,7 +49,7 @@ sequenceDiagram
    status: declared · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31)
 <a id="step-s5"></a>
 5. **shop.oms** → **bus** — OrderPlaced
-   [`shop.oms.order.OrderPlaced`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.oms.order.OrderPlaced`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31) · Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).
 
 ## Recordings
 

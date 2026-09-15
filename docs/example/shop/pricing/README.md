@@ -247,7 +247,7 @@ log, and nothing arrives.
 
 Read through github.com/nats-io/nats.go. Subscribed by `NATS.Subscribe` over JetStream.
 
-Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/di/app.go#L67)
+Source: [`examples/shop/pricing/internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/di/app.go#L67)
 
 | Direction | Message | Title |
 | --- | --- | --- |

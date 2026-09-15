@@ -73,7 +73,7 @@
                     {
                       "service": "shop.oms",
                       "status": "verified",
-                      "note": "Seen consuming it in telemetry/traces.jsonl."
+                      "note": "Seen consuming it in examples/shop/oms/telemetry/traces.jsonl."
                     }
                   ]
                 }
@@ -90,8 +90,8 @@
       "id": "flow.observed-oms-cancelorder",
       "slug": "observed-oms-cancelorder",
       "name": "Observed: CancelOrder",
-      "summary": "Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.",
-      "source": "telemetry/traces.jsonl",
+      "summary": "Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.",
+      "source": "examples/shop/oms/telemetry/traces.jsonl",
       "owner": "shop",
       "participants": [
         {
@@ -333,8 +333,8 @@
       "id": "flow.observed-oms-getorder",
       "slug": "observed-oms-getorder",
       "name": "Observed: GetOrder",
-      "summary": "Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.",
-      "source": "telemetry/traces.jsonl",
+      "summary": "Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.",
+      "source": "examples/shop/oms/telemetry/traces.jsonl",
       "owner": "shop",
       "participants": [
         {
@@ -524,7 +524,7 @@
           "ref": "shop.cart.basket.BasketCheckedOut",
           "label": "BasketCheckedOut",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19",
           "seen": {
             "traces": 1
@@ -570,7 +570,7 @@
           "ref": "shop.oms.order.OrderPlaced",
           "label": "OrderPlaced",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "note": "Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31",
           "seen": {
             "traces": 1

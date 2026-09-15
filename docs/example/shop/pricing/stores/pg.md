@@ -145,4 +145,4 @@ SELECT l.id        AS price_list_id,
  GROUP BY l.id;
 ```
 
-Source: [`internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql)
+Source: [`examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql)

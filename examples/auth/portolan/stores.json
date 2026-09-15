@@ -39,7 +39,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/lockout/infrastructure/repository/migrations/0001_lockouts.up.sql",
+              "source": "examples/auth/internal/lockout/infrastructure/repository/migrations/0001_lockouts.up.sql",
               "symbol": "lockouts"
             }
           ],
@@ -76,7 +76,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/lockout/domain/lockout.go:27",
+                "source": "examples/auth/internal/lockout/domain/lockout.go:27",
                 "symbol": "auth.auth.lockout"
               }
             ],
@@ -106,7 +106,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/session/infrastructure/repository/migrations/0001_sessions.up.sql",
+              "source": "examples/auth/internal/session/infrastructure/repository/migrations/0001_sessions.up.sql",
               "symbol": "sessions"
             }
           ],
@@ -178,7 +178,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/session/domain/session.go:23",
+                "source": "examples/auth/internal/session/domain/session.go:23",
                 "symbol": "auth.auth.session"
               }
             ],
@@ -218,7 +218,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/user/infrastructure/repository/migrations/0001_users.up.sql",
+              "source": "examples/auth/internal/user/infrastructure/repository/migrations/0001_users.up.sql",
               "symbol": "users"
             }
           ],
@@ -270,7 +270,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/user/domain/user.go:19",
+                "source": "examples/auth/internal/user/domain/user.go:19",
                 "symbol": "auth.auth.user"
               }
             ],

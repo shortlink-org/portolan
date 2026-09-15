@@ -39,7 +39,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/infrastructure/repository/price_list/migrations/0001_price_lists.sql",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0001_price_lists.sql",
               "symbol": "price_lists"
             }
           ],
@@ -93,7 +93,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/domain/price_list/price_list.go:14",
+                "source": "examples/shop/pricing/internal/domain/price_list/price_list.go:14",
                 "symbol": "shop.pricing.price-list"
               }
             ],
@@ -128,7 +128,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/infrastructure/repository/price_list/migrations/0001_price_lists.sql",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0001_price_lists.sql",
               "symbol": "price_rows"
             }
           ],
@@ -166,7 +166,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/domain/price_list/price_list.go:14",
+                "source": "examples/shop/pricing/internal/domain/price_list/price_list.go:14",
                 "symbol": "shop.pricing.price-list"
               }
             ],
@@ -196,7 +196,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
               "symbol": "quotes"
             }
           ],
@@ -269,7 +269,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/domain/quote/quote.go:24",
+                "source": "examples/shop/pricing/internal/domain/quote/quote.go:24",
                 "symbol": "shop.pricing.quote"
               }
             ],
@@ -304,7 +304,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
               "symbol": "quote_lines"
             }
           ],
@@ -354,7 +354,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/domain/quote/quote.go:24",
+                "source": "examples/shop/pricing/internal/domain/quote/quote.go:24",
                 "symbol": "shop.pricing.quote"
               }
             ],
@@ -374,13 +374,13 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
               "symbol": "outbox"
             },
             {
               "kind": "contract",
               "rule": "sql-alter-table",
-              "source": "internal/infrastructure/repository/quote/migrations/0002_outbox_payload.sql",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/migrations/0002_outbox_payload.sql",
               "symbol": "outbox"
             }
           ],
@@ -510,7 +510,7 @@
           "persists": {
             "aggregate": "shop.pricing.price-list"
           },
-          "source": "internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql"
+          "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql"
         }
       ],
       "source": "examples/shop/pricing/internal/infrastructure/repository"

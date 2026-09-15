@@ -93,8 +93,8 @@
 | [Issue refund](flows/ledger-issue-refund.md) | [payments](payments/README.md) | Sends money back against a captured payment, in full or in part. |
 | [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
 | [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
-| [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
-| [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
+| [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
+| [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Cancel order on payment declined](flows/oms-cancel-order-on-payment-declined.md) | [shop](shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
@@ -1714,7 +1714,7 @@ On the wire as `auth.PasswordChanged`, on `auth_user`.
 
 | Consumer | Status | Note |
 | --- | --- | --- |
-| [auth.auth](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+| [auth.auth](../README.md) | verified | Seen consuming it in examples/auth/telemetry/traces.jsonl. |
 
 #### v1 — current
 
@@ -4186,7 +4186,7 @@ On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
 
 | Consumer | Status | Via | Note |
 | --- | --- | --- | --- |
-| [shop.oms](../../oms/README.md) | verified | — | Seen consuming it in telemetry/traces.jsonl. |
+| [shop.oms](../../oms/README.md) | verified | — | Seen consuming it in examples/shop/oms/telemetry/traces.jsonl. |
 | [shop.pricing](../../pricing/README.md) | declared | `pricing-expire-quote-on-checkout#s1` | — |
 
 #### v1 — current
@@ -4998,7 +4998,7 @@ log, and nothing arrives.
 
 Read through github.com/nats-io/nats.go. Subscribed by `NATS.Subscribe` over JetStream.
 
-Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/di/app.go#L67)
+Source: [`examples/shop/pricing/internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/di/app.go#L67)
 
 | Direction | Message | Title |
 | --- | --- | --- |
@@ -5835,7 +5835,7 @@ SELECT r.id          AS route_id,
  GROUP BY r.id;
 ```
 
-Source: [`src/infrastructure/repository/route/migrations/0002_route_load.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql)
+Source: [`examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql)
 
 <!-- payments/ledger/stores/pg.md -->
 
@@ -5936,7 +5936,7 @@ SELECT p.id           AS payment_id,
  GROUP BY p.id;
 ```
 
-Source: [`src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql)
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql)
 
 <!-- shop/billing/stores/pg.md -->
 
@@ -6268,7 +6268,7 @@ SELECT l.id        AS price_list_id,
  GROUP BY l.id;
 ```
 
-Source: [`internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql)
+Source: [`examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql)
 
 <!-- externals/stripe.md -->
 
@@ -6420,8 +6420,8 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [Issue refund](ledger-issue-refund.md) | [payments](../payments/README.md) | Sends money back against a captured payment, in full or in part. |
 | [List refunds](ledger-list-refunds.md) | [payments](../payments/README.md) | Every refund against one payment, newest first. |
 | [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Gives back what was held once the order it was held for is gone. |
-| [Observed: CancelOrder](observed-oms-cancelorder.md) | [shop](../shop/README.md) | Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
-| [Observed: GetOrder](observed-oms-getorder.md) | [shop](../shop/README.md) | Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
+| [Observed: CancelOrder](observed-oms-cancelorder.md) | [shop](../shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
+| [Observed: GetOrder](observed-oms-getorder.md) | [shop](../shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Cancel order on payment declined](oms-cancel-order-on-payment-declined.md) | [shop](../shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
 | [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
@@ -6842,7 +6842,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **bus** → **auth.auth** — PasswordChanged
-   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47) · Seen running in telemetry/traces.jsonl (1 trace). · evidence: call-site · source-expression · `PasswordChanged` · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47)
+   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47) · Seen running in examples/auth/telemetry/traces.jsonl (1 trace). · evidence: call-site · source-expression · `PasswordChanged` · [`examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go#L47)
 <a id="step-seen1"></a>
 2. **auth.auth** → **bus** — SessionEnded
    [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · Seen in 1 recording; the code does not declare this hop.
@@ -9321,9 +9321,9 @@ sequenceDiagram
 
 - **Id:** `flow.observed-oms-cancelorder`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** [`telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/telemetry/traces.jsonl)
+- **Source:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
 
-Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
+Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
 
 ## Participants
 
@@ -9413,9 +9413,9 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 
 - **Id:** `flow.observed-oms-getorder`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** [`telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/telemetry/traces.jsonl)
+- **Source:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
 
-Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
+Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
 
 ## Participants
 
@@ -9759,7 +9759,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **bus** → **shop.oms** — BasketCheckedOut
-   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L19) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L19) · Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
 2. **shop.oms** ↺ **shop.oms** — PlaceOrder
    `shop.oms.order/PlaceOrder` · status: declared · [`examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs#L29)
@@ -9771,7 +9771,7 @@ sequenceDiagram
    status: declared · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31)
 <a id="step-s5"></a>
 5. **shop.oms** → **bus** — OrderPlaced
-   [`shop.oms.order.OrderPlaced`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.oms.order.OrderPlaced`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) · [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L31) · Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).
 
 ## Recordings
 

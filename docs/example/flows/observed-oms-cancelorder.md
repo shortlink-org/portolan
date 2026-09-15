@@ -4,9 +4,9 @@
 
 - **Id:** `flow.observed-oms-cancelorder`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** [`telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/telemetry/traces.jsonl)
+- **Source:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
 
-Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
+Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
 
 ## Participants
 

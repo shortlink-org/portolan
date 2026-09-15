@@ -39,7 +39,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/basket/migrations/0001_baskets.sql",
+              "source": "examples/shop/cart/src/infrastructure/repository/basket/migrations/0001_baskets.sql",
               "symbol": "baskets"
             }
           ],
@@ -110,7 +110,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/basket/basket.ts",
+                "source": "examples/shop/cart/src/domain/basket/basket.ts",
                 "symbol": "shop.cart.basket"
               }
             ],
@@ -123,7 +123,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/basket/migrations/0001_baskets.sql",
+              "source": "examples/shop/cart/src/infrastructure/repository/basket/migrations/0001_baskets.sql",
               "symbol": "basket_items"
             }
           ],
@@ -173,7 +173,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/domain/basket/basket.ts",
+                "source": "examples/shop/cart/src/domain/basket/basket.ts",
                 "symbol": "shop.cart.basket"
               }
             ],
@@ -186,7 +186,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/infrastructure/repository/basket/migrations/0002_outbox.sql",
+              "source": "examples/shop/cart/src/infrastructure/repository/basket/migrations/0002_outbox.sql",
               "symbol": "outbox"
             }
           ],

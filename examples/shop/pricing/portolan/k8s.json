@@ -41,7 +41,7 @@
               "backendNamespace": "shop",
               "backendName": "pricing",
               "basis": "manifest",
-              "source": "deploy/k8s/pricing.yaml"
+              "source": "examples/shop/pricing/deploy/k8s/pricing.yaml"
             }
           ],
           "dials": [

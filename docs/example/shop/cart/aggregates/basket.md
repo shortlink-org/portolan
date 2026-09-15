@@ -157,7 +157,7 @@ On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
 
 | Consumer | Status | Via | Note |
 | --- | --- | --- | --- |
-| [shop.oms](../../oms/README.md) | verified | — | Seen consuming it in telemetry/traces.jsonl. |
+| [shop.oms](../../oms/README.md) | verified | — | Seen consuming it in examples/shop/oms/telemetry/traces.jsonl. |
 | [shop.pricing](../../pricing/README.md) | declared | `pricing-expire-quote-on-checkout#s1` | — |
 
 #### v1 — current

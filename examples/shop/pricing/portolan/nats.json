@@ -29,7 +29,7 @@
                   "direction": "receive"
                 }
               ],
-              "source": "internal/di/app.go:67"
+              "source": "examples/shop/pricing/internal/di/app.go:67"
             }
           ]
         }

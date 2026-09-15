@@ -421,7 +421,7 @@
       "slug": "observed-oms-cancelorder",
       "name": "Observed: CancelOrder",
       "owner": "shop",
-      "source": "telemetry/traces.jsonl",
+      "source": "examples/shop/oms/telemetry/traces.jsonl",
       "diagram": "observed-oms-cancelorder.mmd"
     },
     {
@@ -429,7 +429,7 @@
       "slug": "observed-oms-getorder",
       "name": "Observed: GetOrder",
       "owner": "shop",
-      "source": "telemetry/traces.jsonl",
+      "source": "examples/shop/oms/telemetry/traces.jsonl",
       "diagram": "observed-oms-getorder.mmd"
     },
     {

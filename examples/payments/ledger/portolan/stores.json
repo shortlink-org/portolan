@@ -39,7 +39,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/payment/migrations/1001_payments.sql",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/payment/migrations/1001_payments.sql",
               "symbol": "payments"
             }
           ],
@@ -118,7 +118,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java",
+                "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java",
                 "symbol": "payments.ledger.payment"
               }
             ],
@@ -131,7 +131,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/payment/migrations/1001_payments.sql",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/payment/migrations/1001_payments.sql",
               "symbol": "postings"
             }
           ],
@@ -195,7 +195,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java",
+                "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java",
                 "symbol": "payments.ledger.payment"
               }
             ],
@@ -208,7 +208,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2001_refunds.sql",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2001_refunds.sql",
               "symbol": "refunds"
             }
           ],
@@ -284,7 +284,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java",
+                "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java",
                 "symbol": "payments.ledger.refund"
               }
             ],
@@ -349,7 +349,7 @@
             "payments.ledger.pg.refunds"
           ],
           "definition": "CREATE VIEW v_payment_state AS\nSELECT p.id           AS payment_id,\n       p.order_id     AS order_id,\n       p.status       AS status,\n       p.amount_minor AS amount_minor,\n       coalesce(sum(r.amount_minor), 0) AS refunded_minor\n  FROM payments p\n  LEFT JOIN refunds r ON r.payment_id = p.id AND r.status = 'ISSUED'\n GROUP BY p.id;",
-          "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql"
+          "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql"
         }
       ],
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository"

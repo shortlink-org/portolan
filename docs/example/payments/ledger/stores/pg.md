@@ -95,4 +95,4 @@ SELECT p.id           AS payment_id,
  GROUP BY p.id;
 ```
 
-Source: [`src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql)
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql)

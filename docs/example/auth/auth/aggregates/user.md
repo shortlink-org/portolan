@@ -92,7 +92,7 @@ On the wire as `auth.PasswordChanged`, on `auth_user`.
 
 | Consumer | Status | Note |
 | --- | --- | --- |
-| [auth.auth](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+| [auth.auth](../README.md) | verified | Seen consuming it in examples/auth/telemetry/traces.jsonl. |
 
 #### v1 — current
 
