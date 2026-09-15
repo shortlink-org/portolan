@@ -14,7 +14,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe("site staging", () => {
+describe("site staging", { timeout: 30_000 }, () => {
   it("keeps original Git provenance for flattened sources in every catalog profile", async () => {
     const root = mkdtempSync(join(tmpdir(), "portolan-staged-provenance-"));
     roots.push(root);

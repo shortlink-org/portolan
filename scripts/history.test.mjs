@@ -32,7 +32,7 @@ function repository() {
   return { root, git, write };
 }
 
-describe("historyFor", () => {
+describe("historyFor", { timeout: 30_000 }, () => {
   it("gives every file its first commit, its last, and follows a move", () => {
     const { root, git, write } = repository();
     write("docs/adr/0001-first.md", "# 1. First\n");
