@@ -37,6 +37,7 @@ import { TabButton, TabCount, TabRow } from "../components/TabRow";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
+import { OPERATION_PARAM } from "../lib/palette";
 import { WsdlReference } from "../components/WsdlReference";
 import { Integrations } from "../components/Integrations";
 import { integrationsFor } from "../lib/integrations";
@@ -669,7 +670,10 @@ export function ServicePage() {
               one
             </Empty>
           ) : spec.kind === "openapi" ? (
-            <ApiReference source={spec.source} />
+            <ApiReference
+              source={spec.source}
+              operation={params.get(OPERATION_PARAM)}
+            />
           ) : spec.kind === "graphql" ? (
             <SchemaDocument source={spec.source} />
           ) : spec.kind === "wsdl" ? (

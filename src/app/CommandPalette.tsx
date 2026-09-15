@@ -19,7 +19,7 @@ import {
 import { useLocation, useNavigate } from "react-router";
 import { Modal } from "../components/Overlay";
 import { catalog } from "../data";
-import { paletteItems, search } from "../lib/palette";
+import { paletteItems, routeLabel, search } from "../lib/palette";
 import type { PaletteHit, PaletteItem } from "../lib/palette";
 import { recentSections } from "../lib/palette-recent";
 import { useTrailStore } from "../trail/store";
@@ -71,20 +71,42 @@ function Row({ hit: { item: found, excerpt } }: { hit: PaletteHit }) {
                 {...(item.context ? { contextId: item.context } : {})}
               />
             </span>
-            <span
-              className="mono shrink-0"
-              title={item.name}
-              style={
-                item.kind === "event"
-                  ? { color: "var(--kind-event)" }
-                  : undefined
-              }
-            >
-              {item.name}
-            </span>
-            <span className="mono truncate text-muted" title={item.detail}>
-              {item.detail}
-            </span>
+            {/* An endpoint with a route is shown as the request it answers:
+                the verb and path are what the reader pasted, and the method
+                name and the service move to the detail beside them. */}
+            {item.kind === "endpoint" && item.route ? (
+              <>
+                <span className="mono shrink-0" title={routeLabel(item.route)}>
+                  {item.route.method ? (
+                    <span className="label mr-1.5">{item.route.method}</span>
+                  ) : null}
+                  {item.route.path}
+                </span>
+                <span
+                  className="mono truncate text-muted"
+                  title={`${item.name} · ${item.detail} · ${item.route.service}`}
+                >
+                  {item.name} · {item.route.service}
+                </span>
+              </>
+            ) : (
+              <>
+                <span
+                  className="mono shrink-0"
+                  title={item.name}
+                  style={
+                    item.kind === "event"
+                      ? { color: "var(--kind-event)" }
+                      : undefined
+                  }
+                >
+                  {item.name}
+                </span>
+                <span className="mono truncate text-muted" title={item.detail}>
+                  {item.detail}
+                </span>
+              </>
+            )}
             <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
               {item.badge ? (
                 <span className="rounded-[4px] border px-1 border-line">
@@ -107,6 +129,50 @@ function Row({ hit: { item: found, excerpt } }: { hit: PaletteHit }) {
         </>
       )}
     </ComboboxOption>
+  );
+}
+
+/**
+ * A hit, and under an endpoint the flows its route starts. Each flow is an
+ * option of its own rather than a link inside the row: ↑↓ reach it, ⏎ opens
+ * it, and the row above keeps meaning "the operation" when it is picked.
+ */
+function HitRows({ hit }: { hit: PaletteHit }) {
+  const flows = hit.item.flows ?? [];
+  return (
+    <>
+      <Row hit={hit} />
+      {flows.map((flow) => (
+        <ComboboxOption
+          key={flow.id}
+          value={{ item: flow }}
+          className={({ focus }) =>
+            `flex w-full cursor-pointer items-center gap-2 border-l-2 py-1 pr-4 pl-10 text-left t-micro transition-colors ${
+              focus ? "bg-raised border-accent" : "border-transparent"
+            }`
+          }
+        >
+          <span className="text-muted" aria-hidden>
+            ↳
+          </span>
+          <span className="label shrink-0">starts</span>
+          <span className="flex shrink-0">
+            <KindIcon kind="flow" />
+          </span>
+          <span className="mono shrink-0" title={flow.name}>
+            {flow.name}
+          </span>
+          <span className="truncate text-xs text-muted" title={flow.detail}>
+            {flow.detail}
+          </span>
+          {flow.badge ? (
+            <span className="mono ml-auto shrink-0 rounded-[4px] border px-1 text-muted border-line">
+              {flow.badge}
+            </span>
+          ) : null}
+        </ComboboxOption>
+      ))}
+    </>
   );
 }
 
@@ -274,12 +340,12 @@ export function CommandPalette({
                         {section.title}
                       </div>
                       {section.hits.map((hit) => (
-                        <Row key={`${hit.item.kind}:${hit.item.id}`} hit={hit} />
+                        <HitRows key={`${hit.item.kind}:${hit.item.id}`} hit={hit} />
                       ))}
                     </Fragment>
                   ))
                 : results.map((hit) => (
-                    <Row key={`${hit.item.kind}:${hit.item.id}`} hit={hit} />
+                    <HitRows key={`${hit.item.kind}:${hit.item.id}`} hit={hit} />
                   ))}
             </ComboboxOptions>
           )}
