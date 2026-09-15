@@ -83,9 +83,17 @@ type scanner struct {
 	// its queue resolved: the difference between "no producer here" and "a
 	// producer this reader could not follow".
 	fed map[string]bool
+	// placed is every args type some Insert put on a queue this reader
+	// resolved. A type fed but not placed still has its worker kept.
+	placed map[string]bool
 	// queues is what river.Config.Queues lists, in a fixed order; empty when
 	// the tree builds no client or builds it in a way not read here.
 	queues []string
+	// fieldOrder is every struct's field names in declaration order, and
+	// sites what the tree gives each field, read on first use: the way to a
+	// queue name kept beside the client.
+	fieldOrder map[string][]string
+	sites      map[string][]fieldSite
 }
 
 func extract(in plugin.Input, opts Options) (plugin.Response, error) {
@@ -101,6 +109,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		workers:    map[string]*worker{},
 		registered: map[string]bool{},
 		fed:        map[string]bool{},
+		placed:     map[string]bool{},
+		fieldOrder: map[string][]string{},
+		sites:      map[string][]fieldSite{},
 	}
 	s.index(b)
 
@@ -169,6 +180,7 @@ func (s *scanner) indexTypes(file *goscan.File) {
 				continue
 			}
 			key := file.Pkg + "." + spec.Name.Name
+			s.fieldOrder[key] = structOrder(body)
 			doc := ""
 			if spec.Doc != nil {
 				doc = strings.TrimSpace(spec.Doc.Text())
@@ -264,8 +276,8 @@ func (s *scanner) indexClientQueues(fn *goscan.Function) {
 			if !ok {
 				continue
 			}
-			for _, value := range s.Resolve(pair.Key, fn, 0, map[string]bool{}) {
-				s.queues = appendUnique(s.queues, value.Value)
+			for _, queue := range s.queueValues(pair.Key, fn, 0, map[string]bool{}) {
+				s.queues = appendUnique(s.queues, queue)
 			}
 		}
 		return true
@@ -362,11 +374,16 @@ func (s *scanner) producer(fn *goscan.Function, method string, argsExpr, optsExp
 			continue
 		}
 		s.fed[key] = true
-		queues, said := s.queuesOf(optsExpr, fn, 0)
+		queues, said, written := s.queuesOf(optsExpr, fn, 0)
 		if len(queues) == 0 && said {
-			b.Warn(at.String(), method+" of `"+arg.kind+"` names a queue this reader cannot resolve: not a literal, a constant, a config default or a caller's argument")
+			named := "a queue"
+			if written != "" {
+				named = "the queue `" + written + "`, which"
+			}
+			b.Warn(at.String(), method+" of `"+arg.kind+"` names "+named+" this reader cannot resolve: not a literal, a constant, a config default, a caller's argument, a field set where its struct is built, or a function returning one of those")
 			continue
 		}
+		s.placed[key] = true
 		if len(queues) == 0 {
 			queues = s.typeQueues(key)
 		}
@@ -381,16 +398,17 @@ func (s *scanner) producer(fn *goscan.Function, method string, argsExpr, optsExp
 
 // queuesOf is what the options at an insert say the queue is, and whether
 // they say anything: a `Queue:` that is written but does not resolve is not
-// the same as no `Queue:` at all.
-func (s *scanner) queuesOf(opts ast.Expr, fn *goscan.Function, depth int) ([]string, bool) {
+// the same as no `Queue:` at all. written is the `Queue:` expression as source
+// when it is written but does not resolve.
+func (s *scanner) queuesOf(opts ast.Expr, fn *goscan.Function, depth int) ([]string, bool, string) {
 	if opts == nil {
-		return nil, false
+		return nil, false, ""
 	}
 	lit, ok := goscan.Unwrap(opts).(*ast.CompositeLit)
 	if !ok {
 		ident, isIdent := goscan.Unwrap(opts).(*ast.Ident)
 		if !isIdent || ident.Name == "nil" {
-			return nil, false
+			return nil, false, ""
 		}
 		if given, found := s.AssignedTo(fn, ident.Name); found && given.Index == 0 {
 			lit, ok = goscan.Unwrap(given.Expr).(*ast.CompositeLit)
@@ -399,29 +417,31 @@ func (s *scanner) queuesOf(opts ast.Expr, fn *goscan.Function, depth int) ([]str
 			// Options passed through a parameter: what the callers hand over.
 			index := goscan.ParamIndex(fn, ident.Name)
 			if index < 0 || depth >= s.Hops {
-				return nil, true
+				return nil, true, ""
 			}
 			var out []string
 			said := false
+			written := ""
 			for _, arg := range s.ArgsFromCallers(fn, index) {
-				found, callerSaid := s.queuesOf(arg.Expr, arg.Fn, depth+1)
+				found, callerSaid, callerWritten := s.queuesOf(arg.Expr, arg.Fn, depth+1)
 				said = said || callerSaid
+				written = goscan.FirstNonEmpty(written, callerWritten)
 				for _, queue := range found {
 					out = appendUnique(out, queue)
 				}
 			}
-			return out, said && len(out) == 0
+			return out, said && len(out) == 0, written
 		}
 	}
 	queue := fieldValue(lit, "Queue")
 	if queue == nil {
-		return nil, false
+		return nil, false, ""
 	}
-	var out []string
-	for _, value := range s.Resolve(queue, fn, 0, map[string]bool{}) {
-		out = appendUnique(out, value.Value)
+	out := s.queueValues(queue, fn, 0, map[string]bool{})
+	if len(out) == 0 {
+		return nil, true, s.PrintNode(queue)
 	}
-	return out, true
+	return out, true, ""
 }
 
 // typeQueues is the queue an args type chooses for itself through
@@ -437,7 +457,7 @@ func (s *scanner) typeQueues(key string) []string {
 		if !ok || len(ret.Results) != 1 {
 			return true
 		}
-		found, _ := s.queuesOf(ret.Results[0], fn, 0)
+		found, _, _ := s.queuesOf(ret.Results[0], fn, 0)
 		for _, queue := range found {
 			out = appendUnique(out, queue)
 		}
@@ -485,7 +505,7 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 	for _, args := range orphans {
 		found := workerByArgs[args]
 		arg := s.args[args]
-		if s.fed[args] || arg == nil || arg.kind == "" {
+		if s.placed[args] || arg == nil || arg.kind == "" {
 			continue
 		}
 		queue := ""
@@ -494,7 +514,12 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 		} else if len(chosen) == 0 && len(s.queues) == 1 {
 			queue = s.queues[0]
 		}
+		// An Insert whose queue did not resolve is said at the call; the
+		// worker is still this service's receive side and is kept.
 		where := "no Insert of `" + arg.kind + "` is in this tree: the producer is another component"
+		if s.fed[args] {
+			where = "every Insert of `" + arg.kind + "` names a queue this reader cannot resolve"
+		}
 		if queue != "" {
 			b.Warn(found.at.String(), "registered River worker "+found.name+" handles `"+arg.kind+"`; "+where+", and the queue `"+queue+"` is the one this client is configured to work")
 			if queues[queue] == nil {
