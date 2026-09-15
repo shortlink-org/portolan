@@ -39,6 +39,18 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+// PasskeyLoginRequest defines model for PasskeyLoginRequest.
+type PasskeyLoginRequest struct {
+	// Challenge The challenge the client was given, base64url.
+	Challenge string `json:"challenge"`
+
+	// CredentialId The passkey, as the authenticator names it.
+	CredentialId string `json:"credentialId"`
+
+	// Signature The authenticator's signature over the challenge, base64url.
+	Signature string `json:"signature"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -99,6 +111,9 @@ type ChangePasswordParams struct {
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
+// LoginWithPasskeyJSONRequestBody defines body for LoginWithPasskey for application/json ContentType.
+type LoginWithPasskeyJSONRequestBody = PasskeyLoginRequest
+
 // RegisterUserJSONRequestBody defines body for RegisterUser for application/json ContentType.
 type RegisterUserJSONRequestBody = RegisterRequest
 
@@ -116,6 +131,9 @@ type ServerInterface interface {
 	// ValidateSession Resolve the bearer token to a live session
 	// (GET /v1/sessions/current)
 	ValidateSession(w http.ResponseWriter, r *http.Request, params ValidateSessionParams)
+	// LoginWithPasskey Exchange a passkey assertion for a session
+	// (POST /v1/sessions/passkey)
+	LoginWithPasskey(w http.ResponseWriter, r *http.Request)
 	// RegisterUser Register a user
 	// (POST /v1/users)
 	RegisterUser(w http.ResponseWriter, r *http.Request)
@@ -146,6 +164,12 @@ func (_ Unimplemented) Logout(w http.ResponseWriter, r *http.Request, params Log
 // ValidateSession Resolve the bearer token to a live session
 // (GET /v1/sessions/current)
 func (_ Unimplemented) ValidateSession(w http.ResponseWriter, r *http.Request, params ValidateSessionParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// LoginWithPasskey Exchange a passkey assertion for a session
+// (POST /v1/sessions/passkey)
+func (_ Unimplemented) LoginWithPasskey(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -271,6 +295,20 @@ func (siw *ServerInterfaceWrapper) ValidateSession(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ValidateSession(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LoginWithPasskey operation middleware
+func (siw *ServerInterfaceWrapper) LoginWithPasskey(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LoginWithPasskey(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -491,6 +529,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/sessions", wrapper.Login)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/sessions/passkey", wrapper.LoginWithPasskey)
+	})
+	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/v1/sessions/current", wrapper.Logout)
 	})
 	r.Group(func(r chi.Router) {
@@ -639,6 +680,70 @@ func (response ValidateSession401JSONResponse) VisitValidateSessionResponse(w ht
 type ValidateSession500JSONResponse struct{ InternalJSONResponse }
 
 func (response ValidateSession500JSONResponse) VisitValidateSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LoginWithPasskeyRequestObject struct {
+	Body *LoginWithPasskeyJSONRequestBody
+}
+
+type LoginWithPasskeyResponseObject interface {
+	VisitLoginWithPasskeyResponse(w http.ResponseWriter) error
+}
+
+type LoginWithPasskey201JSONResponse Session
+
+func (response LoginWithPasskey201JSONResponse) VisitLoginWithPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LoginWithPasskey400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response LoginWithPasskey400JSONResponse) VisitLoginWithPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LoginWithPasskey401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response LoginWithPasskey401JSONResponse) VisitLoginWithPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LoginWithPasskey500JSONResponse struct{ InternalJSONResponse }
+
+func (response LoginWithPasskey500JSONResponse) VisitLoginWithPasskeyResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -848,6 +953,9 @@ type StrictServerInterface interface {
 	// ValidateSession Resolve the bearer token to a live session
 	// (GET /v1/sessions/current)
 	ValidateSession(ctx context.Context, request ValidateSessionRequestObject) (ValidateSessionResponseObject, error)
+	// LoginWithPasskey Exchange a passkey assertion for a session
+	// (POST /v1/sessions/passkey)
+	LoginWithPasskey(ctx context.Context, request LoginWithPasskeyRequestObject) (LoginWithPasskeyResponseObject, error)
 	// RegisterUser Register a user
 	// (POST /v1/users)
 	RegisterUser(ctx context.Context, request RegisterUserRequestObject) (RegisterUserResponseObject, error)
@@ -974,6 +1082,37 @@ func (sh *strictHandler) ValidateSession(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ValidateSessionResponseObject); ok {
 		if err := validResponse.VisitValidateSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// LoginWithPasskey operation middleware
+func (sh *strictHandler) LoginWithPasskey(w http.ResponseWriter, r *http.Request) {
+	var request LoginWithPasskeyRequestObject
+
+	var body LoginWithPasskeyJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.LoginWithPasskey(ctx, request.(LoginWithPasskeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "LoginWithPasskey")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LoginWithPasskeyResponseObject); ok {
+		if err := validResponse.VisitLoginWithPasskeyResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

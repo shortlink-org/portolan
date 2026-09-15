@@ -137,6 +137,31 @@ paths:
         "500":
           $ref: "#/components/responses/Internal"
 
+  /v1/sessions/passkey:
+    post:
+      tags: [sessions]
+      operationId: loginWithPasskey
+      summary: Exchange a passkey assertion for a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyLoginRequest"
+      responses:
+        "201":
+          description: The session was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/Internal"
+
   /v1/sessions/current:
     get:
       tags: [sessions]
@@ -255,6 +280,20 @@ components:
         password:
           type: string
           format: password
+
+    PasskeyLoginRequest:
+      type: object
+      required: [credentialId, challenge, signature]
+      properties:
+        credentialId:
+          type: string
+          description: The passkey, as the authenticator names it.
+        challenge:
+          type: string
+          description: The challenge the client was given, base64url.
+        signature:
+          type: string
+          description: The authenticator's signature over the challenge, base64url.
 
     User:
       type: object

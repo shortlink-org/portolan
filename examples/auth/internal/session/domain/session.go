@@ -33,10 +33,17 @@ type Session struct {
 	Version int64
 }
 
-// Start mints a session for a user who has already been authenticated, and
-// returns the fact alongside it. This aggregate does not check passwords and
-// never sees one.
+// Start mints a session for a user who has already been authenticated with a
+// password, and returns the fact alongside it. This aggregate does not check
+// passwords and never sees one.
 func Start(id, userID string, now time.Time) (*Session, event.SessionStarted, error) {
+	return StartWith(id, userID, event.MethodPassword, now)
+}
+
+// StartWith mints a session for a user authenticated by the given method. The
+// method is recorded on the fact and nowhere else: a session is the same
+// session however it was earned.
+func StartWith(id, userID string, method event.Method, now time.Time) (*Session, event.SessionStarted, error) {
 	minted, err := token.New()
 	if err != nil {
 		return nil, event.SessionStarted{}, err
@@ -48,7 +55,7 @@ func Start(id, userID string, now time.Time) (*Session, event.SessionStarted, er
 		IssuedAt:  now,
 		ExpiresAt: now.Add(TTL),
 	}
-	return s, event.NewSessionStarted(id, userID, s.ExpiresAt, now), nil
+	return s, event.NewSessionStarted(id, userID, method, s.ExpiresAt, now), nil
 }
 
 // Live reports whether the session may still be used at `now`.

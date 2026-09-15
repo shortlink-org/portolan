@@ -35,8 +35,11 @@ type Event interface {
 
 // SessionStarted is the wire form of auth.SessionStarted.
 type SessionStarted struct {
-	SessionID  string    `json:"sessionId"`
-	UserID     string    `json:"userId"`
+	SessionID string `json:"sessionId"`
+	UserID    string `json:"userId"`
+	// Method is "password" or "passkey". Absent on messages written before it
+	// existed, which were all password logins.
+	Method     string    `json:"method,omitempty"`
 	ExpiresAt  time.Time `json:"expiresAt"`
 	OccurredAt time.Time `json:"occurredAt"`
 }
@@ -75,6 +78,7 @@ func Marshal(e domainevent.Event) (*message.Message, error) {
 		payload, err = json.Marshal(SessionStarted{
 			SessionID:  typed.SessionID(),
 			UserID:     typed.UserID(),
+			Method:     string(typed.Method()),
 			ExpiresAt:  typed.ExpiresAt(),
 			OccurredAt: typed.OccurredAt(),
 		})

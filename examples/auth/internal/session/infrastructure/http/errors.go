@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login_passkey"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/vo/token"
 	userapplication "github.com/shortlink-org/portolan/examples/auth/internal/user/application"
@@ -23,7 +24,8 @@ func status(err error) (code int, message string) {
 		errors.Is(err, session.ErrRevoked),
 		errors.Is(err, token.ErrInvalid),
 		errors.Is(err, userapplication.ErrInvalidCredentials),
-		errors.Is(err, login.ErrBlocked):
+		errors.Is(err, login.ErrBlocked),
+		errors.Is(err, login_passkey.ErrRejected):
 		// One answer for every cause. A blocked attempt is in the list for
 		// the same reason: a 403 would say the account exists and is worth
 		// attacking, which is the one thing the attacker came to learn. token.ErrInvalid is listed although the

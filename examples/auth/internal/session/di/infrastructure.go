@@ -21,6 +21,7 @@ var InfrastructureSet = wire.NewSet(
 	ProvideRepository,
 	identity.NewAuthenticator,
 	RiskSet,
+	WebAuthnSet,
 )
 
 func ProvideRepository(

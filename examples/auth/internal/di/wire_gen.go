@@ -16,6 +16,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/platform/uow"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login_passkey"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/di"
@@ -100,8 +101,10 @@ func New() (App, error) {
 	}
 	risk := di.ProvideRisk(riskServiceClient)
 	loginUseCase := login.New(repository, authenticator, risk, v, v2)
+	verifier := di.ProvideVerifier(config)
+	login_passkeyUseCase := login_passkey.New(repository, verifier, risk, v, v2)
 	logoutUseCase := logout.New(repository, v)
-	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
+	sessions := session2.NewSessions(loginUseCase, login_passkeyUseCase, logoutUseCase, validateUseCase)
 	server := http.NewServer(users, sessions)
 	handler := http.Router(server)
 	backend := messaging.NewBackend(publisher, unitOfWork)

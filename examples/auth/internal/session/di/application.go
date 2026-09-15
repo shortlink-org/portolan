@@ -5,6 +5,7 @@ import (
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login_passkey"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/messaging/policy"
@@ -13,6 +14,7 @@ import (
 // ApplicationSet contains the session module's scenarios.
 var ApplicationSet = wire.NewSet(
 	login.New,
+	login_passkey.New,
 	logout.New,
 	validate.New,
 	end_after_credential_change.New,

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login_passkey"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate"
 	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http/gen"
@@ -14,13 +15,14 @@ import (
 // Sessions carries the use cases the session endpoints run. It is embedded into
 // the transport's Server alongside the user handler.
 type Sessions struct {
-	login    *login.UseCase
-	logout   *logout.UseCase
-	validate *validate.UseCase
+	login        *login.UseCase
+	loginPasskey *login_passkey.UseCase
+	logout       *logout.UseCase
+	validate     *validate.UseCase
 }
 
-func NewSessions(loginUC *login.UseCase, logoutUC *logout.UseCase, validateUC *validate.UseCase) *Sessions {
-	return &Sessions{login: loginUC, logout: logoutUC, validate: validateUC}
+func NewSessions(loginUC *login.UseCase, loginPasskeyUC *login_passkey.UseCase, logoutUC *logout.UseCase, validateUC *validate.UseCase) *Sessions {
+	return &Sessions{login: loginUC, loginPasskey: loginPasskeyUC, logout: logoutUC, validate: validateUC}
 }
 
 // bearer pulls the token out of an Authorization header.

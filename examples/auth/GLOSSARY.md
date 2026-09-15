@@ -38,6 +38,12 @@ password on.
 as the change it describes, and read back out of by the relay - every topic
 of it, whether or not anything listens.
 
+**Passkey.** A key pair on the person's device, registered with the webauthn
+service; logging in with one signs a challenge instead of sending a password.
+
+**Passkey login.** Turn a passkey assertion into a session: verify, ask risk,
+start. The session's `SessionStarted` says `passkey`.
+
 **Password hash.** What is stored in place of a password: algorithm, cost,
 salt and digest.
 
