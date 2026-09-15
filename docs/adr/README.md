@@ -23,3 +23,4 @@
 | [portolan.0017](portolan.0017.md) | Every problem rule is CEL over a row that already carries its joins | accepted | 2026-09-12 | [portolan](../portolan/README.md) |
 | [portolan.0018](portolan.0018.md) | A Gateway Route contributes hosts only through a valid attachment | accepted | 2026-09-14 | [portolan](../portolan/README.md) |
 | [portolan.0019](portolan.0019.md) | A branch draft is generated in dev, compared from its merge-base and saved beside main | accepted | 2026-09-15 | [portolan](../portolan/README.md) |
+| [portolan.0020](portolan.0020.md) | Task links are read from the history, never written into a fragment | accepted | 2026-09-15 | [portolan](../portolan/README.md) |

@@ -59,12 +59,21 @@ configuration is also available. Failures are distinguished from a saved
 configuration. Reload settings explicitly after a revision conflict.
 
 Catalog scope is a compact multi-select. `Full scan` on a saved repository
-runs the generator with a one-run override for that verifier; `Save & full
-scan` first saves the form. Both ignore `maxCommits` for this invocation only.
-Git history is read in pages against the HEAD commit pinned at scan start.
-No fetch is performed: shallow repositories remain incomplete and report it.
-Other verifiers retain their normal limits, and subsequent regular builds
-use the saved limit again (so older links may disappear from their output).
+reads that verifier's task links without `maxCommits` until the dev server
+stops, and reloads the pages; it runs no generation. `Save & full scan` first
+saves the form. Git history is read in pages against the HEAD commit pinned at
+scan start. No fetch is performed: shallow repositories remain incomplete and
+report it. Other verifiers retain their normal limits, and builds use the saved
+limit.
+
+Task links are never written into a file (portolan.0020). A link names the
+commits that mention a task, and a committed file cannot name the commit it
+lands in, so the verifier's generation step writes nothing. The host runs the
+scan where the catalog is read: `scripts/work-items-history.mjs` serves the
+links to the site as `virtual:portolan-work-items`, at build time and again
+under the dev server when a source changes (a new commit shows after a restart
+or the next source change, as provenance does). A commit that names a task and
+regenerates the catalog passes `gen --check` on its own.
 
 The form accepts a provider, display name, stable tracker ID, HTTP(S) base address,
 project prefixes, key format and task URL template. A live test uses exactly
@@ -99,11 +108,11 @@ encode the key and must stay on the configured tracker host.
 
 Only known checkout roots inside the workspace are selectable. Nested source
 directories cannot inherit their enclosing checkout's history. New verifiers
-write under `portolan-work-items/`, with explicit source entries in the union
-and selected catalog profiles. Existing manually scoped verifiers retain their
-source setup. Removing all trackers retains a disabled verifier that overwrites
-its fragment with empty work-item collections on the next generation, clearing
-stale links without deleting files in the settings request.
+are named by a path under `portolan-work-items/`, with explicit source entries
+in the union and selected catalog profiles: no file is written there, and a
+catalog profile shows a verifier's links when its sources match that path.
+Existing manually scoped verifiers retain their source setup. Removing all
+trackers retains a disabled verifier that reads no links.
 
 Published catalogs show an allowlisted read-only configuration and offer a
 copyable manifest snippet. Merge snippets into the existing manifest (do not
@@ -133,7 +142,9 @@ second top-level integration configuration:
 }
 ```
 
-Include the output in `sources` and the relevant catalog profile's sources.
+Include `<out>/<file>` in `sources` and the relevant catalog profile's sources:
+that path names the verifier's links for profile scoping; nothing is written
+to it.
 `in` is the Git checkout; `repository` can override its origin's web URL.
 Run one verifier per checkout. Source paths are resolved from each catalog
 repository (the same convention as source links), with its service's repository

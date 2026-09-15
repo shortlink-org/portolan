@@ -27,6 +27,7 @@ import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import { formatLike } from "./json-format.mjs";
 import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
+import { requestWorkItemsFullScan } from "./work-items-history.mjs";
 import { gitFetchState, saveGitFetchSettings, checkGitAccess } from "./git-fetch-settings.mjs";
 import { listGitRefs } from "./git-refs.mjs";
 import { deleteDraft, discardDraft, draftPath, listBranches, listDrafts, readDrafts, readPending, restoreDraft, saveDraft } from "./branch-drafts.mjs";
@@ -1516,7 +1517,7 @@ function refreshLikeC4Bundle(job) {
   });
 }
 
-function startJob(workspace, mode, approvedPreview, preparedTrial, workItemsFullScan = "") {
+function startJob(workspace, mode, approvedPreview, preparedTrial) {
   const id = randomUUID();
   const preview = mode === "preview" || mode === "project-preview" || mode === "trace-preview";
   const fingerprint = preparedTrial?.fingerprint ?? (preview ? workspaceFingerprint(workspace) : approvedPreview?.fingerprint);
@@ -1546,7 +1547,7 @@ function startJob(workspace, mode, approvedPreview, preparedTrial, workItemsFull
   try {
     child = spawn(command, args, {
       cwd: job.runRoot,
-      env: { ...gitAuth.env, PORTOLAN_EVENTS: "1", PORTOLAN_WORK_ITEMS_FULL_SCAN: workItemsFullScan, ...(generatedAt ? { PORTOLAN_GENERATED_AT: generatedAt } : {}) },
+      env: { ...gitAuth.env, PORTOLAN_EVENTS: "1", ...(generatedAt ? { PORTOLAN_GENERATED_AT: generatedAt } : {}) },
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
     });
@@ -1772,10 +1773,11 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             }
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/task-trackers/full-scan`) {
-            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before scanning." });
-            const target = taskTrackerFullScanTarget(workspace, input);
-            const job = startJob(workspace, "write", null, null, target);
-            return send(res, 200, { runId: job.id });
+            // Task links are read from the history, not generated (portolan.0020):
+            // a full scan is a reading without the commit limit, and the pages
+            // reload with it. Nothing runs and nothing is written.
+            requestWorkItemsFullScan(taskTrackerFullScanTarget(workspace, input));
+            return send(res, 200, { runId: null });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/task-trackers`) {
             if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current generation to finish before saving trackers." });
@@ -1783,8 +1785,8 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             if (!input.generate) return send(res, 200, { ...saved, run: null });
             try {
               const entry = saved.entries.find((entry) => entry.input === input.input);
-              const target = input.fullScan === true ? taskTrackerFullScanTarget(workspace, { revision: saved.revision, step: entry?.step }) : "";
-              const job = startJob(workspace, "write", null, null, target);
+              if (input.fullScan === true) requestWorkItemsFullScan(taskTrackerFullScanTarget(workspace, { revision: saved.revision, step: entry?.step }));
+              const job = startJob(workspace, "write", null);
               return send(res, 200, { ...saved, run: { runId: job.id, mode: job.mode } });
             } catch (cause) {
               return send(res, 200, { ...saved, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });

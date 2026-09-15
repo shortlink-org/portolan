@@ -24,8 +24,11 @@ import { readManifest } from "./manifest.mjs";
  * them. It exists for the verify phase: a step that writes a fragment from
  * what it observed must be shown the catalog WITHOUT its own last output, or
  * what it wrote last time would count as what it saw this time.
+ *
+ * Source patterns are relative to `cwd`, the workspace; the generator runs in
+ * it, and a reader elsewhere (the site's task links) says where it is.
  */
-export async function loadCatalog(manifestPath = "portolan.json", { exclude = [], profile } = {}) {
+export async function loadCatalog(manifestPath = "portolan.json", { exclude = [], profile, cwd = process.cwd() } = {}) {
   const manifest = readManifest(manifestPath);
   const excluded = new Set(exclude.map((path) => normalize(path)));
   const selected = profile
@@ -37,7 +40,7 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
   const patterns = selected?.sources ?? manifest.sources ?? [];
 
   const paths = [];
-  for await (const path of glob(patterns)) {
+  for await (const path of glob(patterns, { cwd })) {
     if (!excluded.has(normalize(path))) paths.push(path);
   }
 
@@ -56,11 +59,11 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
   // written into the file.
   const entries = readAnnotations(dirname(resolve(manifestPath)), manifest).filter((entry) => !profile || entry.catalog === profile);
   const annotationStamps = stampsFor(dirname(resolve(manifestPath)), entries.map((entry) => entry.source));
-  const stamps = stampsFor(process.cwd(), paths);
+  const stamps = stampsFor(cwd, paths);
   const merged = mergeCatalogs(
     [...paths.map((path) => ({
       path,
-      catalog: JSON.parse(readFileSync(path, "utf8")),
+      catalog: JSON.parse(readFileSync(resolve(cwd, path), "utf8")),
       stamp: stamps.get(path),
     })), ...entries.map((entry) => ({ path: entry.source, catalog: { contexts: [], defs: {}, flows: [], adrs: [] }, stamp: annotationStamps.get(entry.source) }))],
   );

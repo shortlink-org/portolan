@@ -38,6 +38,9 @@ import { catalogDocs } from "./catalog-docs";
 // provenance of its own (portolan.0010) and a browser cannot ask git.
 import provenance from "virtual:portolan-provenance";
 import authored from "virtual:portolan-annotations";
+// Which tasks changed what, read from the same history and never written into
+// a fragment, since a file cannot name the commit it lands in (portolan.0020).
+import workItemSources from "virtual:portolan-work-items";
 import { applyAnnotations } from "./lib/annotations.mjs";
 
 const manifest = manifestJson as CatalogProfileManifest & { sources: string[] };
@@ -171,7 +174,12 @@ function load(): Loaded {
     })
     // The profile spells its sources the way the site imports them.
     .filter((source) => profileIncludesSource(activeCatalogProfile, source.imported))
-    .map(({ imported: _imported, ...source }) => source);
+    .map(({ imported: _imported, ...source }): CatalogSource => source)
+    .concat(
+      workItemSources
+        .filter((source) => source.catalogs === null || source.catalogs.includes(activeCatalogProfile.id))
+        .map((source) => ({ path: source.path, catalog: source.fragment, stamp: undefined })),
+    );
 
   const entries = authored.entries.filter((entry) => entry.catalog === activeCatalogProfile.id);
   const merged = mergeCatalogs([...sources, ...entries.map((entry) => ({ path: entry.source, catalog: { contexts: [], defs: {}, flows: [], adrs: [] }, stamp: authored.stamps[entry.source] }))]);

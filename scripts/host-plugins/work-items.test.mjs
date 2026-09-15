@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fullScanRequested, historyRecords, issueKeys, run } from "./work-items.mjs";
+import { fullScanRequested, fullScanTarget, historyRecords, issueKeys, run, scanWorkItems } from "./work-items.mjs";
 
 const temporary = [];
 afterEach(() => { vi.unstubAllEnvs(); for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true }); });
@@ -38,7 +38,7 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
       { id: "github", provider: "github", baseUrl: "https://github.com/acme/shop", projects: [] },
       { id: "gitlab", provider: "gitlab", baseUrl: "https://gitlab.com/group/sub/repo", projects: [], matchBareNumbers: false },
     ];
-    const fragment = JSON.parse(run(request).files[0].contents);
+    const fragment = scanWorkItems(request).fragment;
     expect(fragment.workItems.map(({ provider, key, url }) => ({ provider, key, url }))).toEqual(expect.arrayContaining([
       { provider: "youtrack", key: "RT-1", url: "https://tasks.example.com/youtrack/issue/RT-1" },
       { provider: "jira", key: "JIRA-2", url: "https://jira.example.com/browse/JIRA-2" },
@@ -55,15 +55,14 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
     request.options.maxCommits = 1;
     request.input.output = join(realpathSync(root), "output");
     const target = JSON.stringify([realpathSync(root), request.input.output, "work-items.json"]);
-    vi.stubEnv("PORTOLAN_WORK_ITEMS_FULL_SCAN", target);
-    const scanned = run(request);
-    expect(JSON.parse(scanned.files[0].contents).workItems.map((item) => item.key)).toEqual(["RT-1", "RT-2"]);
+    expect(fullScanTarget(request)).toBe(target);
+    const scanned = scanWorkItems(request, { fullScan: [target] });
+    expect(scanned.fragment.workItems.map((item) => item.key)).toEqual(["RT-1", "RT-2"]);
     expect(scanned.warnings).toEqual([]);
     expect(request.options.maxCommits).toBe(1);
-    expect(fullScanRequested({ ...request, input: { ...request.input, output: join(root, "other") } })).toBe(false);
-    expect(fullScanRequested({ ...request, options: { ...request.options, out: "other.json" } })).toBe(false);
-    vi.stubEnv("PORTOLAN_WORK_ITEMS_FULL_SCAN", "");
-    expect(JSON.parse(run(request).files[0].contents).workItems.map((item) => item.key)).toEqual(["RT-2"]);
+    expect(fullScanRequested({ ...request, input: { ...request.input, output: join(root, "other") } }, [target])).toBe(false);
+    expect(fullScanRequested({ ...request, options: { ...request.options, out: "other.json" } }, [target])).toBe(false);
+    expect(scanWorkItems(request).fragment.workItems.map((item) => item.key)).toEqual(["RT-2"]);
   });
   it("paginates through all records against a pinned HEAD and stops bounded reads at the cap", () => {
     const calls = [];
@@ -90,8 +89,8 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
     const second = commit("Refine toolbar\n\nRelated RT-101 and RT-102");
     commit("RT-101: unrelated document", "unrelated.md");
     commit("RT-104: record decision", "decision.md");
-    const result = run(request);
-    const fragment = JSON.parse(result.files[0].contents);
+    const result = scanWorkItems(request);
+    const fragment = result.fragment;
     const task = fragment.workItems.find((item) => item.key === "RT-101");
     expect(task.url).toBe("https://tasks.example.com/youtrack/issue/RT-101");
     expect(task).not.toHaveProperty("title");
@@ -103,16 +102,16 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
     expect(fragment.workItemLinks.some((link) => link.target.kind === "step" && link.target.flow === "flow.toolbar")).toBe(true);
     expect(fragment.workItemLinks.some((link) => link.target.kind === "service" && link.basis === "service-directory")).toBe(true);
     expect(fragment.workItemLinks.some((link) => link.target.kind === "adr" && link.workItem === "team:RT-104")).toBe(true);
-    expect(run(request)).toEqual(result);
+    expect(scanWorkItems(request)).toEqual(result);
   });
 
   it("does not attribute a foreign repository or similarly named path to this checkout", () => {
     const { request, catalog, commit } = checkout();
     commit("RT-101: added toolbar", "src/toolbar.tsx");
     catalog.contexts[0].services[0].repo = "github.com/another/shop";
-    expect(JSON.parse(run(request).files[0].contents).workItems).toEqual([]);
+    expect(scanWorkItems(request).fragment.workItems).toEqual([]);
     catalog.contexts[0].services[0].repo = "github.com/acme/shop";
-    expect(JSON.parse(run(request).files[0].contents).workItemLinks.every((link) => link.target.kind === "service")).toBe(true);
+    expect(scanWorkItems(request).fragment.workItemLinks.every((link) => link.target.kind === "service")).toBe(true);
   });
 
   it("attributes an org-scoped RFC to the repository that owns its file", () => {
@@ -123,23 +122,23 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
       repository: "github.com/acme/shop", source: "docs/rfcs/0012-streaming.md",
     }];
     commit("RT-12: propose streaming", "docs/rfcs/0012-streaming.md", "proposal");
-    const local = JSON.parse(run(request).files[0].contents);
+    const local = scanWorkItems(request).fragment;
     expect(local.workItemLinks).toEqual(expect.arrayContaining([
       expect.objectContaining({ workItem: "team:RT-12", target: { kind: "rfc", id: "org.rfc.12" } }),
     ]));
 
     catalog.rfcs[0].repository = "github.com/acme/architecture";
-    expect(JSON.parse(run(request).files[0].contents).workItems).toEqual([]);
+    expect(scanWorkItems(request).fragment.workItems).toEqual([]);
   });
 
   it("reports a bounded history and rejects ambiguous trackers or inherited Git roots", () => {
     const { request, root, commit } = checkout();
     commit("RT-101: first"); commit("RT-102: second");
-    const result = run({ ...request, options: { trackers, maxCommits: 1 } });
+    const result = scanWorkItems({ ...request, options: { trackers, maxCommits: 1 } });
     expect(result.warnings[0].message).toMatch(/latest 1/);
-    expect(JSON.parse(result.files[0].contents).workItems.map((item) => item.key)).toEqual(["RT-102"]);
-    expect(() => run({ ...request, options: { trackers: [...trackers, { ...trackers[0], id: "other" }] } })).toThrow(/more than one tracker/);
-    expect(() => run({ ...request, input: { root: join(root, "src") } })).toThrow(/enclosing repository/);
-    expect(() => run({ ...request, options: { trackers, repository: "https://secret@github.com/acme/shop" } })).toThrow(/without credentials/);
+    expect(result.fragment.workItems.map((item) => item.key)).toEqual(["RT-102"]);
+    expect(() => scanWorkItems({ ...request, options: { trackers: [...trackers, { ...trackers[0], id: "other" }] } })).toThrow(/more than one tracker/);
+    expect(() => scanWorkItems({ ...request, input: { root: join(root, "src") } })).toThrow(/enclosing repository/);
+    expect(() => scanWorkItems({ ...request, options: { trackers, repository: "https://secret@github.com/acme/shop" } })).toThrow(/without credentials/);
   });
 });

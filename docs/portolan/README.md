@@ -42,3 +42,4 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0017](../adr/portolan.0017.md) | Every problem rule is CEL over a row that already carries its joins | accepted | 2026-09-12 |
 | [portolan.0018](../adr/portolan.0018.md) | A Gateway Route contributes hosts only through a valid attachment | accepted | 2026-09-14 |
 | [portolan.0019](../adr/portolan.0019.md) | A branch draft is generated in dev, compared from its merge-base and saved beside main | accepted | 2026-09-15 |
+| [portolan.0020](../adr/portolan.0020.md) | Task links are read from the history, never written into a fragment | accepted | 2026-09-15 |

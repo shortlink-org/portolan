@@ -35,7 +35,7 @@ export function CatalogScope({ catalogs, value, disabled, onChange }: { catalogs
     </Listbox>
   </Field>;
 }
-const SCAN_HINT = "One-time scan of all locally available commits reachable from HEAD. Does not fetch missing history or change the regular history limit.";
+const SCAN_HINT = "Reads task links from all locally available commits reachable from HEAD until the dev server restarts. Does not fetch missing history or change the saved history limit.";
 
 function TrackerFields({ tracker, onChange, onRemove, number }: { tracker: TaskTracker; onChange: (value: TaskTracker) => void; onRemove: () => void; number: number }) {
   const [sample, setSample] = useState(TRACKER_PROVIDERS[tracker.provider].numbered ? "Fixes #123: added toolbar" : "RT-101: added toolbar");
@@ -149,9 +149,9 @@ export function TaskTrackerSettings({ local }: { local: boolean }) {
     if (!state || busy || runId) return;
     setBusy(true); setError(""); setRunDone(false);
     try {
-      const run = await fullScanTaskTrackers(state.revision, step);
-      setRunMessage("Full scan running over local Git history. The regular commit limit is unchanged; shallow checkouts still have incomplete history.");
-      setRunId(run.runId);
+      await fullScanTaskTrackers(state.revision, step);
+      setRunDone(true);
+      setRunMessage("Task links are read again from the whole local history; the pages reload with them. The saved commit limit is unchanged, and shallow checkouts still have incomplete history.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setBusy(false); }
   };
@@ -161,7 +161,7 @@ export function TaskTrackerSettings({ local }: { local: boolean }) {
     try {
       const saved = await saveTaskTrackers({ ...draft, trackers: normalizeTrackers(draft.trackers), revision: state.revision, generate, fullScan });
       setState(saved); setDraft(null);
-      setRunMessage(saved.generationError ? `Settings saved; generation could not start: ${saved.generationError}` : saved.run ? fullScan ? "Settings saved. Full scan running over local Git history; the regular commit limit is unchanged." : "Settings saved. Rebuilding catalog and diagrams…" : "Settings saved to portolan.json. Rebuild the catalog to apply task links.");
+      setRunMessage(saved.generationError ? `Settings saved; generation could not start: ${saved.generationError}` : saved.run ? fullScan ? "Settings saved. Rebuilding catalog and diagrams; task links are read from the whole local history." : "Settings saved. Rebuilding catalog and diagrams…" : "Settings saved to portolan.json. Task links follow on the next reload.");
       setRunId(saved.run?.runId ?? null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setBusy(false); }
@@ -180,7 +180,7 @@ export function TaskTrackerSettings({ local }: { local: boolean }) {
       </div>
       <WorkItemGitRequirement repositories={state?.repositories} local={local} catalog={activeCatalogProfile.id} refreshing={busy} onRefresh={!draft && !runId ? () => void reloadSettings() : undefined} />
       <div className="mt-4 space-y-2">
-        {entries.map((entry) => <div key={entry.step} className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface px-3 py-2"><GitCommitHorizontal size={15} className="shrink-0 text-muted" aria-hidden /><div className="min-w-0 flex-1"><div className="break-all font-medium">{entry.input}</div><div className="mt-1.5 flex flex-wrap gap-2">{entry.trackers.length ? entry.trackers.map((tracker) => <span key={tracker.id} className="inline-flex max-w-full items-center gap-1.5 rounded-control border border-line bg-canvas px-2 py-1 text-xs text-muted" title={`${TRACKER_PROVIDERS[tracker.provider].label} · ${tracker.baseUrl}`}><TaskTrackerIcon provider={tracker.provider} size={15} /><span className="truncate">{tracker.name || tracker.id}{tracker.projects.length ? ` · ${tracker.projects.join(", ")}` : ""}</span></span>) : <span className="text-xs text-muted">Disabled · next generation clears task links</span>}</div></div><span className="chip text-muted">{entry.maxCommits} commits</span>{local ? <button type="button" title={SCAN_HINT} disabled={busy || !!runId || !!draft || !state || !entry.trackers.length} className="tbtn px-2 py-1" onClick={() => void scan(entry.step)}><ScanSearch size={14} aria-hidden />Full scan</button> : null}<button type="button" disabled={busy || !!runId || !!draft} className="tbtn px-2 py-1" onClick={() => { setDraft({ step: entry.step, input: entry.input, catalogs: entry.catalogs, trackers: structuredClone(entry.trackers), maxCommits: entry.maxCommits }); setError(""); }}>{local ? "Configure" : "View configuration"}</button></div>)}
+        {entries.map((entry) => <div key={entry.step} className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface px-3 py-2"><GitCommitHorizontal size={15} className="shrink-0 text-muted" aria-hidden /><div className="min-w-0 flex-1"><div className="break-all font-medium">{entry.input}</div><div className="mt-1.5 flex flex-wrap gap-2">{entry.trackers.length ? entry.trackers.map((tracker) => <span key={tracker.id} className="inline-flex max-w-full items-center gap-1.5 rounded-control border border-line bg-canvas px-2 py-1 text-xs text-muted" title={`${TRACKER_PROVIDERS[tracker.provider].label} · ${tracker.baseUrl}`}><TaskTrackerIcon provider={tracker.provider} size={15} /><span className="truncate">{tracker.name || tracker.id}{tracker.projects.length ? ` · ${tracker.projects.join(", ")}` : ""}</span></span>) : <span className="text-xs text-muted">Disabled · no task links are read</span>}</div></div><span className="chip text-muted">{entry.maxCommits} commits</span>{local ? <button type="button" title={SCAN_HINT} disabled={busy || !!runId || !!draft || !state || !entry.trackers.length} className="tbtn px-2 py-1" onClick={() => void scan(entry.step)}><ScanSearch size={14} aria-hidden />Full scan</button> : null}<button type="button" disabled={busy || !!runId || !!draft} className="tbtn px-2 py-1" onClick={() => { setDraft({ step: entry.step, input: entry.input, catalogs: entry.catalogs, trackers: structuredClone(entry.trackers), maxCommits: entry.maxCommits }); setError(""); }}>{local ? "Configure" : "View configuration"}</button></div>)}
         {!entries.length && !draft ? <p className="rounded-control border border-dashed border-line p-4 text-muted">{local && !state && !error ? "Loading tracker configuration…" : "No task tracker configured. Choose a provider and the address used for task links. No API token is needed."}</p> : null}
       </div>
       {draft ? <div className="mt-4 space-y-4">
@@ -192,7 +192,7 @@ export function TaskTrackerSettings({ local }: { local: boolean }) {
           </div>
           {state?.catalogs.length ? <div><CatalogScope catalogs={state.catalogs} value={draft.catalogs} disabled={busy || !local || (!!existing && !existing.managed)} onChange={(catalogs) => setDraft({ ...draft, catalogs })} />{existing && !existing.managed ? <p className="mt-2 text-xs text-muted">Source scope is managed manually in portolan.json for this verifier.</p> : null}</div> : null}
           {draft.trackers.map((tracker, index) => <TrackerFields key={index} number={index + 1} tracker={tracker} onChange={(value) => setDraft({ ...draft, trackers: draft.trackers.map((item, i) => i === index ? value : item) })} onRemove={() => setDraft({ ...draft, trackers: draft.trackers.filter((_, i) => i !== index) })} />)}
-          {!draft.trackers.length ? <p className="text-muted">No trackers: saving and rebuilding will clear this verifier’s previous task links.</p> : null}
+          {!draft.trackers.length ? <p className="text-muted">No trackers: this verifier reads no task links.</p> : null}
           {local ? <button type="button" className="tbtn px-3 py-1.5" onClick={() => setDraft({ ...draft, trackers: [...draft.trackers, blankTracker()] })}><Plus size={14} />Add tracker</button> : null}
         </fieldset>
         {validation && local ? <p role="status" className="text-sm text-unresolved">{validation}</p> : null}
@@ -201,7 +201,7 @@ export function TaskTrackerSettings({ local }: { local: boolean }) {
           {local ? <button type="button" title={SCAN_HINT} className="tbtn px-3 py-1.5" disabled={!!validation || busy || !state || !draft.trackers.length} onClick={() => void save(true, true)}><ScanSearch size={14} aria-hidden />Save & full scan</button> : null}
           <button type="button" className="tbtn px-3 py-1.5" disabled={!!validation || busy} onClick={() => void copy()}><Copy size={14} />Copy config snippet</button>
         </div>
-        {local ? <p className="text-xs text-muted">Full scan ignores the history limit for this run only. It reads local HEAD history without fetching missing commits; later regular builds use the saved limit.</p> : null}
+        {local ? <p className="text-xs text-muted">Full scan reads task links without the history limit until the dev server restarts. It reads local HEAD history without fetching missing commits; builds use the saved limit.</p> : null}
       </div> : <div className="mt-4 flex flex-wrap gap-2">{local ? <button type="button" className="tbtn px-3 py-1.5" disabled={!state || busy || !!runId} onClick={add}><Plus size={14} />Connect repository</button> : <p className="text-xs text-muted">Open this project with <code>portolan dev</code> to change tracker configuration.</p>}{entries.length ? <button type="button" className="tbtn px-3 py-1.5" onClick={() => void copy()}><Copy size={14} />Copy config snippet</button> : null}</div>}
       {error ? <div role="alert" className="mt-3 text-unresolved"><p className="break-words">{error}</p>{local ? <button type="button" className="tbtn mt-2 px-2 py-1" disabled={busy} onClick={() => void reloadSettings()}>Reload settings (discard draft)</button> : null}</div> : null}
       {runMessage ? <div role="status" className="mt-3 text-muted">{runMessage}{runDone ? <button type="button" className="tbtn ml-2 px-2 py-1" onClick={() => window.location.reload()}>Reload catalog</button> : null}</div> : null}

@@ -5,7 +5,7 @@ import options from "./work-items.options.json" with { type: "json" };
 import { detectTaskKeys, normalizeTrackers, taskUrl } from "../../src/lib/task-tracker-config.mjs";
 
 export function describe() {
-  return { name: "work-items", summary: "Connects YouTrack, Jira, Linear, GitHub and GitLab issue references in Git commits to flows, steps, services and decisions, retaining the source of each association.", category: "evidence", phases: ["verify"], options };
+  return { name: "work-items", summary: "Connects YouTrack, Jira, Linear, GitHub and GitLab issue references in Git commits to flows, steps, services and decisions, retaining the source of each association. The links are read from the history where the catalog is read, never written into a fragment (portolan.0020).", category: "evidence", phases: ["verify"], options };
 }
 
 function webRepository(value) {
@@ -75,10 +75,13 @@ export function issueKeys(message, projects) {
   return detectTaskKeys(message, { provider: "youtrack", projects });
 }
 
-export function fullScanRequested(request, target = process.env.PORTOLAN_WORK_ITEMS_FULL_SCAN) {
-  return !!request.input?.output && target === JSON.stringify([
-    realpathSync(resolve(request.input.root)), resolve(request.input.output), request.options?.out ?? "work-items.json",
-  ]);
+/** The key a full scan is requested by: one verifier, named by its checkout, output and file. */
+export function fullScanTarget(request) {
+  return JSON.stringify([realpathSync(resolve(request.input.root)), resolve(request.input.output), request.options?.out ?? "work-items.json"]);
+}
+
+export function fullScanRequested(request, targets = []) {
+  return !!request.input?.output && targets.includes(fullScanTarget(request));
 }
 
 // Read fixed-size pages against one pinned commit. A full scan has no commit
@@ -100,12 +103,30 @@ export function* historyRecords(git, head, limit, warnings, pageSize = 200) {
   }
 }
 
-export function run(request) {
+/**
+ * Generation writes nothing. Every link names a commit, and a file cannot name
+ * the commit it lands in: a commit mentioning a task that also carries the
+ * regenerated links would add itself to them the moment it is made, and
+ * `gen --check` could never agree (portolan.0020, after portolan.0010). The
+ * host reads the links from the history where it reads the catalog, through
+ * `scanWorkItems`; a fragment written by an earlier version is swept.
+ */
+export function run() {
+  return { files: [], warnings: [] };
+}
+
+/**
+ * The links the history holds for one verifier: a catalog fragment carrying
+ * only `workItems` and `workItemLinks`, and what limited the reading.
+ *
+ * @param {{ input: { root: string, output?: string }, catalog: object, options?: object }} request
+ * @param {{ fullScan?: string[] }} [scan]  full-scan targets requested for this reading
+ */
+export function scanWorkItems(request, { fullScan = [] } = {}) {
   const opts = request.options ?? {};
   const trackers = normalizeTrackers(opts.trackers);
-  // Keeping a disabled verifier writes an empty fragment, clearing old links
-  // during generation without deleting files from the settings request.
-  if (!trackers.length) return { files: [{ name: opts.out ?? "work-items.json", contents: `${JSON.stringify({ contexts: [], defs: {}, flows: [], adrs: [], workItems: [], workItemLinks: [] }, null, 2)}\n` }], warnings: [] };
+  const empty = { contexts: [], defs: {}, flows: [], adrs: [], workItems: [], workItemLinks: [] };
+  if (!trackers.length) return { fragment: empty, warnings: [] };
   const root = realpathSync(resolve(request.input?.root ?? "."));
   const git = (args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
   let top;
@@ -123,7 +144,7 @@ export function run(request) {
   const warnings = [];
   if (git(["rev-parse", "--is-shallow-repository"]).trim() === "true") warnings.push({ message: "work item history is incomplete: this checkout is shallow" });
   const head = git(["rev-parse", "HEAD"]).trim();
-  const records = historyRecords(git, head, fullScanRequested(request) ? null : max, warnings);
+  const records = historyRecords(git, head, fullScanRequested(request, fullScan) ? null : max, warnings);
   const targets = targetsOf(request.catalog, repository);
   const items = new Map();
   const links = new Map();
@@ -146,6 +167,6 @@ export function run(request) {
       }
     }
   }
-  const fragment = { contexts: [], defs: {}, flows: [], adrs: [], workItems: [...items.values()].sort((a, b) => a.id.localeCompare(b.id)), workItemLinks: [...links.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, link]) => link) };
-  return { files: [{ name: opts.out ?? "work-items.json", contents: `${JSON.stringify(fragment, null, 2)}\n` }], warnings };
+  const fragment = { ...empty, workItems: [...items.values()].sort((a, b) => a.id.localeCompare(b.id)), workItemLinks: [...links.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, link]) => link) };
+  return { fragment, warnings };
 }

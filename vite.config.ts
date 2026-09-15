@@ -26,6 +26,10 @@ import { annotationsPlugin } from "./scripts/annotations.mjs";
 // Saved branch drafts, served to the app as one virtual module (portolan.0019).
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { draftsPlugin } from "./scripts/branch-drafts.mjs";
+// Task links, read from the same history and never written into a fragment
+// (portolan.0020).
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { workItemsPlugin } from "./scripts/work-items-history.mjs";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -182,6 +186,7 @@ export default defineConfig({
     localApiPlugin(workspace, publicSetupFrom),
     siteDocsPlugin(workspace),
     provenancePlugin(workspace),
+    workItemsPlugin(workspace),
     annotationsPlugin(workspace),
     draftsPlugin(workspace),
     react(),

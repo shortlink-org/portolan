@@ -34,7 +34,8 @@ export interface SaveTaskTrackers {
 export function taskTrackerSettings(): Promise<TaskTrackerState> {
   return json("/task-trackers");
 }
-export function fullScanTaskTrackers(revision: string, step: number): Promise<{ runId: string }> {
+/** Reads the task links again without the commit limit; nothing is generated (portolan.0020). */
+export function fullScanTaskTrackers(revision: string, step: number): Promise<{ runId: null }> {
   return json("/task-trackers/full-scan", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ revision, step }) });
 }
 export function saveTaskTrackers(request: SaveTaskTrackers): Promise<TaskTrackerState & { run: { runId: string } | null; generationError?: string }> {

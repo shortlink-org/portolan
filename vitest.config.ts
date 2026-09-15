@@ -7,6 +7,8 @@ import { provenancePlugin } from "./scripts/provenance.mjs";
 import { annotationsPlugin } from "./scripts/annotations.mjs";
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { draftsPlugin } from "./scripts/branch-drafts.mjs";
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { workItemsPlugin } from "./scripts/work-items-history.mjs";
 
 const exampleCatalogTests = [
   "src/routes.test.ts",
@@ -30,7 +32,9 @@ const allTests = [
 const excludedTests = ["**/node_modules/**", "plugins/extract-ts/testdata/**"];
 
 export default defineConfig({
-  plugins: [provenancePlugin("."), annotationsPlugin("."), draftsPlugin(".")],
+  // Tests read no task links: a link names whatever commit is newest, and a
+  // test that saw them would change with every commit.
+  plugins: [provenancePlugin("."), workItemsPlugin(".", { disabled: true }), annotationsPlugin("."), draftsPlugin(".")],
   test: {
     projects: [
       {

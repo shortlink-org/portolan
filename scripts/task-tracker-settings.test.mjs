@@ -6,7 +6,7 @@ import { createServer } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
 import { localApiPlugin, writeManifest } from "./local-api.mjs";
-import { run } from "./host-plugins/work-items.mjs";
+import { scanWorkItems } from "./host-plugins/work-items.mjs";
 
 const roots = [];
 afterEach(() => { vi.unstubAllEnvs(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -72,7 +72,7 @@ describe("persisted tracker settings", { timeout: 30_000 }, () => {
     expect(saved.entries[0]).toMatchObject({ input: ".", catalogs: ["app"], managed: true, trackers: [tracker] });
     expect(saved.revision).not.toBe(before.revision);
     const catalog = { contexts: [{ services: [{ id: "app.app", repo: "github.com/acme/shop", path: "src" }] }], flows: [], adrs: [] };
-    const fragment = JSON.parse(run({ input: { root }, options: step.options, catalog }).files[0].contents);
+    const fragment = scanWorkItems({ input: { root }, options: step.options, catalog }).fragment;
     expect(fragment.workItems[0]).toMatchObject({ key: "RT#101", url: "https://tasks.example.com/tickets/RT%23101" });
   });
   it("updates rather than duplicates; moves managed profile scope and clears disabled output", () => {
@@ -84,7 +84,7 @@ describe("persisted tracker settings", { timeout: 30_000 }, () => {
     const source = `${manifest.verify[0].out}/work-items.json`;
     expect(manifest.catalogs[0].sources).not.toContain(source);
     expect(manifest.catalogs[1].sources).toContain(source);
-    expect(JSON.parse(run({ options: manifest.verify[0].options }).files[0].contents).workItemLinks).toEqual([]);
+    expect(scanWorkItems({ options: manifest.verify[0].options }).fragment.workItemLinks).toEqual([]);
   });
   it("rejects stale revisions, invalid patterns, inherited Git, and preserves unrelated configuration", () => {
     const { root } = workspace();
@@ -137,18 +137,12 @@ describe("persisted tracker settings", { timeout: 30_000 }, () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ run: null, entries: [{ maxCommits: 100, trackers: [tracker] }] });
       expect((await fetch(url, { headers: { Origin: "https://untrusted.example.com" } })).status).toBe(403);
-      // Use a tiny CLI stand-in to verify job dispatch and the one-run env;
-      // actual Git scanning is covered by the verifier tests.
-      const cli = join(root, "test-cli.mjs");
-      writeFileSync(cli, 'console.log("scan-target=" + process.env.PORTOLAN_WORK_ITEMS_FULL_SCAN);');
-      vi.stubEnv("PORTOLAN_CLI", cli);
+      // A full scan is a reading of the history, not a generation
+      // (portolan.0020): no run starts, and the manifest is left as it was.
       const current = taskTrackerState(root);
       const scan = await fetch(`${url}/full-scan`, { method: "POST", headers: { "Content-Type": "application/json", "X-Portolan-Local": "1" }, body: JSON.stringify({ revision: current.revision, step: 0 }) });
       expect(scan.status).toBe(200);
-      const { runId } = await scan.json();
-      const events = await (await fetch(url.replace("/task-trackers", `/runs/${runId}/events`))).text();
-      expect(events).toContain("scan-target=");
-      expect(events).toContain("process-finished");
+      expect(await scan.json()).toEqual({ runId: null });
       expect(taskTrackerState(root).revision).toBe(current.revision);
     } finally { await new Promise((resolve) => server.close(resolve)); }
   });
