@@ -29,7 +29,7 @@
                   "direction": "send"
                 }
               ],
-              "source": "app/router.go:30"
+              "source": "testdata/mailer/app/router.go:30"
             },
             {
               "address": "mail.input",
@@ -43,7 +43,7 @@
                   "direction": "receive"
                 }
               ],
-              "source": "app/router.go:26"
+              "source": "testdata/mailer/app/router.go:26"
             },
             {
               "address": "mail.output",
@@ -57,7 +57,7 @@
                   "direction": "send"
                 }
               ],
-              "source": "app/router.go:36"
+              "source": "testdata/mailer/app/router.go:36"
             }
           ]
         }
@@ -71,7 +71,7 @@
       "slug": "mailer-watermill-mail-router",
       "name": "Mail Router",
       "summary": "Watermill handler `mail_router` consumes `mail.input` and source control flow branches to `mail.error` or `mail.output`.",
-      "source": "app/router.go:26",
+      "source": "testdata/mailer/app/router.go:26",
       "trigger": {
         "kind": "event",
         "label": "mail.input",
@@ -113,7 +113,7 @@
           "label": "mail_router",
           "status": "declared",
           "note": "Input `Input`: `id string`, `valid bool`. Consumer group `mail-workers`.",
-          "line": "app/router.go:26",
+          "line": "testdata/mailer/app/router.go:26",
           "handoff": {
             "kind": "message",
             "transport": "watermill",
@@ -137,7 +137,7 @@
                   "label": "publish Failure",
                   "status": "declared",
                   "note": "Payload `Failure`: `reason string`.",
-                  "line": "app/router.go:30",
+                  "line": "testdata/mailer/app/router.go:30",
                   "handoff": {
                     "kind": "message",
                     "transport": "watermill",
@@ -160,7 +160,7 @@
                   "label": "publish Output",
                   "status": "declared",
                   "note": "Payload `Output`: `accepted bool`.",
-                  "line": "app/router.go:36",
+                  "line": "testdata/mailer/app/router.go:36",
                   "handoff": {
                     "kind": "message",
                     "transport": "watermill",

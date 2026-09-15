@@ -211,3 +211,50 @@ func connect() { redis.NewClient() }
 		t.Fatalf("warnings = %+v", response.Warnings())
 	}
 }
+
+// A source is spelled from the service's repository: the workspace in a
+// monorepo, the fetched copy's directory for a copy fetch-git brought in.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	cases := []struct {
+		name, root, repository, prefix string
+	}{
+		{name: "monorepo", root: "examples/shop/pricing", prefix: "examples/shop/pricing/"},
+		{name: "fetched copy", root: "vendor/repos/acme/shop", repository: "vendor/repos/acme/shop"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			writeGo(t, tc.root, "go.mod", "module example.com/cache\n")
+			writeGo(t, tc.root, "internal/cache/redis.go", `package cache
+import (
+  "context"
+  "github.com/redis/go-redis/v9"
+)
+type Cache struct { client *redis.Client }
+func New() *Cache { return &Cache{client: redis.NewClient(&redis.Options{})} }
+func (c *Cache) Load(ctx context.Context, id string) error {
+  return c.client.Get(ctx, "session:"+id).Err()
+}
+`)
+			response, err := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, Options{Context: "sales", Service: "catalog"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out catalog.Catalog
+			if err := json.Unmarshal([]byte(response.Files[0].Contents), &out); err != nil {
+				t.Fatal(err)
+			}
+			store := out.Stores[0]
+			if want := tc.prefix + "internal/cache/redis.go:7"; store.Source != want {
+				t.Fatalf("store source = %q, want %q", store.Source, want)
+			}
+			if len(store.Keyspaces) != 1 || len(store.Keyspaces[0].Accesses) != 1 {
+				t.Fatalf("keyspaces = %+v", store.Keyspaces)
+			}
+			want := tc.prefix + "internal/cache/redis.go:9"
+			if got := store.Keyspaces[0]; got.Source != want || got.Accesses[0].Source != want {
+				t.Fatalf("keyspace sources = %q %q, want %q", got.Source, got.Accesses[0].Source, want)
+			}
+		})
+	}
+}

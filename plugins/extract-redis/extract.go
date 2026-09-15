@@ -33,6 +33,14 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	stores := []catalog.Store{}
 	if found := findRedisConstruction(tree); found != nil {
 		keyspaces := scanRedisKeyspaces(tree)
+		// goscan spells a source from the root; the catalog spells it from the
+		// service's repository.
+		for i := range keyspaces {
+			keyspaces[i].Source = in.RootSource(keyspaces[i].Source)
+			for j := range keyspaces[i].Accesses {
+				keyspaces[i].Accesses[j].Source = in.RootSource(keyspaces[i].Accesses[j].Source)
+			}
+		}
 		storeSlug := firstNonEmpty(opts.Store, "redis")
 		storeID := owner + "." + storeSlug
 		service.Stores = []string{storeID}
@@ -44,7 +52,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			Owner:     owner,
 			Tables:    []catalog.Table{},
 			Keyspaces: keyspaces,
-			Source:    found.at.String(),
+			Source:    in.RootSource(found.at.String()),
 		})
 	} else {
 		b.Warn(owner, "no supported Redis client construction was found in non-test Go source")

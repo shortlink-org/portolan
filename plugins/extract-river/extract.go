@@ -75,6 +75,9 @@ type queueJob struct {
 // the queues the client is configured to work.
 type scanner struct {
 	*goscan.Index
+	// in spells what goscan finds from the root as the catalog spells a
+	// source, from the service's repository.
+	in         plugin.Input
 	args       map[string]*argType
 	workers    map[string]*worker
 	registered map[string]bool
@@ -105,6 +108,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	tree.Foreign = riverForeign
 	s := &scanner{
 		Index:      goscan.NewIndex(tree),
+		in:         in,
 		args:       map[string]*argType{},
 		workers:    map[string]*worker{},
 		registered: map[string]bool{},
@@ -145,6 +149,15 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	b.File(goscan.FirstNonEmpty(opts.Out, "river.json"), string(encoded)+"\n")
 
 	return b.Response(), nil
+}
+
+// source is a place goscan spelled from the root, spelled from the service's
+// repository as the catalog writes one. A place nothing set stays empty.
+func (s *scanner) source(at goscan.Source) string {
+	if at.File == "" {
+		return ""
+	}
+	return s.in.RootSource(at.String())
 }
 
 func (s *scanner) index(b *plugin.Builder) {
@@ -563,7 +576,7 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 			if len(job.producers) > 0 {
 				channel.Messages = append(channel.Messages, catalog.ChannelMessage{Name: job.args.kind, Title: job.args.name, Doc: doc, Direction: catalog.ChannelSend})
 				if channel.Source == "" {
-					channel.Source = job.producers[0].at.String()
+					channel.Source = s.source(job.producers[0].at)
 				}
 			}
 			if job.worker == nil {
@@ -571,15 +584,15 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 				continue
 			}
 			if channel.Source == "" {
-				channel.Source = job.worker.at.String()
+				channel.Source = s.source(job.worker.at)
 			}
 			channel.Messages = append(channel.Messages, catalog.ChannelMessage{Name: job.args.kind, Title: job.worker.name, Doc: "Handled by " + job.worker.name + ".Work. " + doc, Direction: catalog.ChannelReceive})
-			flows = append(flows, riverFlow(serviceID, owner, queue, job))
+			flows = append(flows, s.riverFlow(serviceID, owner, queue, job))
 		}
 		channels = append(channels, channel)
 	}
 	for _, job := range unresolvedWorkers {
-		flows = append(flows, riverFlow(serviceID, owner, "", job))
+		flows = append(flows, s.riverFlow(serviceID, owner, "", job))
 	}
 	sort.Slice(flows, func(i, j int) bool { return flows[i].Slug < flows[j].Slug })
 
@@ -589,7 +602,7 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 // riverFlow is the two-hop enqueue/dispatch flow, or - when no producer is
 // in the tree - the dispatch alone. An empty queue is one nothing proved:
 // the broker lane says so and the step is unresolved.
-func riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
+func (s *scanner) riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
 	broker := "river." + goscan.Slug(queue)
 	label := "River · " + queue
 	if queue == "" {
@@ -610,18 +623,18 @@ func riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
 	}
 	steps := catalog.FlowNodes{}
 	summary := "River job `" + job.args.kind + "`"
-	source := job.worker.at.String()
+	source := s.source(job.worker.at)
 	if len(job.producers) > 0 {
-		source = job.producers[0].at.String()
+		source = s.source(job.producers[0].at)
 		summary += " is inserted on `" + queue + "` and"
-		steps = append(steps, &catalog.Step{Type: "step", ID: "enqueue", From: serviceID, To: broker, Kind: catalog.StepCall, Label: "enqueue " + job.args.kind, Status: catalog.StatusDeclared, Note: doc, Line: job.producers[0].at.String(), Handoff: handoff("send")})
+		steps = append(steps, &catalog.Step{Type: "step", ID: "enqueue", From: serviceID, To: broker, Kind: catalog.StepCall, Label: "enqueue " + job.args.kind, Status: catalog.StatusDeclared, Note: doc, Line: s.source(job.producers[0].at), Handoff: handoff("send")})
 	} else if queue != "" {
 		summary += " arrives on `" + queue + "` from another component and"
 	} else {
 		summary += " arrives on a queue this tree does not name and"
 	}
 	summary += " is handled by `" + job.worker.name + ".Work`."
-	steps = append(steps, &catalog.Step{Type: "step", ID: "work", From: broker, To: serviceID, Kind: catalog.StepCall, Label: job.worker.name + ".Work", Status: status, Note: "River dispatches `" + job.args.kind + "` to the registered worker.", Line: job.worker.at.String(), ContinuesAt: job.worker.entrypoint, Handoff: handoff("receive")})
+	steps = append(steps, &catalog.Step{Type: "step", ID: "work", From: broker, To: serviceID, Kind: catalog.StepCall, Label: job.worker.name + ".Work", Status: status, Note: "River dispatches `" + job.args.kind + "` to the registered worker.", Line: s.source(job.worker.at), ContinuesAt: job.worker.entrypoint, Handoff: handoff("receive")})
 	return catalog.Flow{
 		ID:         "flow." + slugged,
 		Slug:       slugged,

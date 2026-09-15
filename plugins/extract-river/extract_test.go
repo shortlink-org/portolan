@@ -104,6 +104,61 @@ func setup(workers *river.Workers, client interface { Insert(context.Context, ri
 	}
 }
 
+// A source is spelled from the service's repository: the workspace in a
+// monorepo, the fetched copy's directory for a copy fetch-git brought in.
+// Function keys (entrypoint, continuesAt) stay keys, spelled from the root.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	cases := []struct {
+		name, root, repository, prefix string
+	}{
+		{name: "monorepo", root: "examples/shop/pricing", prefix: "examples/shop/pricing/"},
+		{name: "fetched copy", root: "vendor/repos/acme/shop", repository: "vendor/repos/acme/shop"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			write(t, tc.root, "go.mod", "module example.com/mailer\n")
+			write(t, tc.root, "jobs/send.go", `package jobs
+import (
+  "context"
+  "github.com/riverqueue/river"
+)
+type SendArgs struct { MessageID string }
+func (SendArgs) Kind() string { return "send_mail" }
+type SendWorker struct { river.WorkerDefaults[SendArgs] }
+func (*SendWorker) Work(context.Context, *river.Job[SendArgs]) error { return nil }
+func setup(workers *river.Workers, client interface { Insert(context.Context, river.JobArgs, *river.InsertOpts) (any, error) }, ctx context.Context) {
+  river.AddWorker(workers, &SendWorker{})
+  _, _ = client.Insert(ctx, SendArgs{MessageID: "1"}, &river.InsertOpts{Queue: "mail"})
+}
+`)
+			resp, err := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, Options{Context: "ops", Service: "mailer"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+				t.Fatal(err)
+			}
+			producer, worker := tc.prefix+"jobs/send.go:12", tc.prefix+"jobs/send.go:9"
+			if channels := out.Contexts[0].Services[0].Channels; len(channels) != 1 || channels[0].Source != producer {
+				t.Fatalf("channels = %+v, want source %q", channels, producer)
+			}
+			if len(out.Flows) != 1 || len(out.Flows[0].Steps) != 2 {
+				t.Fatalf("flows = %+v", out.Flows)
+			}
+			flow := out.Flows[0]
+			enqueue, work := flow.Steps[0].(*catalog.Step), flow.Steps[1].(*catalog.Step)
+			if flow.Source != producer || enqueue.Line != producer || work.Line != worker {
+				t.Fatalf("flow source %q, enqueue line %q, work line %q; want %q and %q", flow.Source, enqueue.Line, work.Line, producer, worker)
+			}
+			if work.ContinuesAt != "jobs:SendWorker.Work" || flow.EntryPoint != "jobs:setup" {
+				t.Fatalf("function keys = %q %q", work.ContinuesAt, flow.EntryPoint)
+			}
+		})
+	}
+}
+
 func TestProducerWithoutRegisteredWorkerStaysVisible(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "go.mod", "module example.com/jobs\n")

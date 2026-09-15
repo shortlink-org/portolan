@@ -120,6 +120,9 @@ type registration struct {
 // on a router or a CQRS processor or subscribed directly.
 type scanner struct {
 	*goscan.Index
+	// in spells what goscan finds from the root as the catalog spells a
+	// source, from the service's repository.
+	in        plugin.Input
 	types     map[string]*goType
 	summaries map[string][]publication
 	outer     map[string]*analysisState
@@ -135,6 +138,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 	s := &scanner{
 		Index:     goscan.NewIndex(tree),
+		in:        in,
 		types:     map[string]*goType{},
 		summaries: map[string][]publication{},
 		outer:     map[string]*analysisState{},
@@ -175,6 +179,15 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 	b.File(goscan.FirstNonEmpty(opts.Out, "watermill.json"), string(encoded)+"\n")
 	return b.Response(), nil
+}
+
+// source is a place goscan spelled from the root, spelled from the service's
+// repository as the catalog writes one. A place nothing set stays empty.
+func (s *scanner) source(at goscan.Source) string {
+	if at.File == "" {
+		return ""
+	}
+	return s.in.RootSource(at.String())
 }
 
 func (s *scanner) detectTransport(imported string) {
@@ -907,7 +920,7 @@ func (s *scanner) catalog(serviceID, owner string) ([]catalog.Channel, []catalog
 		if value.env != "" {
 			doc += " Configured by `" + value.env + "`; extracted address is its source default."
 		}
-		found = &channelState{channel: catalog.Channel{Address: value.address, Title: title, Doc: doc, Messages: []catalog.ChannelMessage{}, Source: value.at.String()}, seen: map[string]bool{}}
+		found = &channelState{channel: catalog.Channel{Address: value.address, Title: title, Doc: doc, Messages: []catalog.ChannelMessage{}, Source: s.source(value.at)}, seen: map[string]bool{}}
 		channels[value.address] = found
 		return found
 	}
@@ -1064,7 +1077,7 @@ func (s *scanner) flow(serviceID, owner string, found handler, pub *publication)
 		summary = "`" + found.name + "` subscribes to `" + topicName + "`"
 	}
 	participants := []catalog.Participant{{ID: serviceID, Kind: catalog.ParticipantService, Context: stringPtr(owner)}, {ID: inputBroker, Kind: catalog.ParticipantBroker, Label: inputLabel}}
-	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: status, Note: s.receiveNote(found), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")}}
+	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: status, Note: s.receiveNote(found), Line: s.source(found.at), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")}}
 	if pub != nil {
 		ending = pub.topic.address
 		outputBroker := "watermill." + goscan.Slug(pub.topic.address)
@@ -1072,13 +1085,13 @@ func (s *scanner) flow(serviceID, owner string, found handler, pub *publication)
 			participants = append(participants, catalog.Participant{ID: outputBroker, Kind: catalog.ParticipantBroker, Label: goscan.FirstNonEmpty(s.transport, "Watermill") + " · " + pub.topic.address})
 		}
 		payload := goscan.FirstNonEmpty(goscan.LastSegment(pub.payload), "message")
-		steps = append(steps, &catalog.Step{Type: "step", ID: "publish", From: serviceID, To: outputBroker, Kind: catalog.StepEvent, Label: "publish " + payload, Status: catalog.StatusDeclared, Note: s.payloadDescription(pub.payload, "Payload"), Line: pub.at.String(), Handoff: s.messageHandoff(pub.topic.address, "send")})
+		steps = append(steps, &catalog.Step{Type: "step", ID: "publish", From: serviceID, To: outputBroker, Kind: catalog.StepEvent, Label: "publish " + payload, Status: catalog.StatusDeclared, Note: s.payloadDescription(pub.payload, "Payload"), Line: s.source(pub.at), Handoff: s.messageHandoff(pub.topic.address, "send")})
 		name += " → " + pub.topic.address
 		summary += " and may publish `" + pub.topic.address + "`"
 	}
 	summary += "."
 	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-watermill-" + found.name + "-" + ending)
-	return catalog.Flow{ID: "flow." + slugged, Slug: slugged, Name: name, Summary: summary, Source: found.at.String(), Trigger: &catalog.FlowTrigger{Kind: "event", Label: topicName, Confidence: "high"}, Owner: owner, Participants: participants, Steps: steps}
+	return catalog.Flow{ID: "flow." + slugged, Slug: slugged, Name: name, Summary: summary, Source: s.source(found.at), Trigger: &catalog.FlowTrigger{Kind: "event", Label: topicName, Confidence: "high"}, Owner: owner, Participants: participants, Steps: steps}
 }
 
 func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.Flow {
@@ -1111,14 +1124,14 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 				Label:   "publish " + payload,
 				Status:  catalog.StatusDeclared,
 				Note:    s.payloadDescription(pub.payload, "Payload"),
-				Line:    pub.at.String(),
+				Line:    s.source(pub.at),
 				Handoff: s.messageHandoff(pub.topic.address, "send"),
 			}},
 		})
 		addresses = append(addresses, "`"+pub.topic.address+"`")
 	}
 	steps := catalog.FlowNodes{
-		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: status, Note: s.receiveNote(found), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")},
+		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: status, Note: s.receiveNote(found), Line: s.source(found.at), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")},
 		&catalog.Alt{Type: "alt", ID: "outcome", Branches: branches},
 	}
 	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-watermill-" + found.name)
@@ -1127,7 +1140,7 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 		Slug:         slugged,
 		Name:         goscan.Title(found.name),
 		Summary:      "Watermill handler `" + found.name + "` consumes `" + topicName + "` and source control flow branches to " + strings.Join(addresses, " or ") + ".",
-		Source:       found.at.String(),
+		Source:       s.source(found.at),
 		Trigger:      &catalog.FlowTrigger{Kind: "event", Label: topicName, Confidence: "high"},
 		Owner:        owner,
 		Participants: participants,

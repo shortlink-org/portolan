@@ -76,6 +76,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		}},
 		Defs: map[string]catalog.TypeDef{}, Flows: flows, Adrs: []catalog.Adr{}, Externals: externals,
 	}
+	spellFromRepository(in, &fragment)
 	encoded, err := json.MarshalIndent(fragment, "", "  ")
 	if err != nil {
 		return plugin.Response{}, err
@@ -864,4 +865,105 @@ func httpCallEvidence(call gohttp.Call) []catalog.RelationEvidence {
 		out = append(out, catalog.RelationEvidence{Kind: "contract", Rule: "client-contract", Source: call.Contract, Symbol: call.ID})
 	}
 	return out
+}
+
+// spellFromRepository respells every source in the fragment from the
+// service's repository. The analyzer spells a source from the input root, and
+// everything above it - the adapter directories the manifest names, the
+// identities of calls, the dedup of evidence - matches on that spelling, so
+// the respelling happens once, on the finished fragment. Function keys
+// (entrypoint, reaches, evidence symbols) are names, not places, and stay.
+//
+// A destination is shared by a consumer entry and every step that carries the
+// call, so it is copied, never respelled in place: one respelling each.
+func spellFromRepository(in plugin.Input, fragment *catalog.Catalog) {
+	for c := range fragment.Contexts {
+		for s := range fragment.Contexts[c].Services {
+			consumes := fragment.Contexts[c].Services[s].Consumes
+			for i := range consumes {
+				consumes[i].Source = rootSource(in, consumes[i].Source)
+				consumes[i].Evidence = spelledEvidence(in, consumes[i].Evidence)
+				consumes[i].Destination = spelledDestination(in, consumes[i].Destination)
+			}
+		}
+	}
+	for e := range fragment.Externals {
+		provides := fragment.Externals[e].Provides
+		for i := range provides {
+			provides[i].Source = rootSource(in, provides[i].Source)
+		}
+	}
+	for f := range fragment.Flows {
+		fragment.Flows[f].Source = rootSource(in, fragment.Flows[f].Source)
+		spellNodes(in, fragment.Flows[f].Steps)
+	}
+}
+
+// rootSource is RootSource that leaves an absent source absent, where
+// RootSource would name the root itself.
+func rootSource(in plugin.Input, where string) string {
+	if where == "" {
+		return ""
+	}
+	return in.RootSource(where)
+}
+
+func spellNodes(in plugin.Input, nodes catalog.FlowNodes) {
+	for _, node := range nodes {
+		switch node := node.(type) {
+		case *catalog.Step:
+			node.Line = rootSource(in, node.Line)
+			node.Evidence = spelledEvidence(in, node.Evidence)
+			node.Destination = spelledDestination(in, node.Destination)
+		case *catalog.Alt:
+			for branch := range node.Branches {
+				spellNodes(in, node.Branches[branch].Steps)
+			}
+		case *catalog.Parallel:
+			for _, branch := range node.Branches {
+				spellNodes(in, branch)
+			}
+		case *catalog.Loop:
+			spellNodes(in, node.Steps)
+		}
+	}
+}
+
+func spelledEvidence(in plugin.Input, evidence []catalog.RelationEvidence) []catalog.RelationEvidence {
+	if evidence == nil {
+		return nil
+	}
+	out := make([]catalog.RelationEvidence, len(evidence))
+	for i, item := range evidence {
+		item.Source = rootSource(in, item.Source)
+		out[i] = item
+	}
+	return out
+}
+
+func spelledDestination(in plugin.Input, d *catalog.HTTPDestination) *catalog.HTTPDestination {
+	if d == nil {
+		return nil
+	}
+	out := *d
+	out.CallSite = rootSource(in, d.CallSite)
+	if d.BaseURL != nil {
+		base := *d.BaseURL
+		base.Source = rootSource(in, base.Source)
+		base.OptionSource = rootSource(in, base.OptionSource)
+		out.BaseURL = &base
+	}
+	if d.Join != nil {
+		join := *d.Join
+		join.Source = rootSource(in, join.Source)
+		out.Join = &join
+	}
+	if d.Transforms != nil {
+		out.Transforms = make([]catalog.HTTPDestinationJoin, len(d.Transforms))
+		for i, transform := range d.Transforms {
+			transform.Source = rootSource(in, transform.Source)
+			out.Transforms[i] = transform
+		}
+	}
+	return &out
 }

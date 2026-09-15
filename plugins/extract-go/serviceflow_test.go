@@ -195,6 +195,90 @@ func (h *Handler) Create(w http.ResponseWriter, req *http.Request) { h.service.E
 	}
 }
 
+// A place is spelled from the service's repository: the workspace in a
+// monorepo, the fetched copy's directory for a copy fetch-git brought in.
+func TestPlacesAreSpelledFromTheRepository(t *testing.T) {
+	fixture, err := filepath.Abs("testdata/order")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name, root, repository, prefix, path string
+	}{
+		{name: "monorepo", root: "examples/shop/pricing", prefix: "examples/shop/pricing/", path: "examples/shop/pricing"},
+		{name: "fetched copy", root: "vendor/repos/acme/shop", repository: "vendor/repos/acme/shop"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			read := func(opts Options) catalog.Catalog {
+				t.Helper()
+				response, err := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, opts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if strings.Contains(response.Files[0].Contents, "vendor/repos") {
+					t.Fatalf("a place is spelled from outside the repository:\n%s", response.Files[0].Contents)
+				}
+				var fragment catalog.Catalog
+				if err := json.Unmarshal([]byte(response.Files[0].Contents), &fragment); err != nil {
+					t.Fatal(err)
+				}
+				return fragment
+			}
+
+			writeQualitySource(t, tc.root, "go.mod", "module example.com/plain\n\ngo 1.24\n")
+			writeQualitySource(t, tc.root, "web/routes.go", `package web
+import "net/http"
+type Repository interface { Save() }
+type Service struct { repo Repository }
+func (s *Service) Execute() { s.repo.Save() }
+type Handler struct { service *Service }
+func (h *Handler) Create(w http.ResponseWriter, req *http.Request) { h.service.Execute() }
+func Register(h *Handler) { http.HandleFunc("POST /orders", h.Create) }
+`)
+			fragment := read(Options{Context: "shop", Service: "orders", Store: "pg"})
+			if got := fragment.Contexts[0].Services[0].Path; got != tc.path {
+				t.Fatalf("service path = %q, want %q", got, tc.path)
+			}
+			if len(fragment.Flows) != 1 || len(fragment.Flows[0].Steps) != 3 {
+				t.Fatalf("flows = %+v", fragment.Flows)
+			}
+			flow := fragment.Flows[0]
+			file := tc.prefix + "web/routes.go"
+			if !strings.HasPrefix(flow.Source, file) {
+				t.Fatalf("flow source = %q", flow.Source)
+			}
+			for _, node := range flow.Steps {
+				step := node.(*catalog.Step)
+				if !strings.HasPrefix(step.Line, file) {
+					t.Errorf("step %s line = %q", step.ID, step.Line)
+				}
+				for _, evidence := range step.Evidence {
+					if evidence.Source != "" && !strings.HasPrefix(evidence.Source, file) {
+						t.Errorf("step %s evidence source = %q", step.ID, evidence.Source)
+					}
+				}
+			}
+
+			if err := os.RemoveAll(tc.root); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.CopyFS(tc.root, os.DirFS(fixture)); err != nil {
+				t.Fatal(err)
+			}
+			fragment = read(Options{Context: "shop", ContextName: "Shop", Service: "order", Store: "pg"})
+			aggregates := fragment.Contexts[0].Services[0].Aggregates
+			if len(aggregates) != 1 || len(aggregates[0].Events) == 0 {
+				t.Fatalf("aggregates = %+v", aggregates)
+			}
+			if got, want := aggregates[0].Events[0].Versions[0].Source, tc.prefix+"internal/domain/order/event/placed.go"; got != want {
+				t.Fatalf("event source = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestPlainServiceDiscoveryExcludesUnregisteredAndForeignPackages(t *testing.T) {
 	root := t.TempDir()
 	writeQualitySource(t, root, "go.mod", "module example.com/plain\n")

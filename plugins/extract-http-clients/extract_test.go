@@ -610,6 +610,98 @@ func (*Client) CheckRules() { _, _ = http.Get("https://alpha.example/v1/check-ru
 	}
 }
 
+// A source is spelled from the service's repository: the workspace in a
+// monorepo, the fetched copy's directory for a copy fetch-git brought in. The
+// adapter keys stay spelled from the root, and match as before.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	cases := []struct {
+		name, root, repository, prefix string
+	}{
+		{name: "monorepo", root: "examples/shop/pricing", prefix: "examples/shop/pricing/"},
+		{name: "fetched copy", root: "vendor/repos/acme/shop", repository: "vendor/repos/acme/shop"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			writeHTTPFixture(t, tc.root, "go.mod", "module example.com/destination\n")
+			writeHTTPFixture(t, tc.root, "client/client.go", `package client
+import "net/http"
+type Config struct { SettingAddr string `+"`envconfig:\"SETTINGS_ADDR\" default:\"http://localhost:8000/settings\"`"+` }
+type Client struct { baseURL string }
+type Option func(*Client)
+func WithBaseURL(value string) Option { return func(c *Client) { c.baseURL = value } }
+func NewClient(options ...Option) *Client {
+ c := &Client{}
+ for _, opt := range options { opt(c) }
+ return c
+}
+func runtimeURL(path string) string { return path }
+func (c *Client) request(method, path string) { path = c.baseURL + path; path = runtimeURL(path); http.NewRequest(method, path, nil) }
+func (c *Client) POST(path string) { c.request(http.MethodPost, path) }
+type Manager struct { client *Client }
+func New(client *Client) *Manager { return &Manager{client: client} }
+func Build(cfg Config) *Manager { return New(NewClient(WithBaseURL(cfg.SettingAddr))) }
+func (m *Manager) Settings() { m.client.POST("/get-admin-settings") }
+`)
+			opts := Options{Context: "avia", Service: "aviacore", Adapters: map[string]Adapter{
+				"client/": {External: "settings", Name: "Settings"},
+			}}
+			resp, err := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			contents := resp.Files[0].Contents
+			if strings.Contains(contents, "vendor/repos") || strings.Contains(contents, "examples/shop/pricing/examples") {
+				t.Fatalf("a source is spelled from outside the repository:\n%s", contents)
+			}
+			var got catalog.Catalog
+			if err := json.Unmarshal([]byte(contents), &got); err != nil {
+				t.Fatal(err)
+			}
+			file := tc.prefix + "client/client.go"
+			site := file + ":13"
+			spelled := func(d *catalog.HTTPDestination) bool {
+				return d != nil && d.CallSite == site && d.BaseURL != nil && d.Join != nil && len(d.Transforms) == 1 &&
+					strings.HasPrefix(d.BaseURL.Source, file+":") && strings.HasPrefix(d.BaseURL.OptionSource, file+":") &&
+					strings.HasPrefix(d.Join.Source, file+":") && strings.HasPrefix(d.Transforms[0].Source, file+":")
+			}
+			const id = "settings.http/POST /settings/get-admin-settings"
+			var consumer *catalog.RpcCall
+			for i, call := range got.Contexts[0].Services[0].Consumes {
+				if call.ID == id {
+					consumer = &got.Contexts[0].Services[0].Consumes[i]
+				}
+			}
+			if consumer == nil || consumer.Source != site {
+				t.Fatalf("consumes = %+v, want the adapter's operation at %q", got.Contexts[0].Services[0].Consumes, site)
+			}
+			if evidence := consumer.Evidence; len(evidence) == 0 || evidence[0].Source != site {
+				t.Fatalf("consumer evidence = %+v", evidence)
+			}
+			if d := consumer.Destination; !spelled(d) {
+				t.Fatalf("consumer destination = %+v", d)
+			}
+			if len(got.Externals) != 1 || len(got.Externals[0].Provides) != 1 || got.Externals[0].Provides[0].Source != tc.prefix+"client" {
+				t.Fatalf("externals = %+v", got.Externals)
+			}
+			var step *catalog.Step
+			for _, flow := range got.Flows {
+				if !strings.HasPrefix(flow.Source, file+":") {
+					t.Errorf("flow %s source = %q", flow.Slug, flow.Source)
+				}
+				for _, node := range flow.Steps {
+					if found, ok := node.(*catalog.Step); ok && found.Ref == id {
+						step = found
+					}
+				}
+			}
+			if step == nil || step.Line != site || len(step.Evidence) == 0 || step.Evidence[0].Source != site || !spelled(step.Destination) {
+				t.Fatalf("step = %+v", step)
+			}
+		})
+	}
+}
+
 func TestTypedAnalysisMapsPositionsFromAManifestRelativeRoot(t *testing.T) {
 	root := t.TempDir()
 	writeHTTPFixture(t, root, "go.mod", "module example.com/relative\n\ngo 1.27.0\n")

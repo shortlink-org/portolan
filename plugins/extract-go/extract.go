@@ -121,6 +121,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		Flows: flows,
 		Adrs:  []catalog.Adr{},
 	}
+	spellFromRepository(in, &fragment)
 
 	encoded, err := json.MarshalIndent(fragment, "", "  ")
 	if err != nil {
@@ -130,6 +131,100 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	b.File(firstNonEmpty(opts.Out, "domain.json"), string(encoded)+"\n")
 
 	return b.Response(), nil
+}
+
+// spellFromRepository respells every place in the fragment from the service's
+// repository. The reader spells a place as it opened the file, from the
+// workspace with the root in front, and matches places on that spelling while
+// it reads - a handler a flow already covers, a step's call-site evidence - so
+// the respelling happens once, on the finished fragment. In a monorepo the
+// workspace is the repository and nothing changes; a fetched copy loses the
+// directory it sits in. Function keys (entrypoint, continuesAt, reaches) are
+// names, not places, and stay.
+func spellFromRepository(in plugin.Input, fragment *catalog.Catalog) {
+	for c := range fragment.Contexts {
+		services := fragment.Contexts[c].Services
+		for s := range services {
+			services[s].Path = in.RepositoryPath(services[s].Path)
+			for i := range services[s].Consumes {
+				call := &services[s].Consumes[i]
+				call.Source = in.RepositorySource(call.Source)
+				call.Evidence = spelledEvidence(in, call.Evidence)
+			}
+			for a := range services[s].Aggregates {
+				aggregate := &services[s].Aggregates[a]
+				for o := range aggregate.Operations {
+					aggregate.Operations[o].Source = in.RepositorySource(aggregate.Operations[o].Source)
+				}
+				for e := range aggregate.Events {
+					for v := range aggregate.Events[e].Versions {
+						version := &aggregate.Events[e].Versions[v]
+						version.Source = in.RepositorySource(version.Source)
+					}
+				}
+				if aggregate.Lifecycle != nil {
+					for t := range aggregate.Lifecycle.Transitions {
+						transition := &aggregate.Lifecycle.Transitions[t]
+						transition.Source = in.RepositorySource(transition.Source)
+					}
+				}
+			}
+		}
+	}
+	for f := range fragment.Flows {
+		fragment.Flows[f].Source = in.RepositorySource(fragment.Flows[f].Source)
+		spellNodes(in, fragment.Flows[f].Steps)
+	}
+}
+
+func spellNodes(in plugin.Input, nodes catalog.FlowNodes) {
+	for _, node := range nodes {
+		switch node := node.(type) {
+		case *catalog.Step:
+			node.Line = in.RepositorySource(node.Line)
+			node.Evidence = spelledEvidence(in, node.Evidence)
+			if node.HTTP != nil {
+				response := *node.HTTP
+				response.Source = in.RepositorySource(response.Source)
+				node.HTTP = &response
+			}
+		case *catalog.Alt:
+			for branch := range node.Branches {
+				spellNodes(in, node.Branches[branch].Steps)
+			}
+		case *catalog.Parallel:
+			for _, branch := range node.Branches {
+				spellNodes(in, branch)
+			}
+		case *catalog.Loop:
+			spellNodes(in, node.Steps)
+		}
+	}
+}
+
+// spelledEvidence is a respelled copy: a list of evidence can be shared by
+// the steps of one draft, and each place is respelled once.
+func spelledEvidence(in plugin.Input, evidence []catalog.RelationEvidence) []catalog.RelationEvidence {
+	if evidence == nil {
+		return nil
+	}
+	out := make([]catalog.RelationEvidence, len(evidence))
+	for i, item := range evidence {
+		item.Source = in.RepositorySource(item.Source)
+		// The enclosing function is named by its package directory as the
+		// reader opened it, `<dir>:<Recv>.<Method>`: a place too.
+		if item.Rule == "source-function" {
+			if dir, name, ok := strings.Cut(item.Symbol, ":"); ok {
+				if dir = in.RepositoryPath(dir); dir == "" {
+					item.Symbol = name
+				} else {
+					item.Symbol = dir + ":" + name
+				}
+			}
+		}
+		out[i] = item
+	}
+	return out
 }
 
 // eventIDs is every fact the service publishes, which is what a flow reader is

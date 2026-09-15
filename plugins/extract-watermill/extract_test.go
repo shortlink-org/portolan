@@ -79,6 +79,54 @@ func TestExtractsConfiguredHandlerAndHelperPublications(t *testing.T) {
 	}
 }
 
+// A source is spelled from the service's repository: the workspace in a
+// monorepo, the fetched copy's directory for a copy fetch-git brought in.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	fixture, err := filepath.Abs("testdata/mailer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name, root, repository, prefix string
+	}{
+		{name: "monorepo", root: "examples/shop/pricing", prefix: "examples/shop/pricing/"},
+		{name: "fetched copy", root: "vendor/repos/acme/shop", repository: "vendor/repos/acme/shop"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			if err := os.CopyFS(tc.root, os.DirFS(fixture)); err != nil {
+				t.Fatal(err)
+			}
+			resp, err := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, Options{Context: "sales", Service: "mailer"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+				t.Fatal(err)
+			}
+			for _, channel := range out.Contexts[0].Services[0].Channels {
+				if !strings.HasPrefix(channel.Source, tc.prefix+"app/router.go:") {
+					t.Errorf("channel %s source = %q", channel.Address, channel.Source)
+				}
+			}
+			if len(out.Flows) != 1 || len(out.Flows[0].Steps) != 2 {
+				t.Fatalf("flows = %+v", out.Flows)
+			}
+			flow := out.Flows[0]
+			receive := flow.Steps[0].(*catalog.Step)
+			publish := flow.Steps[1].(*catalog.Alt).Branches[0].Steps[0].(*catalog.Step)
+			if want := tc.prefix + "app/router.go:26"; flow.Source != want || receive.Line != want {
+				t.Fatalf("flow source %q, receive line %q, want %q", flow.Source, receive.Line, want)
+			}
+			if want := tc.prefix + "app/router.go:30"; publish.Line != want {
+				t.Fatalf("publish line = %q, want %q", publish.Line, want)
+			}
+		})
+	}
+}
+
 // AddConsumerHandler (watermill 1.4) takes the same arguments as
 // AddNoPublisherHandler and reads the same.
 func TestExtractsNamedNoPublisherHandler(t *testing.T) {
