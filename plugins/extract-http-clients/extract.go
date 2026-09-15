@@ -64,7 +64,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	flows := append(endpointFlows, rootFlows...)
 	flows = append(flows, flowsOfGroupsExcept(serviceID, opts.Context, result.Flows, opts, covered)...)
 	if len(result.Calls) == 0 {
-		b.Warn(in.Root, "no outbound net/http, oapi-codegen, or SOAP calls were found")
+		b.Warn(in.Root, "no outbound net/http, resty, oapi-codegen, or SOAP calls were found")
 	}
 	fragment := catalog.Catalog{
 		Contexts: []catalog.BoundedContext{{
@@ -94,7 +94,7 @@ func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, opts Opti
 	byExternal := map[string]*catalog.External{}
 	for _, call := range calls {
 		prefix, adapter, ok := adapterOf(call, opts)
-		if !ok || call.API != "" {
+		if !ok || call.API != "" || adapter.Service != "" {
 			continue
 		}
 		target := byExternal[adapter.External]
@@ -236,7 +236,7 @@ func adapterOf(call gohttp.Call, opts Options) (string, Adapter, bool) {
 	var adapter Adapter
 	for prefix, candidate := range opts.Adapters {
 		clean := strings.Trim(filepath.ToSlash(prefix), "/")
-		if clean == "" || candidate.External == "" {
+		if clean == "" || (candidate.External == "" && (candidate.Service == "" || candidate.API == "")) {
 			continue
 		}
 		for _, place := range places {
@@ -249,16 +249,18 @@ func adapterOf(call gohttp.Call, opts Options) (string, Adapter, bool) {
 }
 
 // observedOperation names the interface and method a call under an adapter
-// is recorded as: what was seen going out, since no document was read.
+// is recorded as: what was seen going out, since no document was read. Under
+// a service adapter the interface is the service's own, whose contract names
+// its operations by the same verb and path.
 func observedOperation(call gohttp.Call, adapter Adapter) (string, string) {
 	if call.Protocol == "SOAP" {
 		name := call.Action
 		if at := strings.LastIndexAny(name, "/:#"); at >= 0 && at < len(name)-1 {
 			name = name[at+1:]
 		}
-		return adapter.External + ".soap", name
+		return firstNonEmpty(adapter.API, adapter.External+".soap"), name
 	}
-	return adapter.External + ".http", strings.TrimSpace(call.Method + " " + call.Path)
+	return firstNonEmpty(adapter.API, adapter.External+".http"), strings.TrimSpace(call.Method + " " + call.Path)
 }
 
 // callID is what a step and a consumer entry name the call by: the contract
@@ -703,6 +705,10 @@ func participantOf(peer string, call gohttp.Call, opts Options) catalog.Particip
 		}
 	}
 	if adapter, ok := adapterOfCall(call, opts); ok {
+		if adapter.Service != "" {
+			context, _, _ := strings.Cut(adapter.Service, ".")
+			return catalog.Participant{ID: adapter.Service, Kind: catalog.ParticipantService, Context: &context}
+		}
 		return catalog.Participant{ID: adapter.External, Kind: catalog.ParticipantExternal}
 	}
 	return catalog.Participant{ID: peer, Kind: catalog.ParticipantUnknown, Label: rawPeerLabel(call)}
@@ -718,7 +724,7 @@ func peerOf(call gohttp.Call, opts Options) (string, catalog.Status) {
 		}
 	}
 	if adapter, ok := adapterOfCall(call, opts); ok {
-		return adapter.External, catalog.StatusDeclared
+		return firstNonEmpty(adapter.Service, adapter.External), catalog.StatusDeclared
 	}
 	return rawPeer(call), catalog.StatusUnresolved
 }

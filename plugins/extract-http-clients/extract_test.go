@@ -1663,3 +1663,91 @@ func Update(ctx context.Context, baseURL string) error {
 		t.Fatalf("short form = %+v, %v", short, err)
 	}
 }
+
+func TestReadsRestyRequestsThroughAWrapper(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/bridge\n")
+	writeHTTPFixture(t, root, "clients/core/client.go", `package core
+import (
+  "context"
+  "net/http"
+  "github.com/go-resty/resty/v2"
+)
+type Client struct{ cli *resty.Client }
+func New(baseURL string) *Client {
+  cli := resty.New()
+  cli.SetBaseURL(baseURL)
+  return &Client{cli: cli}
+}
+func (c *Client) Search(ctx context.Context, body any) error {
+  const path = "/search"
+  return c.run(ctx, http.MethodPost, path, body)
+}
+func (c *Client) run(ctx context.Context, method, handlerURL string, body any) error {
+  _, err := c.cli.R().SetContext(ctx).SetBody(body).Execute(method, handlerURL)
+  return err
+}
+`)
+	writeHTTPFixture(t, root, "clients/callbacks/client.go", `package callbacks
+import (
+  "context"
+  "github.com/go-resty/resty/v2"
+)
+const cancelledPath = "/callbacks/booking-cancelled"
+type Client struct{ cli *resty.Client }
+func (c *Client) Cancelled(ctx context.Context, body any) error {
+  _, err := c.cli.R().SetContext(ctx).SetBody(body).Post(cancelledPath)
+  return err
+}
+type cache struct{}
+func (cache) Get(key string) string { return key }
+func (c *Client) notARequest() string { return cache{}.Get("/not/a/call") }
+`)
+	opts := Options{Context: "bridge", Service: "bridge", Adapters: map[string]Adapter{
+		"clients/callbacks": {External: "receiver"},
+		"clients/core":      {Service: "core.core", API: "core-api"},
+	}}
+	resp, err := extract(plugin.Input{Root: root}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, call := range got.Contexts[0].Services[0].Consumes {
+		ids = append(ids, call.ID)
+	}
+	joined := strings.Join(ids, "\n")
+	if !strings.Contains(joined, "core-api/POST /search") {
+		t.Fatalf("the wrapper's verb and path must come from its caller, named on the service's interface: %v", ids)
+	}
+	for _, call := range got.Contexts[0].Services[0].Consumes {
+		if call.ID == "core-api/POST /search" && (call.Peer != "core.core" || call.Status != catalog.StatusDeclared) {
+			t.Fatalf("service adapter call = %+v", call)
+		}
+	}
+	for _, external := range got.Externals {
+		if external.ID != "receiver" {
+			t.Fatalf("a service adapter must not invent an external: %+v", got.Externals)
+		}
+	}
+	lane := false
+	for _, flow := range got.Flows {
+		for _, participant := range flow.Participants {
+			if participant.ID == "core.core" {
+				lane = participant.Kind == catalog.ParticipantService && participant.Context != nil && *participant.Context == "core"
+			}
+		}
+	}
+	if !lane {
+		t.Fatalf("flows must draw the service lane: %+v", got.Flows)
+	}
+	if !strings.Contains(joined, "receiver.http/POST /callbacks/booking-cancelled") {
+		t.Fatalf("Post(path) under an adapter = %v", ids)
+	}
+	if strings.Contains(joined, "/not/a/call") {
+		t.Fatalf("a Get outside an R() chain is not a request: %v", ids)
+	}
+}

@@ -26,12 +26,18 @@ type Options struct {
 }
 
 // Adapter is what the manifest says about the system behind one adapter
-// directory: the external's bare id, and what to call it on the page.
+// directory: the external's bare id, and what to call it on the page; or a
+// service of the estate and the interface it answers the calls on.
 type Adapter struct {
-	External string `json:"external"`
-	Name     string `json:"name,omitempty"`
-	Summary  string `json:"summary,omitempty"`
-	URL      string `json:"url,omitempty"`
+	External string `json:"external,omitempty"`
+	// Service and API name a catalog service and an interface it provides,
+	// such as an OpenAPI document its own extractor read. A call is then the
+	// operation of that interface its verb and path name.
+	Service string `json:"service,omitempty"`
+	API     string `json:"api,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Summary string `json:"summary,omitempty"`
+	URL     string `json:"url,omitempty"`
 }
 
 // UnmarshalJSON takes the short form, a bare external id, as well as the

@@ -32,9 +32,11 @@
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["external"],
+            "oneOf": [{ "required": ["external"] }, { "required": ["service", "api"] }],
             "properties": {
               "external": { "type": "string", "description": "Bare id of the system outside the estate, no dot." },
+              "service": { "type": "string", "description": "Id of the catalog service that answers instead, `<context>.<service>`; give `api` with it and no `external`." },
+              "api": { "type": "string", "description": "Id of the interface that service provides, such as the one its OpenAPI extractor writes (`aviacore-api`); calls are its operations named `POST /book`." },
               "name": { "type": "string", "description": "What the external is called on the page." },
               "summary": { "type": "string", "description": "A sentence or two on what the estate uses it for." },
               "url": { "type": "string", "description": "Where the third party documents itself." }
@@ -42,7 +44,7 @@
           }
         ]
       },
-      "description": "Which system outside the estate a hand-written client reaches, as the adapter's directory (relative to the input) to the external's bare id or an object naming it. A generated client carries its contract; a hand-written one only names a verb, a path and a base URL read from configuration, so the manifest says what answers. Every call whose call site, base-URL source or grouping function lies under the directory is recorded as declared against that external, which is given the operations seen going out: `<id>.http` with `POST /v1/book`, `<id>.soap` with the action's last segment.",
+      "description": "Which system outside the estate a hand-written client reaches, as the adapter's directory (relative to the input) to the external's bare id or an object naming it. A generated client carries its contract; a hand-written one only names a verb, a path and a base URL read from configuration, so the manifest says what answers. Every call whose call site, base-URL source or grouping function lies under the directory is recorded as declared against that external, which is given the operations seen going out: `<id>.http` with `POST /v1/book`, `<id>.soap` with the action's last segment. A client of a service in the catalog names `service` and `api` instead: its calls are declared against that service as the operations of its interface.",
       "examples": [{ "internal/pkg/connector/aerticket": "aerticket", "internal/pkg/connector/websky": { "external": "websky", "name": "Websky", "url": "https://nemo-ibe.com" } }]
     },
     "out": {

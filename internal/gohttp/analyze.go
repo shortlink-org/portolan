@@ -831,7 +831,7 @@ func (s *scanner) symbolicLocals(declaration *functionDecl) map[string]string {
 		}
 	}
 	ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
-		assign, ok := node.(*ast.AssignStmt)
+		assign, ok := localAssignment(node)
 		if !ok || len(assign.Rhs) == 0 {
 			return true
 		}
@@ -1387,6 +1387,34 @@ func routeOf(fn *ast.FuncDecl) (method, path string) {
 	return method, path
 }
 
+// localAssignment is a statement binding local names, as one assignment: an
+// assignment itself, or a `const path = "/search"` or `var path = ...` read
+// as the same `path := ...`.
+func localAssignment(node ast.Node) (*ast.AssignStmt, bool) {
+	switch item := node.(type) {
+	case *ast.AssignStmt:
+		return item, true
+	case *ast.DeclStmt:
+		gen, ok := item.Decl.(*ast.GenDecl)
+		if !ok || (gen.Tok != token.CONST && gen.Tok != token.VAR) {
+			return nil, false
+		}
+		assign := &ast.AssignStmt{Tok: token.DEFINE}
+		for _, raw := range gen.Specs {
+			spec, ok := raw.(*ast.ValueSpec)
+			if !ok || len(spec.Values) != len(spec.Names) {
+				continue
+			}
+			for i, name := range spec.Names {
+				assign.Lhs = append(assign.Lhs, name)
+				assign.Rhs = append(assign.Rhs, spec.Values[i])
+			}
+		}
+		return assign, len(assign.Lhs) > 0
+	}
+	return nil, false
+}
+
 func (s *scanner) localStrings(file *parsedFile, fn *ast.FuncDecl) map[string]string {
 	return s.localStringsBound(file, fn, nil)
 }
@@ -1407,7 +1435,7 @@ func (s *scanner) localStringsBound(file *parsedFile, fn *ast.FuncDecl, bindings
 		}
 	}
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		assign, ok := node.(*ast.AssignStmt)
+		assign, ok := localAssignment(node)
 		if !ok || len(assign.Rhs) == 0 {
 			return true
 		}
@@ -1557,6 +1585,36 @@ func (s *scanner) call(file *parsedFile, function string, call *ast.CallExpr, co
 		endpoint := s.value(file, call.Args[0], locals, map[string]bool{})
 		path := pathOf(call.Args[0], endpoint)
 		return withCallID(Call{Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: strings.ToUpper(strings.TrimSuffix(name, "Form")), Path: path, Endpoint: endpoint, Conditions: append([]string(nil), conditions...), URLTrace: s.urlTrace(function), template: &callTemplate{endpoint: call.Args[0]}}), true
+	}
+
+	if verb, ok := restyVerbs[name]; ok && restyRequest(file, call.Fun) {
+		if s.soapFns[function] {
+			return Call{}, false
+		}
+		// Execute(method, url) names its verb; Get(url), Post(url) and the rest
+		// are named by it.
+		methodAt, urlAt := -1, 0
+		if name == "Execute" {
+			methodAt, urlAt = 0, 1
+		}
+		if len(call.Args) <= urlAt {
+			return Call{}, false
+		}
+		template := &callTemplate{endpoint: call.Args[urlAt]}
+		method := verb
+		if methodAt >= 0 {
+			template.method = call.Args[methodAt]
+			if method = httpMethod(call.Args[methodAt]); method == "" {
+				method = "HTTP"
+			}
+		}
+		endpoint := s.value(file, call.Args[urlAt], locals, map[string]bool{})
+		path := pathOf(call.Args[urlAt], endpoint)
+		return withCallID(Call{
+			Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: method,
+			Path: path, Endpoint: endpoint, Conditions: append([]string(nil), conditions...),
+			URLTrace: s.urlTrace(function), template: template,
+		}), true
 	}
 
 	if (name == "Call" || name == "CallContext") && s.looksLikeSOAP(file, call) {
@@ -1762,6 +1820,48 @@ func (s *scanner) netHTTPCall(file *parsedFile, fun ast.Expr) bool {
 	}
 	id, ok := sel.X.(*ast.Ident)
 	return ok && file.imports[id.Name] == "net/http"
+}
+
+// restyVerbs are the resty request methods that send: the verb each one
+// sends, or empty for Execute, which is handed it.
+var restyVerbs = map[string]string{
+	"Get": "GET", "Post": "POST", "Put": "PUT", "Patch": "PATCH", "Delete": "DELETE",
+	"Head": "HEAD", "Options": "OPTIONS", "Execute": "",
+}
+
+// restyRequest is whether fun sends a resty request: a file importing resty,
+// and a chain that starts a request with R() or NewRequest() before the verb,
+// as in c.cli.R().SetBody(req).Post(path). The chain is what tells it from
+// any other Get or Post in a file that happens to import resty.
+func restyRequest(file *parsedFile, fun ast.Expr) bool {
+	imported := false
+	for _, path := range file.imports {
+		if strings.HasPrefix(path, "github.com/go-resty/resty") || strings.HasPrefix(path, "resty.dev/") {
+			imported = true
+			break
+		}
+	}
+	if !imported {
+		return false
+	}
+	sel, ok := fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	for expr := sel.X; ; {
+		call, ok := expr.(*ast.CallExpr)
+		if !ok {
+			return false
+		}
+		inner, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return false
+		}
+		if (inner.Sel.Name == "R" || inner.Sel.Name == "NewRequest") && len(call.Args) == 0 {
+			return true
+		}
+		expr = inner.X
+	}
 }
 
 func (s *scanner) looksLikeSOAP(file *parsedFile, call *ast.CallExpr) bool {
