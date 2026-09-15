@@ -150,7 +150,10 @@ Run one verifier per checkout. Source paths are resolved from each catalog
 repository (the same convention as source links), with its service's repository
 checked before any automatic match. Service directory links use `service.path`.
 Vendored copies without their own Git history must not inherit the enclosing
-checkout's commits. Shallow and bounded histories are reported as incomplete.
+checkout's commits. A catalog built from fetch-git snapshots can still point a
+verifier at a separate checkout of the fetched repository (`"in": "../aviacore"`):
+paths spelled from the workspace, `vendor/repos/<owner>/<name>/…`, are read as
+paths of that repository, as source links read them. Shallow and bounded histories are reported as incomplete.
 Unconfigured project keys produce no links. No network or credentials are
 needed to generate issue links. YouTrack's direct issue navigation is described
 in [JetBrains documentation](https://www.jetbrains.com/help/youtrack/cloud/issue-navigation.html).

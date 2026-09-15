@@ -114,6 +114,23 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
     expect(scanWorkItems(request).fragment.workItemLinks.every((link) => link.target.kind === "service")).toBe(true);
   });
 
+  it("reads a vendored snapshot's workspace paths against the checkout it was fetched from", () => {
+    const { request, catalog, commit } = checkout();
+    const vendored = "vendor/repos/acme/shop";
+    catalog.contexts[0].services[0].path = vendored;
+    catalog.flows[0].source = `${vendored}/src/toolbar.ts`;
+    catalog.flows[0].steps[0].line = `${vendored}/src/toolbar.ts:4`;
+    commit("RT-101: added toolbar");
+    const links = scanWorkItems(request).fragment.workItemLinks;
+    expect(links.find((link) => link.target.kind === "service")?.basis).toBe("service-directory");
+    expect(links.find((link) => link.target.kind === "flow")?.commits[0].paths).toEqual(["src/toolbar.ts"]);
+    expect(links.some((link) => link.target.kind === "step")).toBe(true);
+    catalog.contexts[0].services[0].path = "vendor/repos/another/shop";
+    catalog.flows[0].source = "vendor/repos/another/shop/src/toolbar.ts";
+    catalog.flows[0].steps = [];
+    expect(scanWorkItems(request).fragment.workItemLinks).toEqual([]);
+  });
+
   it("attributes an org-scoped RFC to the repository that owns its file", () => {
     const { request, catalog, root, commit } = checkout();
     mkdirSync(join(root, "docs", "rfcs"), { recursive: true });

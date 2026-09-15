@@ -32,13 +32,27 @@ function steps(nodes) {
     : node.type === "loop" ? steps(node.steps) : []);
 }
 
+/**
+ * A path as the repository spells it. A catalog built from a fetch-git
+ * snapshot may spell a service's files from the workspace, under
+ * `vendor/repos/<owner>/<name>/`; source links read them back the same way
+ * (src/lib/source-link.ts), and so does the history of the checkout itself.
+ */
+function repositoryPath(path, repository) {
+  const segments = bare(repository).split("/").filter(Boolean);
+  if (!path || segments.length < 3) return path;
+  const root = `vendor/repos/${segments.at(-2)}/${segments.at(-1)}`;
+  if (path === root) return ".";
+  return path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
+}
+
 /** Paths follow the catalog's source-link convention: relative to the source repository. */
 function targetsOf(catalog, repository) {
   const services = catalog.contexts.flatMap((context) => context.services);
   const belongs = (service) => service && bare(service.repo) === bare(repository);
   const targets = [];
   const add = (target, path, basis = "source-file") => {
-    const normalized = sourcePath(path);
+    const normalized = repositoryPath(sourcePath(path), repository);
     if (normalized) targets.push({ target, path: normalized, basis });
   };
   for (const service of services.filter(belongs)) {
