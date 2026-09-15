@@ -8,6 +8,9 @@ whether something should ship at all. The vocabulary is [GLOSSARY.md](GLOSSARY.m
 
 ## What it does
 
+- Turns a confirmed order into a shipment: `oms.OrderConfirmed` creates it,
+  once per order, and says `ShipmentCreated`; then the ledger is asked to
+  capture the payment named by the order id (core.0003).
 - Dispatches a planned shipment, with the tracking code the carrier gave, and
   says `ShipmentDispatched`.
 - Records every sighting of every parcel, append-only.
@@ -20,13 +23,14 @@ whether something should ship at all. The vocabulary is [GLOSSARY.md](GLOSSARY.m
 
 ## What it does not do
 
-Does not price anything, does not charge anything and does not decide what to
-send. A cancelled order is asked about, not argued with: the shipment is
+Does not price anything and does not decide what to send. It decides when
+the money for a parcel moves - it asks the ledger to capture - but never how
+much, and never whether the order stands. A cancelled order is asked about, not argued with: the shipment is
 written off.
 
 ## Publishes
 
-`ShipmentReleased`, `ShipmentDispatched`, `ShipmentInTransit`,
+`ShipmentCreated`, `ShipmentReleased`, `ShipmentDispatched`, `ShipmentInTransit`,
 `ShipmentDelivered`, `ShipmentLost` on `delivery.core.shipment`;
 `RoutePlanned`, `RouteStarted`, `RouteClosed` on `delivery.core.route`. Every
 arrow of both lifecycle tables is one of these.
@@ -35,6 +39,15 @@ arrow of both lifecycle tables is one of these.
 
 `delivery.v1.Delivery` — TrackShipment, GetShipment — and
 `delivery.v1.RouteService` — PlanRoute, CloseRoute, GetRoute.
+
+## Consumes
+
+`oms.OrderConfirmed` on `shop.oms.order` and `ledger.PaymentCaptured` on
+`payments.ledger.payment`, each through a durable JetStream consumer and a
+narrowed copy of the fact in this service's words. Calls
+`shop.v1.OrderService/GetOrder` at dispatch and
+`payments.v1.PaymentService/Capture` when a shipment is created, through
+narrowed copies of both contracts vendored beside their clients.
 
 ## Two things the store says out loud
 
@@ -57,16 +70,22 @@ arrow of both lifecycle tables is one of these.
   knowingly.
 - [core.0002](docs/adr/0002-a-shipment-waits-for-the-money.md) — a shipment
   waits for the money, and the ledger's fact releases it.
+- [core.0003](docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md)
+  — delivery asks the ledger to capture when it creates the shipment, not
+  the order service on confirmation.
 
 ## Status
 
 A sketch for the catalog, not the reference service; `examples/auth` is
 that. What it has: two aggregates whose lifecycle tables are enforced and
 whose every move is an event, use cases that answer with what a caller may
-see, a policy that reacts to the ledger's fact through a use case, Postgres
+see, policies that react to the order service's and the ledger's facts
+through use cases, a worker that reads those facts off the bus, Postgres
 repositories behind both ports that write the events to an outbox in the
 same transaction, and the records above. What it deliberately does not have
-yet, and the review skill will name: no server, so nothing here listens; no
+yet, and the review skill will name: no gRPC server, so only the bus is
+listened to; no relay, so the outbox is written and not sent; nothing that
+hands over parcels or an address, so a created shipment has neither; no
 version on the aggregates, so a stale write wins; no unit of work, so
 `plan_route` writes a route and its shipments one save at a time; no
 sentinel errors or status mapping at the edge; no tracing. Each is a known
@@ -77,7 +96,12 @@ gap, not an oversight, and none of them changes what the catalog shows.
 ```bash
 docker compose up -d db
 npm install && npm run gen && npm run build
+STORE_POSTGRES_URI=... NATS_URL=nats://127.0.0.1:4222 PAYMENTS_ADDR=http://127.0.0.1:9090 npm start
 ```
+
+The worker migrates the store and reads the bus. For the whole chain from a
+basket to a released shipment, see the
+[checkout scenario](../../../scenarios/README.md).
 
 The repository tests bring up their own Postgres through Docker and are
 skipped without it:

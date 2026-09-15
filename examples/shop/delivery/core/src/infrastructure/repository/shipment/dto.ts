@@ -11,7 +11,7 @@ export const TOPIC = "delivery.core.shipment";
 export interface PackageRow {
   id: string;
   order_id: string;
-  ship_to: StoredAddress;
+  ship_to: StoredAddress | null;
   status: string;
   tracking: string | null;
   route_id: string | null;
@@ -53,8 +53,19 @@ export function readAddress(stored: StoredAddress): Address {
   return new Address(stored.line1, stored.line2, stored.city, stored.postcode, stored.country);
 }
 
+/** A package's address: none yet is a null column, not an empty document (core.0003). A stop always has one. */
+export function storeShipTo(address: Address | undefined): string | null {
+  return address ? storeAddress(address) : null;
+}
+
+export function readShipTo(stored: StoredAddress | null): Address | undefined {
+  return stored ? readAddress(stored) : undefined;
+}
+
 export function toWire(event: ShipmentEvent): Record<string, unknown> {
   switch (event.name) {
+    case "delivery.ShipmentCreated":
+      return { shipmentId: event.shipmentId, orderId: event.orderId, occurredAt: event.occurredAt };
     case "delivery.ShipmentReleased":
       return { shipmentId: event.shipmentId, orderId: event.orderId, occurredAt: event.occurredAt };
     case "delivery.ShipmentDispatched":

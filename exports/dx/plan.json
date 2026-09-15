@@ -116,6 +116,7 @@
       "relation_identifier": "service-depends-on-service",
       "edges": {
         "delivery.core": [
+          "payments.ledger",
           "shop.oms"
         ],
         "payments.ledger": [

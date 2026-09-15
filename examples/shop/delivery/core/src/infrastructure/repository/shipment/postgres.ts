@@ -11,7 +11,7 @@ import { Shipment } from "../../../domain/shipment/shipment.ts";
 import type { ShipmentStatus } from "../../../domain/shipment/status.ts";
 import { TrackingCode } from "../../../domain/shipment/vo/tracking-code.ts";
 import { enqueue } from "../outbox.ts";
-import { type PackageRow, type ParcelRow, readAddress, type ScanRow, storeAddress, TOPIC, toWire } from "./dto.ts";
+import { type PackageRow, type ParcelRow, readShipTo, type ScanRow, storeShipTo, TOPIC, toWire } from "./dto.ts";
 
 export class PostgresShipments implements ShipmentRepository {
   constructor(private readonly pool: Pool) {}
@@ -30,6 +30,12 @@ export class PostgresShipments implements ShipmentRepository {
   async byOrder(orderId: string): Promise<Shipment> {
     const rows = await this.pool.query<PackageRow>("SELECT * FROM packages WHERE order_id = $1 ORDER BY id LIMIT 1", [orderId]);
     return this.one(rows.rows[0], `no shipment for order ${orderId}`);
+  }
+
+  async findByOrder(orderId: string): Promise<Shipment | undefined> {
+    const rows = await this.pool.query<PackageRow>("SELECT * FROM packages WHERE order_id = $1 ORDER BY id LIMIT 1", [orderId]);
+    const row = rows.rows[0];
+    return row ? this.hydrate(row) : undefined;
   }
 
   async save(shipment: Shipment, ...events: ShipmentEvent[]): Promise<void> {
@@ -57,7 +63,7 @@ export class PostgresShipments implements ShipmentRepository {
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, tracking = EXCLUDED.tracking, route_id = EXCLUDED.route_id,
                                      dispatched_at = COALESCE(packages.dispatched_at, EXCLUDED.dispatched_at)`,
-      [shipment.id, shipment.orderId, storeAddress(shipment.shipTo), shipment.status, shipment.tracking?.value ?? null, shipment.routeId ?? null, dispatchedAt],
+      [shipment.id, shipment.orderId, storeShipTo(shipment.shipTo), shipment.status, shipment.tracking?.value ?? null, shipment.routeId ?? null, dispatchedAt],
     );
     for (const parcel of shipment.parcels) {
       await client.query("INSERT INTO parcels (id, package_id, weight_g, contents) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING", [
@@ -87,7 +93,7 @@ export class PostgresShipments implements ShipmentRepository {
     const shipment = new Shipment(
       row.id,
       row.order_id,
-      readAddress(row.ship_to),
+      readShipTo(row.ship_to),
       parcels.rows.map((p) => new Parcel(p.id, p.weight_g, p.contents)),
     );
     shipment.status = row.status as ShipmentStatus;

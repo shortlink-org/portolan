@@ -1,0 +1,23 @@
+// A narrowed copy of the ledger's contract (ADR org.0001), kept beside the
+// client generated from it: the one rpc delivery calls, and the fields it
+// reads off the answer. Field numbers and types match the provider; the
+// checkout contract test compares the two.
+syntax = "proto3";
+
+package payments.v1;
+
+// PaymentService moves money for an order. Delivery only asks it to capture.
+service PaymentService {
+  // Capture moves what the gateway was holding. NOT_FOUND for a payment the
+  // ledger has never seen, FAILED_PRECONDITION for one that is not
+  // authorized; a second capture answers with the first.
+  rpc Capture(CaptureRequest) returns (CaptureResponse);
+}
+
+message CaptureRequest {
+  string payment_id = 1;
+}
+
+message CaptureResponse {
+  string payment_id = 1;
+}

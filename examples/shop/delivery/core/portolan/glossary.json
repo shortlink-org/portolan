@@ -21,12 +21,28 @@
       "source": "examples/shop/delivery/core/GLOSSARY.md:9"
     },
     {
+      "id": "delivery.capture",
+      "slug": "capture",
+      "context": "delivery",
+      "name": "Capture",
+      "definition": "Asking the ledger to move the money it was holding for the order, under the order id. Asked by this service when it creates the shipment (ADR core.0003); the ledger's word, used here for the request, while what releases the shipment is the ledger's `PaymentCaptured`.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:12"
+    },
+    {
+      "id": "delivery.confirmed-order",
+      "slug": "confirmed-order",
+      "context": "delivery",
+      "name": "Confirmed order",
+      "definition": "An order whose payment the ledger authorized, as the order service announces it. The moment a shipment is created; the only thing read off it is the order id.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:17"
+    },
+    {
       "id": "delivery.dispatch",
       "slug": "dispatch",
       "context": "delivery",
       "name": "Dispatch",
       "definition": "Handing a planned shipment's parcels to the carrier, under a tracking code. The order is asked once more first; a cancelled order's shipment is written off instead.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:12"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:21"
     },
     {
       "id": "delivery.order",
@@ -34,7 +50,7 @@
       "context": "delivery",
       "name": "Order",
       "definition": "What the shipment is for. Another context owns it, so it is an id here and a question asked over its contract. The table `packages` keeps a foreign key into it, knowingly (ADR core.0001).",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:16"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:25"
     },
     {
       "id": "delivery.package",
@@ -42,7 +58,7 @@
       "context": "delivery",
       "name": "Package",
       "definition": "The row a shipment is kept in. The table's word, not the domain's; the domain says shipment.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:20"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:29"
     },
     {
       "id": "delivery.parcel",
@@ -50,7 +66,7 @@
       "context": "delivery",
       "name": "Parcel",
       "definition": "One box. A shipment is one or more of them, and each is scanned on its own, which is why a parcel is an entity: it is followed over time.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:23"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:32"
     },
     {
       "id": "delivery.released",
@@ -58,7 +74,7 @@
       "context": "delivery",
       "name": "Released",
       "definition": "The money moved; the shipment may be planned onto a route and dispatched. Said by this service, not by the ledger.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:26"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:35"
     },
     {
       "id": "delivery.route",
@@ -66,7 +82,7 @@
       "context": "delivery",
       "name": "Route",
       "definition": "One van, one day, in the order the stops are driven. The order of the stops is the route: changing it is planning a new one.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:29"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:38"
     },
     {
       "id": "delivery.scan",
@@ -74,15 +90,15 @@
       "context": "delivery",
       "name": "Scan",
       "definition": "One sighting of one parcel: where and when. Append-only; a wrong scan is followed by a right one, and the pair is the history. The first scan after dispatch moves the shipment; the rest do not.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:32"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:41"
     },
     {
       "id": "delivery.shipment",
       "slug": "shipment",
       "context": "delivery",
       "name": "Shipment",
-      "definition": "What is being carried to one address for one order. The aggregate root; its status moves only the way its lifecycle table allows.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:36"
+      "definition": "What is being carried to one address for one order. The aggregate root; its status moves only the way its lifecycle table allows. Created from a confirmed order before anything is packed or addressed.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:45"
     },
     {
       "id": "delivery.stop",
@@ -90,7 +106,7 @@
       "context": "delivery",
       "name": "Stop",
       "definition": "One place a van stops and what it drops there. Carries a copy of the shipment's address, itself a copy of the order's.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:39"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:49"
     },
     {
       "id": "delivery.tracking-code",
@@ -98,7 +114,7 @@
       "context": "delivery",
       "name": "Tracking code",
       "definition": "What the customer types into a carrier's site. The carrier owns the format; this service only refuses what obviously cannot be one. Also the whole credential for the tracking page.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:42"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:52"
     },
     {
       "id": "delivery.window",
@@ -106,7 +122,7 @@
       "context": "delivery",
       "name": "Window",
       "definition": "When a van is expected somewhere, as the two ends of a promise to a person.",
-      "source": "examples/shop/delivery/core/GLOSSARY.md:46"
+      "source": "examples/shop/delivery/core/GLOSSARY.md:56"
     }
   ]
 }

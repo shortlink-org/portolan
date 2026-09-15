@@ -39,6 +39,7 @@
 | [Merge baskets](cart-merge-baskets.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Close route](core-close-route.md) | [delivery](../delivery/README.md) | Ends the day, whatever is left undone. |
+| [Create shipment on order confirmed](core-create-shipment-on-order-confirmed.md) | [delivery](../delivery/README.md) | A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003). |
 | [Dispatch](core-dispatch.md) | [delivery](../delivery/README.md) | One shipment, for whoever is asking about an order. |
 | [Get route](core-get-route.md) | [delivery](../delivery/README.md) | One route, as the depot reads it. |
 | [Get shipment](core-get-shipment.md) | [delivery](../delivery/README.md) | One shipment, for whoever is asking about an order. |

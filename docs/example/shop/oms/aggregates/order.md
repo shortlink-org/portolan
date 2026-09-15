@@ -142,6 +142,10 @@ Source: [`examples/shop/oms/src/domain/order/event/order_cancelled.rs`](https://
 
 On the wire as `oms.OrderConfirmed`, on `shop.oms.order`.
 
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [delivery.core](../../../delivery/core/README.md) | declared | `core-create-shipment-on-order-confirmed#s1` |
+
 #### v1 — current
 
 The payment is authorised and the order may be fulfilled. Whoever ships

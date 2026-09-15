@@ -281,6 +281,14 @@
       "diagram": "core-close-route.mmd"
     },
     {
+      "id": "flow.core-create-shipment-on-order-confirmed",
+      "slug": "core-create-shipment-on-order-confirmed",
+      "name": "Create shipment on order confirmed",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts",
+      "diagram": "core-create-shipment-on-order-confirmed.mmd"
+    },
+    {
       "id": "flow.core-dispatch",
       "slug": "core-dispatch",
       "name": "Dispatch",

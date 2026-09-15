@@ -35,15 +35,22 @@
               "runner": "npm",
               "name": "gen",
               "run": "npm run gen",
-              "body": "buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen \u0026\u0026 buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen \u0026\u0026 buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen",
+              "body": "buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen \u0026\u0026 buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen \u0026\u0026 buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen \u0026\u0026 buf generate src/infrastructure/ledger/proto -o src/infrastructure/ledger/gen",
               "source": "examples/shop/delivery/core/package.json:11"
+            },
+            {
+              "runner": "npm",
+              "name": "start",
+              "run": "npm start",
+              "body": "node dist/main.js",
+              "source": "examples/shop/delivery/core/package.json:12"
             },
             {
               "runner": "npm",
               "name": "test",
               "run": "npm test",
               "body": "vitest run",
-              "source": "examples/shop/delivery/core/package.json:12"
+              "source": "examples/shop/delivery/core/package.json:13"
             }
           ]
         }

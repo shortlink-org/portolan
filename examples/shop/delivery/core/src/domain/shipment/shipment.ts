@@ -1,5 +1,6 @@
 import { Parcel } from "./parcel.ts";
 import { Scan } from "./scan.ts";
+import { ShipmentCreated } from "./events/shipment-created.ts";
 import { ShipmentDelivered } from "./events/shipment-delivered.ts";
 import { ShipmentDispatched } from "./events/shipment-dispatched.ts";
 import { ShipmentInTransit } from "./events/shipment-in-transit.ts";
@@ -16,23 +17,44 @@ import { TrackingCode } from "./vo/tracking-code.ts";
  * parcel on a van does not move because somebody edited their profile. The
  * status only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one
  * way through it; every move that is a fact hands back the event that says so.
+ *
+ * A shipment created from a confirmed order has no parcels and no address
+ * yet: nobody in the estate hands those over at confirmation. It may wait for
+ * the money like that, but it is not planned onto a route without somewhere
+ * to go, and it is not handed to the carrier empty.
  */
 export class Shipment {
   readonly id: string;
   readonly orderId: string;
-  readonly shipTo: Address;
+  readonly shipTo: Address | undefined;
   readonly parcels: Parcel[];
   readonly scans: Scan[] = [];
   status: ShipmentStatus = "awaiting-payment";
   tracking: TrackingCode | undefined;
   routeId: string | undefined;
 
-  constructor(id: string, orderId: string, shipTo: Address, parcels: Parcel[]) {
-    if (parcels.length === 0) throw new Error("a shipment carries at least one parcel");
+  constructor(id: string, orderId: string, shipTo: Address | undefined, parcels: Parcel[]) {
     this.id = id;
     this.orderId = orderId;
     this.shipTo = shipTo;
     this.parcels = parcels;
+  }
+
+  /**
+   * A confirmed order becomes a shipment: waiting for the money, nothing
+   * packed, nowhere to go yet (ADR core.0003).
+   */
+  static create(id: string, orderId: string, at: Date): [Shipment, ShipmentCreated] {
+    const shipment = new Shipment(id, orderId, undefined, []);
+
+    return [shipment, new ShipmentCreated(shipment.id, shipment.orderId, at)];
+  }
+
+  /** Where a stop takes it. A shipment with nowhere to go is not planned onto a route. */
+  destination(): Address {
+    if (!this.shipTo) throw new Error(`shipment ${this.id} has no address to plan a stop for`);
+
+    return this.shipTo;
   }
 
   /** The one way the status changes; a move the table does not allow is refused. */
@@ -52,6 +74,7 @@ export class Shipment {
 
   /** Hands the parcels to the carrier and starts the tracking. */
   dispatch(tracking: TrackingCode, at: Date): ShipmentDispatched {
+    if (this.parcels.length === 0) throw new Error(`shipment ${this.id} has no parcels to hand to the carrier`);
     this.tracking = tracking;
     this.moveTo("dispatched");
 

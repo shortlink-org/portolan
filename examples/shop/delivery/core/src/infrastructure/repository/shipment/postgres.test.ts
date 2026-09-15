@@ -15,7 +15,7 @@ let repo: PostgresShipments;
 
 beforeAll(async () => {
   if (!db) return;
-  await db.pool.query("INSERT INTO orders (id) VALUES ('o-1'), ('o-2'), ('o-3')");
+  await db.pool.query("INSERT INTO orders (id) VALUES ('o-1'), ('o-2'), ('o-3'), ('o-4')");
   repo = new PostgresShipments(db.pool);
 });
 
@@ -33,7 +33,7 @@ describe.skipIf(!db)("PostgresShipments", () => {
     const read = await repo.byId("s-1");
     expect(read.status).toBe("dispatched");
     expect(read.tracking?.value).toBe("ABC123XYZ");
-    expect(read.shipTo.toString()).toBe("1 High St, Leeds, LS1 1AA, GB");
+    expect(read.shipTo?.toString()).toBe("1 High St, Leeds, LS1 1AA, GB");
     expect(read.parcels.map((p) => [p.id, p.weightG, p.contents])).toEqual([["p-1", 1200, "books"], ["p-2", 300, "a lamp"]]);
 
     const packages = await db!.pool.query<{ dispatched_at: Date }>("SELECT dispatched_at FROM packages WHERE id = 's-1'");
@@ -73,5 +73,16 @@ describe.skipIf(!db)("PostgresShipments", () => {
     expect((await repo.byTracking(" find0001 ")).id).toBe("s-3");
     expect((await repo.byOrder("o-3")).id).toBe("s-3");
     await expect(repo.byId("s-none")).rejects.toThrow("no shipment s-none");
+  });
+
+  it("keeps a shipment created before anything is packed or addressed, and finds it by its order or answers with nothing", async () => {
+    const [shipment, created] = Shipment.create("s-4", "o-4", now);
+    await repo.save(shipment, created);
+
+    const read = await repo.findByOrder("o-4");
+    expect(read?.status).toBe("awaiting-payment");
+    expect(read?.shipTo).toBeUndefined();
+    expect(read?.parcels).toEqual([]);
+    expect(await repo.findByOrder("o-none")).toBeUndefined();
   });
 });

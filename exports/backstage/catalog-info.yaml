@@ -548,6 +548,7 @@ metadata:
             npm run build
             npm run typecheck
             npm run gen
+            npm start
             npm test
         portolan.io/id: delivery.core
     links:
@@ -561,12 +562,17 @@ metadata:
           title: npm run gen
           type: command
         - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L12
+          title: npm start
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L13
           title: npm test
           type: command
 spec:
     consumesApis:
+        - api:default/payments-v1-paymentservice
         - api:default/shop-v1-orderservice
     dependsOn:
+        - component:default/payments-ledger
         - component:default/shop-oms
         - resource:default/buf-build-shortlink-org-portolan-delivery-route
         - resource:default/buf-build-shortlink-org-portolan-delivery-shipment

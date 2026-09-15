@@ -26,7 +26,7 @@ export class UseCase {
     for (const shipmentId of shipmentIds) {
       const shipment = await this.shipments.byId(shipmentId);
       const window = new Window(plannedFor, new Date(plannedFor.getTime() + 4 * 60 * 60 * 1000));
-      stops.push(new Stop(seq, shipment.id, shipment.shipTo, window));
+      stops.push(new Stop(seq, shipment.id, shipment.destination(), window));
       seq += 1;
     }
 

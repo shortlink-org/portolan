@@ -15,4 +15,4 @@ Parcels, vans and the day they are driven. Told what to carry and asked where it
 
 ## Language
 
-- [Glossary](glossary.md) — 13 terms this context spells one way
+- [Glossary](glossary.md) — 15 terms this context spells one way

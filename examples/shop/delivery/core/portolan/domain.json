@@ -13,9 +13,15 @@
           "name": "Delivery Core",
           "repo": "github.com/shortlink-org/portolan",
           "path": "examples/shop/delivery/core",
-          "readme": "# Delivery Core\n\nService `core` — bounded context **delivery**. TypeScript on Node.\n\nOwns the shipment: what is being carried, where it is, and which van is taking\nit there. It is told what to ship and asked where it got to; it never decides\nwhether something should ship at all. The vocabulary is [GLOSSARY.md](GLOSSARY.md).\n\n## What it does\n\n- Dispatches a planned shipment, with the tracking code the carrier gave, and\n  says `ShipmentDispatched`.\n- Records every sighting of every parcel, append-only.\n- Ends a shipment at the door with who signed for it — `ShipmentDelivered`.\n- Plans a van's day out of the shipments waiting to go out, and closes it.\n- Waits for the money: every shipment starts `awaiting-payment`, and nothing\n  leaves the warehouse before the ledger says the payment was captured. The\n  fact releases it - `ShipmentReleased` - and only then can it be planned and\n  dispatched (core.0002).\n\n## What it does not do\n\nDoes not price anything, does not charge anything and does not decide what to\nsend. A cancelled order is asked about, not argued with: the shipment is\nwritten off.\n\n## Publishes\n\n`ShipmentReleased`, `ShipmentDispatched`, `ShipmentInTransit`,\n`ShipmentDelivered`, `ShipmentLost` on `delivery.core.shipment`;\n`RoutePlanned`, `RouteStarted`, `RouteClosed` on `delivery.core.route`. Every\narrow of both lifecycle tables is one of these.\n\n## Provides\n\n`delivery.v1.Delivery` — TrackShipment, GetShipment — and\n`delivery.v1.RouteService` — PlanRoute, CloseRoute, GetRoute.\n\n## Two things the store says out loud\n\n- `packages.order_id` is a foreign key into `shop.oms.pg.orders`, another\n  service's table. It crosses a boundary knowingly — neither service can\n  migrate that table alone — and the catalog reports it rather than hiding it\n  (core.0001).\n- `route_stops.address` is a **copy** of `packages.ship_to`, which is itself the\n  address handed over with the dispatch. A parcel on a van does not move because\n  somebody edited their profile, which is why the value is copied and not looked\n  up. The migration declares where the copy came from, in a `-- from:` line\n  beside the column, because a table cannot show it the way a view shows a\n  select. The order service is asked about the order's state and nothing else:\n  it holds no address, and asking it for one would be asking the wrong service.\n\n## Decisions\n\n- [core.0001](docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md)\n  — `packages.order_id` is a foreign key into the order service's table,\n  knowingly.\n- [core.0002](docs/adr/0002-a-shipment-waits-for-the-money.md) — a shipment\n  waits for the money, and the ledger's fact releases it.\n\n## Status\n\nA sketch for the catalog, not the reference service; `examples/auth` is\nthat. What it has: two aggregates whose lifecycle tables are enforced and\nwhose every move is an event, use cases that answer with what a caller may\nsee, a policy that reacts to the ledger's fact through a use case, Postgres\nrepositories behind both ports that write the events to an outbox in the\nsame transaction, and the records above. What it deliberately does not have\nyet, and the review skill will name: no server, so nothing here listens; no\nversion on the aggregates, so a stale write wins; no unit of work, so\n`plan_route` writes a route and its shipments one save at a time; no\nsentinel errors or status mapping at the edge; no tracing. Each is a known\ngap, not an oversight, and none of them changes what the catalog shows.\n\n## Running it\n\n```bash\ndocker compose up -d db\nnpm install && npm run gen && npm run build\n```\n\nThe repository tests bring up their own Postgres through Docker and are\nskipped without it:\n\n```bash\nnpm test\n```",
+          "readme": "# Delivery Core\n\nService `core` — bounded context **delivery**. TypeScript on Node.\n\nOwns the shipment: what is being carried, where it is, and which van is taking\nit there. It is told what to ship and asked where it got to; it never decides\nwhether something should ship at all. The vocabulary is [GLOSSARY.md](GLOSSARY.md).\n\n## What it does\n\n- Turns a confirmed order into a shipment: `oms.OrderConfirmed` creates it,\n  once per order, and says `ShipmentCreated`; then the ledger is asked to\n  capture the payment named by the order id (core.0003).\n- Dispatches a planned shipment, with the tracking code the carrier gave, and\n  says `ShipmentDispatched`.\n- Records every sighting of every parcel, append-only.\n- Ends a shipment at the door with who signed for it — `ShipmentDelivered`.\n- Plans a van's day out of the shipments waiting to go out, and closes it.\n- Waits for the money: every shipment starts `awaiting-payment`, and nothing\n  leaves the warehouse before the ledger says the payment was captured. The\n  fact releases it - `ShipmentReleased` - and only then can it be planned and\n  dispatched (core.0002).\n\n## What it does not do\n\nDoes not price anything and does not decide what to send. It decides when\nthe money for a parcel moves - it asks the ledger to capture - but never how\nmuch, and never whether the order stands. A cancelled order is asked about, not argued with: the shipment is\nwritten off.\n\n## Publishes\n\n`ShipmentCreated`, `ShipmentReleased`, `ShipmentDispatched`, `ShipmentInTransit`,\n`ShipmentDelivered`, `ShipmentLost` on `delivery.core.shipment`;\n`RoutePlanned`, `RouteStarted`, `RouteClosed` on `delivery.core.route`. Every\narrow of both lifecycle tables is one of these.\n\n## Provides\n\n`delivery.v1.Delivery` — TrackShipment, GetShipment — and\n`delivery.v1.RouteService` — PlanRoute, CloseRoute, GetRoute.\n\n## Consumes\n\n`oms.OrderConfirmed` on `shop.oms.order` and `ledger.PaymentCaptured` on\n`payments.ledger.payment`, each through a durable JetStream consumer and a\nnarrowed copy of the fact in this service's words. Calls\n`shop.v1.OrderService/GetOrder` at dispatch and\n`payments.v1.PaymentService/Capture` when a shipment is created, through\nnarrowed copies of both contracts vendored beside their clients.\n\n## Two things the store says out loud\n\n- `packages.order_id` is a foreign key into `shop.oms.pg.orders`, another\n  service's table. It crosses a boundary knowingly — neither service can\n  migrate that table alone — and the catalog reports it rather than hiding it\n  (core.0001).\n- `route_stops.address` is a **copy** of `packages.ship_to`, which is itself the\n  address handed over with the dispatch. A parcel on a van does not move because\n  somebody edited their profile, which is why the value is copied and not looked\n  up. The migration declares where the copy came from, in a `-- from:` line\n  beside the column, because a table cannot show it the way a view shows a\n  select. The order service is asked about the order's state and nothing else:\n  it holds no address, and asking it for one would be asking the wrong service.\n\n## Decisions\n\n- [core.0001](docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md)\n  — `packages.order_id` is a foreign key into the order service's table,\n  knowingly.\n- [core.0002](docs/adr/0002-a-shipment-waits-for-the-money.md) — a shipment\n  waits for the money, and the ledger's fact releases it.\n- [core.0003](docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md)\n  — delivery asks the ledger to capture when it creates the shipment, not\n  the order service on confirmation.\n\n## Status\n\nA sketch for the catalog, not the reference service; `examples/auth` is\nthat. What it has: two aggregates whose lifecycle tables are enforced and\nwhose every move is an event, use cases that answer with what a caller may\nsee, policies that react to the order service's and the ledger's facts\nthrough use cases, a worker that reads those facts off the bus, Postgres\nrepositories behind both ports that write the events to an outbox in the\nsame transaction, and the records above. What it deliberately does not have\nyet, and the review skill will name: no gRPC server, so only the bus is\nlistened to; no relay, so the outbox is written and not sent; nothing that\nhands over parcels or an address, so a created shipment has neither; no\nversion on the aggregates, so a stale write wins; no unit of work, so\n`plan_route` writes a route and its shipments one save at a time; no\nsentinel errors or status mapping at the edge; no tracing. Each is a known\ngap, not an oversight, and none of them changes what the catalog shows.\n\n## Running it\n\n```bash\ndocker compose up -d db\nnpm install && npm run gen && npm run build\nSTORE_POSTGRES_URI=... NATS_URL=nats://127.0.0.1:4222 PAYMENTS_ADDR=http://127.0.0.1:9090 npm start\n```\n\nThe worker migrates the store and reads the bus. For the whole chain from a\nbasket to a released shipment, see the\n[checkout scenario](../../../scenarios/README.md).\n\nThe repository tests bring up their own Postgres through Docker and are\nskipped without it:\n\n```bash\nnpm test\n```",
           "provides": [],
           "consumes": [
+            {
+              "id": "payments.v1.PaymentService/Capture",
+              "peer": "payments.ledger",
+              "status": "declared",
+              "source": "examples/shop/delivery/core/src/infrastructure/ledger/proto/payments/v1/payments.proto"
+            },
             {
               "id": "shop.v1.OrderService/GetOrder",
               "peer": "shop.oms",
@@ -316,14 +322,14 @@
               "id": "delivery.core.shipment",
               "slug": "shipment",
               "name": "Shipment",
-              "readme": "What is being carried to one address for one order.\n\nA shipment waits for the money, is released when the ledger says it moved,\nis planned onto a route, dispatched with a tracking code, seen a few times on\nthe way, and then either delivered or written off. The address is a copy taken\nfrom the order at dispatch, not a reference: a parcel already on a van does not\nmove because somebody edited their profile - and that copy is the one thing\nhere that another service's schema can be seen in.\n\n## States\n\n- **awaiting-payment** - where every shipment starts. Nothing leaves the\n  warehouse before the money has moved (ADR core.0002).\n- **planned** - released; may be put on a route and handed to the carrier.\n- **dispatched** - with the carrier, under a tracking code.\n- **in-transit** - seen at least once since dispatch. Later scans add to the\n  history and change nothing.\n- **delivered** - signed for at the door. Terminal.\n- **lost** - written off, with a reason. Terminal; a parcel that turns up\n  afterwards is a new shipment.\n\n## Transitions\n\nEvery arrow is a command on the root and hands back the event that says so.\n`moveTo` is the one way through the table; a move it does not list is refused.\n\n```mermaid\nstateDiagram-v2\n    state \"awaiting-payment\" as awaiting\n    state \"in-transit\" as transit\n    [*] --> awaiting\n    awaiting --> planned: release · ShipmentReleased\n    awaiting --> lost: lose · ShipmentLost\n    planned --> dispatched: dispatch · ShipmentDispatched\n    planned --> lost: lose · ShipmentLost\n    dispatched --> transit: record (first scan) · ShipmentInTransit\n    dispatched --> delivered: deliver · ShipmentDelivered\n    dispatched --> lost: lose · ShipmentLost\n    transit --> delivered: deliver · ShipmentDelivered\n    transit --> lost: lose · ShipmentLost\n    delivered --> [*]\n    lost --> [*]\n```\n\nThe catalog draws the same diagram off the code: see the aggregate page.",
+              "readme": "What is being carried to one address for one order.\n\nA shipment is created when the order is confirmed, waits for the money, is\nreleased when the ledger says it moved,\nis planned onto a route, dispatched with a tracking code, seen a few times on\nthe way, and then either delivered or written off. The address is a copy taken\nfrom the order at dispatch, not a reference: a parcel already on a van does not\nmove because somebody edited their profile - and that copy is the one thing\nhere that another service's schema can be seen in.\n\nCreated from a confirmed order, a shipment has no parcels and no address:\nnobody in the estate hands those over at confirmation. It may wait for the\nmoney like that, but it is not planned onto a route without an address, and\nit is not dispatched with no parcels (ADR core.0003).\n\n## States\n\n- **awaiting-payment** - where every shipment starts, created when the order\n  is confirmed. Nothing leaves the warehouse before the money has moved (ADR\n  core.0002).\n- **planned** - released; may be put on a route and handed to the carrier.\n- **dispatched** - with the carrier, under a tracking code.\n- **in-transit** - seen at least once since dispatch. Later scans add to the\n  history and change nothing.\n- **delivered** - signed for at the door. Terminal.\n- **lost** - written off, with a reason. Terminal; a parcel that turns up\n  afterwards is a new shipment.\n\n## Transitions\n\nEvery arrow is a command on the root and hands back the event that says so.\n`moveTo` is the one way through the table; a move it does not list is refused.\nThe way in is `create`, which says `ShipmentCreated`.\n\n```mermaid\nstateDiagram-v2\n    state \"awaiting-payment\" as awaiting\n    state \"in-transit\" as transit\n    [*] --> awaiting: create · ShipmentCreated\n    awaiting --> planned: release · ShipmentReleased\n    awaiting --> lost: lose · ShipmentLost\n    planned --> dispatched: dispatch · ShipmentDispatched\n    planned --> lost: lose · ShipmentLost\n    dispatched --> transit: record (first scan) · ShipmentInTransit\n    dispatched --> delivered: deliver · ShipmentDelivered\n    dispatched --> lost: lose · ShipmentLost\n    transit --> delivered: deliver · ShipmentDelivered\n    transit --> lost: lose · ShipmentLost\n    delivered --> [*]\n    lost --> [*]\n```\n\nThe catalog draws the same diagram off the code: see the aggregate page.",
               "root": "Shipment",
               "entities": [
                 {
                   "id": "delivery.core.shipment.shipment",
                   "slug": "shipment",
                   "name": "Shipment",
-                  "doc": "What is being carried to one address for one order.\n\nThe address is copied from the order at dispatch and never refreshed: a\nparcel on a van does not move because somebody edited their profile. The\nstatus only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one\nway through it; every move that is a fact hands back the event that says so.",
+                  "doc": "What is being carried to one address for one order.\n\nThe address is copied from the order at dispatch and never refreshed: a\nparcel on a van does not move because somebody edited their profile. The\nstatus only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one\nway through it; every move that is a fact hands back the event that says so.\n\nA shipment created from a confirmed order has no parcels and no address\nyet: nobody in the estate hands those over at confirmation. It may wait for\nthe money like that, but it is not planned onto a route without somewhere\nto go, and it is not handed to the carrier empty.",
                   "fields": [
                     {
                       "name": "id",
@@ -337,7 +343,7 @@
                     },
                     {
                       "name": "shipTo",
-                      "type": "Address",
+                      "type": "Address | undefined",
                       "doc": ""
                     },
                     {
@@ -464,6 +470,11 @@
               ],
               "operations": [
                 {
+                  "id": "CreateShipment",
+                  "kind": "command",
+                  "doc": "Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003)."
+                },
+                {
                   "id": "Dispatch",
                   "kind": "command",
                   "doc": "Hands a planned shipment to the carrier and says so.",
@@ -511,6 +522,45 @@
                 }
               ],
               "events": [
+                {
+                  "id": "delivery.core.shipment.ShipmentCreated",
+                  "slug": "shipment-created",
+                  "name": "ShipmentCreated",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A confirmed order became something to carry. Nothing is packed yet and the\nshipment has nowhere to go: it waits for the money, and the ledger has just\nbeen asked to move it (ADR core.0003).",
+                      "source": "examples/shop/delivery/core/src/domain/shipment/events/shipment-created.ts",
+                      "fields": [
+                        {
+                          "name": "channel",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "shipmentId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "delivery.ShipmentCreated",
+                    "channel": "delivery.core.shipment"
+                  }
+                },
                 {
                   "id": "delivery.core.shipment.ShipmentDelivered",
                   "slug": "shipment-delivered",
@@ -746,63 +796,63 @@
                     "from": "awaiting-payment",
                     "to": "planned",
                     "on": "release",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:48",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:70",
                     "emits": "delivery.core.shipment.ShipmentReleased"
                   },
                   {
                     "from": "awaiting-payment",
                     "to": "lost",
                     "on": "lose",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:83",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:106",
                     "emits": "delivery.core.shipment.ShipmentLost"
                   },
                   {
                     "from": "planned",
                     "to": "dispatched",
                     "on": "dispatch",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:56",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:79",
                     "emits": "delivery.core.shipment.ShipmentDispatched"
                   },
                   {
                     "from": "planned",
                     "to": "lost",
                     "on": "lose",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:83",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:106",
                     "emits": "delivery.core.shipment.ShipmentLost"
                   },
                   {
                     "from": "dispatched",
                     "to": "in-transit",
                     "on": "record",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:69",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:92",
                     "emits": "delivery.core.shipment.ShipmentInTransit"
                   },
                   {
                     "from": "dispatched",
                     "to": "delivered",
                     "on": "deliver",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:76",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:99",
                     "emits": "delivery.core.shipment.ShipmentDelivered"
                   },
                   {
                     "from": "dispatched",
                     "to": "lost",
                     "on": "lose",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:83",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:106",
                     "emits": "delivery.core.shipment.ShipmentLost"
                   },
                   {
                     "from": "in-transit",
                     "to": "delivered",
                     "on": "deliver",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:76",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:99",
                     "emits": "delivery.core.shipment.ShipmentDelivered"
                   },
                   {
                     "from": "in-transit",
                     "to": "lost",
                     "on": "lose",
-                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:83",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:106",
                     "emits": "delivery.core.shipment.ShipmentLost"
                   }
                 ]
@@ -1548,6 +1598,122 @@
           "label": "byTracking",
           "status": "declared",
           "line": "examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-create-shipment-on-order-confirmed",
+      "slug": "core-create-shipment-on-order-confirmed",
+      "name": "Create shipment on order confirmed",
+      "summary": "A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003).",
+      "source": "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts",
+      "trigger": {
+        "kind": "event",
+        "label": "OrderConfirmed",
+        "confidence": "high"
+      },
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "delivery.core",
+          "kind": "event",
+          "label": "OrderConfirmed",
+          "status": "declared",
+          "ref": "shop.oms.order.OrderConfirmed",
+          "line": "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts:18"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "delivery.core",
+          "kind": "call",
+          "label": "CreateShipment",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts:21"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "findByOrder",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:56"
+        },
+        {
+          "type": "alt",
+          "id": "alt6",
+          "branches": [
+            {
+              "title": "!shipment",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s4",
+                  "from": "delivery.core",
+                  "to": "core-pg",
+                  "kind": "call",
+                  "label": "save",
+                  "status": "declared",
+                  "line": "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:59"
+                },
+                {
+                  "type": "step",
+                  "id": "s5",
+                  "from": "delivery.core",
+                  "to": "bus",
+                  "kind": "event",
+                  "label": "ShipmentCreated",
+                  "status": "declared",
+                  "ref": "delivery.core.shipment.ShipmentCreated",
+                  "line": "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:59"
+                }
+              ],
+              "terminal": false
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "delivery.core",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "label": "Capture",
+          "status": "declared",
+          "ref": "payments.v1.PaymentService/Capture",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:67"
         }
       ]
     },

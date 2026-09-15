@@ -34,6 +34,7 @@
 | [cart.0008](cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 | [shop.cart](../shop/cart/README.md) |
 | [core.0001](core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 | [delivery.core](../delivery/core/README.md) |
 | [core.0002](core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 | [delivery.core](../delivery/core/README.md) |
+| [core.0003](core.0003.md) | Delivery asks the ledger to capture when it creates the shipment | accepted | 2026-09-15 | [delivery.core](../delivery/core/README.md) |
 | [ledger.0001](ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0002](ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0003](ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 | [payments.ledger](../payments/ledger/README.md) |
