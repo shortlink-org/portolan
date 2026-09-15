@@ -36,7 +36,7 @@ type Session struct {
 // Start mints a session for a user who has already been authenticated, and
 // returns the fact alongside it. This aggregate does not check passwords and
 // never sees one.
-func Start(id, userID string, now time.Time) (*Session, event.SessionStarted, error) {
+func Start(id, userID, userAgent string, now time.Time) (*Session, event.SessionStarted, error) {
 	minted, err := token.New()
 	if err != nil {
 		return nil, event.SessionStarted{}, err
@@ -48,7 +48,12 @@ func Start(id, userID string, now time.Time) (*Session, event.SessionStarted, er
 		IssuedAt:  now,
 		ExpiresAt: now.Add(TTL),
 	}
-	return s, event.NewSessionStarted(id, userID, s.ExpiresAt, now), nil
+	return s, event.NewSessionStarted(id, userID, userAgent, s.ExpiresAt, now), nil
+}
+
+// Audit records the login that issued the session, for the audit trail.
+func (s *Session) Audit(userAgent string, now time.Time) event.LoginAudited {
+	return event.NewLoginAudited(s.ID, s.UserID, userAgent, now)
 }
 
 // Live reports whether the session may still be used at `now`.

@@ -17,7 +17,7 @@ var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
 func liveSession(t testing.TB) *session.Session {
 	t.Helper()
-	s, _, err := session.Start("s1", "u1", now)
+	s, _, err := session.Start("s1", "u1", "", now)
 	if err != nil {
 		t.Fatal(err)
 	}

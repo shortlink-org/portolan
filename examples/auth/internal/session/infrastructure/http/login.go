@@ -12,9 +12,14 @@ func (h *Sessions) Login(
 	ctx context.Context,
 	request gen.LoginRequestObject,
 ) (gen.LoginResponseObject, error) {
+	userAgent := ""
+	if request.Params.UserAgent != nil {
+		userAgent = *request.Params.UserAgent
+	}
 	out, err := h.login.Handle(ctx, login.Command{
-		Email:    request.Body.Email,
-		Password: request.Body.Password,
+		Email:     request.Body.Email,
+		Password:  request.Body.Password,
+		UserAgent: userAgent,
 	})
 	if err != nil {
 		code, message := status(err)

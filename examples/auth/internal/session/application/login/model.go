@@ -6,6 +6,8 @@ import "time"
 type Command struct {
 	Email    string
 	Password string
+	// UserAgent is what the client called itself; empty when it said nothing.
+	UserAgent string
 }
 
 // Result contains the newly issued session credential.

@@ -32,7 +32,7 @@ func store(t *testing.T) *repo.Postgres {
 
 func newSession(t *testing.T, id, userID string, issued time.Time) *domain.Session {
 	t.Helper()
-	s, _, err := domain.Start(id, userID, issued)
+	s, _, err := domain.Start(id, userID, "", issued)
 	if err != nil {
 		t.Fatal(err)
 	}

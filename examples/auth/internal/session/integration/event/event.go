@@ -21,6 +21,7 @@ const Topic = "auth_session"
 const (
 	TopicSessionStarted = domainevent.TopicSessionStarted
 	TopicSessionEnded   = domainevent.TopicSessionEnded
+	TopicLoginAudited   = domainevent.TopicLoginAudited
 
 	ReasonLogout          = string(domainevent.ReasonLogout)
 	ReasonRevoked         = string(domainevent.ReasonRevoked)
@@ -37,6 +38,7 @@ type Event interface {
 type SessionStarted struct {
 	SessionID  string    `json:"sessionId"`
 	UserID     string    `json:"userId"`
+	UserAgent  string    `json:"userAgent,omitempty"`
 	ExpiresAt  time.Time `json:"expiresAt"`
 	OccurredAt time.Time `json:"occurredAt"`
 }
@@ -47,6 +49,17 @@ func (e SessionStarted) AggregateID() string { return e.SessionID }
 func NewSessionStarted(sessionID, userID string, expiresAt, occurredAt time.Time) SessionStarted {
 	return SessionStarted{SessionID: sessionID, UserID: userID, ExpiresAt: expiresAt, OccurredAt: occurredAt}
 }
+
+// LoginAudited is the wire form of auth.LoginAudited.
+type LoginAudited struct {
+	SessionID  string    `json:"sessionId"`
+	UserID     string    `json:"userId"`
+	UserAgent  string    `json:"userAgent,omitempty"`
+	OccurredAt time.Time `json:"occurredAt"`
+}
+
+func (LoginAudited) Name() string          { return TopicLoginAudited }
+func (e LoginAudited) AggregateID() string { return e.SessionID }
 
 // SessionEnded is the wire form of auth.SessionEnded.
 type SessionEnded struct {
@@ -75,7 +88,16 @@ func Marshal(e domainevent.Event) (*message.Message, error) {
 		payload, err = json.Marshal(SessionStarted{
 			SessionID:  typed.SessionID(),
 			UserID:     typed.UserID(),
+			UserAgent:  typed.UserAgent(),
 			ExpiresAt:  typed.ExpiresAt(),
+			OccurredAt: typed.OccurredAt(),
+		})
+
+	case domainevent.LoginAudited:
+		payload, err = json.Marshal(LoginAudited{
+			SessionID:  typed.SessionID(),
+			UserID:     typed.UserID(),
+			UserAgent:  typed.UserAgent(),
 			OccurredAt: typed.OccurredAt(),
 		})
 
@@ -110,6 +132,13 @@ func Unmarshal(msg *message.Message) (Event, error) {
 	switch name {
 	case domainevent.TopicSessionStarted:
 		var wire SessionStarted
+		if err := json.Unmarshal(msg.Payload, &wire); err != nil {
+			return nil, fmt.Errorf("dto: reading %s: %w", name, err)
+		}
+		return wire, nil
+
+	case domainevent.TopicLoginAudited:
+		var wire LoginAudited
 		if err := json.Unmarshal(msg.Payload, &wire); err != nil {
 			return nil, fmt.Errorf("dto: reading %s: %w", name, err)
 		}

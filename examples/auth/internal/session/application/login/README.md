@@ -7,8 +7,8 @@ Turns credentials into a session.
 1. Asks whoever can check credentials whether these are good.
 2. Asks the risk service whether this attempt, credentials and all, should go
    ahead.
-3. Only then starts a session, storing it and recording `SessionStarted` in one
-   transaction.
+3. Only then starts a session, storing it and recording `SessionStarted` and
+   the audit record `LoginAudited` in one transaction.
 
 The order is the rule: a session is never issued for a user the user domain did
 not vouch for, and never for an attempt risk judged hostile.

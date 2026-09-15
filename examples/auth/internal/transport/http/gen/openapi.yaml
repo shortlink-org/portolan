@@ -117,6 +117,13 @@ paths:
       tags: [sessions]
       operationId: login
       summary: Exchange credentials for a session
+      parameters:
+        - name: User-Agent
+          in: header
+          required: false
+          description: What the client calls itself; kept on the session's audit record.
+          schema:
+            type: string
       requestBody:
         required: true
         content:

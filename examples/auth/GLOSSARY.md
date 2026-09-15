@@ -31,6 +31,10 @@ password on.
 
 **Login.** Turn a credential into a session: authenticate, ask risk, start.
 
+**Login audit.** The record of a login that issued a session - who, from what
+client, when - published as `LoginAudited` with the session, for a trail kept
+elsewhere.
+
 **Logout.** End the session behind a token, at the user's request. Reason
 `logout`.
 

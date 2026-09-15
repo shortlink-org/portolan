@@ -18,4 +18,5 @@ type Event = ddd.Event
 const (
 	TopicSessionStarted = "auth.SessionStarted"
 	TopicSessionEnded   = "auth.SessionEnded"
+	TopicLoginAudited   = "auth.LoginAudited"
 )

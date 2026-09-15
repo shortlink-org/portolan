@@ -78,6 +78,12 @@ type Internal = Error
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
+// LoginParams defines parameters for Login.
+type LoginParams struct {
+	// UserAgent What the client calls itself; kept on the session's audit record.
+	UserAgent *string `json:"User-Agent,omitempty"`
+}
+
 // LogoutParams defines parameters for Logout.
 type LogoutParams struct {
 	// Authorization `Bearer <token>`
@@ -109,7 +115,7 @@ type ChangePasswordJSONRequestBody = ChangePasswordRequest
 type ServerInterface interface {
 	// Login Exchange credentials for a session
 	// (POST /v1/sessions)
-	Login(w http.ResponseWriter, r *http.Request)
+	Login(w http.ResponseWriter, r *http.Request, params LoginParams)
 	// Logout End the session behind the bearer token
 	// (DELETE /v1/sessions/current)
 	Logout(w http.ResponseWriter, r *http.Request, params LogoutParams)
@@ -133,7 +139,7 @@ type Unimplemented struct{}
 
 // Login Exchange credentials for a session
 // (POST /v1/sessions)
-func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request, params LoginParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -179,8 +185,35 @@ type MiddlewareFunc func(http.Handler) http.Handler
 // Login operation middleware
 func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LoginParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "User-Agent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("User-Agent")]; found {
+		var UserAgent string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "User-Agent", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "User-Agent", valueList[0], &UserAgent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "User-Agent", Err: err})
+			return
+		}
+
+		params.UserAgent = &UserAgent
+
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Login(w, r)
+		siw.Handler.Login(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -507,7 +540,8 @@ type InternalJSONResponse Error
 type UnauthorizedJSONResponse Error
 
 type LoginRequestObject struct {
-	Body *LoginJSONRequestBody
+	Params LoginParams
+	Body   *LoginJSONRequestBody
 }
 
 type LoginResponseObject interface {
@@ -899,8 +933,10 @@ type strictHandler struct {
 }
 
 // Login operation middleware
-func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request, params LoginParams) {
 	var request LoginRequestObject
+
+	request.Params = params
 
 	var body LoginJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

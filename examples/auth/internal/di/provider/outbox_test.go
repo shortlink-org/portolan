@@ -106,7 +106,7 @@ func TestEverythingWrittenToTheOutboxIsRead(t *testing.T) {
 
 	// One fact from every domain, and the one a policy reacts to.
 	issued := change.Add(-time.Hour)
-	s1, started, err := session.Start("s1", "u1", issued)
+	s1, started, err := session.Start("s1", "u1", "", issued)
 	if err != nil {
 		t.Fatal(err)
 	}

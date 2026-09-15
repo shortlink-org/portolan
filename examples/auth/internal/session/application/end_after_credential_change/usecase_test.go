@@ -17,7 +17,7 @@ var change = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
 func started(t testing.TB, id string, at time.Time) *session.Session {
 	t.Helper()
-	s, _, err := session.Start(id, "u1", at)
+	s, _, err := session.Start(id, "u1", "", at)
 	if err != nil {
 		t.Fatal(err)
 	}

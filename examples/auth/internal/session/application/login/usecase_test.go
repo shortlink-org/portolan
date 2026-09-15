@@ -19,7 +19,7 @@ var errInvalidCredentials = errors.New("invalid credentials")
 
 func sessionAt(t testing.TB, id, userID string, at time.Time) *session.Session {
 	t.Helper()
-	s, _, err := session.Start(id, userID, at)
+	s, _, err := session.Start(id, userID, "", at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestLogin(t *testing.T) {
 			if stored.ID != "s1" || stored.UserID != "u1" || !stored.IssuedAt.Equal(now) {
 				t.Errorf("stored = %+v", stored)
 			}
-			if len(events) != 1 || events[0].Name() != "auth.SessionStarted" {
+			if len(events) != 2 || events[0].Name() != "auth.SessionStarted" || events[1].Name() != "auth.LoginAudited" {
 				t.Errorf("events = %v, want SessionStarted", events)
 			}
 			return nil

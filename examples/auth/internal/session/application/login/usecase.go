@@ -70,11 +70,14 @@ func (uc *UseCase) Handle(ctx context.Context, in Command) (Result, error) {
 		return Result{}, ErrBlocked
 	}
 
-	sess, ev, err := session.Start(uc.newID(), userID, uc.now())
+	sess, ev, err := session.Start(uc.newID(), userID, in.UserAgent, uc.now())
 	if err != nil {
 		return Result{}, err
 	}
-	if err := uc.repo.Save(ctx, sess, ev); err != nil {
+	// The audit record goes out in the same transaction as the session: a
+	// session nobody can find in the audit trail is the thing it is kept for.
+	audited := sess.Audit(in.UserAgent, uc.now())
+	if err := uc.repo.Save(ctx, sess, ev, audited); err != nil {
 		return Result{}, err
 	}
 

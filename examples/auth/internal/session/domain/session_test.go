@@ -12,7 +12,7 @@ var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
 func start(t *testing.T) (*session.Session, event.SessionStarted) {
 	t.Helper()
-	s, ev, err := session.Start("s1", "u1", now)
+	s, ev, err := session.Start("s1", "u1", "", now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,8 +44,8 @@ func TestStart(t *testing.T) {
 
 // Two sessions never share a token, or one logout would end both.
 func TestStartMintsAFreshToken(t *testing.T) {
-	a, _, _ := session.Start("s1", "u1", now)
-	b, _, _ := session.Start("s2", "u1", now)
+	a, _, _ := session.Start("s1", "u1", "", now)
+	b, _, _ := session.Start("s2", "u1", "", now)
 	if a.Token.Equal(b.Token) {
 		t.Fatal("two sessions were given the same token")
 	}
