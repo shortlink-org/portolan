@@ -1642,6 +1642,47 @@
   animation: row-in var(--dur-panel) var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 20ms);
 }
+/* The catalog loading screen: late fade, rhumbs drawing out, needle settling. */
+@keyframes rhumb-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes needle-settle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  18% {
+    transform: rotate(38deg);
+  }
+  34% {
+    transform: rotate(-20deg);
+  }
+  48% {
+    transform: rotate(9deg);
+  }
+  60% {
+    transform: rotate(-3deg);
+  }
+  70% {
+    transform: rotate(0deg);
+  }
+}
+.catalog-loading {
+  animation: fade-in var(--dur-narrative) var(--ease-out) 200ms both;
+}
+.catalog-loading-rhumb {
+  stroke-dasharray: 1;
+  animation: rhumb-draw 900ms var(--ease-out) both;
+  animation-delay: calc(200ms + var(--i, 0) * 40ms);
+}
+.catalog-loading-rose {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: needle-settle 2800ms var(--ease-in-out) 400ms infinite;
+}
+
 @utility bar-fill {
   transform-origin: left center;
   animation: bar-fill var(--dur-narrative) var(--ease-in-out) both;

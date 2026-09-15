@@ -4,6 +4,7 @@ import { LandingPage } from "../landing/LandingPage";
 import { isLandingPath } from "../routes";
 import { MotionProvider } from "../lib/motion";
 import { SuspenseReveal } from "../components/SuspenseReveal";
+import { CatalogLoading } from "../components/CatalogLoading";
 import { ThemeProvider } from "./theme";
 
 // The catalog carries diagram runtimes, API viewers and every generated fact.
@@ -19,13 +20,7 @@ function RoutedApp() {
   if (isLandingPath(pathname)) return <LandingPage />;
 
   return (
-    <SuspenseReveal
-      fallback={
-        <div className="flex h-full items-center justify-center bg-canvas text-muted">
-          <span className="mono">loading the catalog…</span>
-        </div>
-      }
-    >
+    <SuspenseReveal fallback={<CatalogLoading />}>
       <CatalogApp />
     </SuspenseReveal>
   );
