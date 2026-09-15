@@ -17,8 +17,33 @@ type destinationObject map[string]catalog.HTTPBaseURL
 // Keep constructor settings on the owning adapter field, never on the shared
 // HTTP client type. Conflicting or unreadable construction sites invalidate
 // the field instead of borrowing another instance's destination.
+//
+// Construction sites are read twice: once following a constructor's
+// parameters back to what each site passes, once stopping at the parameter.
+// A field every site agrees on in the first reading is known by what the
+// sites pass (`Config.BookingStoreAddr`); failing that, by the parameter
+// the constructor sets it from, as before.
 func (s *scanner) indexDestinations() {
-	s.destinations = map[string]destinationObject{}
+	s.resolveArguments = false
+	symbolic := s.agreedDestinations()
+	s.resolveArguments = true
+	passed := s.agreedDestinations()
+	s.resolveArguments = false
+	s.destinations = symbolic
+	for owner, object := range passed {
+		merged := destinationObject{}
+		for field, base := range symbolic[owner] {
+			merged[field] = base
+		}
+		for field, base := range object {
+			merged[field] = base
+		}
+		s.destinations[owner] = merged
+	}
+}
+
+func (s *scanner) agreedDestinations() map[string]destinationObject {
+	destinations := map[string]destinationObject{}
 	candidates := map[string][]destinationObject{}
 	keys := make([]string, 0, len(s.functions))
 	for key := range s.functions {
@@ -69,9 +94,10 @@ func (s *scanner) indexDestinations() {
 			}
 		}
 		if len(common) > 0 {
-			s.destinations[owner] = common
+			destinations[owner] = common
 		}
 	}
+	return destinations
 }
 
 // Read returned struct fields and the narrow functional-option shape
@@ -88,7 +114,9 @@ func (s *scanner) destinationObject(owner *functionDecl, expr ast.Expr, bound ma
 				continue
 			}
 			for field, base := range s.destinationObject(owner, pair.Value, bound, seen) {
-				result[expression(pair.Key)+"."+field] = base
+				if field != passedValue {
+					result[expression(pair.Key)+"."+field] = base
+				}
 			}
 		}
 		return result
@@ -108,6 +136,9 @@ func (s *scanner) destinationObject(owner *functionDecl, expr ast.Expr, bound ma
 	for i, param := range functionParams(target.fn) {
 		if i < len(call.Args) {
 			args[param] = s.destinationObject(owner, call.Args[i], bound, seen)
+			if passed, ok := s.passedBase(owner, call.Args[i], bound); ok && len(args[param]) == 0 {
+				args[param] = destinationObject{passedValue: passed}
+			}
 		}
 	}
 	// Only apply options if the constructor actually invokes each option on
@@ -193,6 +224,9 @@ func (s *scanner) destinationObject(owner *functionDecl, expr ast.Expr, bound ma
 					for i, param := range params {
 						if expression(assign.Rhs[0]) == param && i < len(option.Args) {
 							base := s.destinationBase(owner, option.Args[i])
+							if passed, ok := s.passedBase(owner, option.Args[i], bound); ok {
+								base = passed
+							}
 							base.OptionSource = s.source(owner.file, option.Pos()).String()
 							result[field.Sel.Name] = base
 						}
@@ -202,6 +236,36 @@ func (s *scanner) destinationObject(owner *functionDecl, expr ast.Expr, bound ma
 		}
 	}
 	return result
+}
+
+// passedValue keys the base URL a constructor parameter was handed by its
+// caller, beside the fields of an object argument.
+const passedValue = "\x00passed"
+
+// passedBase is the base URL an argument hands a constructor when the
+// construction site says more than the parameter's name: a literal, a
+// configuration field, or a parameter of an enclosing constructor that was
+// itself handed one (`bookingstore.New(cfg.BookingStoreAddr)` into
+// `jsonapi.WithBaseURL(url)`). It is only consulted while resolveArguments is
+// on, so that the symbolic constructor parameter stays the fallback when the
+// construction sites of one type disagree.
+func (s *scanner) passedBase(owner *functionDecl, expr ast.Expr, bound map[string]destinationObject) (catalog.HTTPBaseURL, bool) {
+	if !s.resolveArguments {
+		return catalog.HTTPBaseURL{}, false
+	}
+	switch x := expr.(type) {
+	case *ast.Ident:
+		base, ok := bound[x.Name][passedValue]
+		return base, ok
+	case *ast.BasicLit:
+		if x.Kind == token.STRING {
+			return s.destinationBase(owner, expr), true
+		}
+	case *ast.SelectorExpr:
+		base := s.destinationBase(owner, expr)
+		return base, base.ConfigField != "" || base.EnvironmentVariable != ""
+	}
+	return catalog.HTTPBaseURL{}, false
 }
 
 func (s *scanner) destinationBase(owner *functionDecl, expr ast.Expr) catalog.HTTPBaseURL {

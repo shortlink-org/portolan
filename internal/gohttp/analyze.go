@@ -82,8 +82,15 @@ type Call struct {
 	Contract    string
 	Conditions  []string
 	Chain       []string
-	URLTrace    []string
-	template    *callTemplate
+	// URLFrame is the qualified key of the function on Chain that spelled
+	// the request URL (`internal/clients/aviasupp/aviasupp_cli:Client.Book`
+	// writes "/book"; the helpers below it pass it on).
+	URLFrame string
+	URLTrace []string
+	template *callTemplate
+	// callerURL marks a call whose URL is only what the enclosing function's
+	// caller passes in, and whose route source does not name.
+	callerURL bool
 }
 
 type FlowGroup struct {
@@ -177,6 +184,9 @@ type scanner struct {
 	fieldTypes          map[string][]endpointType
 	typedEdges          map[string][]localEdge
 	typedCallGraphError string
+	resolveArguments    bool
+	collectRoot         string
+	unlinked            map[string]bool
 }
 
 type functionDecl struct {
@@ -289,6 +299,9 @@ func AnalyzeWith(root string, opts Options) (Result, error) {
 		return calls[i].ID < calls[j].ID
 	})
 	calls = uniqueCalls(calls)
+	for index := range calls {
+		calls[index].callerURL = s.callerSuppliedURL(calls[index])
+	}
 	sort.Strings(s.warnings)
 	directCalls := calls
 	flows := s.flowGroups(directCalls)
@@ -325,7 +338,9 @@ func callsSpecializedByFlows(direct []Call, flows []FlowGroup) []Call {
 		}
 	}
 	for _, call := range direct {
-		if !specializedSources[call.Source.String()] {
+		// A helper that sends whatever URL it is handed is a dependency only
+		// through a caller that hands it one; no flow found such a caller.
+		if !specializedSources[call.Source.String()] && !call.callerURL {
 			out = append(out, call)
 		}
 	}
@@ -2061,17 +2076,24 @@ func (s *scanner) value(file *parsedFile, expr ast.Expr, locals map[string]strin
 		if x.Op == token.ADD {
 			left := s.value(file, x.X, locals, seen)
 			right := s.value(file, x.Y, locals, seen)
-			if left != "" && right != "" {
-				return left + right
+			if left == "" && right == "" {
+				return ""
 			}
-			if right != "" {
-				return expression(x.X) + right
+			leftText := left
+			if leftText == "" {
+				leftText = expression(x.X)
 			}
-			if left != "" {
-				return left + expression(x.Y)
+			if right == "" {
+				return leftText + pathHole(leftText, x.Y)
 			}
+			return concatURL(leftText, right)
 		}
 	case *ast.CallExpr:
+		if urlJoin(file, x) {
+			if joined := s.joinedURL(file, x, locals, seen); joined != "" {
+				return joined
+			}
+		}
 		if selectorName(x.Fun) == "Join" && len(x.Args) > 0 {
 			var parts []string
 			for _, argument := range x.Args {
@@ -2086,7 +2108,7 @@ func (s *scanner) value(file *parsedFile, expr ast.Expr, locals map[string]strin
 		if selectorName(x.Fun) == "Sprintf" && len(x.Args) > 0 {
 			format := s.value(file, x.Args[0], locals, seen)
 			if format != "" {
-				return format
+				return s.formatURL(file, format, x.Args[1:], locals, seen)
 			}
 		}
 		if selectorName(x.Fun) == "String" {
@@ -2166,16 +2188,32 @@ func pathOf(expr ast.Expr, endpoint string) string {
 				if parsed, err := url.Parse(candidate); err == nil && parsed.Path != "" {
 					return parsed.Path
 				}
-				return candidate
+				return withoutQuery(candidate)
 			}
 		}
-		if parsed, err := url.Parse(endpoint); err == nil && parsed.Path != "" {
+		parsed, err := url.Parse(endpoint)
+		if err == nil && parsed.Path != "" {
 			if strings.HasPrefix(parsed.Path, "/") || strings.Contains(endpoint, "://") {
 				return parsed.Path
 			}
 		}
+		// A format verb left in the URL (`%s`, a `%d` nothing bound) is not an
+		// escape url.Parse accepts; the path is still what follows the host.
+		if err != nil && strings.Contains(endpoint, "://") {
+			rest := endpoint[strings.Index(endpoint, "://")+3:]
+			if at := strings.IndexAny(rest, "/?#"); at >= 0 && rest[at] == '/' {
+				return withoutQuery(rest[at:])
+			}
+		}
 	}
 	return firstPathLiteral(expr)
+}
+
+func withoutQuery(path string) string {
+	if at := strings.IndexAny(path, "?#"); at >= 0 {
+		return path[:at]
+	}
+	return path
 }
 
 func firstPathLiteral(expr ast.Expr) string {
@@ -2368,7 +2406,8 @@ func (s *scanner) flowGroups(calls []Call) []FlowGroup {
 	}
 	groups := map[string][]Call{}
 	for key := range s.functions {
-		collected := s.collectCalls(key, edges, direct, nil, nil, nil, map[string]bool{}, 0)
+		s.collectRoot = key
+		collected := s.collectCalls(key, edges, direct, nil, nil, nil, nil, map[string]bool{}, 0)
 		if len(collected) > 0 {
 			groups[key] = collected
 		}
@@ -2465,7 +2504,14 @@ func fieldListNames(fields *ast.FieldList) []string {
 	return out
 }
 
-func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct map[string][]Call, chain []string, bindings map[string]string, origins destinationObject, visiting map[string]bool, depth int) []Call {
+// collectCalls follows key's calls and the local functions it calls. chain
+// holds the display names of the callers above key. writers names, for each
+// parameter of key, the caller that wrote the value it was handed; "" is a
+// string parameter of the root, whose value nothing in source proves. A call
+// whose URL is only such a value, with no route written anywhere on the path,
+// is not a dependency of this function: it is a helper sending whatever its
+// caller hands it, and the callers that hand it a route carry the real call.
+func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct map[string][]Call, chain []string, bindings map[string]string, origins destinationObject, writers map[string]string, visiting map[string]bool, depth int) []Call {
 	if depth > 6 || visiting[key] {
 		return nil
 	}
@@ -2474,8 +2520,19 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 	path := appendCopy(chain, displayFunction(key))
 	declaration := s.functions[key]
 	locals := map[string]string{}
+	var carried map[string]string
 	if declaration != nil {
-		if origins == nil && declaration.fn.Recv != nil {
+		if depth == 0 {
+			writers = map[string]string{}
+			for name := range stringParams(declaration.fn) {
+				writers[name] = ""
+			}
+		}
+		carried = carriedNames(declaration.fn, writers)
+		// A receiver reached through a holder whose field no constructor
+		// traced still has the destination every construction site of its
+		// type agrees on.
+		if len(origins) == 0 && declaration.fn.Recv != nil {
 			typ, ok := s.typeExpression(declaration.file, declaration.fn.Recv.List[0].Type)
 			if ok {
 				origins = s.destinations[fieldTypeKey(typ, "")]
@@ -2529,17 +2586,32 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 				}
 				copy.Destination = s.destinationFor(copy, declaration, origins)
 				copy = withCallID(copy)
+				copy.URLFrame = key
+				if writer, ok := carrier(copy.template.endpoint, carried); ok {
+					if writer == "" && copy.Path == "" && !strings.ContainsAny(copy.Endpoint, "/?") && !s.possiblyCalled(s.collectRoot) {
+						continue
+					}
+					if writer != "" {
+						copy.URLFrame = writer
+					}
+				}
 			}
 			copy.Chain = append([]string(nil), path...)
 			out = append(out, copy)
 			continue
 		}
 		nextBindings := map[string]string{}
+		nextWriters := map[string]string{}
 		if target := s.functions[item.edge.target]; target != nil && declaration != nil {
 			params := functionParams(target.fn)
 			for index, name := range params {
 				if name == "" || index >= len(item.edge.args) {
 					continue
+				}
+				if writer, ok := carrier(item.edge.args[index], carried); ok {
+					nextWriters[name] = writer
+				} else {
+					nextWriters[name] = key
 				}
 				value := s.value(declaration.file, item.edge.args[index], locals, map[string]bool{})
 				if value == "" {
@@ -2564,7 +2636,7 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 				}
 			}
 		}
-		out = append(out, s.collectCalls(item.edge.target, edges, direct, path, nextBindings, nextOrigins, visiting, depth+1)...)
+		out = append(out, s.collectCalls(item.edge.target, edges, direct, path, nextBindings, nextOrigins, nextWriters, visiting, depth+1)...)
 	}
 	return uniqueFlowCalls(out)
 }

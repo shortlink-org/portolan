@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -1952,6 +1953,330 @@ func (c *Client) Confirmed(ctx context.Context, body any) error {
 	for _, want := range []string{"receiver.http/POST /callbacks/booking-cancelled", "receiver.http/POST /callbacks/booking-confirmed"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("missing %s: %v", want, ids)
+		}
+	}
+}
+
+func extractFixture(t *testing.T, files map[string]string, opts Options) catalog.Catalog {
+	t.Helper()
+	root := t.TempDir()
+	for name, contents := range files {
+		writeHTTPFixture(t, root, name, contents)
+	}
+	resp, err := extract(plugin.Input{Root: root}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func consumesByID(got catalog.Catalog) map[string]catalog.RpcCall {
+	out := map[string]catalog.RpcCall{}
+	for _, call := range got.Contexts[0].Services[0].Consumes {
+		out[call.ID] = call
+	}
+	return out
+}
+
+func sortedIDs(calls map[string]catalog.RpcCall) []string {
+	ids := make([]string, 0, len(calls))
+	for id := range calls {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// A generic JSON client shared by several adapters: jsonapi joins its base
+// URL and the route it is handed.
+const jsonAPIFixture = `package jsonapi
+import "net/http"
+type Client struct { baseURL string }
+type Option func(*Client)
+func WithBaseURL(value string) Option { return func(c *Client) { c.baseURL = value } }
+func NewClient(options ...Option) *Client {
+  c := &Client{}
+  for _, opt := range options { opt(c) }
+  return c
+}
+func (c *Client) createRequest(method, url string) {
+  if len(c.baseURL) > 0 {
+    url = c.baseURL + url
+  }
+  req, _ := http.NewRequest(method, url, nil)
+  _ = req
+}
+func (c *Client) GET(url string) { c.createRequest(http.MethodGet, url) }
+func (c *Client) POST(url string) { c.createRequest(http.MethodPost, url) }
+func (c *Client) DELETE(url string) { c.createRequest(http.MethodDelete, url) }
+`
+
+// aviacore's bookingstore: the constructor is handed the configured address,
+// normalizes its trailing slash and passes it on as a functional option; the
+// store sends routes relative to it with ids and a query appended. The route
+// is the configured path prefix and the relative route, with the id a hole;
+// a handler holding the store in a field no constructor traced reaches the
+// same destination, and the DELETE nothing calls is no dependency.
+func TestJoinsARelativeRouteToAConstructorBaseURL(t *testing.T) {
+	got := extractFixture(t, map[string]string{
+		"go.mod":                "module example.com/core\n",
+		"pkg/jsonapi/client.go": jsonAPIFixture,
+		"config/config.go": `package config
+type Config struct {
+  StoreAddr string ` + "`envconfig:\"STORE_ADDR\" default:\"http://localhost:8000/book-store\"`" + `
+}
+`,
+		"store/store.go": `package store
+import (
+  "net/url"
+  "strconv"
+  "strings"
+  "example.com/core/pkg/jsonapi"
+)
+type Store struct { client *jsonapi.Client }
+func New(url string) *Store {
+  if !strings.HasSuffix(url, "/") {
+    url += "/"
+  }
+  return &Store{client: jsonapi.NewClient(jsonapi.WithBaseURL(url))}
+}
+func (s *Store) LoadOrder(orderID int64) {
+  q := url.Values{}
+  s.client.GET("book/" + strconv.FormatInt(orderID, 10) + "?" + q.Encode())
+}
+func (s *Store) LoadByBooking(bookingID int64) {
+  s.client.GET("order-by-booking-id/" + url.QueryEscape(strconv.FormatInt(bookingID, 10)))
+}
+func (s *Store) SaveRules() { s.client.POST("route-rules/") }
+`,
+		"app/app.go": `package app
+import (
+  "example.com/core/config"
+  "example.com/core/store"
+)
+func Build(cfg *config.Config) *store.Store { return store.New(cfg.StoreAddr) }
+func Cron(cfg *config.Config) *store.Store { return store.New(cfg.StoreAddr) }
+`,
+		"handler/handler.go": `package handler
+import "example.com/core/store"
+type Handler struct { orders *store.Store }
+func (h *Handler) Show(id int64) { h.orders.LoadOrder(id) }
+`,
+	}, Options{Context: "core", Service: "core"})
+	byID := consumesByID(got)
+	want := map[string]string{
+		"http-client/GET /book-store/book/{orderID} @ Config.StoreAddr":                  "/book-store/book/{orderID}",
+		"http-client/GET /book-store/order-by-booking-id/{bookingID} @ Config.StoreAddr": "/book-store/order-by-booking-id/{bookingID}",
+		"http-client/POST /book-store/route-rules/ @ Config.StoreAddr":                   "/book-store/route-rules/",
+	}
+	for id, fullPath := range want {
+		call, ok := byID[id]
+		if !ok {
+			t.Fatalf("missing %s in %v", id, sortedIDs(byID))
+		}
+		d := call.Destination
+		if d == nil || d.FullPath != fullPath || d.BaseURL == nil || d.BaseURL.EnvironmentVariable != "STORE_ADDR" {
+			t.Fatalf("%s destination = %+v", id, d)
+		}
+	}
+	if len(byID) != len(want) {
+		t.Fatalf("consumes = %v", sortedIDs(byID))
+	}
+	for _, flow := range got.Flows {
+		if flow.EntryPoint != "handler:Handler.Show" {
+			continue
+		}
+		step := flow.Steps[0].(*catalog.Step)
+		if step.Ref != "http-client/GET /book-store/book/{orderID} @ Config.StoreAddr" {
+			t.Fatalf("handler step = %+v", step)
+		}
+		return
+	}
+	t.Fatalf("no handler flow in %+v", got.Flows)
+}
+
+// fmt.Sprintf, url.JoinPath and path.Join build URLs from a literal
+// template: the base where it stands, holes for the values nobody spells, a
+// constant written in, and a route a caller passes to a transport helper
+// written in too; a datum one caller passes (a settings key) is not.
+func TestFormatsAndJoinsURLTemplates(t *testing.T) {
+	got := extractFixture(t, map[string]string{
+		"go.mod": "module example.com/core\n",
+		"settings/settings.go": `package settings
+import (
+  "fmt"
+  "net/http"
+)
+type Config struct {
+  SettingAddr string ` + "`envconfig:\"SETTINGS_ADDR\" default:\"http://localhost:8000/settings\"`" + `
+}
+type Client struct { baseURL string }
+type Option func(*Client)
+func WithBaseURL(value string) Option { return func(c *Client) { c.baseURL = value } }
+func NewClient(options ...Option) *Client {
+  c := &Client{}
+  for _, opt := range options { opt(c) }
+  return c
+}
+func (c *Client) GET(path string) { req, _ := http.NewRequest(http.MethodGet, c.baseURL+path, nil); _ = req }
+type Manager struct { client *Client }
+func New(client *Client) *Manager { return &Manager{client: client} }
+func Build(cfg Config) *Manager { return New(NewClient(WithBaseURL(cfg.SettingAddr))) }
+func (m *Manager) Raw(key string) { m.client.GET(fmt.Sprintf("/raw/%s", key)) }
+func (m *Manager) IsEnabled() bool { m.Raw("feature_x"); return true }
+`,
+		"partner/partner.go": `package partner
+import (
+  "fmt"
+  "net/http"
+)
+const pathOrderUpdate = "api/v1/order/update/"
+type Partners struct { partnersURL string }
+func New(partnersURL string) *Partners { return &Partners{partnersURL: partnersURL} }
+func (c *Partners) OrderUpdate() { c.call(pathOrderUpdate) }
+func (c *Partners) call(path string) {
+  url := fmt.Sprintf("%s/%s", c.partnersURL, path)
+  req, _ := http.NewRequest(http.MethodPost, url, nil)
+  _ = req
+}
+`,
+		"billing/billing.go": `package billing
+import (
+  "net/http"
+  "net/url"
+  "path"
+)
+type Client struct { host string }
+func (c *Client) Invoice(base, id string) {
+  u, _ := url.JoinPath(base, "invoices", id)
+  http.Get(u)
+}
+func (c *Client) Order(orderID string) {
+  http.Get(c.host + path.Join("/v2/orders", orderID))
+}
+`,
+	}, Options{Context: "core", Service: "core"})
+	byID := consumesByID(got)
+	raw, ok := byID["http-client/GET /settings/raw/{key} @ Config.SettingAddr"]
+	if !ok || raw.Destination == nil || raw.Destination.FullPath != "/settings/raw/{key}" {
+		t.Fatalf("raw = %+v (all %v)", raw, sortedIDs(byID))
+	}
+	joined := strings.Join(sortedIDs(byID), "\n")
+	for _, want := range []string{"http-client/POST /api/v1/order/update/", "http-client/GET /invoices/{id}", "http-client/GET /v2/orders/{orderID}"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %s in:\n%s", want, joined)
+		}
+	}
+	if strings.Contains(joined, "feature_x") || strings.Contains(joined, "%s") || strings.Contains(joined, "dynamic endpoint") {
+		t.Fatalf("a datum, a verb or a lost route leaked into an id:\n%s", joined)
+	}
+}
+
+// A helper that sends whatever URL its caller hands it is a dependency only
+// through a caller that hands it a route: Post's route is Create's, and
+// nothing calls Put. Delete is called on a parameter the call graph cannot
+// follow, so its call stays, unresolved, instead of vanishing with the gap. A
+// URL read from configuration with no route in source is still a dependency,
+// of an endpoint only the running process knows.
+func TestHelperSendingItsCallersURLIsNotADependency(t *testing.T) {
+	got := extractFixture(t, map[string]string{
+		"go.mod": "module example.com/core\n",
+		"client/client.go": `package client
+import "net/http"
+type Client struct { baseURL string }
+func New(baseURL string) *Client { return &Client{baseURL: baseURL} }
+func (c *Client) Post(url string) { http.Post(c.baseURL+url, "application/json", nil) }
+func (c *Client) Put(url string) { c.send(http.MethodPut, url) }
+func (c *Client) Delete(url string) { c.send(http.MethodDelete, url) }
+func (c *Client) send(method, url string) {
+  req, _ := http.NewRequest(method, c.baseURL+url, nil)
+  _ = req
+}
+`,
+		"orders/orders.go": `package orders
+import (
+  "net/http"
+  "example.com/core/client"
+)
+type Config struct { HealthURL string }
+type Service struct { client *client.Client }
+func (s *Service) Create() { s.client.Post("/orders") }
+func Remove(c *client.Client, id string) { c.Delete(id) }
+func Ping(cfg Config) { http.Get(cfg.HealthURL) }
+`,
+	}, Options{Context: "core", Service: "core"})
+	byID := consumesByID(got)
+	ids := sortedIDs(byID)
+	if len(ids) != 3 || !strings.HasPrefix(ids[0], "http-client/DELETE dynamic endpoint") || !strings.HasPrefix(ids[1], "http-client/GET dynamic endpoint") || !strings.HasPrefix(ids[2], "http-client/POST /orders") {
+		t.Fatalf("consumes = %v", ids)
+	}
+	for _, id := range ids[:2] {
+		if byID[id].Status != catalog.StatusUnresolved {
+			t.Fatalf("%s must stay unresolved: %+v", id, byID[id])
+		}
+	}
+	for _, flow := range got.Flows {
+		if strings.Contains(flow.EntryPoint, "Put") {
+			t.Fatalf("a helper nothing calls is a flow: %+v", flow)
+		}
+	}
+}
+
+// The adapter is the function that wrote the route. aviacore's supplier
+// client hands the generic client "/book" and a base URL read from
+// configuration, so neither the call site nor the base URL source lies under
+// its directory; the route does. A settings manager reached from the billing
+// adapter wrote its own route and is not billing's.
+func TestAdapterIsTheFunctionThatWroteTheRoute(t *testing.T) {
+	got := extractFixture(t, map[string]string{
+		"go.mod":                "module example.com/core\n",
+		"pkg/jsonapi/client.go": jsonAPIFixture,
+		"config/config.go": `package config
+type Config struct {
+  SuppURL string ` + "`envconfig:\"SUPP_ADDR\" default:\"http://localhost:8080\"`" + `
+  SettingAddr string ` + "`envconfig:\"SETTINGS_ADDR\"`" + `
+}
+`,
+		"clients/supp/supp.go": `package supp
+import (
+  "example.com/core/config"
+  "example.com/core/pkg/jsonapi"
+)
+type Client struct { cli *jsonapi.Client }
+func New(cfg *config.Config) *Client { return &Client{cli: jsonapi.NewClient(jsonapi.WithBaseURL(cfg.SuppURL))} }
+func (c *Client) Book() { c.post("/book") }
+func (c *Client) post(path string) { c.cli.POST(path) }
+`,
+		"repository/settings/settings.go": `package settings
+import (
+  "example.com/core/config"
+  "example.com/core/pkg/jsonapi"
+)
+type Manager struct { client *jsonapi.Client }
+func New(cfg *config.Config) *Manager { return &Manager{client: jsonapi.NewClient(jsonapi.WithBaseURL(cfg.SettingAddr))} }
+func (m *Manager) Markup() { m.client.POST("/getAdminSetting") }
+`,
+		"clients/billing/billing.go": `package billing
+import "example.com/core/repository/settings"
+type Billing struct { settings *settings.Manager }
+func (b *Billing) Fee() { b.settings.Markup() }
+`,
+	}, Options{Context: "core", Service: "core", Adapters: map[string]Adapter{
+		"clients/supp":    {Service: "supp.supp", API: "api"},
+		"clients/billing": {External: "billing"},
+	}})
+	byID := consumesByID(got)
+	book, ok := byID["api/POST /book"]
+	if !ok || book.Peer != "supp.supp" || book.Status != catalog.StatusDeclared {
+		t.Fatalf("book = %+v (all %v)", book, sortedIDs(byID))
+	}
+	for id, call := range byID {
+		if strings.Contains(id, "getAdminSetting") && (call.Peer == "billing" || !strings.HasPrefix(id, "http-client/")) {
+			t.Fatalf("a route billing did not write is billing's: %s %+v", id, call)
 		}
 	}
 }

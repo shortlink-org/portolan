@@ -205,9 +205,10 @@ func mergeProvides(target *catalog.External, provides []catalog.RpcService) {
 
 // adapterOf finds the manifest's adapter for a call: the longest adapter
 // directory that holds the call site, the place its base URL is read from,
-// or the function the call was grouped under. A generic HTTP helper in
-// pkg/jsonapi is not the adapter; the acc_manager client that hands it the
-// base URL is, and that is what the base URL source and the group say.
+// or the function the call was grouped under; failing those, the function
+// on the call path that wrote the URL. A generic HTTP helper in pkg/jsonapi
+// is not the adapter; the acc_manager client that hands it the base URL and
+// the route is, and that is what the base URL source and the route say.
 func adapterOf(call gohttp.Call, opts Options) (string, Adapter, bool) {
 	if len(opts.Adapters) == 0 {
 		return "", Adapter{}, false
@@ -233,6 +234,20 @@ func adapterOf(call gohttp.Call, opts Options) (string, Adapter, bool) {
 	if directory, _, qualified := strings.Cut(call.Function, ":"); qualified {
 		addPlace(directory + "/")
 	}
+	if best, adapter, found := longestAdapter(places, opts); found {
+		return best, adapter, true
+	}
+	// A generic client handed its route by the adapter: the base URL may be
+	// read from configuration or not be proven at all (a handler holding the
+	// adapter in a field no constructor traced), but the function that wrote
+	// the route is the adapter's own.
+	if directory, _, qualified := strings.Cut(call.URLFrame, ":"); qualified {
+		return longestAdapter([]string{filepath.ToSlash(directory) + "/"}, opts)
+	}
+	return "", Adapter{}, false
+}
+
+func longestAdapter(places []string, opts Options) (string, Adapter, bool) {
 	best, found := "", false
 	var adapter Adapter
 	for prefix, candidate := range opts.Adapters {
