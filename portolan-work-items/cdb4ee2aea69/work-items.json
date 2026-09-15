@@ -10,6 +10,13 @@
       "provider": "linear",
       "key": "SHO-11",
       "url": "https://linear.app/shortlink/issue/SHO-11"
+    },
+    {
+      "id": "shortlink:SHO-21",
+      "tracker": "shortlink",
+      "provider": "linear",
+      "key": "SHO-21",
+      "url": "https://linear.app/shortlink/issue/SHO-21"
     }
   ],
   "workItemLinks": [
@@ -37,6 +44,128 @@
             "src/pages/LazyFlowDetail.tsx",
             "src/pages/Overview.tsx",
             "src/pages/ServicePage.tsx"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-21",
+      "target": {
+        "kind": "adr",
+        "id": "cart.0006"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "7f75d1fe80170018ca1c4b8c23b165d857ec1c97",
+          "subject": "feat(cart): the idle-basket sweep is a named job (SHO-21)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:53:02+07:00",
+          "paths": [
+            "examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-21",
+      "target": {
+        "kind": "flow",
+        "id": "flow.cart-expire-idle-baskets"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "7f75d1fe80170018ca1c4b8c23b165d857ec1c97",
+          "subject": "feat(cart): the idle-basket sweep is a named job (SHO-21)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:53:02+07:00",
+          "paths": [
+            "examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-21",
+      "target": {
+        "kind": "service",
+        "id": "portolan.plugins"
+      },
+      "basis": "service-directory",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "3ced011930ceccb9517fed16993529b404d1179b",
+          "subject": "feat(extract-ts): job-triggered flows (SHO-21)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:52:53+07:00",
+          "paths": [
+            "plugins/extract-ts/README.md",
+            "plugins/extract-ts/extract.ts",
+            "plugins/extract-ts/flows.ts",
+            "plugins/extract-ts/jobs.test.ts",
+            "plugins/extract-ts/testdata/jobs/README.md",
+            "plugins/extract-ts/testdata/jobs/expected.json",
+            "plugins/extract-ts/testdata/jobs/package.json",
+            "plugins/extract-ts/testdata/jobs/src/application/basket/usecases/expire_idle_baskets/usecase.ts",
+            "plugins/extract-ts/testdata/jobs/src/domain/basket/basket.ts",
+            "plugins/extract-ts/testdata/jobs/src/domain/basket/events/basket-abandoned.ts",
+            "plugins/extract-ts/testdata/jobs/src/domain/basket/port.ts",
+            "plugins/extract-ts/testdata/jobs/src/infrastructure/transport/job/expire_idle_baskets.ts",
+            "plugins/extract-ts/testdata/jobs/src/infrastructure/transport/job/scheduler.ts",
+            "plugins/extract-ts/transport.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-21",
+      "target": {
+        "kind": "service",
+        "id": "shop.cart"
+      },
+      "basis": "service-directory",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "7f75d1fe80170018ca1c4b8c23b165d857ec1c97",
+          "subject": "feat(cart): the idle-basket sweep is a named job (SHO-21)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:53:02+07:00",
+          "paths": [
+            "examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md",
+            "examples/shop/cart/portolan/adr.json",
+            "examples/shop/cart/portolan/domain.json",
+            "examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/README.md",
+            "examples/shop/cart/src/di/container.ts",
+            "examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts",
+            "examples/shop/cart/src/infrastructure/transport/job/scheduler.test.ts",
+            "examples/shop/cart/src/infrastructure/transport/job/scheduler.ts",
+            "examples/shop/cart/src/main.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-21",
+      "target": {
+        "kind": "step",
+        "id": "s1",
+        "flow": "flow.cart-expire-idle-baskets"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "7f75d1fe80170018ca1c4b8c23b165d857ec1c97",
+          "subject": "feat(cart): the idle-basket sweep is a named job (SHO-21)",
+          "author": "Victor Login",
+          "date": "2026-09-15T16:53:02+07:00",
+          "paths": [
+            "examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts"
           ]
         }
       ]

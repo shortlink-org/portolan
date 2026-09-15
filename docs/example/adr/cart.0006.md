@@ -7,7 +7,7 @@
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md)
 - **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
-- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
+- **Revised:** Victor Login, 2026-09-15 (`7f75d1f`)
 
 ### Context and Problem Statement
 
