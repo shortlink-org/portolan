@@ -30,6 +30,10 @@ import { draftsPlugin } from "./scripts/branch-drafts.mjs";
 // (portolan.0020).
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { workItemsPlugin } from "./scripts/work-items-history.mjs";
+// src/likec4/generated.jsx is not committed; a checkout without it gets it
+// written from likec4/ before Vite serves or builds.
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { likec4BundlePlugin } from "./scripts/likec4-bundle.mjs";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -179,6 +183,7 @@ export default defineConfig({
     __PORTOLAN_UPDATE__: JSON.stringify(portolanUpdate),
   },
   plugins: [
+    likec4BundlePlugin(),
     // Inject the TypeScript projection from the staged Vite config rather than
     // importing it from local-api.mjs. The latter is also loaded directly by
     // `portolan init` from the published package, and Node does not strip

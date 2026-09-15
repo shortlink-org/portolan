@@ -15,6 +15,10 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
+    "rootDirs": [
+      "src",
+      "types/likec4-fallback"
+    ],
     "jsx": "react-jsx",
     "strict": true,
     "noUnusedLocals": true,
