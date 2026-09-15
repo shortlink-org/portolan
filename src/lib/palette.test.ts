@@ -149,6 +149,20 @@ describe("ranking", () => {
     expect(rows("OrderPlaced")[0]?.id).toBe("shop.oms.order.OrderPlaced");
   });
 
+  it("puts the row a pasted catalog id names first, whatever its kind", () => {
+    // Out of a warning, the CLI or `portolan diff`: the id is the whole query,
+    // and ⏎ on the first row has to open that thing, not one whose name merely
+    // begins with it. A row NAMED exactly that is as exact an answer, and kind
+    // decides between the two: `auth` is the auth service's slug and a context.
+    for (const item of items) {
+      if (item.id.includes("#")) continue;
+      const first = rows(item.id)[0];
+      const exact = first?.id === item.id || first?.name.toLowerCase() === item.id.toLowerCase();
+      expect(exact, `${item.id} -> ${first?.kind} ${first?.id}`).toBe(true);
+    }
+    expect(rows("shop.oms")[0]?.id).toBe("shop.oms");
+  });
+
   it("matches at word boundaries inside a camelCase name", () => {
     const names = rows("cmd: item").map((i) => i.name);
     expect(names).toContain("AddItem");

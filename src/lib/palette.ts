@@ -656,7 +656,9 @@ export function score(
   }
   const needle = term.toLowerCase();
   const name = item.name.toLowerCase();
-  if (name === needle) return 0;
+  // A pasted id is the other exact answer: `shop.oms` is the service, not the
+  // decisions whose names begin with it.
+  if (name === needle || item.id.toLowerCase() === needle) return 0;
   if (name.startsWith(needle)) return 1;
   // A word boundary is a case change or one of . / - _ ; "item" should hit
   // "AddItem" and "line-item" but not rank with a mid-word accident.
