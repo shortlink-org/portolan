@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BuildInfo } from "./build-info";
 import type { RepoPin } from "../catalog";
-import { sourceHref, sourceLocation, splitLine, treeHref } from "./source-link";
+import { bare, sourceHref, sourceLocation, splitLine, treeHref, workspacePath } from "./source-link";
 
 const GH: BuildInfo = {
   commit: "4f1c9ae0c1b2d3e4f5a6b7c8d9e0f1a2b3c4d5e6",
@@ -164,6 +164,7 @@ describe("sourceLocation", () => {
       repositoryUrl: "https://github.com/shortlink-org/portolan",
       ref: GH.commit,
       path: "examples/auth/internal/x.go",
+      workspacePath: "examples/auth/internal/x.go",
       line: 20,
       href: `https://github.com/shortlink-org/portolan/blob/${GH.commit}/examples/auth/internal/x.go#L20`,
     });
@@ -202,6 +203,7 @@ describe("sourceLocation", () => {
     ).toEqual({
       kind: "local",
       path: "internal/x.go",
+      workspacePath: "internal/x.go",
       line: 3,
       href: null,
     });
@@ -237,5 +239,62 @@ describe("treeHref", () => {
     expect(treeHref("vendor/repos/acme/shop", shop, PINS, GH)).toBe(
       "https://github.com/acme/shop/tree/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0",
     );
+  });
+
+  it("opens the whole of a fetched repository for a service that is all of it", () => {
+    expect(treeHref("", shop, PINS, GH)).toBe(
+      "https://github.com/acme/shop/tree/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0",
+    );
+    expect(treeHref("", { repo: "github.com/shortlink-org/portolan" }, [], GH)).toBeNull();
+  });
+});
+
+describe("bare", () => {
+  it("reduces every spelling git and a forge accept to host/owner/name", () => {
+    for (const spelling of [
+      "gitlab.srv.team/avia/aviacore",
+      "https://gitlab.srv.team/avia/aviacore.git",
+      "git@gitlab.srv.team:avia/aviacore.git",
+      "ssh://git@gitlab.srv.team/avia/aviacore.git",
+      "ssh://git@gitlab.srv.team:2222/avia/aviacore.git",
+      "  GitLab.srv.team/avia/aviacore/  ",
+    ]) expect(bare(spelling)).toBe("gitlab.srv.team/avia/aviacore");
+    expect(bare("portolan")).toBe("portolan");
+  });
+});
+
+// A service fetched with fetch-git spells its paths from its own repository,
+// and its pin names where the copy is in the workspace.
+describe("a fetched copy with a pin that names its place", () => {
+  const avia = { repo: "git@gitlab.srv.team:avia/aviacore.git" };
+  const pins: RepoPin[] = [
+    { repo: "gitlab.srv.team/avia/aviacore", commit: "a996eefa06b8d59fa6254d32fd4c5f5467cc8fce", path: "vendor/repos/avia/aviacore" },
+  ];
+
+  it("links the file on the forge at the pinned commit, however the service spells its repository", () => {
+    expect(sourceLocation("internal/api/handlers/handlers_init.go:731", avia, pins, GH)).toEqual({
+      kind: "remote",
+      provider: "gitlab",
+      origin: "https://gitlab.srv.team",
+      repositoryUrl: "https://gitlab.srv.team/avia/aviacore",
+      ref: "a996eefa06b8d59fa6254d32fd4c5f5467cc8fce",
+      path: "internal/api/handlers/handlers_init.go",
+      workspacePath: "vendor/repos/avia/aviacore/internal/api/handlers/handlers_init.go",
+      line: 731,
+      href: "https://gitlab.srv.team/avia/aviacore/-/blob/a996eefa06b8d59fa6254d32fd4c5f5467cc8fce/internal/api/handlers/handlers_init.go#L731",
+    });
+  });
+
+  it("still reads an older catalog's workspace spelling back to the repository's", () => {
+    expect(sourceHref("vendor/repos/avia/aviacore/internal/app.go:3", avia, pins, GH)).toBe(
+      "https://gitlab.srv.team/avia/aviacore/-/blob/a996eefa06b8d59fa6254d32fd4c5f5467cc8fce/internal/app.go#L3",
+    );
+  });
+
+  it("finds the file on disk under the copy, and only once", () => {
+    expect(workspacePath("docs/structure.md", avia, pins)).toBe("vendor/repos/avia/aviacore/docs/structure.md");
+    expect(workspacePath("", avia, pins)).toBe("vendor/repos/avia/aviacore");
+    expect(workspacePath("vendor/repos/avia/aviacore/docs/structure.md", avia, pins)).toBe("vendor/repos/avia/aviacore/docs/structure.md");
+    expect(workspacePath("examples/auth/README.md", { repo: "github.com/shortlink-org/portolan" }, pins)).toBe("examples/auth/README.md");
   });
 });

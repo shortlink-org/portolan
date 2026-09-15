@@ -134,6 +134,18 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
     expect(scanWorkItems(request).fragment.workItemLinks).toEqual([]);
   });
 
+  it("matches a service spelled over ssh and reads an old spelling under the directory its pin names", () => {
+    const { request, catalog, commit } = checkout();
+    catalog.contexts[0].services[0].repo = "git@github.com:acme/shop.git";
+    catalog.repos = [{ repo: "github.com/acme/shop", commit: "c1d2e3f", path: "third_party/shop" }];
+    catalog.flows[0].source = "third_party/shop/src/toolbar.ts";
+    catalog.flows[0].steps[0].line = "src/toolbar.ts:4";
+    commit("RT-101: added toolbar");
+    const links = scanWorkItems(request).fragment.workItemLinks;
+    expect(links.find((link) => link.target.kind === "flow")?.commits[0].paths).toEqual(["src/toolbar.ts"]);
+    expect(links.some((link) => link.target.kind === "step")).toBe(true);
+  });
+
   it("attributes an org-scoped RFC to the repository that owns its file", () => {
     const { request, catalog, root, commit } = checkout();
     mkdirSync(join(root, "docs", "rfcs"), { recursive: true });

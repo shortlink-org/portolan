@@ -16,7 +16,7 @@ import {
 } from "../catalog";
 import { flowRoles } from "../lib/derive";
 import { bridges } from "../lib/centrality";
-import { treeHref } from "../lib/source-link";
+import { treeHref, workspacePath } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
 import { adrsForService, isCurrent } from "../lib/adr";
 import { rfcsForService } from "../lib/rfc";
@@ -174,6 +174,9 @@ export function ServicePage() {
   const stores = storesOfService(index, service.id);
   const flows = flowRoles(catalog, service.id);
   const tree = treeHref(service.path, service, allRepos(catalog));
+  // Where a path the catalog spells from the service's repository is in this
+  // workspace: the same path here, under the copy for a fetched one.
+  const onDisk = (path: string) => workspacePath(path, service, allRepos(catalog));
   const owners = ownersOf(service);
   const deployments = index.deploymentsByService.get(service.id) ?? [];
   const gatewayExposures = service.gatewayExposures ?? [];
@@ -195,7 +198,7 @@ export function ServicePage() {
   // schema module the interfaces were declared in, else nothing.
   const spec = pickSpec(
     service,
-    (source) => hasSpec(source) || hasSchema(source),
+    (source) => hasSpec(onDisk(source)) || hasSchema(onDisk(source)),
   );
   // The channels the service declares, and the document behind them when this
   // repository holds it. A channel names its own source, so the tab does not
@@ -203,7 +206,7 @@ export function ServicePage() {
   const channels = service.channels ?? [];
   const busDoc = channels
     .map((channel) => channel.source)
-    .find((source) => source !== undefined && hasAsyncSpec(source));
+    .find((source) => source !== undefined && hasAsyncSpec(onDisk(source)));
   const showDomain =
     componentKind(service) === "service" || service.aggregates.length > 0;
   const hasModelGroups = service.aggregates.some((aggregate) => aggregate.kind === "model-group");
@@ -379,7 +382,7 @@ export function ServicePage() {
               height={300}
             />
             <div className="mt-section" />
-            <Markdown mermaid sourceRoot={service.path}>{service.readme}</Markdown>
+            <Markdown mermaid sourceRoot={onDisk(service.path)}>{service.readme}</Markdown>
             {/* What to type to build, test and run it. Under the README
                 rather than in a tab of its own: the list is short, it is the
                 first thing a reader new to the checkout wants, and the README
@@ -671,11 +674,11 @@ export function ServicePage() {
             </Empty>
           ) : spec.kind === "openapi" ? (
             <ApiReference
-              source={spec.source}
+              source={onDisk(spec.source)}
               operation={params.get(OPERATION_PARAM)}
             />
           ) : spec.kind === "graphql" ? (
-            <SchemaDocument source={spec.source} />
+            <SchemaDocument source={onDisk(spec.source)} />
           ) : spec.kind === "wsdl" ? (
             <WsdlReference source={spec.source} provided={service.provides} />
           ) : spec.kind === "inferred-http" ? (
@@ -728,7 +731,7 @@ export function ServicePage() {
             <>
               <div className="mt-section" />
               <SectionTitle>Document</SectionTitle>
-              <AsyncApiReference source={busDoc} />
+              <AsyncApiReference source={onDisk(busDoc)} />
             </>
           ) : null}
         </TabPanel>

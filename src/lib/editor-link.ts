@@ -77,20 +77,21 @@ export function editorHref(
 }
 
 /**
- * The catalog path a resolved source can be edited at, or null when the file
- * is not in this workspace: a service fetched from another repository lives
- * on the forge, not on the disk under the browser. A path with no forge
- * behind it is local by definition, and a forge path counts when the forge
- * is the repository this was built from.
+ * The workspace path a resolved source can be edited at, or null when the file
+ * is not in this workspace. A path with no forge behind it is local by
+ * definition, and a forge path counts when the forge is the repository this
+ * was built from. A service of another repository counts only when its pin
+ * says where the fetched copy is on disk here.
  */
 export function editorWhere(
   location: SourceLocation,
   info: BuildInfo = buildInfo,
 ): string | null {
+  const onDisk = location.workspacePath ?? location.path;
   if (location.kind === "remote") {
     if (!info.repoUrl || bare(location.repositoryUrl) !== bare(info.repoUrl)) {
-      return null;
+      if (!location.workspacePath || location.workspacePath === location.path) return null;
     }
   }
-  return location.line ? `${location.path}:${location.line}` : location.path;
+  return location.line ? `${onDisk}:${location.line}` : onDisk;
 }

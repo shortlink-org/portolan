@@ -102,6 +102,13 @@ describe("editorWhere", () => {
         info,
       ),
     ).toBeNull();
+    // Another repository counts when its fetched copy is on disk here.
+    expect(
+      editorWhere(
+        { ...remote, repositoryUrl: "https://github.com/acme/other", workspacePath: "vendor/repos/acme/other/a/b.go" },
+        info,
+      ),
+    ).toBe("vendor/repos/acme/other/a/b.go:9");
     expect(
       editorWhere(
         { ...remote, repositoryUrl: "https://github.com/acme/estate" },

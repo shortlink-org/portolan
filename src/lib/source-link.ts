@@ -21,6 +21,7 @@
 import type { RepoPin, Service } from "../catalog";
 import { buildInfo } from "./build-info";
 import type { BuildInfo } from "./build-info";
+import { bare, pinFor } from "./repo-name.mjs";
 
 /** A `file:line` split, or the whole thing as a path when it is not one. */
 export function splitLine(where: string): {
@@ -64,32 +65,55 @@ function sameRepo(repo: string, info: BuildInfo): boolean {
   return !declared.includes("/") && built.split("/").at(-1) === declared;
 }
 
-/** A repository as `host/owner/name`, however it was spelled. */
-export function bare(repo: string): string {
-  return repo
-    .replace(/^https?:\/\//, "")
-    .replace(/\.git$/, "")
-    .replace(/\/$/, "")
-    .toLowerCase();
+export { bare };
+
+/** `path` taken off the front of `where`, or null when `where` is not under it. */
+function under(where: string, path: string): string | null {
+  if (where === path) return "";
+  return where.startsWith(`${path}/`) ? where.slice(path.length + 1) : null;
 }
 
 /**
- * Translate a path in the committed vendor copy back to the remote tree.
+ * A catalog path as its repository spells it, which is how a forge opens it.
  *
- * Extractors now spell a fetched service's paths from its own repository: the
- * host tells them where the copy begins (`input.repository`). This is for
- * catalogs written before that, which still carry the
- * `vendor/repos/<owner>/<name>/` prefix of the directory the copy sat in; a
- * path already spelled from the repository passes through unchanged.
+ * Extractors spell every path from the service's own repository; the host
+ * tells them where a fetched copy begins (`input.repository`). A catalog
+ * written before that spells a copy's files from the workspace, under the
+ * directory the copy sits in: the pin's `path` when the pin names one, and
+ * otherwise fetch-git's usual `vendor/repos/<owner>/<name>`. Both come off
+ * here; a path already spelled from the repository passes through unchanged.
  */
-function repositoryPath(path: string, repo: string, info: BuildInfo): string {
+function repositoryPath(path: string, repo: string, pins: readonly RepoPin[], info: BuildInfo): string {
   if (!repo || sameRepo(repo, info)) return path;
+  const pin = pinFor(repo, pins);
+  if (pin?.path) {
+    const inside = under(path, pin.path);
+    if (inside !== null) return inside;
+  }
   const segments = bare(repo).split("/").filter(Boolean);
   if (segments.length < 3) return path;
-  const root = `vendor/repos/${segments.at(-2)}/${segments.at(-1)}`;
-  if (path === root) return "";
-  const prefix = `${root}/`;
-  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
+  return under(path, `vendor/repos/${segments.at(-2)}/${segments.at(-1)}`) ?? path;
+}
+
+/**
+ * Where a catalog path is on disk in the workspace this was built from.
+ *
+ * A service of this repository is where its path says. A service of a
+ * repository fetched into the workspace is under the copy's directory, which
+ * its pin names; a path that already starts there - an older catalog's
+ * spelling - is not joined twice. Without a pin that says where, the path is
+ * returned as given, which is also the answer for every monorepo service.
+ */
+export function workspacePath(
+  path: string,
+  service: Pick<Service, "repo"> | null | undefined,
+  pins: readonly RepoPin[] = [],
+): string {
+  const pin = pinFor(service?.repo ?? "", pins);
+  if (!pin?.path) return path;
+  const root = pin.path.replace(/\/+$/, "");
+  if (under(path, root) !== null) return path;
+  return path ? `${root}/${path}` : root;
 }
 
 /** GitLab keeps the tree under /-/; everything else uses /blob directly. */
@@ -109,14 +133,19 @@ export type RemoteSourceLocation = {
   origin: string;
   repositoryUrl: string;
   ref: string;
+  /** The path as the repository spells it. */
   path: string;
+  /** Where the file is in the workspace, for an editor on this machine. */
+  workspacePath?: string;
   line: number | null;
   href: string;
 };
 
 export type LocalSourceLocation = {
   kind: "local";
+  /** Where the file is in the workspace, which is what the local server reads. */
   path: string;
+  workspacePath?: string;
   line: number | null;
   href: string | null;
 };
@@ -138,7 +167,7 @@ function whereFor(
     return { url: info.repoUrl.replace(/\/$/, ""), ref: info.commit || "HEAD" };
   }
 
-  const pin = pins.find((p) => bare(p.repo) === bare(repo));
+  const pin = pinFor(repo, pins);
   if (!pin || !pin.commit) return null;
 
   return { url: `https://${bare(pin.repo)}`, ref: pin.commit };
@@ -173,20 +202,23 @@ export function sourceLocation(
   if (!looksLikePath(path)) return null;
   const repo = service?.repo ?? "";
   const at = whereFor(repo, pins, info);
+  const remotePath = repositoryPath(path, repo, pins, info);
+  const onDisk = workspacePath(path, service, pins);
   const href = at
-    ? `${at.url}${blobPath(at.url)}${at.ref}/${repositoryPath(path, repo, info)}${line ? `#L${line}` : ""}`
+    ? `${at.url}${blobPath(at.url)}${at.ref}/${remotePath}${line ? `#L${line}` : ""}`
     : null;
-  if (!at) return { kind: "local", path, line, href: null };
+  if (!at) return { kind: "local", path: onDisk, workspacePath: onDisk, line, href: null };
 
   const provider = providerFor(at.url, info);
-  if (!provider) return { kind: "local", path, line, href };
+  if (!provider) return { kind: "local", path: onDisk, workspacePath: onDisk, line, href };
   return {
     kind: "remote",
     provider,
     origin: new URL(at.url).origin,
     repositoryUrl: at.url,
     ref: at.ref,
-    path: repositoryPath(path, repo, info),
+    path: remotePath,
+    workspacePath: onDisk,
     line,
     href: href!,
   };
@@ -212,13 +244,17 @@ export function treeHref(
   pins: readonly RepoPin[] = [],
   info: BuildInfo = buildInfo,
 ): string | null {
-  if (!path) return null;
+  // An empty path is the whole of a fetched repository; in this one it is a
+  // path nobody wrote, and there is nothing to link.
+  const pinned = pinFor(service?.repo ?? "", pins);
+  if (!path && !pinned) return null;
   const at = whereFor(service?.repo ?? "", pins, info);
   if (!at) return null;
 
   const remotePath = repositoryPath(
     path.replace(/\/$/, ""),
     service?.repo ?? "",
+    pins,
     info,
   );
   return `${at.url}${blobPath(at.url).replace("blob", "tree")}${at.ref}${remotePath ? `/${remotePath}` : ""}`;

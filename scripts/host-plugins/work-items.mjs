@@ -3,6 +3,7 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import options from "./work-items.options.json" with { type: "json" };
 import { detectTaskKeys, normalizeTrackers, taskUrl } from "../../src/lib/task-tracker-config.mjs";
+import { bare, pinFor } from "../../src/lib/repo-name.mjs";
 
 export function describe() {
   return { name: "work-items", summary: "Connects YouTrack, Jira, Linear, GitHub and GitLab issue references in Git commits to flows, steps, services and decisions, retaining the source of each association. The links are read from the history where the catalog is read, never written into a fragment (portolan.0020).", category: "evidence", phases: ["verify"], options };
@@ -13,10 +14,6 @@ function webRepository(value) {
   const url = new URL(normalized);
   if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error("work-items: repository must be an HTTP(S) web URL without credentials, query or fragment");
   return normalized;
-}
-
-function bare(value) {
-  return String(value ?? "").replace(/^https?:\/\//, "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
 }
 
 function sourcePath(value) {
@@ -35,17 +32,23 @@ function steps(nodes) {
 /**
  * A path as the repository spells it. Extractors spell a fetched service's
  * files from its own repository now (`input.repository`); a catalog written
- * before that spells them from the workspace, under
- * `vendor/repos/<owner>/<name>/`, and this reads those back the way source
- * links do (src/lib/source-link.ts). A path already spelled from the
- * repository passes through unchanged.
+ * before that spells them from the workspace, under the copy's directory - the
+ * pin's `path`, or fetch-git's usual `vendor/repos/<owner>/<name>/` - and this
+ * reads those back the way source links do (src/lib/source-link.ts). A path
+ * already spelled from the repository passes through unchanged.
  */
-function repositoryPath(path, repository) {
+function repositoryPath(path, repository, pins = []) {
+  if (!path) return path;
   const segments = bare(repository).split("/").filter(Boolean);
-  if (!path || segments.length < 3) return path;
-  const root = `vendor/repos/${segments.at(-2)}/${segments.at(-1)}`;
-  if (path === root) return ".";
-  return path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
+  const roots = [
+    pinFor(repository, pins)?.path?.replace(/\/+$/, ""),
+    segments.length >= 3 ? `vendor/repos/${segments.at(-2)}/${segments.at(-1)}` : undefined,
+  ].filter(Boolean);
+  for (const root of roots) {
+    if (path === root) return ".";
+    if (path.startsWith(`${root}/`)) return path.slice(root.length + 1);
+  }
+  return path;
 }
 
 /** Paths follow the catalog's source-link convention: relative to the source repository. */
@@ -54,7 +57,7 @@ function targetsOf(catalog, repository) {
   const belongs = (service) => service && bare(service.repo) === bare(repository);
   const targets = [];
   const add = (target, path, basis = "source-file") => {
-    const normalized = repositoryPath(sourcePath(path), repository);
+    const normalized = repositoryPath(sourcePath(path), repository, catalog.repos ?? []);
     if (normalized) targets.push({ target, path: normalized, basis });
   };
   for (const service of services.filter(belongs)) {

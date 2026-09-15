@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers, toolchainFor } from "./init.mjs";
 import { checkForUpdate } from "./update.mjs";
 import { loadManifest, readManifest } from "../scripts/manifest.mjs";
+import { pinFor } from "../src/lib/repo-name.mjs";
 
 const installRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(installRoot, "package.json"), "utf8"));
@@ -246,13 +247,16 @@ export async function prepareSite(workspace) {
 
   const flattened = new Map();
   let ordinal = 0;
-  for (const source of [...allSources].sort()) {
+  const catalogs = [...allSources].sort().map((source) => [source, JSON.parse(readFileSync(resolve(workspace, source), "utf8"))]);
+  // A fetched repository's services spell their paths from that repository;
+  // its pin, wherever in the estate it came from, says where the copy is here.
+  const pins = catalogs.flatMap(([, catalog]) => (Array.isArray(catalog.repos) ? catalog.repos : []));
+  for (const [source, catalog] of catalogs) {
     const name = `portolan/source-${String(++ordinal).padStart(4, "0")}.json`;
     flattened.set(source, name);
     copyIntoStage(workspace, stage, source, name);
-    const catalog = JSON.parse(readFileSync(resolve(workspace, source), "utf8"));
-    copyReferencedFiles(workspace, stage, catalog);
-    copyReadmeAssets(workspace, stage, catalog);
+    copyReferencedFiles(workspace, stage, catalog, copyRoots(source, catalog, pins));
+    copyReadmeAssets(workspace, stage, catalog, pins);
   }
   let stagedSources = [...flattened.values()];
   if (allSources.size === 0) {
@@ -309,25 +313,62 @@ async function matchedFiles(workspace, patterns) {
   return [...found].sort();
 }
 
-function copyReferencedFiles(workspace, stage, value) {
+/**
+ * The directories a fragment's paths can be read against: the workspace, and
+ * the copy of every fetched repository the fragment speaks for - one a service
+ * in it names, or the one the fragment itself was written inside.
+ */
+export function copyRoots(source, catalog, pins) {
+  const roots = new Set([""]);
+  for (const context of catalog.contexts ?? []) {
+    for (const service of context.services ?? []) {
+      const pin = pinFor(service.repo ?? "", pins);
+      if (pin?.path) roots.add(pin.path.replace(/\/+$/, ""));
+    }
+  }
+  for (const pin of pins) {
+    const path = typeof pin.path === "string" ? pin.path.replace(/\/+$/, "") : "";
+    if (path && source.startsWith(`${path}/`)) roots.add(path);
+  }
+  return [...roots];
+}
+
+/**
+ * Where a service's own directory is in the workspace: under its fetched
+ * copy when a pin names one, the path as written otherwise. An older catalog
+ * that already spelled the copy's directory is not joined twice.
+ */
+export function serviceDirectory(service, pins) {
+  const path = String(service.path ?? "").replace(/\/+$/, "");
+  const copy = pinFor(service.repo ?? "", pins)?.path?.replace(/\/+$/, "");
+  if (!copy || path === copy || path.startsWith(`${copy}/`)) return path;
+  return path ? `${copy}/${path}` : copy;
+}
+
+function copyReferencedFiles(workspace, stage, value, roots = [""]) {
   const visit = (item) => {
     if (Array.isArray(item)) return item.forEach(visit);
     if (item && typeof item === "object") return Object.values(item).forEach(visit);
     if (typeof item !== "string" || item.includes("://")) return;
     const clean = item.replace(/:\d+(?::\d+)?$/, "").replaceAll("\\", "/");
     if (!clean || isAbsolute(clean) || clean.split("/").includes("..")) return;
-    const source = resolve(workspace, clean);
-    if (!inside(workspace, source) || !existsSync(source) || !statSync(source).isFile()) return;
-    copyIntoStage(workspace, stage, clean, clean);
+    // Every place the path could be: nothing tells a string which service it
+    // belongs to, and staging a file that is not read costs nothing.
+    for (const root of roots) {
+      const where = root ? `${root}/${clean}` : clean;
+      const source = resolve(workspace, where);
+      if (!inside(workspace, source) || !existsSync(source) || !statSync(source).isFile()) continue;
+      copyIntoStage(workspace, stage, where, where);
+    }
   };
   visit(value);
 }
 
-function copyReadmeAssets(workspace, stage, catalog) {
+function copyReadmeAssets(workspace, stage, catalog, pins = []) {
   for (const context of catalog.contexts ?? []) {
     for (const service of context.services ?? []) {
       if (typeof service.path !== "string" || typeof service.readme !== "string") continue;
-      const root = resolve(workspace, service.path);
+      const root = resolve(workspace, serviceDirectory(service, pins));
       if (!inside(workspace, root)) continue;
       for (const target of markdownTargets(service.readme)) {
         const source = resolveMarkdownTarget(root, target);

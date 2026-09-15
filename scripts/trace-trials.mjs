@@ -10,6 +10,8 @@
 import { readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 
+import { repositoryRoot } from "./host-plugins/fetch-git.mjs";
+
 export const TRACE_PLUGIN = "otel";
 export const RECORDINGS_DIR = "telemetry/recordings";
 export const RECORDINGS_GLOB = `${RECORDINGS_DIR}/*.jsonl`;
@@ -129,7 +131,10 @@ export function summarizeTraceTrial(snapshot, trial, events) {
   try { fragment = JSON.parse(readFileSync(join(snapshot, step.out, fragmentName), "utf8")); } catch {}
   // An example names its recording relative to the repository, the way every
   // `source` in the catalog does; the upload was laid under the step's input.
-  const recording = posix.join(step.in, trial.recording);
+  // Inside a fetched copy the repository begins at the copy, not the workspace.
+  const inWorkspace = posix.join(step.in, trial.recording);
+  const copy = repositoryRoot(snapshot, step.in);
+  const recording = copy && inWorkspace.startsWith(`${copy}/`) ? inWorkspace.slice(copy.length + 1) : inWorkspace;
   const flows = [];
   for (const flow of fragment.flows ?? []) {
     const examples = (flow.examples ?? []).filter((example) => example.recording === recording);

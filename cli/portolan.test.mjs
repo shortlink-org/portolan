@@ -93,4 +93,24 @@ describe("site staging", { timeout: 30_000 }, () => {
     const stage = await prepareSite(root);
     expect(readFileSync(join(stage, "public/portolan-assets", project, "docs/example.png"))).toEqual(image);
   });
+
+  it("finds a fetched service's README assets and contract documents under the copy its pin names", async () => {
+    const root = mkdtempSync(join(tmpdir(), "portolan-fetched-copy-"));
+    roots.push(root);
+    const copy = "vendor/repos/avia/aviasupp";
+    mkdirSync(join(root, copy, "portolan"), { recursive: true });
+    mkdirSync(join(root, copy, "docs/ADR"), { recursive: true });
+    writeFileSync(join(root, copy, "docs/ADR/0001-records.md"), "# Records\n");
+    writeFileSync(join(root, copy, "docs/swagger.yaml"), "openapi: 3.0.0\n");
+    writeFileSync(join(root, copy, "git.repo.json"), `${JSON.stringify({ contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: "gitlab.srv.team/avia/aviasupp", commit: "abc", path: copy }] }, null, 2)}\n`);
+    writeFileSync(join(root, copy, "portolan/project.json"), `${JSON.stringify({
+      contexts: [{ id: "aviasupp", slug: "aviasupp", name: "Aviasupp", services: [{ id: "aviasupp.aviasupp", slug: "aviasupp", name: "Aviasupp", repo: "git@gitlab.srv.team:avia/aviasupp.git", path: "", readme: "[ADR](./docs/ADR/0001-records.md)", provides: [{ id: "api", source: "docs/swagger.yaml", methods: [] }], consumes: [], aggregates: [] }] }],
+      defs: {}, flows: [], adrs: [],
+    }, null, 2)}\n`);
+    writeFileSync(join(root, "portolan.json"), `${JSON.stringify({ sources: [`${copy}/git.repo.json`, `${copy}/portolan/*.json`] }, null, 2)}\n`);
+
+    const stage = await prepareSite(root);
+    expect(readFileSync(join(stage, "public/portolan-assets", copy, "docs/ADR/0001-records.md"), "utf8")).toBe("# Records\n");
+    expect(readFileSync(join(stage, copy, "docs/swagger.yaml"), "utf8")).toBe("openapi: 3.0.0\n");
+  });
 });
