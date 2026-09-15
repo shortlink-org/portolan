@@ -77,6 +77,7 @@
 | [Merge baskets](flows/cart-merge-baskets.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Close route](flows/core-close-route.md) | [delivery](delivery/README.md) | Ends the day, whatever is left undone. |
+| [Create shipment on order confirmed](flows/core-create-shipment-on-order-confirmed.md) | [delivery](delivery/README.md) | A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003). |
 | [Dispatch](flows/core-dispatch.md) | [delivery](delivery/README.md) | One shipment, for whoever is asking about an order. |
 | [Get route](flows/core-get-route.md) | [delivery](delivery/README.md) | One route, as the depot reads it. |
 | [Get shipment](flows/core-get-shipment.md) | [delivery](delivery/README.md) | One shipment, for whoever is asking about an order. |
@@ -143,6 +144,7 @@
 | [cart.0008](adr/cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |
 | [core.0001](adr/core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 |
 | [core.0002](adr/core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 |
+| [core.0003](adr/core.0003.md) | Delivery asks the ledger to capture when it creates the shipment | accepted | 2026-09-15 |
 | [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
 | [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
@@ -1764,7 +1766,7 @@ Parcels, vans and the day they are driven. Told what to carry and asked where it
 
 ## Language
 
-- [Glossary](glossary.md) — 13 terms this context spells one way
+- [Glossary](glossary.md) — 15 terms this context spells one way
 
 <!-- delivery/glossary.md -->
 
@@ -1773,7 +1775,7 @@ Parcels, vans and the day they are driven. Told what to carry and asked where it
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Delivery](README.md)
-- **Terms:** 13
+- **Terms:** 15
 - **Read from:** [`examples/shop/delivery/core/GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -1782,6 +1784,8 @@ One meaning per word inside this context, as the glossary beside the code states
 
 - **Address** — Where a parcel is going, as the warehouse needs it. A value, copied from the order at dispatch and never refreshed: a parcel already on a van does not move because somebody edited their profile.
 - **Awaiting payment** — Where every shipment starts. Nothing leaves the warehouse before the ledger says the money moved (ADR core.0002).
+- **Capture** — Asking the ledger to move the money it was holding for the order, under the order id. Asked by this service when it creates the shipment (ADR core.0003); the ledger's word, used here for the request, while what releases the shipment is the ledger's `PaymentCaptured`.
+- **Confirmed order** — An order whose payment the ledger authorized, as the order service announces it. The moment a shipment is created; the only thing read off it is the order id.
 - **Dispatch** — Handing a planned shipment's parcels to the carrier, under a tracking code. The order is asked once more first; a cancelled order's shipment is written off instead.
 - **Order** — What the shipment is for. Another context owns it, so it is an id here and a question asked over its contract. The table `packages` keeps a foreign key into it, knowingly (ADR core.0001).
 - **Package** — The row a shipment is kept in. The table's word, not the domain's; the domain says shipment.
@@ -1789,7 +1793,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Released** — The money moved; the shipment may be planned onto a route and dispatched. Said by this service, not by the ledger.
 - **Route** — One van, one day, in the order the stops are driven. The order of the stops is the route: changing it is planning a new one.
 - **Scan** — One sighting of one parcel: where and when. Append-only; a wrong scan is followed by a right one, and the pair is the history. The first scan after dispatch moves the shipment; the rest do not.
-- **Shipment** — What is being carried to one address for one order. The aggregate root; its status moves only the way its lifecycle table allows.
+- **Shipment** — What is being carried to one address for one order. The aggregate root; its status moves only the way its lifecycle table allows. Created from a confirmed order before anything is packed or addressed.
 - **Stop** — One place a van stops and what it drops there. Carries a copy of the shipment's address, itself a copy of the order's.
 - **Tracking code** — What the customer types into a carrier's site. The carrier owns the format; this service only refuses what obviously cannot be one. Also the whole credential for the tracking page.
 - **Window** — When a van is expected somewhere, as the two ends of a promise to a person.
@@ -1814,6 +1818,9 @@ whether something should ship at all. The vocabulary is [GLOSSARY.md](../glossar
 
 ## What it does
 
+- Turns a confirmed order into a shipment: `oms.OrderConfirmed` creates it,
+  once per order, and says `ShipmentCreated`; then the ledger is asked to
+  capture the payment named by the order id (core.0003).
 - Dispatches a planned shipment, with the tracking code the carrier gave, and
   says `ShipmentDispatched`.
 - Records every sighting of every parcel, append-only.
@@ -1826,13 +1833,14 @@ whether something should ship at all. The vocabulary is [GLOSSARY.md](../glossar
 
 ## What it does not do
 
-Does not price anything, does not charge anything and does not decide what to
-send. A cancelled order is asked about, not argued with: the shipment is
+Does not price anything and does not decide what to send. It decides when
+the money for a parcel moves - it asks the ledger to capture - but never how
+much, and never whether the order stands. A cancelled order is asked about, not argued with: the shipment is
 written off.
 
 ## Publishes
 
-`ShipmentReleased`, `ShipmentDispatched`, `ShipmentInTransit`,
+`ShipmentCreated`, `ShipmentReleased`, `ShipmentDispatched`, `ShipmentInTransit`,
 `ShipmentDelivered`, `ShipmentLost` on `delivery.core.shipment`;
 `RoutePlanned`, `RouteStarted`, `RouteClosed` on `delivery.core.route`. Every
 arrow of both lifecycle tables is one of these.
@@ -1841,6 +1849,15 @@ arrow of both lifecycle tables is one of these.
 
 `delivery.v1.Delivery` — TrackShipment, GetShipment — and
 `delivery.v1.RouteService` — PlanRoute, CloseRoute, GetRoute.
+
+## Consumes
+
+`oms.OrderConfirmed` on `shop.oms.order` and `ledger.PaymentCaptured` on
+`payments.ledger.payment`, each through a durable JetStream consumer and a
+narrowed copy of the fact in this service's words. Calls
+`shop.v1.OrderService/GetOrder` at dispatch and
+`payments.v1.PaymentService/Capture` when a shipment is created, through
+narrowed copies of both contracts vendored beside their clients.
 
 ## Two things the store says out loud
 
@@ -1863,16 +1880,22 @@ arrow of both lifecycle tables is one of these.
   knowingly.
 - [core.0002](../../adr/core.0002.md) — a shipment
   waits for the money, and the ledger's fact releases it.
+- [core.0003](../../adr/core.0003.md)
+  — delivery asks the ledger to capture when it creates the shipment, not
+  the order service on confirmation.
 
 ## Status
 
 A sketch for the catalog, not the reference service; `examples/auth` is
 that. What it has: two aggregates whose lifecycle tables are enforced and
 whose every move is an event, use cases that answer with what a caller may
-see, a policy that reacts to the ledger's fact through a use case, Postgres
+see, policies that react to the order service's and the ledger's facts
+through use cases, a worker that reads those facts off the bus, Postgres
 repositories behind both ports that write the events to an outbox in the
 same transaction, and the records above. What it deliberately does not have
-yet, and the review skill will name: no server, so nothing here listens; no
+yet, and the review skill will name: no gRPC server, so only the bus is
+listened to; no relay, so the outbox is written and not sent; nothing that
+hands over parcels or an address, so a created shipment has neither; no
 version on the aggregates, so a stale write wins; no unit of work, so
 `plan_route` writes a route and its shipments one save at a time; no
 sentinel errors or status mapping at the edge; no tracing. Each is a known
@@ -1883,7 +1906,12 @@ gap, not an oversight, and none of them changes what the catalog shows.
 ```bash
 docker compose up -d db
 npm install && npm run gen && npm run build
+STORE_POSTGRES_URI=... NATS_URL=nats://127.0.0.1:4222 PAYMENTS_ADDR=http://127.0.0.1:9090 npm start
 ```
+
+The worker migrates the store and reads the bus. For the whole chain from a
+basket to a released shipment, see the
+[checkout scenario](https://github.com/shortlink-org/portolan/blob/main/examples/scenarios/README.md).
 
 The repository tests bring up their own Postgres through Docker and are
 skipped without it:
@@ -1897,7 +1925,7 @@ npm test
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
 | [Route](aggregates/route.md) | `Route` | 3 commands | 1 query | 3 events |
-| [Shipment](aggregates/shipment.md) | `Shipment` | 4 commands | 2 queries | 5 events |
+| [Shipment](aggregates/shipment.md) | `Shipment` | 5 commands | 2 queries | 6 events |
 
 ## Provides
 
@@ -2132,6 +2160,7 @@ npm test
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
+| `payments.v1.PaymentService/Capture` | [payments.ledger](../../payments/ledger/README.md) | declared | [`examples/shop/delivery/core/src/infrastructure/ledger/proto/payments/v1/payments.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/ledger/proto/payments/v1/payments.proto) |
 | `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | [`examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto) |
 
 ## Publishes
@@ -2141,6 +2170,7 @@ npm test
 | [`RouteClosed`](aggregates/route.md#event-delivery-core-route-routeclosed) | v1 |
 | [`RoutePlanned`](aggregates/route.md#event-delivery-core-route-routeplanned) | v1 |
 | [`RouteStarted`](aggregates/route.md#event-delivery-core-route-routestarted) | v1 |
+| [`ShipmentCreated`](aggregates/shipment.md#event-delivery-core-shipment-shipmentcreated) | v1 |
 | [`ShipmentDelivered`](aggregates/shipment.md#event-delivery-core-shipment-shipmentdelivered) | v1 |
 | [`ShipmentDispatched`](aggregates/shipment.md#event-delivery-core-shipment-shipmentdispatched) | v1 |
 | [`ShipmentInTransit`](aggregates/shipment.md#event-delivery-core-shipment-shipmentintransit) | v1 |
@@ -2166,8 +2196,9 @@ npm test
 | --- | --- | --- |
 | `npm run build` | `tsc -p tsconfig.build.json` | [`examples/shop/delivery/core/package.json:9`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L9) |
 | `npm run typecheck` | `tsc --noEmit` | [`examples/shop/delivery/core/package.json:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L10) |
-| `npm run gen` | `buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen && buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen && buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen` | [`examples/shop/delivery/core/package.json:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L11) |
-| `npm test` | `vitest run` | [`examples/shop/delivery/core/package.json:12`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L12) |
+| `npm run gen` | `buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen && buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen && buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen && buf generate src/infrastructure/ledger/proto -o src/infrastructure/ledger/gen` | [`examples/shop/delivery/core/package.json:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L11) |
+| `npm start` | `node dist/main.js` | [`examples/shop/delivery/core/package.json:12`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L12) |
+| `npm test` | `vitest run` | [`examples/shop/delivery/core/package.json:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L13) |
 
 ## Decisions
 
@@ -2175,6 +2206,7 @@ npm test
 | --- | --- | --- | --- |
 | [core.0001](../../adr/core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 |
 | [core.0002](../../adr/core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 |
+| [core.0003](../../adr/core.0003.md) | Delivery asks the ledger to capture when it creates the shipment | accepted | 2026-09-15 |
 
 <!-- delivery/core/aggregates/route.md -->
 
@@ -2363,17 +2395,24 @@ Source: [`examples/shop/delivery/core/src/domain/route/events/route-started.ts`]
 
 What is being carried to one address for one order.
 
-A shipment waits for the money, is released when the ledger says it moved,
+A shipment is created when the order is confirmed, waits for the money, is
+released when the ledger says it moved,
 is planned onto a route, dispatched with a tracking code, seen a few times on
 the way, and then either delivered or written off. The address is a copy taken
 from the order at dispatch, not a reference: a parcel already on a van does not
 move because somebody edited their profile - and that copy is the one thing
 here that another service's schema can be seen in.
 
+Created from a confirmed order, a shipment has no parcels and no address:
+nobody in the estate hands those over at confirmation. It may wait for the
+money like that, but it is not planned onto a route without an address, and
+it is not dispatched with no parcels (ADR core.0003).
+
 ### States
 
-- **awaiting-payment** - where every shipment starts. Nothing leaves the
-  warehouse before the money has moved (ADR core.0002).
+- **awaiting-payment** - where every shipment starts, created when the order
+  is confirmed. Nothing leaves the warehouse before the money has moved (ADR
+  core.0002).
 - **planned** - released; may be put on a route and handed to the carrier.
 - **dispatched** - with the carrier, under a tracking code.
 - **in-transit** - seen at least once since dispatch. Later scans add to the
@@ -2386,12 +2425,13 @@ here that another service's schema can be seen in.
 
 Every arrow is a command on the root and hands back the event that says so.
 `moveTo` is the one way through the table; a move it does not list is refused.
+The way in is `create`, which says `ShipmentCreated`.
 
 ```mermaid
 stateDiagram-v2
     state "awaiting-payment" as awaiting
     state "in-transit" as transit
-    [*] --> awaiting
+    [*] --> awaiting: create · ShipmentCreated
     awaiting --> planned: release · ShipmentReleased
     awaiting --> lost: lose · ShipmentLost
     planned --> dispatched: dispatch · ShipmentDispatched
@@ -2442,11 +2482,16 @@ parcel on a van does not move because somebody edited their profile. The
 status only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one
 way through it; every move that is a fact hands back the event that says so.
 
+A shipment created from a confirmed order has no parcels and no address
+yet: nobody in the estate hands those over at confirmation. It may wait for
+the money like that, but it is not planned onto a route without somewhere
+to go, and it is not handed to the carrier empty.
+
 | Field | Type |
 | --- | --- |
 | `id` | `string` |
 | `orderId` | `string` |
-| `shipTo` | `Address` |
+| `shipTo` | `Address \| undefined` |
 | `parcels` | `Parcel[]` |
 | `scans` | `Scan[]` |
 | `status` | `ShipmentStatus` |
@@ -2504,20 +2549,21 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `awaiting-payment` | `planned` | `release` | `ShipmentReleased` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L48) |
-| `awaiting-payment` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
-| `planned` | `dispatched` | `dispatch` | `ShipmentDispatched` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:56`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L56) |
-| `planned` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
-| `dispatched` | `in-transit` | `record` | `ShipmentInTransit` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:69`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L69) |
-| `dispatched` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L76) |
-| `dispatched` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
-| `in-transit` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L76) |
-| `in-transit` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
+| `awaiting-payment` | `planned` | `release` | `ShipmentReleased` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:70`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L70) |
+| `awaiting-payment` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
+| `planned` | `dispatched` | `dispatch` | `ShipmentDispatched` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:79`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L79) |
+| `planned` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
+| `dispatched` | `in-transit` | `record` | `ShipmentInTransit` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:92`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L92) |
+| `dispatched` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:99`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L99) |
+| `dispatched` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
+| `in-transit` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:99`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L99) |
+| `in-transit` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
 
 ## Operations
 
 | Operation | Kind | Exposed by | Doc |
 | --- | --- | --- | --- |
+| `CreateShipment` | command | *internal* | Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003). |
 | `Dispatch` | command | `Dispatch` | Hands a planned shipment to the carrier and says so. |
 | `GetShipment` | query | `Dispatch`, `GetShipment` | One shipment, for whoever is asking about an order. |
 | `RecordDelivery` | command | `RecordDelivery` | Ends a shipment at the door. |
@@ -2526,6 +2572,28 @@ stateDiagram-v2
 | `TrackShipment` | query | `TrackShipment` | What the customer sees when they paste a tracking code. |
 
 ## Events
+
+<a id="event-delivery-core-shipment-shipmentcreated"></a>
+### ShipmentCreated
+
+`delivery.core.shipment.ShipmentCreated`
+
+On the wire as `delivery.ShipmentCreated`, on `delivery.core.shipment`.
+
+#### v1 — current
+
+A confirmed order became something to carry. Nothing is packed yet and the
+shipment has nowhere to go: it waits for the money, and the ledger has just
+been asked to move it (ADR core.0003).
+
+Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-created.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-created.ts)
+
+| Field | Type |
+| --- | --- |
+| `channel` | `string` |
+| `shipmentId` | `string` |
+| `orderId` | `string` |
+| `occurredAt` | `Date` |
 
 <a id="event-delivery-core-shipment-shipmentdelivered"></a>
 ### ShipmentDelivered
@@ -4402,7 +4470,7 @@ a contract change rather than a string somebody starts sending.
 | Event | Latest | Consumers |
 | --- | --- | --- |
 | [`OrderCancelled`](aggregates/order.md#event-shop-oms-order-ordercancelled) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
-| [`OrderConfirmed`](aggregates/order.md#event-shop-oms-order-orderconfirmed) | v1 | — |
+| [`OrderConfirmed`](aggregates/order.md#event-shop-oms-order-orderconfirmed) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
 | [`OrderPlaced`](aggregates/order.md#event-shop-oms-order-orderplaced) | v1 | [shop.oms (declared)](README.md) |
 
 ## Schema modules
@@ -4585,6 +4653,10 @@ Source: [`examples/shop/oms/src/domain/order/event/order_cancelled.rs`](https://
 `shop.oms.order.OrderConfirmed`
 
 On the wire as `oms.OrderConfirmed`, on `shop.oms.order`.
+
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [delivery.core](../../../delivery/core/README.md) | declared | `core-create-shipment-on-order-confirmed#s1` |
 
 #### v1 — current
 
@@ -5678,7 +5750,7 @@ aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
 | --- | --- | --- | --- | --- |
 | `id` | `text` | not null | PK | Shipment.id |
 | `order_id` | `text` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#relation-shop-oms-pg-orders).id (restrict) | Shipment.orderId |
-| `ship_to` | `jsonb` | not null | — | Shipment.shipTo |
+| `ship_to` | `jsonb` | null | — | Shipment.shipTo |
 | `status` | `text` | not null | — | Shipment.status |
 | `tracking` | `text` | null | — | Shipment.tracking.value |
 | `route_id` | `text` | null | — | Shipment.routeId |
@@ -6332,6 +6404,7 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [Merge baskets](cart-merge-baskets.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Close route](core-close-route.md) | [delivery](../delivery/README.md) | Ends the day, whatever is left undone. |
+| [Create shipment on order confirmed](core-create-shipment-on-order-confirmed.md) | [delivery](../delivery/README.md) | A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003). |
 | [Dispatch](core-dispatch.md) | [delivery](../delivery/README.md) | One shipment, for whoever is asking about an order. |
 | [Get route](core-get-route.md) | [delivery](../delivery/README.md) | One route, as the depot reads it. |
 | [Get shipment](core-get-shipment.md) | [delivery](../delivery/README.md) | One shipment, for whoever is asking about an order. |
@@ -8275,6 +8348,78 @@ sequenceDiagram
 4. **delivery.core** → **bus** — RouteClosed
    [`delivery.core.route.RouteClosed`](../delivery/core/aggregates/route.md#event-delivery-core-route-routeclosed) · status: declared · [`examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts#L13)
 
+<!-- flows/core-create-shipment-on-order-confirmed.md -->
+
+# Create shipment on order confirmed
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Id:** `flow.core-create-shipment-on-order-confirmed`
+- **Owner:** [delivery](../delivery/README.md)
+- **Trigger:** `event` · OrderConfirmed
+- **Root confidence:** high
+- **Source:** [`examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts)
+
+A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003).
+
+## Participants
+
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `core-pg` | store | [delivery](../delivery/README.md) | [delivery.core.pg](../delivery/core/stores/pg.md) |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as delivery.core
+    participant p2 as core-pg
+    participant p3 as payments.ledger
+    p0-)p1: OrderConfirmed
+    p1->>p1: CreateShipment
+    p1->>p2: findByOrder
+    alt !shipment
+        p1->>p2: save
+        p1-)p0: ShipmentCreated
+    else otherwise
+    end
+    p1->>p3: Capture → CaptureResponse
+```
+
+## Steps
+
+<a id="step-s1"></a>
+1. **bus** → **delivery.core** — OrderConfirmed
+   [`shop.oms.order.OrderConfirmed`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderconfirmed) · status: declared · [`examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts#L18)
+<a id="step-s2"></a>
+2. **delivery.core** ↺ **delivery.core** — CreateShipment
+   status: declared · [`examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts#L21)
+<a id="step-s3"></a>
+3. **delivery.core** → **core-pg** — findByOrder
+   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:56`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts#L56)
+
+> **One of**
+>
+> *!shipment*
+>
+> <a id="step-s4"></a>
+> 4. **delivery.core** → **core-pg** — save
+>    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:59`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts#L59)
+> <a id="step-s5"></a>
+> 5. **delivery.core** → **bus** — ShipmentCreated
+>    [`delivery.core.shipment.ShipmentCreated`](../delivery/core/aggregates/shipment.md#event-delivery-core-shipment-shipmentcreated) · status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:59`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts#L59)
+>
+> *otherwise*
+
+<a id="step-s7"></a>
+6. **delivery.core** → **payments.ledger** — Capture → CaptureResponse
+   `payments.v1.PaymentService/Capture` · status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:67`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts#L67)
+
 <!-- flows/core-dispatch.md -->
 
 # Dispatch
@@ -10176,6 +10321,7 @@ sequenceDiagram
 | [cart.0008](cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 | [shop.cart](../shop/cart/README.md) |
 | [core.0001](core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 | [delivery.core](../delivery/core/README.md) |
 | [core.0002](core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 | [delivery.core](../delivery/core/README.md) |
+| [core.0003](core.0003.md) | Delivery asks the ledger to capture when it creates the shipment | accepted | 2026-09-15 | [delivery.core](../delivery/core/README.md) |
 | [ledger.0001](ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0002](ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0003](ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 | [payments.ledger](../payments/ledger/README.md) |
@@ -11775,6 +11921,104 @@ prevent.
   when a bus adapter exists to deliver it.
 - Neutral: nothing in this sketch reads the bus yet; the policy is the shape,
   and the adapter that feeds it is the same one the ledger has (ledger.0002).
+
+<!-- adr/core.0003.md -->
+
+# core.0003 — Delivery asks the ledger to capture when it creates the shipment
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-15
+- **Scope:** [delivery.core](../delivery/core/README.md)
+- **Source:** [`examples/shop/delivery/core/docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md)
+- **Committed:** Victor Login, 2026-09-15 (`c0e2f41`)
+
+### Context and Problem Statement
+
+The order service confirms an order once the ledger has authorized its
+payment, and says `OrderConfirmed`. The shipment waits for `PaymentCaptured`
+before anything leaves the warehouse (core.0002). Nothing in the estate asks
+the ledger to capture, so nothing is ever released: the chain stops between
+the order and the parcel.
+
+Who asks for the capture, and when? The obvious answer - the order service,
+the moment it confirms - puts the timing of the money in a service that does
+not ship anything, and leaves the waiting room in delivery waiting for a
+decision taken elsewhere.
+
+### Decision Drivers
+
+- The service that holds the parcel decides when the money for it moves; the
+  service that holds the order decides whether there is an order.
+- The capture must be asked of a shipment that already exists, because the
+  fact the ledger answers with releases that shipment.
+- Whatever is decided must be moveable later without the order service or
+  the ledger changing.
+- A repeated confirmation, or a ledger that did not answer, must neither lose
+  the capture nor ask twice for money that already moved.
+
+### Considered Options
+
+1. **The order service captures on confirmation** — a second call from
+   `confirm_order`, right after the authorization it already asks for.
+2. **Delivery captures when it creates the shipment** — the policy that hears
+   `OrderConfirmed` runs `create_shipment`, which stores the shipment waiting
+   for the money and then asks the ledger to capture.
+3. **Delivery captures when the shipment is packed** — a `packed` state
+   between creation and release, entered once the parcels and the address are
+   known, and the capture asked there.
+
+### Decision Outcome
+
+Chosen option: **delivery captures when it creates the shipment**.
+
+| | who decides when money moves | new state | refund window | moveable by delivery alone |
+|---|---|---|---|---|
+| oms on confirmation | the order service | none | from confirmation | no |
+| delivery on creation | delivery | none | from confirmation | yes |
+| delivery when packed | delivery | `packed` | from packing | yes |
+
+Option 1 was rejected because it makes the order service decide the moment a
+fulfilment it does not perform commits the customer's money, and a warehouse
+that wanted to capture later would need the order service to change. Option 3
+is the right place for a real warehouse, and it is not taken because nothing
+in the estate hands delivery the parcels or the address yet: a `packed` state
+nobody can enter would be a row in the lifecycle table that no command makes.
+
+What is given up is the window between confirmation and packing in which a
+cancellation is a void rather than a refund: capturing on creation captures
+almost at once. The mitigation is that the moment is delivery's own - moving
+the capture to packing, once packing exists, is a change to `create_shipment`
+and a new state here, with the order service and the ledger untouched.
+
+The order of steps is the rule. The shipment is stored first, `ShipmentCreated`
+with it, and only then is the ledger asked, because the ledger says
+`PaymentCaptured` while answering and `release_shipment` must find the shipment.
+The payment is named by the order id (oms.0006). Errors follow the estate's
+convention: `NOT_FOUND` and `FAILED_PRECONDITION` from the ledger are refusals
+the use case answers with and leaves the shipment waiting; every other status
+decided nothing and fails the delivery of the fact, which is delivered again.
+
+#### Consequences
+
+- Good: `OrderConfirmed` → `create_shipment` → `payments.v1.PaymentService/Capture`
+  → `PaymentCaptured` → `release_shipment` is one chain the catalog can draw
+  across three services, each step owned by the service whose state it moves.
+- Good: a repeated confirmation finds the shipment it made; a capture that was
+  lost is asked again while the shipment waits, and the ledger answers a
+  second capture with the first.
+- Bad: a customer who cancels after confirmation is refunded, not voided -
+  the ledger's `VoidPaymentOnOrderCancelled` meets a captured payment and is
+  refused. Unwinding that is not decided here.
+- Bad: a shipment is created with no parcels and no address, so the aggregate
+  gives up "a shipment carries at least one parcel" at construction; the rule
+  moves to dispatch, and planning a stop refuses a shipment with no address.
+- Bad: two deliveries of the same confirmation racing each other can both find
+  no shipment and create two; there is no unique key per order, because a
+  written-off shipment is followed by a new one for the same order.
+- Neutral: delivery now reads the bus, through the same kind of durable
+  consumer the ledger uses (ledger.0002), which core.0002 was waiting for.
 
 <!-- adr/ledger.0001.md -->
 

@@ -180,7 +180,7 @@ a contract change rather than a string somebody starts sending.
 | Event | Latest | Consumers |
 | --- | --- | --- |
 | [`OrderCancelled`](aggregates/order.md#event-shop-oms-order-ordercancelled) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
-| [`OrderConfirmed`](aggregates/order.md#event-shop-oms-order-orderconfirmed) | v1 | — |
+| [`OrderConfirmed`](aggregates/order.md#event-shop-oms-order-orderconfirmed) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
 | [`OrderPlaced`](aggregates/order.md#event-shop-oms-order-orderplaced) | v1 | [shop.oms (declared)](README.md) |
 
 ## Schema modules

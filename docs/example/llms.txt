@@ -1,6 +1,6 @@
 # Example estate
 
-> Architecture catalog of Example estate: 5 bounded contexts, 9 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 67 flows and 44 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 5 bounded contexts, 9 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 68 flows and 45 decision records, read from the code, the specs and the traces of the estate.
 
 *Generated from the portolan catalog. Do not edit by hand.*
 
@@ -17,7 +17,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 ## Glossaries
 
 - [Glossary of Authentication](auth/glossary.md): 27 terms. Attempt, Authenticate, Bus, Conflict, Credential, Email address, Expiry, Locked, Lockout, Login, Logout, Outbox, Password hash, Password policy, Policy, Reason, Refusal, Register, Revoke, Risk, Session, Threshold, Token, User, Validate, Verdict, Version
-- [Glossary of Delivery](delivery/glossary.md): 13 terms. Address, Awaiting payment, Dispatch, Order, Package, Parcel, Released, Route, Scan, Shipment, Stop, Tracking code, Window
+- [Glossary of Delivery](delivery/glossary.md): 15 terms. Address, Awaiting payment, Capture, Confirmed order, Dispatch, Order, Package, Parcel, Released, Route, Scan, Shipment, Stop, Tracking code, Window
 - [Glossary of Payments](payments/glossary.md): 12 terms. Attempt, Capture, Decline, Gateway, Hold, Journal, Money, Order, Payment, Posting, Refund, Void
 - [Glossary of Shop](shop/glossary.md): 12 terms. Basket, Bus, Cancelled, Confirmed, Decline, Line, Money, Order, Outbox, Payments, Placed, Relay
 - [Glossary of Storefront](storefront/glossary.md): 13 terms. Adapter, Basket, Checkout, Line, Money, Order, Order move, Order state, Peer, Port, Shipment, Storefront, Viewer
@@ -40,7 +40,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Session](auth/auth/aggregates/session.md): in [Authentication & Sessions](auth/auth/README.md). root `Session`. 3 commands, 1 query, 2 events. Proof that a user logged in, how long that proof is good for, and whether it has been taken away
 - [User](auth/auth/aggregates/user.md): in [Authentication & Sessions](auth/auth/README.md). root `User`. 2 commands, 2 queries, 2 events. A person, the address they log in with, and the opaque hash of the password they log in by
 - [Route](delivery/core/aggregates/route.md): in [Delivery Core](delivery/core/README.md). root `Route`. 3 commands, 1 query, 3 events. One van, one day, in the order the stops are driven
-- [Shipment](delivery/core/aggregates/shipment.md): in [Delivery Core](delivery/core/README.md). root `Shipment`. 4 commands, 2 queries, 5 events. What is being carried to one address for one order
+- [Shipment](delivery/core/aggregates/shipment.md): in [Delivery Core](delivery/core/README.md). root `Shipment`. 5 commands, 2 queries, 6 events. What is being carried to one address for one order
 - [Payment](payments/ledger/aggregates/payment.md): in [Ledger](payments/ledger/README.md). root `Payment`. 3 commands, 1 query, 3 events. What one order owes, and everything that has happened to that money
 - [Refund](payments/ledger/aggregates/refund.md): in [Ledger](payments/ledger/README.md). root `Refund`. 1 command, 1 query, 1 event. Money going back, against a payment that was captured
 - [Invoice](shop/billing/aggregates/invoice.md): in [Billing](shop/billing/README.md). root `Invoice`. 4 commands, 1 query, 3 events. What a customer owes for one order, and what happens to it between being drawn up and being closed
@@ -101,6 +101,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Merge baskets](flows/cart-merge-baskets.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included
 - [Remove item](flows/cart-remove-item.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included
 - [Close route](flows/core-close-route.md): owned by [delivery](delivery/README.md). Ends the day, whatever is left undone
+- [Create shipment on order confirmed](flows/core-create-shipment-on-order-confirmed.md): owned by [delivery](delivery/README.md). A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003)
 - [Dispatch](flows/core-dispatch.md): owned by [delivery](delivery/README.md). One shipment, for whoever is asking about an order
 - [Get route](flows/core-get-route.md): owned by [delivery](delivery/README.md). One route, as the depot reads it
 - [Get shipment](flows/core-get-shipment.md): owned by [delivery](delivery/README.md). One shipment, for whoever is asking about an order
@@ -165,6 +166,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [cart.0008](adr/cart.0008.md): Events leave the service over NATS JetStream, and the outbox stays (accepted, 2026-09-05)
 - [core.0001](adr/core.0001.md): `packages.order_id` is a foreign key into the order service's table (accepted, 2026-09-05)
 - [core.0002](adr/core.0002.md): A shipment waits for the money, and the ledger's fact releases it (accepted, 2026-09-05)
+- [core.0003](adr/core.0003.md): Delivery asks the ledger to capture when it creates the shipment (accepted, 2026-09-15)
 - [ledger.0001](adr/ledger.0001.md): A gateway that did not answer has not refused (accepted, 2026-09-05)
 - [ledger.0002](adr/ledger.0002.md): Another service's events are read off the bus by an adapter and republished in process (accepted, 2026-09-05)
 - [ledger.0003](adr/ledger.0003.md): The card network is Stripe, and stays outside the estate (accepted, 2026-09-06)

@@ -54,15 +54,17 @@ BasketCreated
 BasketItemAdded
 BasketItemRemoved
 BasketMerged' }
-    include delivery.core -> bus where kind is bus with { title '8 events'  notes 'RouteClosed
+    include delivery.core -> bus where kind is bus with { title '9 events'  notes 'RouteClosed
 RoutePlanned
 RouteStarted
+ShipmentCreated
 ShipmentDelivered
 ShipmentDispatched
 ShipmentInTransit
 ShipmentLost
 ShipmentReleased' }
-    include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include bus -> delivery.core where kind is bus with { title '2 events'  notes 'OrderConfirmed
+PaymentCaptured' }
     include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
@@ -86,6 +88,7 @@ QuoteIssued' }
     include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
     include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include shop.oms -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     exclude payments.ledger -> shop.oms where kind is consumes
     exclude payments.ledger -> shop.billing where kind is consumes
@@ -93,6 +96,7 @@ QuoteIssued' }
     exclude shop.cart -> shop.oms where kind is consumes
     exclude shop.cart -> shop.pricing where kind is consumes
     exclude shop.oms -> payments.ledger where kind is consumes
+    exclude shop.oms -> delivery.core where kind is consumes
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -171,15 +175,17 @@ BasketCreated
 BasketItemAdded
 BasketItemRemoved
 BasketMerged' }
-    include delivery.core -> bus where kind is bus with { title '8 events'  notes 'RouteClosed
+    include delivery.core -> bus where kind is bus with { title '9 events'  notes 'RouteClosed
 RoutePlanned
 RouteStarted
+ShipmentCreated
 ShipmentDelivered
 ShipmentDispatched
 ShipmentInTransit
 ShipmentLost
 ShipmentReleased' }
-    include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include bus -> delivery.core where kind is bus with { title '2 events'  notes 'OrderConfirmed
+PaymentCaptured' }
     include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
@@ -203,6 +209,7 @@ QuoteIssued' }
     include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
     include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include shop.oms -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     exclude payments.ledger -> shop.oms where kind is consumes
     exclude payments.ledger -> shop.billing where kind is consumes
@@ -210,6 +217,7 @@ QuoteIssued' }
     exclude shop.cart -> shop.oms where kind is consumes
     exclude shop.cart -> shop.pricing where kind is consumes
     exclude shop.oms -> payments.ledger where kind is consumes
+    exclude shop.oms -> delivery.core where kind is consumes
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -269,15 +277,17 @@ RefundIssued' }
 InvoicePaid
 InvoiceVoided' }
     include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
-    include delivery.core -> bus where kind is bus with { title '8 events'  notes 'RouteClosed
+    include delivery.core -> bus where kind is bus with { title '9 events'  notes 'RouteClosed
 RoutePlanned
 RouteStarted
+ShipmentCreated
 ShipmentDelivered
 ShipmentDispatched
 ShipmentInTransit
 ShipmentLost
 ShipmentReleased' }
-    include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
+    include bus -> delivery.core where kind is bus with { title '2 events'  notes 'OrderConfirmed
+PaymentCaptured' }
     include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
 OrderConfirmed
 OrderPlaced' }
@@ -1708,6 +1718,49 @@ PaymentDeclined' }
     delivery.core -> core_pg 'byTracking' {
       color declared  line solid  head none
       notes 'examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23'
+    }
+  }
+
+  dynamic view flow_core_create_shipment_on_order_confirmed {
+    title 'Create shipment on order confirmed'
+    description 'A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003).'
+    bus -> delivery.core 'OrderConfirmed' {
+      color declared  line solid  head onormal
+      notes 'examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts:18'
+    }
+    delivery.core -> delivery.core 'CreateShipment' {
+      color declared  line solid  head none
+      notes 'examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts:21'
+    }
+    delivery.core -> core_pg 'findByOrder' {
+      color declared  line solid  head none
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:56'
+    }
+    alt {
+      when '!shipment' {
+        delivery.core -> core_pg 'save' {
+          color declared  line solid  head none
+          notes 'examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:59'
+        }
+        delivery.core -> bus 'ShipmentCreated' {
+          color declared  line solid  head onormal
+          notes 'examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:59'
+        }
+      }
+      else 'otherwise' {
+      }
+    }
+    delivery.core -> payments.ledger 'CaptureRequest → CaptureResponse' {
+      color declared  line solid  head normal
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:67'
+    }
+  }
+
+  dynamic view flow_core_create_shipment_on_order_confirmed_cross {
+    title 'Create shipment on order confirmed — crossings only'
+    delivery.core -> payments.ledger 'CaptureRequest → CaptureResponse' {
+      color declared  line solid  head normal
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts:67'
     }
   }
 

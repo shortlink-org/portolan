@@ -218,6 +218,11 @@ the route, and a list that long on the bus would go stale in flight.'
         }
       }
       shipment = aggregate 'Shipment' {
+        ShipmentCreated = event 'ShipmentCreated' {
+          description 'A confirmed order became something to carry. Nothing is packed yet and the
+shipment has nowhere to go: it waits for the money, and the ledger has just
+been asked to move it (ADR core.0003).'
+        }
         ShipmentDelivered = event 'ShipmentDelivered' {
           description 'It arrived, and who signed. The order is finished from this service\'s side;
 whether the money is settled is somebody else\'s question.'
@@ -384,6 +389,9 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
+  shop.oms -[consumes]-> delivery.core 'OrderConfirmed' {
+    style { color declared  line dashed  head onormal }
+  }
   shop.oms -[calls]-> payments.ledger 'Authorize' {
     technology 'gRPC'
     description 'payments.v1.PaymentService/Authorize · declared · examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto'
@@ -397,6 +405,11 @@ payment was captured, and what that means for a parcel is decided here.'
   }
   shop.pricing -[owns]-> shop._store_shop_pricing_pg 'owns' {
     style { color muted  line solid  head none }
+  }
+  delivery.core -[calls]-> payments.ledger 'Capture' {
+    technology 'gRPC'
+    description 'payments.v1.PaymentService/Capture · declared · examples/shop/delivery/core/src/infrastructure/ledger/proto/payments/v1/payments.proto'
+    style { color declared  line dashed  head normal }
   }
   delivery.core -[calls]-> shop.oms 'GetOrder' {
     technology 'gRPC'
@@ -475,10 +488,10 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.cart -[bus]-> bus '6 events' {
     style { color declared  line dashed  head onormal }
   }
-  delivery.core -[bus]-> bus '8 events' {
+  delivery.core -[bus]-> bus '9 events' {
     style { color declared  line dashed  head onormal }
   }
-  bus -[bus]-> delivery.core 'PaymentCaptured' {
+  bus -[bus]-> delivery.core '2 events' {
     style { color declared  line dashed  head onormal }
   }
   shop.oms_cdc -[bus]-> oms_cdc_kafka '2 events' {
