@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 
 import { describe, expect, it } from "vitest";
 import { LikeC4 } from "likec4";
@@ -10,11 +11,12 @@ import { LikeC4 } from "likec4";
 import { likec4Sources } from "./gen-likec4.mjs";
 
 const generator = fileURLToPath(new URL("./gen-likec4.mjs", import.meta.url));
+// Resolved like any import rather than at ./node_modules/.bin, which a git
+// worktree sharing its parent checkout's node_modules does not have.
 const likec4 = join(
-  dirname(dirname(generator)),
-  "node_modules",
-  ".bin",
-  "likec4",
+  dirname(createRequire(import.meta.url).resolve("likec4/package.json")),
+  "bin",
+  "likec4.mjs",
 );
 
 /** Runs the generator over one catalog in a scratch tree, and validates what it wrote. */
@@ -36,7 +38,7 @@ function generate(catalog) {
     }),
   );
   execFileSync(process.execPath, [generator], { cwd: root });
-  execFileSync(likec4, ["validate", "likec4"], { cwd: root });
+  execFileSync(process.execPath, [likec4, "validate", "likec4"], { cwd: root });
   return {
     spec: readFileSync(join(root, "likec4", "spec.c4"), "utf8"),
     model: readFileSync(join(root, "likec4", "model.c4"), "utf8"),
