@@ -20,7 +20,8 @@
         "examples/*/*/*/portolan/*.json",
         "vendor/repos/*/*/git.repo.json",
         "vendor/repos/**/portolan/*.json",
-        "examples/argocd/argocd.apps.json"
+        "examples/argocd/argocd.apps.json",
+        "portolan-work-items/cdb4ee2aea69/work-items.json"
       ],
       "contexts": ["auth", "shop", "delivery", "payments", "storefront"],
       "projects": ["auth", "shop-cart", "shop-billing", "shop-pricing", "delivery-core", "payments-ledger", "shop-oms"]
