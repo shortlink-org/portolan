@@ -116,3 +116,30 @@ describe("a basket", () => {
     expect(basket.status).toBe("abandoned");
   });
 });
+
+describe("applyCoupon", () => {
+  const now = new Date("2026-09-15T12:00:00Z");
+  const filled = () => {
+    const [basket] = Basket.create("b1", "t1", undefined, now);
+    basket.addItem(new LineItem("a", 2, Money.of(500, "EUR")), now);
+    return basket;
+  };
+
+  it("takes one coupon, in the basket's currency, up to what the lines are worth", () => {
+    const basket = filled();
+    const applied = basket.applyCoupon("save10", Money.of(100, "EUR"), now);
+    expect(applied.code).toBe("SAVE10");
+    expect(basket.coupon?.discount.amountMinor).toBe(100);
+    expect(() => basket.applyCoupon("OTHER", Money.of(50, "EUR"), now)).toThrowError(/already has coupon/);
+  });
+
+  it("refuses a discount in another currency or worth more than the lines", () => {
+    expect(() => filled().applyCoupon("SAVE10", Money.of(100, "USD"), now)).toThrowError(/currency/);
+    expect(() => filled().applyCoupon("SAVE10", Money.of(5000, "EUR"), now)).toThrowError(/more than the basket is worth/);
+  });
+
+  it("refuses a coupon on an empty basket", () => {
+    const [basket] = Basket.create("b1", "t1", undefined, now);
+    expect(() => basket.applyCoupon("SAVE10", Money.of(100, "EUR"), now)).toThrowError(/empty basket/);
+  });
+});

@@ -20,6 +20,8 @@ export function toWire(event: BasketEvent): Record<string, unknown> {
       return { basketId: event.basketId, sku: event.sku, quantity: event.quantity, unitPrice: money(event.unitPrice), occurredAt: event.occurredAt };
     case "cart.BasketItemRemoved":
       return { basketId: event.basketId, sku: event.sku, occurredAt: event.occurredAt };
+    case "cart.CouponApplied":
+      return { basketId: event.basketId, code: event.code, discount: money(event.discount), occurredAt: event.occurredAt };
     case "cart.BasketCheckedOut":
       return {
         basketId: event.basketId,

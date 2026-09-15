@@ -32,6 +32,8 @@ channels:
         $ref: "#/components/messages/BasketItemAdded"
       BasketItemRemoved:
         $ref: "#/components/messages/BasketItemRemoved"
+      CouponApplied:
+        $ref: "#/components/messages/CouponApplied"
       BasketCheckedOut:
         $ref: "#/components/messages/BasketCheckedOut"
       BasketAbandoned:
@@ -154,6 +156,24 @@ components:
           idleSince:
             type: string
             format: date-time
+          occurredAt:
+            type: string
+            format: date-time
+    CouponApplied:
+      name: cart.CouponApplied
+      title: Coupon applied
+      summary: Pricing accepted a coupon and the basket took the discount it agreed to.
+      payload:
+        type: object
+        required: [basketId, code, discount, occurredAt]
+        properties:
+          basketId:
+            type: string
+            format: uuid
+          code:
+            type: string
+          discount:
+            $ref: "#/components/schemas/Money"
           occurredAt:
             type: string
             format: date-time

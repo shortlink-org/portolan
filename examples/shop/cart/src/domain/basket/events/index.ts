@@ -4,6 +4,7 @@ import type { BasketCreated } from "./basket-created.ts";
 import type { BasketItemAdded } from "./basket-item-added.ts";
 import type { BasketItemRemoved } from "./basket-item-removed.ts";
 import type { BasketMerged } from "./basket-merged.ts";
+import type { CouponApplied } from "./coupon-applied.ts";
 
 /** Everything the basket publishes. */
-export type BasketEvent = BasketCreated | BasketItemAdded | BasketItemRemoved | BasketCheckedOut | BasketAbandoned | BasketMerged;
+export type BasketEvent = BasketCreated | BasketItemAdded | BasketItemRemoved | CouponApplied | BasketCheckedOut | BasketAbandoned | BasketMerged;

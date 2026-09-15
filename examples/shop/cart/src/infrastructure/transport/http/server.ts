@@ -28,7 +28,7 @@ export function buildServer(handlers: BasketHandlers): FastifyInstance {
   app.get("/v1/baskets/:basketId", (req) => handlers.getBasket(req));
   app.post("/v1/baskets/:basketId/items", (req) => handlers.addItem(req));
   app.delete("/v1/baskets/:basketId/items/:sku", (req) => handlers.removeItem(req));
-  app.post("/v1/baskets/:basketId/merge", (req) => handlers.mergeBaskets(req));
+  app.post("/v1/baskets/:basketId/coupon", (req) => handlers.applyCoupon(req));
   app.post("/v1/baskets/:basketId/checkout", (req) => handlers.checkout(req));
 
   app.setErrorHandler((err, _req, reply) => {

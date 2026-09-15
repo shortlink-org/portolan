@@ -12,6 +12,7 @@ export interface BasketView {
   status: string;
   items: { sku: string; quantity: number; unitPrice: { amountMinor: number; currency: string } }[];
   subtotal?: { amountMinor: number; currency: string };
+  coupon?: { code: string; discount: { amountMinor: number; currency: string } };
   touchedAt: string;
 }
 
@@ -39,5 +40,6 @@ export function viewOf(basket: Basket): BasketView {
   if (basket.customerId !== undefined) view.customerId = basket.customerId;
   if (basket.currency) view.currency = basket.currency.code;
   if (subtotal) view.subtotal = { amountMinor: subtotal.amountMinor, currency: subtotal.currency.code };
+  if (basket.coupon) view.coupon = { code: basket.coupon.code, discount: { amountMinor: basket.coupon.discount.amountMinor, currency: basket.coupon.discount.currency.code } };
   return view;
 }

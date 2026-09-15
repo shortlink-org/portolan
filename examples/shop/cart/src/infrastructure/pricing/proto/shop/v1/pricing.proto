@@ -9,6 +9,9 @@ package shop.v1;
 service Pricing {
   // GetQuote answers with the total the customer is about to be charged.
   rpc GetQuote(GetQuoteRequest) returns (GetQuoteResponse);
+  // RedeemCoupon says whether a coupon is good for these lines, and the
+  // discount it gives. Accepted is false for an unknown or spent coupon.
+  rpc RedeemCoupon(RedeemCouponRequest) returns (RedeemCouponResponse);
 }
 
 message Money {
@@ -30,4 +33,16 @@ message GetQuoteRequest {
 message GetQuoteResponse {
   string quote_id = 1;
   Money total = 2;
+}
+
+message RedeemCouponRequest {
+  string basket_id = 1;
+  string code = 2;
+  repeated LineItem lines = 3;
+}
+
+message RedeemCouponResponse {
+  bool accepted = 1;
+  string code = 2;
+  Money discount = 3;
 }

@@ -82,7 +82,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/baskets/{basketId}/merge": {
+    "/v1/baskets/{basketId}/coupon": {
         parameters: {
             query?: never;
             header?: never;
@@ -94,10 +94,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Move a visitor's lines into this customer's basket
-         * @description Every line or none (cart.0005). The visitor's basket is marked merged.
+         * Apply a coupon pricing accepts
+         * @description Pricing says whether the coupon is good for the lines and how much it takes off; one coupon per basket, never more than the lines are worth.
          */
-        post: operations["mergeBaskets"];
+        post: operations["applyCoupon"];
         delete?: never;
         options?: never;
         head?: never;
@@ -155,6 +155,10 @@ export interface components {
             status: "open" | "checked-out" | "abandoned" | "merged";
             items: components["schemas"]["LineItem"][];
             subtotal?: components["schemas"]["Money"];
+            coupon?: {
+                code: string;
+                discount: components["schemas"]["Money"];
+            };
             /** Format: date-time */
             touchedAt: string;
         };
@@ -169,10 +173,8 @@ export interface components {
             quantity: number;
             unitPrice: components["schemas"]["Money"];
         };
-        MergeRequest: {
-            /** Format: uuid */
-            fromBasketId: string;
-            fromToken: string;
+        ApplyCouponRequest: {
+            code: string;
         };
         CheckedOut: {
             /** Format: uuid */
@@ -329,7 +331,7 @@ export interface operations {
             409: components["responses"]["Refused"];
         };
     };
-    mergeBaskets: {
+    applyCoupon: {
         parameters: {
             query?: never;
             header?: never;
@@ -340,11 +342,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MergeRequest"];
+                "application/json": components["schemas"]["ApplyCouponRequest"];
             };
         };
         responses: {
-            /** @description The customer's basket after the merge */
+            /** @description The basket with the discount taken */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -353,7 +355,7 @@ export interface operations {
                     "application/json": components["schemas"]["Basket"];
                 };
             };
-            401: components["responses"]["Unauthorized"];
+            400: components["responses"]["Invalid"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Refused"];
         };

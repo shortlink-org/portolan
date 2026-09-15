@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { Basket } from "../../../domain/basket/basket.ts";
 import { BasketError } from "../../../domain/basket/errors.ts";
 import { LineItem } from "../../../domain/basket/vo/line-item.ts";
-import { MemoryBaskets, at, ids, money, refuses, sums, vouches } from "../../../testing/fakes.ts";
+import { MemoryBaskets, accepts, at, ids, money, refuses, sums, vouches } from "../../../testing/fakes.ts";
 import { UseCase as AddItem } from "./add_item/usecase.ts";
+import { UseCase as ApplyCoupon } from "./apply_coupon/usecase.ts";
 import { UseCase as Checkout } from "./checkout/usecase.ts";
 import { UseCase as CreateBasket } from "./create_basket/usecase.ts";
 import { UseCase as ExpireIdleBaskets } from "./expire_idle_baskets/usecase.ts";
-import { UseCase as MergeBaskets } from "./merge_baskets/usecase.ts";
 
 const now = at("2026-09-04T12:00:00Z");
 
@@ -67,28 +67,20 @@ describe("checkout", () => {
   });
 });
 
-describe("merge_baskets", () => {
-  it("moves every line into the customer's basket and marks the visitor's merged", async () => {
+describe("apply_coupon", () => {
+  it("takes the discount pricing agreed to, for the holder of the token", async () => {
     const repo = new MemoryBaskets();
-    const visitor = seeded(repo, "v1", "tv");
-    visitor.addItem(new LineItem("a", 1, money(500)), now());
-    visitor.addItem(new LineItem("b", 2, money(300)), now());
-    const view = await new MergeBaskets(repo, vouches("u1"), now, ids("c1"), ids("tc")).handle({ bearer: "x", fromBasketId: "v1", fromToken: "tv" });
-    expect(view.basketId).toBe("c1");
-    expect(view.items.map((i) => i.sku)).toEqual(["a", "b"]);
-    expect(visitor.status).toBe("merged");
-    expect(repo.published.map((e) => e.name)).toEqual(["cart.BasketCreated", "cart.BasketItemAdded", "cart.BasketItemAdded", "cart.BasketMerged"]);
+    const basket = seeded(repo, "b1", "t1");
+    basket.addItem(new LineItem("a", 2, money(500)), now());
+    const view = await new ApplyCoupon(repo, accepts("SAVE10", money(100)), now).handle({ basketId: "b1", token: "t1", code: "SAVE10" });
+    expect(view.coupon).toEqual({ code: "SAVE10", discount: { amountMinor: 100, currency: "EUR" } });
+    expect(repo.published.map((e) => e.name)).toEqual(["cart.CouponApplied"]);
   });
 
-  it("moves nothing when one line would break a rule", async () => {
+  it("refuses a coupon pricing does not accept, and saves nothing", async () => {
     const repo = new MemoryBaskets();
-    const visitor = seeded(repo, "v1", "tv");
-    visitor.addItem(new LineItem("a", 1, money(500, "USD")), now());
-    const mine = seeded(repo, "c1", "tc", "u1");
-    mine.addItem(new LineItem("z", 1, money(100, "EUR")), now());
-    await expect(new MergeBaskets(repo, vouches("u1"), now, ids(), ids()).handle({ bearer: "x", fromBasketId: "v1", fromToken: "tv" })).rejects.toMatchObject({ code: "refused" });
-    expect(mine.items.map((i) => i.sku)).toEqual(["z"]);
-    expect(visitor.status).toBe("open");
+    seeded(repo, "b1", "t1").addItem(new LineItem("a", 1, money(500)), now());
+    await expect(new ApplyCoupon(repo, accepts("SAVE10", money(100)), now).handle({ basketId: "b1", token: "t1", code: "NOPE" })).rejects.toMatchObject({ code: "refused" });
     expect(repo.published).toEqual([]);
   });
 });

@@ -8,7 +8,7 @@ info:
   description: >-
     The basket between a customer arriving and an order existing. An anonymous
     basket is changed by whoever holds its token (cart.0007); checkout and
-    merge need a signed-in customer (cart.0004).
+    need a signed-in customer (cart.0004).
 
 tags:
   - name: baskets
@@ -102,29 +102,32 @@ paths:
         "409":
           $ref: "#/components/responses/Refused"
 
-  /v1/baskets/{basketId}/merge:
+  /v1/baskets/{basketId}/coupon:
     parameters:
       - $ref: "#/components/parameters/basketId"
     post:
-      operationId: mergeBaskets
+      operationId: applyCoupon
       tags: [baskets]
-      summary: Move a visitor's lines into this customer's basket
-      description: Every line or none (cart.0005). The visitor's basket is marked merged.
+      summary: Apply a coupon pricing accepts
+      description: >-
+        Pricing says whether the coupon is good for the lines and how much it
+        takes off; one coupon per basket, never more than the lines are worth.
       security:
+        - basketToken: []
         - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/MergeRequest" }
+            schema: { $ref: "#/components/schemas/ApplyCouponRequest" }
       responses:
         "200":
-          description: The customer's basket after the merge
+          description: The basket with the discount taken
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Basket" }
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/Invalid"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -227,6 +230,12 @@ components:
           type: array
           items: { $ref: "#/components/schemas/LineItem" }
         subtotal: { $ref: "#/components/schemas/Money" }
+        coupon:
+          type: object
+          required: [code, discount]
+          properties:
+            code: { type: string }
+            discount: { $ref: "#/components/schemas/Money" }
         touchedAt: { type: string, format: date-time }
 
     BasketCreated:
@@ -244,12 +253,11 @@ components:
         quantity: { type: integer, minimum: 1, maximum: 99 }
         unitPrice: { $ref: "#/components/schemas/Money" }
 
-    MergeRequest:
+    ApplyCouponRequest:
       type: object
-      required: [fromBasketId, fromToken]
+      required: [code]
       properties:
-        fromBasketId: { type: string, format: uuid }
-        fromToken: { type: string }
+        code: { type: string, minLength: 3, maxLength: 32 }
 
     CheckedOut:
       type: object

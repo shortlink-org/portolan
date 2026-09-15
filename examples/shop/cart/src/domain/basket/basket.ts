@@ -5,9 +5,11 @@ import { BasketCreated } from "./events/basket-created.ts";
 import { BasketItemAdded } from "./events/basket-item-added.ts";
 import { BasketItemRemoved } from "./events/basket-item-removed.ts";
 import { BasketMerged } from "./events/basket-merged.ts";
+import { CouponApplied } from "./events/coupon-applied.ts";
 import { BasketItem } from "./item.ts";
 import { whyNotAdd } from "./rules/index.ts";
 import { EDITABLE, canMove, type BasketStatus } from "./status.ts";
+import { AppliedCoupon } from "./vo/coupon.ts";
 import type { Currency } from "./vo/currency.ts";
 import { LineItem } from "./vo/line-item.ts";
 import { Money } from "./vo/money.ts";
@@ -33,8 +35,10 @@ export class Basket {
   touchedAt: Date;
   /** Bumped by every write; a write from a stale read is refused. */
   version: number;
+  /** The coupon pricing accepted, if any; one per basket. */
+  coupon: AppliedCoupon | undefined;
 
-  constructor(id: string, token: string, customerId: string | undefined, currency: Currency | undefined, status: BasketStatus, items: BasketItem[], touchedAt: Date, version: number) {
+  constructor(id: string, token: string, customerId: string | undefined, currency: Currency | undefined, status: BasketStatus, items: BasketItem[], touchedAt: Date, version: number, coupon?: AppliedCoupon) {
     this.id = id;
     this.token = token;
     this.customerId = customerId;
@@ -43,6 +47,7 @@ export class Basket {
     this.items = items;
     this.touchedAt = touchedAt;
     this.version = version;
+    this.coupon = coupon;
   }
 
   static create(id: string, token: string, customerId: string | undefined, now: Date): [Basket, BasketCreated] {
@@ -84,6 +89,23 @@ export class Basket {
     if (this.items.length === 0) this.currency = undefined;
     this.touchedAt = now;
     return new BasketItemRemoved(this.id, sku, now);
+  }
+
+  /**
+   * Takes the discount pricing agreed to for a coupon. One coupon per basket,
+   * in the basket's currency, never more than the lines are worth: pricing
+   * decided the discount, and these are the basket's own rules on top.
+   */
+  applyCoupon(code: string, discount: Money, now: Date): CouponApplied {
+    this.mustBeEditable();
+    const subtotal = this.subtotal();
+    if (!subtotal) throw new BasketError("refused", "an empty basket takes no coupon");
+    if (this.coupon) throw new BasketError("refused", `the basket already has coupon ${this.coupon.code}`);
+    if (!discount.currency.equals(subtotal.currency)) throw new BasketError("refused", "the discount is not in the basket's currency");
+    if (discount.amountMinor > subtotal.amountMinor) throw new BasketError("refused", "the discount is more than the basket is worth");
+    this.coupon = new AppliedCoupon(code, discount);
+    this.touchedAt = now;
+    return new CouponApplied(this.id, this.coupon.code, discount, now);
   }
 
   /** Freezes the basket against the quote pricing gave for it (cart.0004). */

@@ -11,6 +11,7 @@ import { BasketError } from "../../../domain/basket/errors.ts";
 import type { BasketEvent } from "../../../domain/basket/events/index.ts";
 import { BasketItem } from "../../../domain/basket/item.ts";
 import type { BasketRepository } from "../../../domain/basket/port.ts";
+import { AppliedCoupon } from "../../../domain/basket/vo/coupon.ts";
 import { Currency } from "../../../domain/basket/vo/currency.ts";
 import { Money } from "../../../domain/basket/vo/money.ts";
 import { METADATA_EVENT_NAME } from "../../../pkg/messaging/bus.ts";
@@ -25,6 +26,8 @@ interface BasketRow {
   status: Basket["status"];
   touched_at: Date;
   version: number;
+  coupon_code: string | null;
+  coupon_discount_minor: string | null;
 }
 
 interface ItemRow {
@@ -75,13 +78,13 @@ export class PostgresBaskets implements BasketRepository {
     const next = basket.version + 1;
     if (basket.version === 0) {
       await client.query(
-        "INSERT INTO baskets (id, token, customer_id, currency, status, touched_at, version) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        [basket.id, basket.token, basket.customerId ?? null, basket.currency?.code ?? null, basket.status, basket.touchedAt, next],
+        "INSERT INTO baskets (id, token, customer_id, currency, status, touched_at, version, coupon_code, coupon_discount_minor) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        [basket.id, basket.token, basket.customerId ?? null, basket.currency?.code ?? null, basket.status, basket.touchedAt, next, basket.coupon?.code ?? null, basket.coupon?.discount.amountMinor ?? null],
       );
     } else {
       const updated = await client.query(
-        "UPDATE baskets SET customer_id = $2, currency = $3, status = $4, touched_at = $5, version = $6 WHERE id = $1 AND version = $7",
-        [basket.id, basket.customerId ?? null, basket.currency?.code ?? null, basket.status, basket.touchedAt, next, basket.version],
+        "UPDATE baskets SET customer_id = $2, currency = $3, status = $4, touched_at = $5, version = $6, coupon_code = $8, coupon_discount_minor = $9 WHERE id = $1 AND version = $7",
+        [basket.id, basket.customerId ?? null, basket.currency?.code ?? null, basket.status, basket.touchedAt, next, basket.version, basket.coupon?.code ?? null, basket.coupon?.discount.amountMinor ?? null],
       );
       if (updated.rowCount !== 1) throw new BasketError("conflict", "the basket was changed by somebody else; read it again");
     }
@@ -117,6 +120,9 @@ export class PostgresBaskets implements BasketRepository {
       items.rows.map((i) => new BasketItem(i.sku, i.quantity, Money.of(Number(i.unit_price_minor), i.currency))),
       row.touched_at,
       row.version,
+      row.coupon_code && row.coupon_discount_minor !== null && row.currency
+        ? new AppliedCoupon(row.coupon_code, Money.of(Number(row.coupon_discount_minor), row.currency))
+        : undefined,
     );
   }
 }

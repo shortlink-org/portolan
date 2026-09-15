@@ -5,6 +5,7 @@ export const TOKENS = {
   BasketRepository: Symbol.for("cart.BasketRepository"),
   Sessions: Symbol.for("cart.Sessions"),
   Pricing: Symbol.for("cart.Pricing"),
+  Coupons: Symbol.for("cart.Coupons"),
   Now: Symbol.for("cart.Now"),
   NewId: Symbol.for("cart.NewId"),
   NewToken: Symbol.for("cart.NewToken"),

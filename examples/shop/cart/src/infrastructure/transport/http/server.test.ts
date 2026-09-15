@@ -1,12 +1,12 @@
 import "reflect-metadata";
 import { describe, expect, it } from "vitest";
 import { UseCase as AddItem } from "../../../application/basket/usecases/add_item/usecase.ts";
+import { UseCase as ApplyCoupon } from "../../../application/basket/usecases/apply_coupon/usecase.ts";
 import { UseCase as Checkout } from "../../../application/basket/usecases/checkout/usecase.ts";
 import { UseCase as CreateBasket } from "../../../application/basket/usecases/create_basket/usecase.ts";
 import { UseCase as GetBasket } from "../../../application/basket/usecases/get_basket/usecase.ts";
-import { UseCase as MergeBaskets } from "../../../application/basket/usecases/merge_baskets/usecase.ts";
 import { UseCase as RemoveItem } from "../../../application/basket/usecases/remove_item/usecase.ts";
-import { MemoryBaskets, at, ids, sums, vouches } from "../../../testing/fakes.ts";
+import { MemoryBaskets, accepts, at, ids, money, sums, vouches } from "../../../testing/fakes.ts";
 import { BasketHandlers } from "./basket/handlers.ts";
 import { buildServer } from "./server.ts";
 
@@ -19,7 +19,7 @@ function app() {
     new GetBasket(repo),
     new AddItem(repo, now),
     new RemoveItem(repo, now),
-    new MergeBaskets(repo, vouches("u1"), now, ids(), ids()),
+    new ApplyCoupon(repo, accepts("SAVE10", money(100)), now),
     new Checkout(repo, vouches("u1"), sums, now),
   );
   return buildServer(handlers);

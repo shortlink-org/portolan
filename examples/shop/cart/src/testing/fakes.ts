@@ -4,6 +4,7 @@
 import type { Basket } from "../domain/basket/basket.ts";
 import type { BasketEvent } from "../domain/basket/events/index.ts";
 import type { BasketRepository } from "../domain/basket/port.ts";
+import type { Coupons } from "../application/basket/usecases/apply_coupon/usecase.ts";
 import type { Pricing, Sessions } from "../application/basket/usecases/checkout/usecase.ts";
 import type { LineItem } from "../domain/basket/vo/line-item.ts";
 import { Money } from "../domain/basket/vo/money.ts";
@@ -38,6 +39,11 @@ export const sums: Pricing = {
     return { quoteId: `q-${basketId}`, total: rest.reduce((s, l) => s.add(l.unitPrice.times(l.quantity)), first.unitPrice.times(first.quantity)) };
   },
 };
+
+/** A pricing port that accepts one code for a fixed discount, and nothing else. */
+export const accepts = (code: string, discount: Money): Coupons => ({
+  redeem: async (_basketId: string, given: string) => (given === code ? { code, discount } : null),
+});
 
 export const at = (iso: string) => () => new Date(iso);
 export const ids = (...list: string[]) => {

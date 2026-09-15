@@ -6,11 +6,11 @@ import { createGrpcTransport } from "@connectrpc/connect-node";
 import { Container } from "inversify";
 import { Pool } from "pg";
 import { UseCase as AddItem } from "../application/basket/usecases/add_item/usecase.ts";
+import { UseCase as ApplyCoupon, type Coupons } from "../application/basket/usecases/apply_coupon/usecase.ts";
 import { UseCase as Checkout, type Pricing, type Sessions } from "../application/basket/usecases/checkout/usecase.ts";
 import { UseCase as CreateBasket } from "../application/basket/usecases/create_basket/usecase.ts";
 import { UseCase as ExpireIdleBaskets } from "../application/basket/usecases/expire_idle_baskets/usecase.ts";
 import { UseCase as GetBasket } from "../application/basket/usecases/get_basket/usecase.ts";
-import { UseCase as MergeBaskets } from "../application/basket/usecases/merge_baskets/usecase.ts";
 import { UseCase as RemoveItem } from "../application/basket/usecases/remove_item/usecase.ts";
 import type { BasketRepository } from "../domain/basket/port.ts";
 import { AuthSessions, PermissiveSessions } from "../infrastructure/auth/client.ts";
@@ -55,17 +55,16 @@ export function buildContainer(settings: Settings): Container {
   } else {
     container.bind<Sessions>(TOKENS.Sessions).to(PermissiveSessions);
   }
-  if (settings.pricingAddr) {
-    container.bind<Pricing>(TOKENS.Pricing).toConstantValue(new PricingClient(createGrpcTransport({ baseUrl: settings.pricingAddr })));
-  } else {
-    container.bind<Pricing>(TOKENS.Pricing).to(PermissivePricing);
-  }
+  // Pricing answers two ports - the quote and the coupon - over one client.
+  const pricing = settings.pricingAddr ? new PricingClient(createGrpcTransport({ baseUrl: settings.pricingAddr })) : new PermissivePricing();
+  container.bind<Pricing>(TOKENS.Pricing).toConstantValue(pricing);
+  container.bind<Coupons>(TOKENS.Coupons).toConstantValue(pricing);
 
   container.bind(CreateBasket).toSelf();
   container.bind(GetBasket).toSelf();
   container.bind(AddItem).toSelf();
   container.bind(RemoveItem).toSelf();
-  container.bind(MergeBaskets).toSelf();
+  container.bind(ApplyCoupon).toSelf();
   container.bind(Checkout).toSelf();
   container.bind(ExpireIdleBaskets).toSelf();
   container.bind(BasketHandlers).toSelf();

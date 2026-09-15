@@ -2,13 +2,14 @@
 // vendored proto. Reads the quote back into the port's own shape.
 import { createClient, type Client, type Transport } from "@connectrpc/connect";
 import { injectable } from "inversify";
+import type { Coupons } from "../../application/basket/usecases/apply_coupon/usecase.ts";
 import type { Pricing as PricingPort } from "../../application/basket/usecases/checkout/usecase.ts";
 import type { LineItem } from "../../domain/basket/vo/line-item.ts";
 import { Money } from "../../domain/basket/vo/money.ts";
 import { Pricing } from "./gen/shop/v1/pricing_pb.ts";
 
 @injectable()
-export class PricingClient implements PricingPort {
+export class PricingClient implements PricingPort, Coupons {
   private readonly client: Client<typeof Pricing>;
 
   constructor(transport: Transport) {
@@ -23,15 +24,32 @@ export class PricingClient implements PricingPort {
     if (!res.total) throw new Error("pricing answered with no total");
     return { quoteId: res.quoteId, total: Money.of(Number(res.total.amountMinor), res.total.currency) };
   }
+
+  async redeem(basketId: string, code: string, lines: LineItem[]): Promise<{ code: string; discount: Money } | null> {
+    const res = await this.client.redeemCoupon({
+      basketId,
+      code,
+      lines: lines.map((l) => ({ sku: l.sku, quantity: l.quantity, unitPrice: { amountMinor: BigInt(l.unitPrice.amountMinor), currency: l.unitPrice.currency.code } })),
+    });
+    if (!res.accepted || !res.discount) return null;
+    return { code: res.code, discount: Money.of(Number(res.discount.amountMinor), res.discount.currency) };
+  }
 }
 
 /** The stand-in assembly uses without PRICING_ADDR: the quote is the sum of the lines (cart.0004). */
 @injectable()
-export class PermissivePricing implements PricingPort {
+export class PermissivePricing implements PricingPort, Coupons {
   async quote(basketId: string, lines: LineItem[]): Promise<{ quoteId: string; total: Money }> {
     const [first, ...rest] = lines;
     if (!first) throw new Error("nothing to price");
     const total = rest.reduce((sum, l) => sum.add(l.unitPrice.times(l.quantity)), first.unitPrice.times(first.quantity));
     return { quoteId: `local-${basketId}`, total };
+  }
+
+  /** Without pricing, a code starting DEMO takes ten percent off; nothing else is accepted. */
+  async redeem(basketId: string, code: string, lines: LineItem[]): Promise<{ code: string; discount: Money } | null> {
+    if (!code.trim().toUpperCase().startsWith("DEMO")) return null;
+    const { total } = await this.quote(basketId, lines);
+    return { code, discount: Money.of(Math.floor(total.amountMinor / 10), total.currency.code) };
   }
 }
