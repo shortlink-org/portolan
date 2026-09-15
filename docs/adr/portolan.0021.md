@@ -6,7 +6,7 @@
 - **Date:** 2026-09-15
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0021-an-inferred-http-verb-links-a-call-at-medium-confidence.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0021-an-inferred-http-verb-links-a-call-at-medium-confidence.md)
-- **Committed:** Victor Login, 2026-09-15 (`413a23f`)
+- **Committed:** Victor Login, 2026-09-15 (`1a91a71`)
 
 ### Context and Problem Statement
 

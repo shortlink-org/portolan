@@ -457,9 +457,9 @@
       "relates": {},
       "source": "adr/0021-an-inferred-http-verb-links-a-call-at-medium-confidence.md",
       "created": {
-        "commit": "413a23f0a521c60325fd59cfb9e607da5907a43d",
+        "commit": "1a91a71e422ecf63e7f5b681d805945dcff860b8",
         "author": "Victor Login",
-        "date": "2026-09-15T23:11:30+07:00"
+        "date": "2026-09-15T23:16:59+07:00"
       }
     }
   ]
