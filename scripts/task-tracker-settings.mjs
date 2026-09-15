@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { join, matchesGlob, relative, resolve, sep } from "node:path";
 import { readManifestText } from "./manifest.mjs";
-import { normalizeTrackers, publicTaskTrackers, TRACKER_PROVIDERS } from "../src/lib/task-tracker-config.mjs";
+import { normalizeTrackers, publicTaskTrackers, TRACKER_PROVIDERS, WORK_ITEMS_PLUGIN, workItemsPluginNames } from "../src/lib/task-tracker-config.mjs";
 
 function read(workspace) {
   const path = join(workspace, "portolan.json");
@@ -66,12 +66,10 @@ export function saveTaskTrackerSettings(workspace, request, writeManifest) {
   }
   if (!Array.isArray(request.catalogs) || request.catalogs.some((id) => !state.catalogs.some((catalog) => catalog.id === id)) || (state.catalogs.length && !request.catalogs.length)) throw new Error("Select at least one known catalog.");
   if (existing && !existing.managed && JSON.stringify([...request.catalogs].sort()) !== JSON.stringify([...existing.catalogs].sort())) throw new Error("This verifier has manually configured sources. Change its catalog scope in portolan.json.");
-  let plugin = (manifest.plugins ?? []).find((item) => item.host === "work-items")?.name;
-  if (!plugin) {
-    plugin = "work-items";
-    if ((manifest.plugins ?? []).some((item) => item.name === plugin)) throw new Error("Plugin name work-items is already in use.");
-    manifest.plugins = [...(manifest.plugins ?? []), { name: plugin, host: "work-items" }];
-  }
+  // The built-in needs no declaration; one the manifest already has is kept.
+  const plugin = (manifest.plugins ?? []).find((item) => item.host === "work-items")?.name
+    ?? (workItemsPluginNames(manifest).has(WORK_ITEMS_PLUGIN) ? WORK_ITEMS_PLUGIN : null);
+  if (!plugin) throw new Error("Plugin name work-items is already in use.");
   const output = existing?.output ?? `portolan-work-items/${createHash("sha256").update(request.input).digest("hex").slice(0, 12)}`;
   const previous = existing ? manifest.verify[existing.step] : null;
   const step = { ...(previous ?? {}), plugin, in: request.input, out: output, options: { ...previous?.options, trackers, maxCommits, out: previous?.options?.out ?? "work-items.json" } };

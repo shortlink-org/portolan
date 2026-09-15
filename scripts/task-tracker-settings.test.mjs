@@ -65,7 +65,9 @@ describe("persisted tracker settings", { timeout: 30_000 }, () => {
     const saved = save(root);
     const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
     const step = manifest.verify[0];
-    expect(manifest.plugins).toEqual([{ name: "work-items", host: "work-items" }]);
+    // The built-in resolves by name: nothing is added to plugins to reach it.
+    expect(manifest.plugins).toEqual([]);
+    expect(step.plugin).toBe("work-items");
     expect(manifest.sources).toContain(`${step.out}/work-items.json`);
     expect(manifest.catalogs[0].sources).toContain(`${step.out}/work-items.json`);
     expect(manifest.catalogs[1].sources).not.toContain(`${step.out}/work-items.json`);
@@ -98,6 +100,12 @@ describe("persisted tracker settings", { timeout: 30_000 }, () => {
     expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8")).extract).toEqual([]);
     expect(() => save(root)).toThrow(/existing tracker/);
   });
+  it("refuses when the built-in name is taken by another plugin", () => {
+    const taken = workspace();
+    taken.manifest.plugins = [{ name: "work-items", process: { command: "true" } }];
+    writeFileSync(join(taken.root, "portolan.json"), JSON.stringify(taken.manifest));
+    expect(() => save(taken.root)).toThrow(/already in use/);
+  });
   it("does not follow a project symlink to a checkout outside the workspace", () => {
     const { root, manifest } = workspace();
     const { root: external } = workspace();
@@ -116,6 +124,7 @@ describe("persisted tracker settings", { timeout: 30_000 }, () => {
     expect(result.entries[0]).toMatchObject({ output: "manual", file: "custom.json", managed: false, catalogs: ["app"] });
     expect(JSON.parse(readFileSync(join(root, "portolan.json"))).verify[0].options.repository).toBe("https://github.com/acme/shop");
     expect(() => save(root, { step: 0, catalogs: ["other"] })).toThrow(/manually configured/);
+    expect(JSON.parse(readFileSync(join(root, "portolan.json"))).plugins).toEqual([{ name: "work-items", host: "work-items" }]);
     const second = workspace();
     second.manifest.catalogs[1].sources.push("**/*.json");
     writeFileSync(join(second.root, "portolan.json"), JSON.stringify(second.manifest));

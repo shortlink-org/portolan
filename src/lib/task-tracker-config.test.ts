@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectTaskKeys, normalizeTrackers, publicTaskTrackers, taskUrl } from "./task-tracker-config.mjs";
+import { detectTaskKeys, normalizeTrackers, publicTaskTrackers, taskUrl, workItemsPluginNames } from "./task-tracker-config.mjs";
 
 const tracker = { id: "team", provider: "youtrack" as const, baseUrl: "https://tasks.example.com/youtrack", projects: ["RT", "CORE"] };
 
@@ -58,5 +58,13 @@ describe("task tracker configuration", () => {
     expect(JSON.stringify(entries)).not.toMatch(/secret|private|token/);
     expect(publicTaskTrackers({ plugins: {}, verify: [null] })).toEqual([]);
     expect(publicTaskTrackers(null)).toEqual([]);
+  });
+  it("takes the built-in work-items plugin by name unless a declaration says otherwise", () => {
+    const verify = [{ plugin: "work-items", in: ".", out: "tasks", options: { trackers: [tracker] } }];
+    expect(publicTaskTrackers({ verify })).toHaveLength(1);
+    expect(publicTaskTrackers({ plugins: [], verify })).toHaveLength(1);
+    expect(publicTaskTrackers({ plugins: [{ name: "work-items", host: "work-items" }], verify })).toHaveLength(1);
+    expect(publicTaskTrackers({ plugins: [{ name: "work-items", process: { command: "true" } }], verify })).toEqual([]);
+    expect([...workItemsPluginNames({ plugins: [{ name: "tasks", host: "work-items" }] })].sort()).toEqual(["tasks", "work-items"]);
   });
 });

@@ -14,6 +14,7 @@ import { join, matchesGlob, resolve } from "node:path";
 import { loadCatalog } from "./catalog-sources.mjs";
 import { fullScanTarget, scanWorkItems } from "./host-plugins/work-items.mjs";
 import { readManifest } from "./manifest.mjs";
+import { workItemsPluginNames } from "../src/lib/task-tracker-config.mjs";
 import { onWorkItemsFullScan, requestWorkItemsFullScan, workItemsFullScans } from "./work-items-scans.mjs";
 
 export const WORK_ITEMS_MODULE = "virtual:portolan-work-items";
@@ -41,7 +42,7 @@ export function forgetWorkItems() {
  */
 export async function readWorkItems(workspace) {
   const manifest = readManifest(join(workspace, "portolan.json"));
-  const hosts = new Set((manifest.plugins ?? []).filter((plugin) => plugin.host === "work-items").map((plugin) => plugin.name));
+  const hosts = workItemsPluginNames(manifest);
   const steps = (manifest.verify ?? []).filter((step) => hosts.has(step.plugin));
   if (steps.length === 0) return { sources: [], warnings: [] };
 

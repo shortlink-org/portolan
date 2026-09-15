@@ -100,9 +100,29 @@ export function normalizeTrackers(value) {
   });
 }
 
+/**
+ * The name Portolan's own manifest gives the work-items host plugin. A step
+ * names a built-in without declaring it - gen resolves it from the package
+ * (scripts/builtin-plugins.mjs) - so a verifier naming it is one even where
+ * `plugins` is silent.
+ */
+export const WORK_ITEMS_PLUGIN = "work-items";
+
+/**
+ * The plugin names a verify step may carry to be a work-items verifier: every
+ * declaration running the `work-items` host, and the built-in name unless the
+ * manifest declares something else under it. As in gen, a declaration wins.
+ */
+export function workItemsPluginNames(manifest) {
+  const plugins = (Array.isArray(manifest?.plugins) ? manifest.plugins : []).filter((plugin) => plugin && typeof plugin === "object");
+  const names = new Set(plugins.filter((plugin) => plugin.host === "work-items").map((plugin) => plugin.name));
+  if (!plugins.some((plugin) => plugin.name === WORK_ITEMS_PLUGIN)) names.add(WORK_ITEMS_PLUGIN);
+  return names;
+}
+
 /** Explicit allowlist for published catalogs. Never copy arbitrary options. */
 export function publicTaskTrackers(manifest) {
-  const names = new Set((Array.isArray(manifest?.plugins) ? manifest.plugins : []).filter((plugin) => plugin?.host === "work-items").map((plugin) => plugin.name));
+  const names = workItemsPluginNames(manifest);
   return (Array.isArray(manifest?.verify) ? manifest.verify : []).flatMap((step, index) => {
     if (!step || !names.has(step.plugin) || typeof step.in !== "string" || typeof step.out !== "string" || [step.in, step.out].some((path) => path.startsWith("/") || /[:\\]/.test(path) || path.split("/").includes(".."))) return [];
     try {

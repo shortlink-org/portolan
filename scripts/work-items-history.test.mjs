@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { builtinPlugin } from "./builtin-plugins.mjs";
 import { run } from "./host-plugins/work-items.mjs";
 import { readWorkItems, requestWorkItemsFullScan, fullScanTarget, forgetWorkItems } from "./work-items-history.mjs";
 
@@ -20,7 +21,7 @@ const output = "portolan-work-items/repo";
  * A checkout of this repository's own catalog - its services are portolan's,
  * rooted where portolan's code is - with a history of its own.
  */
-function workspace({ maxCommits = 500 } = {}) {
+function workspace({ maxCommits = 500, plugins = [{ name: "work-items", host: "work-items" }] } = {}) {
   const root = mkdtempSync(join(tmpdir(), "portolan-work-items-history-"));
   roots.push(root);
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -32,7 +33,7 @@ function workspace({ maxCommits = 500 } = {}) {
       { id: "portolan", title: "Portolan", sources: ["portolan/*.json", `${output}/work-items.json`], contexts: ["portolan"], projects: [] },
       { id: "other", title: "Other", sources: ["other/*.json"], contexts: ["other"], projects: [] },
     ],
-    plugins: [{ name: "work-items", host: "work-items" }],
+    ...(plugins ? { plugins } : {}),
     extract: [],
     verify: [{ plugin: "work-items", in: ".", out: output, options: { trackers: [tracker], maxCommits, out: "work-items.json" } }],
   }, null, 2));
@@ -73,6 +74,25 @@ describe("task links read from the history", { timeout: 30_000 }, () => {
     forgetWorkItems();
     const again = await readWorkItems(root);
     expect(again.sources[0].fragment.workItemLinks.find((candidate) => candidate.target.kind === "service").commits.map((entry) => entry.sha)).toEqual([next, sha]);
+  });
+
+  it("reads a verifier naming the built-in without a plugins declaration, as gen runs it", async () => {
+    // The name the shared helper takes for granted is the one the package ships.
+    expect(builtinPlugin("work-items")).toMatchObject({ name: "work-items", host: "work-items" });
+    for (const declared of [undefined, []]) {
+      const { root, commit } = workspace({ plugins: declared });
+      commit("feat(site): a change (SHO-7)");
+      const { sources, warnings } = await readWorkItems(root);
+      expect(warnings).toEqual([]);
+      expect(sources.map((source) => source.fragment.workItems.map((item) => item.key))).toEqual([["SHO-7"]]);
+      forgetWorkItems();
+    }
+  });
+
+  it("reads nothing where the manifest declares another plugin under the built-in name", async () => {
+    const taken = workspace({ plugins: [{ name: "work-items", process: { command: "true" } }] });
+    taken.commit("feat(site): a change (SHO-7)");
+    expect(await readWorkItems(taken.root)).toEqual({ sources: [], warnings: [] });
   });
 
   it("a full scan lifts the commit limit for the verifier it names", async () => {

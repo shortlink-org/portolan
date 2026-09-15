@@ -23,4 +23,6 @@ export function keyPattern(projects: string[], format?: string): RegExp;
 export function detectTaskKeys(message: string, tracker: TaskTracker): string[];
 export function taskUrl(tracker: TaskTracker, key: string): string;
 export function normalizeTrackers(value: unknown): TaskTracker[];
+export const WORK_ITEMS_PLUGIN: "work-items";
+export function workItemsPluginNames(manifest: unknown): Set<string>;
 export function publicTaskTrackers(manifest: unknown): TaskTrackerEntry[];
