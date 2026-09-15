@@ -47,6 +47,12 @@
       "description": "Which system outside the estate a hand-written client reaches, as the adapter's directory (relative to the input) to the external's bare id or an object naming it. A generated client carries its contract; a hand-written one only names a verb, a path and a base URL read from configuration, so the manifest says what answers. Every call whose call site, base-URL source or grouping function lies under the directory is recorded as declared against that external, which is given the operations seen going out: `<id>.http` with `POST /v1/book`, `<id>.soap` with the action's last segment. A client of a service in the catalog names `service` and `api` instead: its calls are declared against that service as the operations of its interface.",
       "examples": [{ "internal/pkg/connector/aerticket": "aerticket", "internal/pkg/connector/websky": { "external": "websky", "name": "Websky", "url": "https://nemo-ibe.com" } }]
     },
+    "clients": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "The API a generated client imported from another module calls, as the client package's import path to the API id. A service of the estate publishes its oapi-codegen client (`pkg/client`) and a consumer imports it from the module cache, where neither the client nor its document is in the tree. A method called on a value of that package is the operation its name stands for (`GetBookingWithResponse` is `getBooking`); `peers` says which service answers the API.",
+      "examples": [{ "gitlab.example.com/avia/travelport-connector/pkg/client": "new-travelport-connector-api.v1" }]
+    },
     "out": {
       "type": "string",
       "description": "Name of the fragment file inside the step output directory.",

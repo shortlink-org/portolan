@@ -15,7 +15,7 @@ import (
 )
 
 func extract(in plugin.Input, opts Options) (plugin.Response, error) {
-	result, err := gohttp.Analyze(in.Root)
+	result, err := gohttp.AnalyzeWith(in.Root, gohttp.Options{Clients: opts.Clients})
 	if err != nil {
 		return plugin.Response{}, err
 	}
@@ -762,7 +762,14 @@ func callLabel(call gohttp.Call) string {
 	if call.Protocol == "SOAP" {
 		return "SOAP " + call.Action
 	}
-	return strings.TrimSpace(call.Method + " " + call.Path)
+	if label := strings.TrimSpace(call.Method + " " + call.Path); label != "" {
+		return label
+	}
+	// A client from another module names its operation, not its route.
+	if _, operation, ok := strings.Cut(call.ID, "/"); ok && call.API != "" {
+		return operation
+	}
+	return ""
 }
 
 func callNote(call gohttp.Call) string {

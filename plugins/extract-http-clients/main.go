@@ -22,7 +22,11 @@ type Options struct {
 	// a base URL read from configuration, so the manifest has to say what is
 	// on the other end.
 	Adapters map[string]Adapter `json:"adapters,omitempty"`
-	Out      string             `json:"out,omitempty"`
+	// Clients names the API a generated client imported from another module
+	// calls, as its import path to the API id; `peers` then says which
+	// service answers it.
+	Clients map[string]string `json:"clients,omitempty"`
+	Out     string            `json:"out,omitempty"`
 }
 
 // Adapter is what the manifest says about the system behind one adapter

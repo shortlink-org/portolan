@@ -163,6 +163,7 @@ type constValue struct {
 type scanner struct {
 	destinations        map[string]destinationObject
 	root                string
+	clients             map[string]string
 	fset                *token.FileSet
 	files               []*parsedFile
 	constants           map[string]constValue
@@ -228,11 +229,27 @@ type soapWrapper struct {
 }
 
 func Analyze(root string) (Result, error) {
+	return AnalyzeWith(root, Options{})
+}
+
+// Options are what the manifest knows that the tree does not.
+type Options struct {
+	// Clients names the API a generated client from another module calls, as
+	// the client package's import path to the API id: the estate's own
+	// service publishes `pkg/client`, and a consumer imports it from the
+	// module cache, where neither the client nor its document is in the tree.
+	// A method called on a value of that package is the operation its
+	// oapi-codegen name stands for: GetBooking is getBooking.
+	Clients map[string]string
+}
+
+// AnalyzeWith is Analyze with what the manifest adds.
+func AnalyzeWith(root string, opts Options) (Result, error) {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		return Result{}, fmt.Errorf("resolve analysis root %q: %w", root, err)
 	}
-	s := &scanner{root: absRoot, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}, fieldTypes: map[string][]endpointType{}, typedEdges: map[string][]localEdge{}}
+	s := &scanner{root: absRoot, clients: opts.Clients, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}, fieldTypes: map[string][]endpointType{}, typedEdges: map[string][]localEdge{}}
 	if err := s.read(); err != nil {
 		return Result{}, err
 	}
@@ -1521,6 +1538,14 @@ func (s *scanner) call(file *parsedFile, function string, call *ast.CallExpr, co
 		}
 	}
 
+	if api, operation, ok := s.moduleClientCall(file, function, call); ok {
+		return Call{
+			Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP",
+			API: api, ID: openapi.Operation{ID: operation}.CallID(api),
+			Conditions: append([]string(nil), conditions...),
+		}, true
+	}
+
 	if wrappers := s.matchingSOAPWrappers(name, len(call.Args)); len(wrappers) > 0 {
 		if s.soapFns[function] {
 			return Call{}, false
@@ -1804,6 +1829,124 @@ func (s *scanner) netHTTPCall(file *parsedFile, fun ast.Expr) bool {
 	}
 	id, ok := sel.X.(*ast.Ident)
 	return ok && file.imports[id.Name] == "net/http"
+}
+
+// moduleClientCall is a call to a generated client the manifest names by
+// import path: a method on a receiver field, a parameter or a local declared
+// with a type of that package. The operation is the method's name as
+// oapi-codegen spells an operationId, with its WithBody and WithResponse
+// variants folded and the first letter lowered back.
+func (s *scanner) moduleClientCall(file *parsedFile, function string, call *ast.CallExpr) (string, string, bool) {
+	if len(s.clients) == 0 {
+		return "", "", false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok || !ast.IsExported(sel.Sel.Name) {
+		return "", "", false
+	}
+	path := s.valueImportPath(file, function, sel.X)
+	api := s.clients[path]
+	if api == "" {
+		return "", "", false
+	}
+	operation := sel.Sel.Name
+	for _, suffix := range []string{"WithBodyWithResponse", "WithResponse", "WithBody"} {
+		operation = strings.TrimSuffix(operation, suffix)
+	}
+	if operation == "" {
+		return "", "", false
+	}
+	return api, strings.ToLower(operation[:1]) + operation[1:], true
+}
+
+// valueImportPath is the import path of the package a value's declared type
+// comes from, when the value is a receiver field (c.client), a parameter or
+// a local declared with that type; empty otherwise.
+func (s *scanner) valueImportPath(file *parsedFile, function string, expr ast.Expr) string {
+	declaration := s.functions[function]
+	if declaration == nil {
+		return ""
+	}
+	fromType := func(typeFile *parsedFile, typ ast.Expr) string {
+		for {
+			star, ok := typ.(*ast.StarExpr)
+			if !ok {
+				break
+			}
+			typ = star.X
+		}
+		selector, ok := typ.(*ast.SelectorExpr)
+		if !ok {
+			return ""
+		}
+		alias, ok := selector.X.(*ast.Ident)
+		if !ok {
+			return ""
+		}
+		return typeFile.imports[alias.Name]
+	}
+	switch value := expr.(type) {
+	case *ast.Ident:
+		fields := []*ast.Field{}
+		if declaration.fn.Type.Params != nil {
+			fields = append(fields, declaration.fn.Type.Params.List...)
+		}
+		for _, field := range fields {
+			for _, name := range field.Names {
+				if name.Name == value.Name {
+					return fromType(file, field.Type)
+				}
+			}
+		}
+		found := ""
+		ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+			if spec, ok := node.(*ast.ValueSpec); ok && spec.Type != nil && found == "" {
+				for _, name := range spec.Names {
+					if name.Name == value.Name {
+						found = fromType(file, spec.Type)
+					}
+				}
+			}
+			return found == ""
+		})
+		return found
+	case *ast.SelectorExpr:
+		receiver, ok := value.X.(*ast.Ident)
+		if !ok || declaration.fn.Recv == nil || len(declaration.fn.Recv.List) == 0 {
+			return ""
+		}
+		names := declaration.fn.Recv.List[0].Names
+		if len(names) == 0 || names[0].Name != receiver.Name {
+			return ""
+		}
+		typeName := receiverName(declaration.fn.Recv.List[0].Type)
+		for _, candidate := range s.files {
+			if candidate.dir != file.dir {
+				continue
+			}
+			for _, decl := range candidate.node.Decls {
+				gen, ok := decl.(*ast.GenDecl)
+				if !ok || gen.Tok != token.TYPE {
+					continue
+				}
+				for _, raw := range gen.Specs {
+					spec := raw.(*ast.TypeSpec)
+					body, ok := spec.Type.(*ast.StructType)
+					if !ok || spec.Name.Name != typeName {
+						continue
+					}
+					for _, field := range body.Fields.List {
+						for _, name := range field.Names {
+							if name.Name == value.Sel.Name {
+								return fromType(candidate, field.Type)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // restyVerbs are the resty request methods that send: the verb each one

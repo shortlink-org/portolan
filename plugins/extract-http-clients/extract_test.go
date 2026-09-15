@@ -1664,6 +1664,65 @@ func Update(ctx context.Context, baseURL string) error {
 	}
 }
 
+func TestCallsAGeneratedClientImportedFromAnotherModule(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/supp\n")
+	writeHTTPFixture(t, root, "connector/travel/client.go", `package travel
+import (
+  "context"
+  tp "example.com/connector/pkg/client"
+)
+type Client struct{ client *tp.Client }
+func (c *Client) Booking(ctx context.Context, req tp.GetBookingRequest) error {
+  _, err := c.client.GetBookingWithResponse(ctx, req)
+  return err
+}
+func Search(ctx context.Context, api *tp.Client) error {
+  _, err := api.Search(ctx, nil)
+  return err
+}
+type other struct{}
+func (other) GetBooking() {}
+func (c *Client) notAClient(o other) { o.GetBooking() }
+`)
+	opts := Options{Context: "supp", Service: "supp",
+		Clients: map[string]string{"example.com/connector/pkg/client": "connector-api.v1"},
+		Peers:   map[string]string{"connector-api.v1": "connector.connector"},
+	}
+	resp, err := extract(plugin.Input{Root: root}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]catalog.RpcCall{}
+	for _, call := range got.Contexts[0].Services[0].Consumes {
+		byID[call.ID] = call
+	}
+	for _, id := range []string{"connector-api.v1/getBooking", "connector-api.v1/search"} {
+		call, ok := byID[id]
+		if !ok || call.Peer != "connector.connector" || call.Status != catalog.StatusDeclared || !strings.HasPrefix(call.Source, "connector/travel/client.go:") {
+			t.Fatalf("%s = %+v (all %v)", id, call, byID)
+		}
+	}
+	if len(byID) != 2 || len(got.Externals) != 0 {
+		t.Fatalf("a method on a type of another package is not a client call: %v, externals %+v", byID, got.Externals)
+	}
+	labelled := false
+	for _, flow := range got.Flows {
+		for _, node := range flow.Steps {
+			if step, ok := node.(*catalog.Step); ok && step.Ref == "connector-api.v1/getBooking" {
+				labelled = step.Label == "getBooking" && step.To == "connector.connector"
+			}
+		}
+	}
+	if !labelled {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+}
+
 func TestReadsRestyRequestsThroughAWrapper(t *testing.T) {
 	root := t.TempDir()
 	writeHTTPFixture(t, root, "go.mod", "module example.com/bridge\n")

@@ -3097,6 +3097,18 @@
             }
           ]
         },
+        "clients": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The API a generated client imported from another module calls, as the client package's import path to the API id. A service of the estate publishes its oapi-codegen client (`pkg/client`) and a consumer imports it from the module cache, where neither the client nor its document is in the tree. A method called on a value of that package is the operation its name stands for (`GetBookingWithResponse` is `getBooking`); `peers` says which service answers the API.",
+          "examples": [
+            {
+              "gitlab.example.com/avia/travelport-connector/pkg/client": "new-travelport-connector-api.v1"
+            }
+          ]
+        },
         "out": {
           "type": "string",
           "description": "Name of the fragment file inside the step output directory.",
