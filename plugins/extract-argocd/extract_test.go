@@ -236,3 +236,33 @@ func TestReadsTheExampleGitopsTreeOfThisRepository(t *testing.T) {
 		}
 	}
 }
+
+// A path is a location in the repository the controller reads, so it is
+// spelled from that repository whether the tree is the workspace or a copy
+// fetched into it. Nothing about where the copy sits reaches the catalog.
+func TestPathsAreSpelledFromTheGitopsRepository(t *testing.T) {
+	for _, tc := range []struct{ repository, root string }{
+		{"", "gitops"},
+		{"vendor/repos/acme/gitops", "vendor/repos/acme/gitops/gitops"},
+	} {
+		t.Run(tc.root, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			repo := firstNonEmpty(tc.repository, ".")
+			write(t, repo, "gitops/appsets/shop.yaml", shopAppSet)
+			write(t, repo, "gitops/envs/prod/cluster.yaml", "env: prod\ncluster:\n  name: in-cluster\n")
+			write(t, repo, "gitops/envs/prod/shop/cart/kustomization.yaml", "images:\n  - name: ghcr.io/acme/cart\n    newTag: 2.1.0\n")
+			in := plugin.Input{Root: tc.root, Repository: tc.repository}
+			resp, err := extract(in, Options{Repo: "github.com/acme/gitops"}, repositoryRoot(in))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+				t.Fatal(err)
+			}
+			if len(out.Deployments) != 1 || out.Deployments[0].Path != "gitops/envs/prod/shop/cart" || len(out.Deployments[0].Images) != 1 {
+				t.Errorf("deployments = %+v, warnings %+v", out.Deployments, resp.Warnings())
+			}
+		})
+	}
+}

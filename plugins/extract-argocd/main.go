@@ -52,11 +52,20 @@ func Serve(stdin io.Reader, stdout io.Writer) error {
 		if req.Input.Root == "" {
 			return plugin.Response{}, fmt.Errorf("no input root: an extractor has nothing to read")
 		}
-		// Input.Root is repository-relative and the workspace is the
-		// repository, so a git generator's repository-relative path is
-		// walked from here.
-		return extract(req.Input, opts, ".")
+		return extract(req.Input, opts, repositoryRoot(req.Input))
 	})
+}
+
+// repositoryRoot is where a git generator's repository-relative paths are
+// walked from. In a monorepo the workspace is the repository, so that is
+// here; for a copy fetched into the workspace it is the copy's directory,
+// and a path the controller would read as `apps/pricing` is found there
+// and written as `apps/pricing`, not as where the copy happens to sit.
+func repositoryRoot(in plugin.Input) string {
+	if in.Repository != "" {
+		return in.Repository
+	}
+	return "."
 }
 
 func (o Options) withDefaults() Options {

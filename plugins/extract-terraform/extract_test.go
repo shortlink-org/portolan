@@ -24,7 +24,17 @@ func extracted(t *testing.T, root string, opts Options) (catalog.Catalog, plugin
 	if opts.Service == "" {
 		opts.Service = "fulfillment"
 	}
-	resp, err := extract(plugin.Input{Root: root}, opts)
+	return extractedWith(t, plugin.Input{Root: root}, opts)
+}
+
+func extractedFrom(t *testing.T, in plugin.Input) (catalog.Catalog, plugin.Response) {
+	t.Helper()
+	return extractedWith(t, in, Options{Context: "shop", Service: "fulfillment"})
+}
+
+func extractedWith(t *testing.T, in plugin.Input, opts Options) (catalog.Catalog, plugin.Response) {
+	t.Helper()
+	resp, err := extract(in, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +150,7 @@ func TestFunctionsBecomeComponentsAndReadTheirTriggers(t *testing.T) {
 		t.Errorf("ship: kind %q technologies %v", ship.Kind, ship.Technologies)
 	}
 	orders := channel(t, ship, "fulfillment-orders")
-	if orders.Kind != catalog.ChannelKindMessage || orders.Source != "messaging.tf:11" {
+	if orders.Kind != catalog.ChannelKindMessage || orders.Source != "testdata/serverless/messaging.tf:11" {
 		t.Errorf("orders: %+v", orders)
 	}
 	for _, sentence := range []string{
@@ -196,7 +206,7 @@ func TestUnclaimedInfrastructureSitsOnTheBaseService(t *testing.T) {
 		t.Errorf("base owns every store: %s", got)
 	}
 	perAccount := channel(t, base, "fulfillment-events-{account_id}")
-	if perAccount.Source != "data.tf:79" {
+	if perAccount.Source != "testdata/serverless/data.tf:79" {
 		t.Errorf("a name decided at apply time in part keeps its shape: %+v", perAccount)
 	}
 	for _, st := range out.Stores {
@@ -244,7 +254,7 @@ func TestStores(t *testing.T) {
 		t.Errorf("rds kinds: %+v %+v", byID["shop.fulfillment.fulfillment-reporting"], byID["shop.fulfillment.fulfillment-ledger"])
 	}
 	archive := byID["shop.fulfillment.fulfillment-archive"]
-	if archive.Kind != catalog.StoreKindS3 || archive.Source != "modules/archive/main.tf:5" {
+	if archive.Kind != catalog.StoreKindS3 || archive.Source != "testdata/serverless/modules/archive/main.tf:5" {
 		t.Errorf("the bucket in the called module, named through its argument: %+v", archive)
 	}
 }
@@ -524,6 +534,29 @@ resource "azurerm_eventgrid_event_subscription" "audit" {
 	}
 	if strings.Contains(assets.Doc, "audit.example.test") || strings.Contains(assets.Doc, "do-not-copy") {
 		t.Errorf("webhook URL leaked into the catalog: %s", assets.Doc)
+	}
+}
+
+// A declaration is cited from the repository the service lives in: the
+// workspace in a monorepo, so the root is part of it, and the fetched copy
+// otherwise. The module's own directory under the root stays in either.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	for _, tc := range []struct{ root, repository, prefix string }{
+		{"examples/shop/fulfillment", "", "examples/shop/fulfillment/"},
+		{"vendor/repos/acme/shop", "vendor/repos/acme/shop", ""},
+	} {
+		t.Run(tc.root, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			write(t, tc.root, "deploy/terraform/main.tf", "resource \"aws_sqs_queue\" \"q\" {\n  name = \"deep\"\n}\n\nresource \"aws_dynamodb_table\" \"orders\" {\n  name     = \"orders\"\n  hash_key = \"id\"\n  attribute {\n    name = \"id\"\n    type = \"S\"\n  }\n}\n")
+			out, _ := extractedFrom(t, plugin.Input{Root: tc.root, Repository: tc.repository})
+			want := tc.prefix + "deploy/terraform/main.tf:"
+			if got := channel(t, out.Contexts[0].Services[0], "deep").Source; got != want+"1" {
+				t.Errorf("queue source = %q, want %q", got, want+"1")
+			}
+			if len(out.Stores) != 1 || out.Stores[0].Source != want+"5" || len(out.Stores[0].Tables) != 1 || out.Stores[0].Tables[0].Evidence[0].Source != want+"5" {
+				t.Errorf("stores = %+v, want sources %q", out.Stores, want+"5")
+			}
+		})
 	}
 }
 

@@ -23,6 +23,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		b.Warn(in.Root, "no aws-sdk-go-v2 SQS call was found")
 	}
 	channels := s.catalog(sites, b)
+	// A site is found under Root and cited from the repository, which is
+	// what a source link opens on the forge.
+	for i := range channels {
+		channels[i].Source = in.RootSource(channels[i].Source)
+	}
 
 	serviceID := opts.Context + "." + opts.Service
 	fragment := catalog.Catalog{

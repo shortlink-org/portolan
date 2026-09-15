@@ -484,6 +484,66 @@ spec:
 	}
 }
 
+// The route manifest an exposure cites is spelled from the repository: the
+// workspace in a monorepo, so the root is part of it, and the fetched copy
+// otherwise.
+func TestGatewayExposureSourceIsSpelledFromTheRepository(t *testing.T) {
+	manifests := pricingDeployment + `---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing
+  namespace: shop
+spec:
+  selector:
+    app: pricing
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: public
+  namespace: shop
+spec:
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pricing
+  namespace: shop
+spec:
+  parentRefs:
+    - name: public
+  rules:
+    - backendRefs:
+        - name: pricing
+`
+	for _, tc := range []struct{ root, repository, want string }{
+		{"examples/shop/pricing", "", "examples/shop/pricing/deploy/shop.yaml"},
+		{"vendor/repos/acme/shop", "vendor/repos/acme/shop", "deploy/shop.yaml"},
+	} {
+		t.Run(tc.root, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			write(t, tc.root, "deploy/shop.yaml", manifests)
+			resp, err := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, Options{Context: "shop", Service: "pricing"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+				t.Fatal(err)
+			}
+			exposures := out.Contexts[0].Services[0].GatewayExposures
+			if len(exposures) != 1 || exposures[0].Source != tc.want {
+				t.Errorf("exposures = %+v, want source %q (warnings %v)", exposures, tc.want, warnings(resp))
+			}
+		})
+	}
+}
+
 func TestSeveralWorkloadsNoneNamedIsAWarningNotAGuess(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "a.yaml", strings.ReplaceAll(pricingDeployment, "pricing", "alpha"))

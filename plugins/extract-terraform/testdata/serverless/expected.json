@@ -31,7 +31,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.per_account. Nothing in the module receives from it or is configured with it.",
               "messages": [],
-              "source": "data.tf:79"
+              "source": "testdata/serverless/data.tf:79"
             },
             {
               "address": "fulfillment-orders-dlq",
@@ -39,7 +39,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.orders_dlq. Dead-letter queue of `fulfillment-orders`.",
               "messages": [],
-              "source": "messaging.tf:6"
+              "source": "testdata/serverless/messaging.tf:6"
             },
             {
               "address": "legacy",
@@ -47,7 +47,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.legacy. Dead letters go to `legacy-dlq` after 10 receives. Nothing in the module receives from it or is configured with it.",
               "messages": [],
-              "source": "messaging.tf:30"
+              "source": "testdata/serverless/messaging.tf:30"
             },
             {
               "address": "legacy-dlq",
@@ -55,7 +55,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.legacy_dlq. Dead-letter queue of `legacy`.",
               "messages": [],
-              "source": "messaging.tf:26"
+              "source": "testdata/serverless/messaging.tf:26"
             }
           ]
         },
@@ -84,7 +84,7 @@
               "title": "SNS topic",
               "doc": "Declared in Terraform as aws_sns_topic.order_events. Received by `fulfillment-notify` through an SNS subscription.",
               "messages": [],
-              "source": "messaging.tf:1"
+              "source": "testdata/serverless/messaging.tf:1"
             }
           ]
         },
@@ -134,7 +134,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.audit. FIFO. Filled by S3 bucket `fulfillment-labels` on s3:ObjectRemoved:*. Handed to `fulfillment-ship` as `AUDIT_QUEUE_URL`; which way messages go is not said here.",
               "messages": [],
-              "source": "messaging.tf:20"
+              "source": "testdata/serverless/messaging.tf:20"
             },
             {
               "address": "fulfillment-order-events",
@@ -142,7 +142,7 @@
               "title": "SNS topic",
               "doc": "Declared in Terraform as aws_sns_topic.order_events. Received by `fulfillment-ship` through SQS queue `fulfillment-orders`.",
               "messages": [],
-              "source": "messaging.tf:1"
+              "source": "testdata/serverless/messaging.tf:1"
             },
             {
               "address": "fulfillment-orders",
@@ -150,7 +150,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.orders. Dead letters go to `fulfillment-orders-dlq` after 4 receives. Received by `fulfillment-ship` through an event source mapping. Subscribed to SNS topic `fulfillment-order-events`.",
               "messages": [],
-              "source": "messaging.tf:11"
+              "source": "testdata/serverless/messaging.tf:11"
             }
           ]
         }
@@ -168,7 +168,7 @@
       "kind": "s3",
       "owner": "shop.fulfillment",
       "tables": [],
-      "source": "modules/archive/main.tf:5"
+      "source": "testdata/serverless/modules/archive/main.tf:5"
     },
     {
       "id": "shop.fulfillment.fulfillment-labels",
@@ -177,7 +177,7 @@
       "kind": "s3",
       "owner": "shop.fulfillment",
       "tables": [],
-      "source": "data.tf:38"
+      "source": "testdata/serverless/data.tf:38"
     },
     {
       "id": "shop.fulfillment.fulfillment-ledger",
@@ -186,7 +186,7 @@
       "kind": "mysql",
       "owner": "shop.fulfillment",
       "tables": [],
-      "source": "data.tf:64"
+      "source": "testdata/serverless/data.tf:64"
     },
     {
       "id": "shop.fulfillment.fulfillment-orders",
@@ -200,7 +200,7 @@
             {
               "kind": "contract",
               "rule": "terraform-aws-dynamodb-table",
-              "source": "data.tf:1",
+              "source": "testdata/serverless/data.tf:1",
               "symbol": "aws_dynamodb_table.orders"
             }
           ],
@@ -245,7 +245,7 @@
           ]
         }
       ],
-      "source": "data.tf:1"
+      "source": "testdata/serverless/data.tf:1"
     },
     {
       "id": "shop.fulfillment.fulfillment-reporting",
@@ -254,7 +254,7 @@
       "kind": "postgres",
       "owner": "shop.fulfillment",
       "tables": [],
-      "source": "data.tf:56"
+      "source": "testdata/serverless/data.tf:56"
     },
     {
       "id": "shop.fulfillment.fulfillment-uploads-suffix",
@@ -263,7 +263,7 @@
       "kind": "s3",
       "owner": "shop.fulfillment",
       "tables": [],
-      "source": "data.tf:75"
+      "source": "testdata/serverless/data.tf:75"
     }
   ]
 }

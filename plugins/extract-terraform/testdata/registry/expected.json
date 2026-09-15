@@ -27,7 +27,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as module.queue.dlq. Dead-letter queue of `orders-inbox`. Filled by S3 bucket `orders-uploads` on s3:ObjectRemoved:*.",
               "messages": [],
-              "source": "main.tf:6"
+              "source": "testdata/registry/main.tf:6"
             }
           ]
         },
@@ -56,7 +56,7 @@
               "title": "SNS topic",
               "doc": "Declared in Terraform as module.events. Received by `orders-audit` through an SNS subscription.",
               "messages": [],
-              "source": "main.tf:17"
+              "source": "testdata/registry/main.tf:17"
             }
           ]
         },
@@ -86,7 +86,7 @@
               "title": "SNS topic",
               "doc": "Declared in Terraform as module.events. Received by `orders-ingest` through SQS queue `orders-inbox`.",
               "messages": [],
-              "source": "main.tf:17"
+              "source": "testdata/registry/main.tf:17"
             },
             {
               "address": "orders-inbox",
@@ -94,7 +94,7 @@
               "title": "SQS queue",
               "doc": "Declared in Terraform as module.queue. Dead letters go to `orders-inbox-dlq` after 5 receives. Received by `orders-ingest` through an event source mapping. Subscribed to SNS topic `orders-events`.",
               "messages": [],
-              "source": "main.tf:6"
+              "source": "testdata/registry/main.tf:6"
             }
           ]
         }
@@ -117,7 +117,7 @@
             {
               "kind": "contract",
               "rule": "terraform-aws-dynamodb-table",
-              "source": "main.tf:69",
+              "source": "testdata/registry/main.tf:69",
               "symbol": "module.table"
             }
           ],
@@ -153,7 +153,7 @@
           ]
         }
       ],
-      "source": "main.tf:69"
+      "source": "testdata/registry/main.tf:69"
     },
     {
       "id": "shop.orders.orders-uploads",
@@ -162,7 +162,7 @@
       "kind": "s3",
       "owner": "shop.orders",
       "tables": [],
-      "source": "main.tf:39"
+      "source": "testdata/registry/main.tf:39"
     }
   ]
 }

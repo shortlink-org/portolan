@@ -387,3 +387,29 @@ func TestOutputDoesNotDependOnDeclarationOrder(t *testing.T) {
 		t.Errorf("channels are not sorted by address: %+v", addresses)
 	}
 }
+
+// A source is cited from the repository the service lives in: the workspace
+// in a monorepo, so the root is part of it, and the fetched copy otherwise.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	for _, tc := range []struct{ root, repository, want string }{
+		{"examples/shop/pricing", "", "examples/shop/pricing/app/app.go:5"},
+		{"vendor/repos/acme/shop", "vendor/repos/acme/shop", "app/app.go:5"},
+	} {
+		t.Run(tc.root, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			write(t, tc.root, "go.mod", "module example.com/svc\n")
+			write(t, tc.root, "app/app.go", "package app\n\nimport \"github.com/nats-io/nats.go\"\n\nfunc A(nc *nats.Conn) { nc.Publish(\"a.first\", nil) }\n")
+			resp, err := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, Options{Context: "shop", Service: "pricing"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+				t.Fatal(err)
+			}
+			if got := channels(out)["a.first"].Source; got != tc.want {
+				t.Errorf("source = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

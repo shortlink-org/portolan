@@ -77,6 +77,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 
 	tables, views := readStore(root, layout, storeID, owner, b)
 	resolveForeignKeys(storeID, tables, b)
+	spellSources(in, tables, views)
 	foreignSchemas(root, modulePath(root), b, storeID, layout.index)
 
 	fragment := catalog.Catalog{
@@ -110,7 +111,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 			Name:   firstNonEmpty(opts.Name, opts.Service+" database"),
 			Kind:   catalog.StoreKind(opts.Kind),
 			Owner:  owner,
-			Source: layout.source,
+			Source: in.RepositoryPath(layout.source),
 			Tables: tables,
 			Views:  views,
 		}}
@@ -126,6 +127,35 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 	b.File(firstNonEmpty(opts.Out, "stores.json"), string(encoded)+"\n")
 
 	return b.Response()
+}
+
+// spellSources writes every source the store cites from the repository the
+// service lives in, which is what a source link opens on the forge. It runs
+// once reading is done, so matching inside the reader keeps the spelling it
+// found things by. Two spellings arrive here: a migration, a view and a
+// domain root are named from the input root, the way the migrations
+// directory was found, while a table access has the root joined in already.
+func spellSources(in plugin.Input, tables []catalog.Table, views []catalog.View) {
+	evidence := func(items []catalog.RelationEvidence) {
+		for i := range items {
+			items[i].Source = in.RootSource(items[i].Source)
+		}
+	}
+	for i := range tables {
+		evidence(tables[i].Evidence)
+		if tables[i].Persists != nil {
+			evidence(tables[i].Persists.Evidence)
+		}
+		for j := range tables[i].Accesses {
+			tables[i].Accesses[j].Source = in.RepositorySource(tables[i].Accesses[j].Source)
+		}
+	}
+	for i := range views {
+		views[i].Source = in.RootSource(views[i].Source)
+		if views[i].Persists != nil {
+			evidence(views[i].Persists.Evidence)
+		}
+	}
 }
 
 func firstNonEmpty(values ...string) string {

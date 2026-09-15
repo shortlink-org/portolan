@@ -39,7 +39,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "source": "testdata/order/internal/order/infrastructure/repository/migrations/001_orders.sql",
               "symbol": "orders"
             }
           ],
@@ -77,7 +77,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/order/domain/order.go:3",
+                "source": "testdata/order/internal/order/domain/order.go:3",
                 "symbol": "shop.order.order"
               }
             ],
@@ -90,7 +90,7 @@
             {
               "kind": "contract",
               "rule": "sql-create-table",
-              "source": "internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "source": "testdata/order/internal/order/infrastructure/repository/migrations/001_orders.sql",
               "symbol": "order_lines"
             }
           ],
@@ -125,7 +125,7 @@
               {
                 "kind": "binding",
                 "rule": "domain-root-and-repository-layout",
-                "source": "internal/order/domain/order.go:3",
+                "source": "testdata/order/internal/order/domain/order.go:3",
                 "symbol": "shop.order.order"
               }
             ],
@@ -163,7 +163,7 @@
           "persists": {
             "aggregate": "shop.order.order"
           },
-          "source": "internal/order/infrastructure/repository/migrations/001_orders.sql"
+          "source": "testdata/order/internal/order/infrastructure/repository/migrations/001_orders.sql"
         }
       ],
       "source": "testdata/order/internal/order/infrastructure/repository"

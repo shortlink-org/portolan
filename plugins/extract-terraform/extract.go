@@ -28,12 +28,37 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	fragment := assemble(found, opts)
+	spellSources(in, &fragment)
 	encoded, err := json.MarshalIndent(fragment, "", "  ")
 	if err != nil {
 		return plugin.Response{}, err
 	}
 	b.File(goscan.FirstNonEmpty(opts.Out, "terraform.json"), string(encoded)+"\n")
 	return b.Response(), nil
+}
+
+// spellSources writes every declaration's file and line from the repository
+// the service lives in, which is what a source link opens on the forge. The
+// reader cites a block from the input root, the way it walked the modules,
+// and keeps doing so until the fragment is assembled.
+func spellSources(in plugin.Input, fragment *catalog.Catalog) {
+	for i := range fragment.Contexts {
+		for j := range fragment.Contexts[i].Services {
+			channels := fragment.Contexts[i].Services[j].Channels
+			for k := range channels {
+				channels[k].Source = in.RootSource(channels[k].Source)
+			}
+		}
+	}
+	for i := range fragment.Stores {
+		store := &fragment.Stores[i]
+		store.Source = in.RootSource(store.Source)
+		for j := range store.Tables {
+			for k := range store.Tables[j].Evidence {
+				store.Tables[j].Evidence[k].Source = in.RootSource(store.Tables[j].Evidence[k].Source)
+			}
+		}
+	}
 }
 
 // findDir is where the *.tf files are: the directory given, else the root

@@ -50,6 +50,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		hosts = append(hosts, frontingHosts(objects, backends)...)
 		service.Hosts = sortedUnique(hosts)
 		service.GatewayExposures = gatewayExposures(objects, backends, catalog.GatewayExposureManifest)
+		// The route manifest is found under Root and cited from the
+		// repository, which is what a source link opens on the forge.
+		for i := range service.GatewayExposures {
+			service.GatewayExposures[i].Source = in.RootPath(service.GatewayExposures[i].Source)
+		}
 
 		own := map[string]bool{}
 		for _, h := range service.Hosts {

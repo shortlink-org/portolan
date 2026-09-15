@@ -251,3 +251,67 @@ CREATE TABLE user_directory (
 		t.Errorf("stores = %+v", cat.Stores)
 	}
 }
+
+// Every source in the store is cited from the repository the service lives
+// in: the workspace in a monorepo, so the root is part of each, and the
+// fetched copy otherwise, where the copy's own directory is not.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	files := map[string]string{
+		"go.mod":                         "module example.com/order\n",
+		"internal/order/domain/order.go": "package order\n\ntype Order struct{}\n",
+		"internal/order/infrastructure/repository/migrations/0001_orders.sql": "CREATE TABLE orders (id uuid PRIMARY KEY, state text NOT NULL);\nCREATE VIEW open_orders AS SELECT id FROM orders;\n",
+		"internal/order/infrastructure/repository/postgres.go":                "package order\n\ntype Postgres struct{}\n\nfunc (p *Postgres) Save() {\n\tp.Exec(\"INSERT INTO orders (id, state) VALUES ($1, $2)\")\n}\n",
+	}
+	for _, tc := range []struct{ root, repository, prefix string }{
+		{"examples/shop/order", "", "examples/shop/order/"},
+		{"vendor/repos/acme/shop", "vendor/repos/acme/shop", ""},
+	} {
+		t.Run(tc.root, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			for rel, contents := range files {
+				full := filepath.Join(tc.root, filepath.FromSlash(rel))
+				if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(full, []byte(contents), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			resp := extract(plugin.Input{Root: tc.root, Repository: tc.repository}, Options{Context: "shop", Service: "order"})
+			var out catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+				t.Fatal(err)
+			}
+			store := out.Stores[0]
+			migration := tc.prefix + "internal/order/infrastructure/repository/migrations/0001_orders.sql"
+			got := map[string]string{"store": store.Source}
+			for _, table := range store.Tables {
+				if table.Name != "orders" {
+					continue
+				}
+				got["table"] = table.Evidence[0].Source
+				if table.Persists != nil && len(table.Persists.Evidence) > 0 {
+					got["persists"] = table.Persists.Evidence[0].Source
+				}
+				if len(table.Accesses) > 0 {
+					got["access"] = table.Accesses[0].Source
+				}
+			}
+			for _, view := range store.Views {
+				got["view"] = view.Source
+			}
+			want := map[string]string{
+				"store":    tc.prefix + "internal/order/infrastructure/repository",
+				"table":    migration,
+				"persists": tc.prefix + "internal/order/domain/order.go:3",
+				"access":   tc.prefix + "internal/order/infrastructure/repository/postgres.go:6",
+				"view":     migration,
+			}
+			for key, value := range want {
+				if got[key] != value {
+					t.Errorf("%s source = %q, want %q", key, got[key], value)
+				}
+			}
+		})
+	}
+}
