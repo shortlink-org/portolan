@@ -49,7 +49,7 @@ aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
 | --- | --- | --- | --- | --- |
 | `id` | `text` | not null | PK | Shipment.id |
 | `order_id` | `text` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#relation-shop-oms-pg-orders).id (restrict) | Shipment.orderId |
-| `ship_to` | `jsonb` | not null | — | Shipment.shipTo |
+| `ship_to` | `jsonb` | null | — | Shipment.shipTo |
 | `status` | `text` | not null | — | Shipment.status |
 | `tracking` | `text` | null | — | Shipment.tracking.value |
 | `route_id` | `text` | null | — | Shipment.routeId |

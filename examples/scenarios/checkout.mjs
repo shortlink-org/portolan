@@ -1,5 +1,5 @@
-// Real cart, OMS and ledger processes over isolated Postgres + NATS. Only auth,
-// pricing and Stripe are stand-ins. Builds must exist; see README.md.
+// Real cart, OMS, ledger and delivery processes over isolated Postgres + NATS.
+// Only auth, pricing and Stripe are stand-ins. Builds must exist; see README.md.
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -47,7 +47,7 @@ async function start(name, bin, args, cwd, env) {
   children.push({ name, process });
 }
 let gateway, nats;
-let holds = 0;
+let holds = 0, captures = 0;
 try {
   const pg = await container('postgres:18-alpine', 5432, [], ['-e', 'POSTGRES_PASSWORD=checkout']);
   const bus = await container('nats:2.14-alpine', 4222, ['-js']);
@@ -57,11 +57,15 @@ try {
   const [cartPort, omsPort, ledgerPort] = await Promise.all([freePort(), freePort(), freePort()]);
   gateway = httpServer(async (req, res) => {
     let body = ''; for await (const chunk of req) body += chunk;
+    res.setHeader('content-type', 'application/json');
+    if (req.method === 'POST' && req.url === '/v1/payment_intents/pi_checkout/capture') {
+      captures++;
+      res.end(JSON.stringify({ id: 'pi_checkout', status: 'succeeded' })); return;
+    }
     if (req.method !== 'POST' || req.url !== '/v1/payment_intents') { res.writeHead(404).end(); return; }
     holds++;
     const form = new URLSearchParams(body);
     assert.equal(form.get('amount'), '900'); assert.equal(form.get('currency'), 'eur');
-    res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ id: 'pi_checkout', status: 'requires_capture' }));
   });
   await new Promise(resolve => gateway.listen(0, '127.0.0.1', resolve));
@@ -80,6 +84,15 @@ try {
     PORT: `${cartPort}`, HOST: '127.0.0.1', AUTH_URL: '', PRICING_ADDR: '',
   });
   await until('services', async () => (await Promise.all([cartPort, omsPort, ledgerPort].map(listening))).every(Boolean));
+  // Delivery's tables sit in the order service's database, knowingly
+  // (core.0001): packages.order_id is a foreign key into its orders table. A
+  // schema of their own keeps the two outboxes apart. Delivery serves no port;
+  // it reads the bus, so it is started once OMS has migrated and listens.
+  await sql('oms', 'CREATE SCHEMA delivery');
+  await start('delivery', process.execPath, ['dist/main.js'], join(examples, 'shop/delivery/core'), {
+    STORE_POSTGRES_URI: `postgres://postgres:checkout@127.0.0.1:${pg.port}/oms?options=-c%20search_path%3Ddelivery%2Cpublic`,
+    NATS_URL: natsUrl, PAYMENTS_ADDR: `http://127.0.0.1:${ledgerPort}`,
+  });
   const request = async (path, body, headers = {}) => {
     const response = await fetch(`http://127.0.0.1:${cartPort}${path}`, { method: 'POST', headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...headers }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(5000) });
     assert.ok(response.ok, `${path}: ${response.status} ${await response.clone().text()}`); return response.json();
@@ -92,7 +105,11 @@ try {
   assert.match(basket.basketId, /^[a-f0-9-]{36}$/);
   const id = basket.basketId;
   await until('confirmed order', async () => await sql('oms', `SELECT status FROM orders WHERE id='${id}'`) === 'confirmed');
-  assert.equal(await sql('ledger', `SELECT id || '|' || order_id || '|' || amount_minor || '|' || status FROM payments WHERE id='${id}'`), `${id}|${id}|900|AUTHORIZED`);
+  // OrderConfirmed creates the shipment, delivery asks ledger to capture, and
+  // ledger's PaymentCaptured releases the shipment (core.0003, core.0002).
+  await until('released shipment', async () => await sql('oms', `SELECT status FROM delivery.packages WHERE order_id='${id}'`) === 'planned');
+  assert.equal(await sql('ledger', `SELECT id || '|' || order_id || '|' || amount_minor || '|' || status FROM payments WHERE id='${id}'`), `${id}|${id}|900|CAPTURED`);
+  assert.equal(captures, 1, 'one capture at the gateway');
   const call = join(examples, 'shop/oms/target/debug/oms-call');
   assert.deepEqual(JSON.parse(await run(call, ['get', id], { env: { ...process.env, GRPC_ADDR: `http://127.0.0.1:${omsPort}` } })), [id, 2]);
 
@@ -109,13 +126,17 @@ try {
     ['shop.cart.basket', 'cart.BasketCheckedOut', payload],
     ['shop.oms.order', 'oms.OrderPlaced', { orderId: id }],
     ['payments.ledger.payment', 'ledger.PaymentAuthorized', { paymentId: id, orderId: id, amount: checkout.total, occurredAt: new Date().toISOString() }],
+    ['shop.oms.order', 'oms.OrderConfirmed', { orderId: id, authorizationId: id, occurredAt: new Date().toISOString() }],
   ]) { const h = headers(); h.set('event_name', name); await js.publish(topic, JSON.stringify(value), { headers: h }); }
   await pause(1000);
   assert.equal(await sql('oms', `SELECT count(*) FROM orders WHERE basket_id='${id}'`), '1');
   assert.equal(await sql('oms', `SELECT count(*) FROM outbox WHERE metadata->>'event_name'='oms.OrderConfirmed' AND payload->>'orderId'='${id}'`), '1');
   assert.equal(await sql('ledger', `SELECT count(*) FROM payments WHERE order_id='${id}'`), '1');
   assert.equal(holds, 1, 'authorization must not call the gateway again');
-  console.log(`PASS cart → OMS → ledger: order ${id}, EUR 9.00 authorized, one confirmation after redelivery. Logs: ${logs}`);
+  assert.equal(await sql('oms', `SELECT count(*) FROM delivery.packages WHERE order_id='${id}'`), '1');
+  assert.equal(await sql('oms', `SELECT string_agg(metadata->>'event_name', ',' ORDER BY id) FROM delivery.outbox WHERE payload->>'orderId'='${id}'`), 'delivery.ShipmentCreated,delivery.ShipmentReleased');
+  assert.equal(captures, 1, 'a released shipment must not ask for the capture again');
+  console.log(`PASS cart → OMS → ledger → delivery: order ${id}, EUR 9.00 authorized and captured, shipment released, one of each after redelivery. Logs: ${logs}`);
 } catch (error) {
   console.error(error);
   for (const child of children) console.error(`${child.name}:\n${(await readFile(join(logs, `${child.name}.log`), 'utf8')).slice(-5000)}`);

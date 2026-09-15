@@ -185,6 +185,12 @@
               "rule": "sql-create-table",
               "source": "src/infrastructure/repository/shipment/migrations/0001_packages.sql",
               "symbol": "packages"
+            },
+            {
+              "kind": "contract",
+              "rule": "sql-alter-table",
+              "source": "src/infrastructure/repository/shipment/migrations/0003_ship_to_later.sql",
+              "symbol": "packages"
             }
           ],
           "id": "delivery.core.pg.packages",
@@ -211,7 +217,7 @@
             {
               "name": "ship_to",
               "type": "jsonb",
-              "nullable": false,
+              "nullable": true,
               "maps": "Shipment.shipTo"
             },
             {

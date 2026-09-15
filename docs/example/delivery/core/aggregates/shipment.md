@@ -8,17 +8,24 @@
 
 What is being carried to one address for one order.
 
-A shipment waits for the money, is released when the ledger says it moved,
+A shipment is created when the order is confirmed, waits for the money, is
+released when the ledger says it moved,
 is planned onto a route, dispatched with a tracking code, seen a few times on
 the way, and then either delivered or written off. The address is a copy taken
 from the order at dispatch, not a reference: a parcel already on a van does not
 move because somebody edited their profile - and that copy is the one thing
 here that another service's schema can be seen in.
 
+Created from a confirmed order, a shipment has no parcels and no address:
+nobody in the estate hands those over at confirmation. It may wait for the
+money like that, but it is not planned onto a route without an address, and
+it is not dispatched with no parcels (ADR core.0003).
+
 ### States
 
-- **awaiting-payment** - where every shipment starts. Nothing leaves the
-  warehouse before the money has moved (ADR core.0002).
+- **awaiting-payment** - where every shipment starts, created when the order
+  is confirmed. Nothing leaves the warehouse before the money has moved (ADR
+  core.0002).
 - **planned** - released; may be put on a route and handed to the carrier.
 - **dispatched** - with the carrier, under a tracking code.
 - **in-transit** - seen at least once since dispatch. Later scans add to the
@@ -31,12 +38,13 @@ here that another service's schema can be seen in.
 
 Every arrow is a command on the root and hands back the event that says so.
 `moveTo` is the one way through the table; a move it does not list is refused.
+The way in is `create`, which says `ShipmentCreated`.
 
 ```mermaid
 stateDiagram-v2
     state "awaiting-payment" as awaiting
     state "in-transit" as transit
-    [*] --> awaiting
+    [*] --> awaiting: create · ShipmentCreated
     awaiting --> planned: release · ShipmentReleased
     awaiting --> lost: lose · ShipmentLost
     planned --> dispatched: dispatch · ShipmentDispatched
@@ -87,11 +95,16 @@ parcel on a van does not move because somebody edited their profile. The
 status only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one
 way through it; every move that is a fact hands back the event that says so.
 
+A shipment created from a confirmed order has no parcels and no address
+yet: nobody in the estate hands those over at confirmation. It may wait for
+the money like that, but it is not planned onto a route without somewhere
+to go, and it is not handed to the carrier empty.
+
 | Field | Type |
 | --- | --- |
 | `id` | `string` |
 | `orderId` | `string` |
-| `shipTo` | `Address` |
+| `shipTo` | `Address \| undefined` |
 | `parcels` | `Parcel[]` |
 | `scans` | `Scan[]` |
 | `status` | `ShipmentStatus` |
@@ -149,20 +162,21 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `awaiting-payment` | `planned` | `release` | `ShipmentReleased` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L48) |
-| `awaiting-payment` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
-| `planned` | `dispatched` | `dispatch` | `ShipmentDispatched` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:56`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L56) |
-| `planned` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
-| `dispatched` | `in-transit` | `record` | `ShipmentInTransit` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:69`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L69) |
-| `dispatched` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L76) |
-| `dispatched` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
-| `in-transit` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L76) |
-| `in-transit` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
+| `awaiting-payment` | `planned` | `release` | `ShipmentReleased` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:70`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L70) |
+| `awaiting-payment` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
+| `planned` | `dispatched` | `dispatch` | `ShipmentDispatched` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:79`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L79) |
+| `planned` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
+| `dispatched` | `in-transit` | `record` | `ShipmentInTransit` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:92`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L92) |
+| `dispatched` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:99`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L99) |
+| `dispatched` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
+| `in-transit` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:99`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L99) |
+| `in-transit` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:106`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L106) |
 
 ## Operations
 
 | Operation | Kind | Exposed by | Doc |
 | --- | --- | --- | --- |
+| `CreateShipment` | command | *internal* | Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003). |
 | `Dispatch` | command | `Dispatch` | Hands a planned shipment to the carrier and says so. |
 | `GetShipment` | query | `Dispatch`, `GetShipment` | One shipment, for whoever is asking about an order. |
 | `RecordDelivery` | command | `RecordDelivery` | Ends a shipment at the door. |
@@ -171,6 +185,28 @@ stateDiagram-v2
 | `TrackShipment` | query | `TrackShipment` | What the customer sees when they paste a tracking code. |
 
 ## Events
+
+<a id="event-delivery-core-shipment-shipmentcreated"></a>
+### ShipmentCreated
+
+`delivery.core.shipment.ShipmentCreated`
+
+On the wire as `delivery.ShipmentCreated`, on `delivery.core.shipment`.
+
+#### v1 — current
+
+A confirmed order became something to carry. Nothing is packed yet and the
+shipment has nowhere to go: it waits for the money, and the ledger has just
+been asked to move it (ADR core.0003).
+
+Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-created.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-created.ts)
+
+| Field | Type |
+| --- | --- |
+| `channel` | `string` |
+| `shipmentId` | `string` |
+| `orderId` | `string` |
+| `occurredAt` | `Date` |
 
 <a id="event-delivery-core-shipment-shipmentdelivered"></a>
 ### ShipmentDelivered

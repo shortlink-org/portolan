@@ -9,6 +9,15 @@ van does not move because somebody edited their profile.
 **Awaiting payment.** Where every shipment starts. Nothing leaves the
 warehouse before the ledger says the money moved (ADR core.0002).
 
+**Capture.** Asking the ledger to move the money it was holding for the
+order, under the order id. Asked by this service when it creates the
+shipment (ADR core.0003); the ledger's word, used here for the request, while
+what releases the shipment is the ledger's `PaymentCaptured`.
+
+**Confirmed order.** An order whose payment the ledger authorized, as the
+order service announces it. The moment a shipment is created; the only
+thing read off it is the order id.
+
 **Dispatch.** Handing a planned shipment's parcels to the carrier, under a
 tracking code. The order is asked once more first; a cancelled order's
 shipment is written off instead.
@@ -35,6 +44,7 @@ after dispatch moves the shipment; the rest do not.
 
 **Shipment.** What is being carried to one address for one order. The
 aggregate root; its status moves only the way its lifecycle table allows.
+Created from a confirmed order before anything is packed or addressed.
 
 **Stop.** One place a van stops and what it drops there. Carries a copy of
 the shipment's address, itself a copy of the order's.

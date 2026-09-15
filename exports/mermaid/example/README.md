@@ -38,6 +38,7 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Merge baskets](cart-merge-baskets.mmd) — `flow.cart-merge-baskets`
 - [Remove item](cart-remove-item.mmd) — `flow.cart-remove-item`
 - [Close route](core-close-route.mmd) — `flow.core-close-route`
+- [Create shipment on order confirmed](core-create-shipment-on-order-confirmed.mmd) — `flow.core-create-shipment-on-order-confirmed`
 - [Dispatch](core-dispatch.mmd) — `flow.core-dispatch`
 - [Get route](core-get-route.mmd) — `flow.core-get-route`
 - [Get shipment](core-get-shipment.mmd) — `flow.core-get-shipment`

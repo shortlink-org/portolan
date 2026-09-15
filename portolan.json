@@ -794,10 +794,12 @@
         "repo": "github.com/shortlink-org/portolan",
         "store": "pg",
         "peers": {
-          "shop.v1": "shop.oms"
+          "shop.v1": "shop.oms",
+          "payments.v1": "payments.ledger"
         },
         "events": {
-          "../ledger/events.ts": "payments.ledger.payment"
+          "../ledger/events.ts": "payments.ledger.payment",
+          "../oms/events.ts": "shop.oms.order"
         },
         "out": "domain.json"
       }

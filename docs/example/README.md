@@ -71,6 +71,7 @@
 | [Merge baskets](flows/cart-merge-baskets.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Close route](flows/core-close-route.md) | [delivery](delivery/README.md) | Ends the day, whatever is left undone. |
+| [Create shipment on order confirmed](flows/core-create-shipment-on-order-confirmed.md) | [delivery](delivery/README.md) | A confirmed order becomes something to carry, and the money for it is asked to move (ADR core.0003). |
 | [Dispatch](flows/core-dispatch.md) | [delivery](delivery/README.md) | One shipment, for whoever is asking about an order. |
 | [Get route](flows/core-get-route.md) | [delivery](delivery/README.md) | One route, as the depot reads it. |
 | [Get shipment](flows/core-get-shipment.md) | [delivery](delivery/README.md) | One shipment, for whoever is asking about an order. |
@@ -137,6 +138,7 @@
 | [cart.0008](adr/cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |
 | [core.0001](adr/core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 |
 | [core.0002](adr/core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 |
+| [core.0003](adr/core.0003.md) | Delivery asks the ledger to capture when it creates the shipment | accepted | 2026-09-15 |
 | [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
 | [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |

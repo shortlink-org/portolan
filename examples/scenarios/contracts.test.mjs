@@ -48,6 +48,9 @@ function compatible(consumer, provider, serviceName) {
 test('OMS Authorize is wire-compatible with the actual ledger provider', () => {
   compatible(descriptors('shop/oms/src/infrastructure/payments/proto'), descriptors(`${ledger}transport/grpc/payment/proto`), 'payments.v1.PaymentService');
 });
+test('delivery Capture is wire-compatible with the actual ledger provider', () => {
+  compatible(descriptors('shop/delivery/core/src/infrastructure/ledger/proto'), descriptors(`${ledger}transport/grpc/payment/proto`), 'payments.v1.PaymentService');
+});
 test('ledger GetOrder is wire-compatible with the actual OMS provider', () => {
   compatible(descriptors(`${ledger}oms/proto`), descriptors('shop/oms/src/infrastructure/transport/grpc/order/proto'), 'shop.v1.OrderService');
 });

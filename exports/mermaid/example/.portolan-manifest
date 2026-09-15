@@ -37,6 +37,7 @@
     "cart-merge-baskets.mmd",
     "cart-remove-item.mmd",
     "core-close-route.mmd",
+    "core-create-shipment-on-order-confirmed.mmd",
     "core-dispatch.mmd",
     "core-get-route.mmd",
     "core-get-shipment.mmd",
