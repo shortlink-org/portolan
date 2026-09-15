@@ -11,7 +11,15 @@
 // own line of context back with it - a row that matched on something the
 // reader cannot see is a row they have to open to understand.
 
-import type { Block, Catalog, Event, Field } from "../catalog";
+import type {
+  Block,
+  Catalog,
+  Event,
+  Field,
+  Flow,
+  HttpRoute,
+  Service,
+} from "../catalog";
 import { allTerms, enumsOf, walkSteps } from "../catalog";
 import { flowHealth } from "./flow-tree";
 import { parseQuery } from "./kinds";
@@ -86,6 +94,192 @@ export interface PaletteItem {
    * simply leaves it out.
    */
   text?: string;
+  /**
+   * The HTTP route the row answers to: for an endpoint, the one it serves; for
+   * a flow, the one that starts it. A reader holding a URL out of a log is
+   * looking for exactly this, and a pasted `/v1/users/42` is matched against
+   * it rather than against any name.
+   */
+  route?: PaletteRoute;
+  /**
+   * For an endpoint: the flows its route starts, so a hit answers "and then
+   * what happens" without a second search. Rows of kind `flow`, drawn under
+   * the endpoint as options of their own.
+   */
+  flows?: PaletteItem[];
+}
+
+/** A route, and the service that serves it. */
+export interface PaletteRoute extends HttpRoute {
+  service: string;
+}
+
+/** The query param the spec tab reads to open one operation. */
+export const OPERATION_PARAM = "op";
+
+/** `POST /v1/users`, or the path alone when no verb was proven. */
+export function routeLabel(route: HttpRoute): string {
+  return `${route.method} ${route.path}`.trim();
+}
+
+const VERBS = new Set([
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+  "TRACE",
+]);
+
+/**
+ * A query that is a request rather than a name: `/search`, `GET /v1/users/42`,
+ * or a URL pasted whole out of a browser or a log. Null for anything else, so
+ * name search is untouched by all of this.
+ */
+export interface PathQuery {
+  /** Upper case, or null when the query named no verb. */
+  method: string | null;
+  /** The path's segments, host and query string gone: `/a/b` is `["a", "b"]`. */
+  segments: string[];
+}
+
+export function parsePathQuery(term: string): PathQuery | null {
+  let rest = term.trim();
+  let method: string | null = null;
+  const verb = /^([A-Za-z]+)\s+(\S.*)$/.exec(rest);
+  if (verb && VERBS.has((verb[1] ?? "").toUpperCase())) {
+    method = (verb[1] ?? "").toUpperCase();
+    rest = (verb[2] ?? "").trim();
+  }
+  // A pasted URL: the scheme and host say where it was sent, not what answered
+  // it, and the catalog records routes without either.
+  const url = /^[a-z][a-z0-9+.-]*:\/\/[^/?#]*(.*)$/i.exec(rest);
+  if (url) rest = url[1] || "/";
+  if (!rest.startsWith("/")) return null;
+  rest = rest.replace(/[?#].*$/, "");
+  const segments = rest
+    .slice(1)
+    .split("/")
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    });
+  return { method, segments };
+}
+
+/** A route segment as a test: `{id}` and `:id` stand for any one segment. */
+function segmentPattern(segment: string): RegExp {
+  if (/^:[^/]+$/.test(segment)) return /^[^/]+$/;
+  const source = segment
+    .split(/(\{[^}]*\})/)
+    .map((part) =>
+      /^\{[^}]*\}$/.test(part) ? "[^/]+" : escapeRegex(part),
+    )
+    .join("");
+  return new RegExp(`^${source}$`, "i");
+}
+
+function isTemplated(segment: string): boolean {
+  return /^:/.test(segment) || /\{[^}]*\}/.test(segment);
+}
+
+/**
+ * How well a request matches a route, lower is better, null for no match.
+ *
+ * 0 - every segment matches and none needed a template: the literal route.
+ * 0.5 - every segment matches, some through `{id}`: `/v1/users/42`. After the
+ *   literal, so `/v1/sessions/current` puts the route spelled that way above a
+ *   `/v1/sessions/{id}` that would also take it.
+ * 1 - the request is the start of the route, the last segment still being
+ *   typed: `/v1/bas` while the reader is on their way to `/v1/baskets`.
+ *   Plus a tenth per segment still to come, so the nearest route leads.
+ *
+ * A verb in the query must agree with the route's; a route whose verb nobody
+ * proved takes any.
+ */
+export function matchRoute(query: PathQuery, route: HttpRoute): number | null {
+  if (query.method && route.method && query.method !== route.method.toUpperCase())
+    return null;
+  const target = route.path.replace(/^\/+/, "").split("/");
+  let wanted = query.segments;
+  // A trailing slash on an otherwise whole path is the same path.
+  if (
+    wanted.length === target.length + 1 &&
+    wanted[wanted.length - 1] === ""
+  )
+    wanted = wanted.slice(0, -1);
+  if (wanted.length > target.length) return null;
+
+  let templated = false;
+  for (let i = 0; i < wanted.length - 1; i++) {
+    const want = wanted[i] ?? "";
+    const have = target[i] ?? "";
+    if (!segmentPattern(have).test(want)) return null;
+    if (isTemplated(have)) templated = true;
+  }
+
+  const lastWanted = wanted[wanted.length - 1] ?? "";
+  const lastHave = target[wanted.length - 1] ?? "";
+  const whole = wanted.length === target.length;
+  if (whole && segmentPattern(lastHave).test(lastWanted)) {
+    return templated || isTemplated(lastHave) ? 0.5 : 0;
+  }
+  // Still typing: the last segment is a prefix of a literal one, or anything
+  // at all where the route takes a parameter.
+  const typing =
+    lastWanted === "" ||
+    isTemplated(lastHave) ||
+    lastHave.toLowerCase().startsWith(lastWanted.toLowerCase());
+  return typing ? 1 + Math.min(target.length - wanted.length, 9) / 10 : null;
+}
+
+/**
+ * The route that starts a flow, or undefined. A flow opens with a call to one
+ * operation; when that operation has a route, the route is what starts the
+ * flow. A flow whose trigger is recorded as something other than HTTP is not
+ * started by a URL whatever its first step looks like.
+ */
+function flowRoute(
+  flow: Flow,
+  services: ReadonlyMap<string, Service>,
+): PaletteRoute | undefined {
+  if (flow.trigger && flow.trigger.kind !== "http") return undefined;
+  const opening = walkSteps(flow.steps)[0];
+  if (!opening || opening.kind !== "rpc") return undefined;
+  const service = services.get(opening.to);
+  for (const provided of service?.provides ?? []) {
+    for (const method of provided.methods) {
+      if (!method.http) continue;
+      if (
+        opening.ref === `${provided.id}/${method.name}` ||
+        (!opening.ref && opening.label === method.name)
+      )
+        return { ...method.http, service: opening.to };
+    }
+  }
+  // A step labelled with the request itself - `POST /webhooks/psp/v2` - names
+  // its route even when the service's document is not in the catalog.
+  const spelled = opening.label ? parsePathQuery(opening.label) : null;
+  if (spelled?.method)
+    return {
+      method: spelled.method,
+      path: `/${spelled.segments.join("/")}`,
+      service: opening.to,
+    };
+  return undefined;
+}
+
+function sameRoute(a: PaletteRoute, b: PaletteRoute): boolean {
+  return (
+    a.service === b.service &&
+    a.method.toUpperCase() === b.method.toUpperCase() &&
+    a.path === b.path
+  );
 }
 
 /** Every navigable thing in the catalog, built once at module load. */
@@ -224,16 +418,24 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
 
       // Endpoints hang off the service rather than an aggregate: one of them
       // can run use cases from two of them. They have no page of their own
-      // either, so they land on the tab that lists them.
+      // either, so they land on the tab that lists them - or, for one with a
+      // route, on that operation in the service's document, which is what a
+      // reader holding the URL came to read.
       for (const provided of service.provides) {
         for (const method of provided.methods) {
+          const servicePage = paths.service(context.id, service.slug);
           items.push({
             kind: "endpoint",
             id: `${provided.id}/${method.name}`,
             name: method.name,
             detail: provided.id,
-            path: `${paths.service(context.id, service.slug)}?tab=provides`,
+            path: method.http
+              ? `${servicePage}?tab=spec&${OPERATION_PARAM}=${encodeURIComponent(routeLabel(method.http))}`
+              : `${servicePage}?tab=provides`,
             context: context.id,
+            ...(method.http
+              ? { route: { ...method.http, service: service.id } }
+              : {}),
           });
         }
       }
@@ -344,6 +546,12 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
     });
   }
 
+  const services = new Map(
+    catalog.contexts.flatMap((context) =>
+      context.services.map((service) => [service.id, service] as const),
+    ),
+  );
+  const flowItems: PaletteItem[] = [];
   for (const flow of catalog.flows) {
     const keywords = new Set<string>();
     for (const p of flow.participants) keywords.add(p.id);
@@ -351,7 +559,8 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       if (step.label) keywords.add(step.label);
       if (step.ref) keywords.add(step.ref);
     }
-    items.push({
+    const route = flowRoute(flow, services);
+    const item: PaletteItem = {
       kind: "flow",
       id: flow.id,
       name: flow.slug,
@@ -361,7 +570,20 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       badge: flowHealth(flow),
       keywords: [...keywords],
       text: flattenProse(`${flow.name} ${flow.summary}`),
-    });
+      ...(route ? { route } : {}),
+    };
+    items.push(item);
+    flowItems.push(item);
+  }
+
+  // The other half of the link: an endpoint knows the flows its route starts.
+  for (const endpoint of items) {
+    if (endpoint.kind !== "endpoint" || !endpoint.route) continue;
+    const route = endpoint.route;
+    const started = flowItems.filter(
+      (flow) => flow.route && sameRoute(flow.route, route),
+    );
+    if (started.length > 0) endpoint.flows = started;
   }
 
   // Last, because a term is what everything above is CALLED rather than a
@@ -418,8 +640,20 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
  * typing "money" puts the value objects called Money above the events that
  * merely carry one.
  */
-export function score(item: PaletteItem, term: string): number | null {
+export function score(
+  item: PaletteItem,
+  term: string,
+  request: PathQuery | null = parsePathQuery(term),
+): number | null {
   if (!term) return 0;
+  // A request is answered by routes first, on the same scale as names: the
+  // route spelled as typed ranks with an exact name, the one still being typed
+  // towards with a name prefix. Everything else still gets its usual chance,
+  // so a flow step labelled with the path is found the way it always was.
+  if (request && item.route) {
+    const matched = matchRoute(request, item.route);
+    if (matched !== null) return matched;
+  }
   const needle = term.toLowerCase();
   const name = item.name.toLowerCase();
   if (name === needle) return 0;
@@ -569,11 +803,12 @@ export function search(
   limit = 40,
 ): PaletteResult {
   const parsed = parseQuery(raw);
+  const request = parsePathQuery(parsed.term);
   const scored: { item: PaletteItem; score: number }[] = [];
 
   for (const item of items) {
     if (parsed.kind && item.kind !== parsed.kind) continue;
-    const s = score(item, parsed.term);
+    const s = score(item, parsed.term, request);
     if (s === null) continue;
     scored.push({ item, score: s });
   }
@@ -587,7 +822,31 @@ export function search(
       a.item.id.localeCompare(b.item.id),
   );
 
-  const hits = scored.slice(0, limit).map(({ item, score: s }) => {
+  // Asked by request, a flow that is already drawn under the endpoint that
+  // starts it is not listed again on its own: the same row twice reads as two
+  // flows. Any other query keeps every row it matched.
+  const underEndpoint = new Set(
+    request
+      ? scored.flatMap(({ item }) =>
+          item.kind === "endpoint" ? (item.flows ?? []) : [],
+        )
+      : [],
+  );
+  const listed = scored.filter(({ item }) => !underEndpoint.has(item));
+
+  const hits = listed.slice(0, limit).map(({ item, score: s }) => {
+    // A flow found by the request says which route started it: its name is a
+    // slug the reader did not type, and the route is why it answered.
+    if (
+      request &&
+      item.kind === "flow" &&
+      item.route &&
+      matchRoute(request, item.route) !== null
+    )
+      return {
+        item,
+        excerpt: { before: "started by ", match: routeLabel(item.route), after: "" },
+      };
     if (s === KEYWORD_SCORE) {
       const keyword = keywordHit(item, parsed.term.toLowerCase());
       return keyword
@@ -602,6 +861,6 @@ export function search(
   return {
     ...parsed,
     hits,
-    truncated: Math.max(0, scored.length - limit),
+    truncated: Math.max(0, listed.length - limit),
   };
 }

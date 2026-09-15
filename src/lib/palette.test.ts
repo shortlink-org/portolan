@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { catalog as shipped } from "../data";
 import { catalog } from "../testing/estate";
-import { excerptOf, flattenProse, paletteItems, search } from "./palette";
+import {
+  excerptOf,
+  flattenProse,
+  matchRoute,
+  paletteItems,
+  parsePathQuery,
+  search,
+} from "./palette";
 import { isRoutable } from "../routes";
 import { allEvents } from "../catalog";
 import { registryCatalog } from "./scenarios";
@@ -257,6 +264,119 @@ describe("endpoints", () => {
     expect(found[0]?.kind).toBe("endpoint");
     expect(found[0]?.id).toBe("auth.v1.Users/registerUser");
     expect(found[0]?.detail).toBe("auth.v1.Users");
+  });
+});
+
+// A reader holding a URL out of a log, a browser or a bug report wants what
+// serves it and what happens next. The cart's HTTP API is the estate's route
+// table: `POST /v1/baskets/{basketId}/items` is `addItem`, and the flow
+// `cart-add-item` opens with that call.
+describe("an HTTP path finds its operation and the flows it starts", () => {
+  const hitsFor = (raw: string) => search(items, raw).hits;
+
+  it("matches a concrete path against the route's template", () => {
+    const first = rows("/v1/baskets/42/items")[0];
+    expect(first?.kind).toBe("endpoint");
+    expect(first?.id).toBe("cart.v1.Baskets/addItem");
+    expect(first?.route).toEqual({
+      method: "POST",
+      path: "/v1/baskets/{basketId}/items",
+      service: "shop.cart",
+    });
+  });
+
+  it("puts a literal route above a template that would also take the path", () => {
+    expect(matchRoute(parsePathQuery("/v1/sessions/current")!, { method: "GET", path: "/v1/sessions/current" })).toBe(0);
+    expect(matchRoute(parsePathQuery("/v1/sessions/current")!, { method: "GET", path: "/v1/sessions/{id}" })).toBe(0.5);
+    expect(matchRoute(parsePathQuery("/v1/users/42")!, { method: "GET", path: "/v1/users/:id" })).toBe(0.5);
+    expect(rows("/v1/sessions/current")[0]?.route?.path).toBe("/v1/sessions/current");
+  });
+
+  it("narrows by a verb prefix", () => {
+    const endpoints = (raw: string) =>
+      rows(raw).filter((i) => i.kind === "endpoint").map((i) => i.name);
+    expect(endpoints("/v1/baskets/42/items/sku-1")).toEqual(["removeItem"]);
+    expect(endpoints("GET /v1/baskets/42")).toEqual(["getBasket"]);
+    // No DELETE takes the basket itself; the one under it is still on the way.
+    expect(endpoints("delete /v1/baskets/42")).toEqual(["removeItem"]);
+    expect(endpoints("PUT /v1/baskets/42")).toEqual([]);
+    expect(endpoints("GET /v1/sessions/current")).toEqual(["validateSession"]);
+    expect(endpoints("DELETE /v1/sessions/current")).toEqual(["logout"]);
+  });
+
+  it("ignores the host and the query string of a pasted URL", () => {
+    const first = rows("https://api.example.com/v1/baskets/b-7/checkout?coupon=x#top")[0];
+    expect(first?.id).toBe("cart.v1.Baskets/checkout");
+    expect(rows("POST http://localhost:8080/v1/users/")[0]?.id).toBe("auth.v1.Users/registerUser");
+  });
+
+  it("matches while the path is still being typed, whole routes first", () => {
+    const typed = rows("/v1/bas").filter((i) => i.kind === "endpoint");
+    expect(typed.map((i) => i.name).sort()).toEqual([
+      "addItem",
+      "checkout",
+      "createBasket",
+      "getBasket",
+      "mergeBaskets",
+      "removeItem",
+    ]);
+    // A templated segment takes whatever has been typed of it so far.
+    expect(rows("/v1/baskets/4").filter((i) => i.kind === "endpoint").map((i) => i.name).sort()).toEqual([
+      "addItem",
+      "checkout",
+      "getBasket",
+      "mergeBaskets",
+      "removeItem",
+    ]);
+    // The whole route outranks the longer ones it is the start of.
+    expect(rows("/v1/baskets")[0]?.name).toBe("createBasket");
+    // And while typing, the route with the fewest segments still to come.
+    expect(rows("/v1/bas")[0]?.name).toBe("createBasket");
+    expect(rows("/v1/baskets/4")[0]?.name).toBe("getBasket");
+  });
+
+  it("leaves a name that is not a path to name search", () => {
+    expect(parsePathQuery("get users")).toBeNull();
+    expect(parsePathQuery("Pricing/GetQuote")).toBeNull();
+    expect(rows("api: registerUser")[0]?.id).toBe("auth.v1.Users/registerUser");
+  });
+
+  it("opens the operation in the spec, and attaches the flows its route starts", () => {
+    const endpoint = rows("/v1/baskets/42/items")[0];
+    expect(endpoint?.path).toBe(
+      "/c/shop/cart?tab=spec&op=POST%20%2Fv1%2Fbaskets%2F%7BbasketId%7D%2Fitems",
+    );
+    expect(endpoint?.flows?.map((f) => f.name)).toEqual(["cart-add-item"]);
+    expect(endpoint?.flows?.[0]?.path).toBe("/flows/cart-add-item");
+    // An endpoint without a route still lands on the tab that lists it.
+    const grpc = items.find((i) => i.kind === "endpoint" && !i.route);
+    expect(grpc?.path).toMatch(/\?tab=provides$/);
+  });
+
+  it("finds the flow by the path too, and says which route starts it", () => {
+    const flow = hitsFor("flow: /v1/baskets/42/items")[0];
+    expect(flow?.item.name).toBe("cart-add-item");
+    expect(flow?.excerpt).toEqual({
+      before: "started by ",
+      match: "POST /v1/baskets/{basketId}/items",
+      after: "",
+    });
+  });
+
+  it("does not list a flow again when it is drawn under its endpoint", () => {
+    const found = hitsFor("/v1/baskets/42/items");
+    expect(found[0]?.item.kind).toBe("endpoint");
+    expect(found.some((h) => h.item.name === "cart-add-item")).toBe(false);
+  });
+
+  it("reads a route off a flow step spelled as the request", () => {
+    const webhook = items.find((i) => i.kind === "flow" && i.name === "gateway-webhook");
+    expect(webhook?.route).toEqual({
+      method: "POST",
+      path: "/webhooks/psp/v2",
+      service: "payments.ledger",
+    });
+    expect(rows("/webhooks/psp")[0]?.name).toBe("gateway-webhook");
   });
 });
 

@@ -11,7 +11,7 @@
 // linkable and comparable with a proto service next door - and this tab shows
 // the source document beside them.
 
-import { lazy, useEffect, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 import { useTheme } from "../app/theme";
 import { loaderFor as loaderIn } from "../lib/spec-files";
 import { Empty } from "./PageHeader";
@@ -79,10 +79,64 @@ export function hasSpec(source: string): boolean {
   return loaderFor(source) !== null;
 }
 
-export function ApiReference({ source }: { source: string }) {
+/**
+ * The operation's element inside the rendered reference, if it is there yet.
+ *
+ * Scalar ids an operation `<document>/tag/<tag>/<VERB><path>` - the document
+ * and tag slugs come out of the spec's own text, which the catalog does not
+ * carry, but the tail is the route exactly as the catalog records it. So the
+ * element is found by how its id ENDS rather than by rebuilding the whole id,
+ * and a request example under it (`…/example/…`) never ends that way.
+ */
+function operationElement(root: HTMLElement, operation: string): HTMLElement | null {
+  const [verb, ...rest] = operation.trim().split(/\s+/);
+  const path = rest.length > 0 ? rest.join(" ") : verb ?? "";
+  const method = rest.length > 0 ? (verb ?? "").toUpperCase() : null;
+  for (const element of root.querySelectorAll<HTMLElement>("[id]")) {
+    const id = element.id;
+    if (!id.endsWith(path)) continue;
+    const head = id.slice(0, id.length - path.length);
+    // A route with no proven verb takes whichever one the document gives it.
+    if (method ? head.endsWith(`/${method}`) : /\/[A-Z]+$/.test(head)) return element;
+  }
+  return null;
+}
+
+export function ApiReference({
+  source,
+  operation = null,
+}: {
+  source: string;
+  /** `POST /v1/users`: the operation to scroll to once the reference is drawn. */
+  operation?: string | null;
+}) {
   const { theme } = useTheme();
   const [spec, setSpec] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
+  const frame = useRef<HTMLDivElement | null>(null);
+
+  // The reference is lazy twice over - the chunk, then its own render of the
+  // document - so the operation is looked for a frame at a time, the way
+  // HashScroll waits for a section, only with longer patience. Not a hash:
+  // Scalar owns the fragment on this tab and rewrites it as the reader scrolls.
+  useEffect(() => {
+    if (spec === null || !operation) return;
+    const deadline = performance.now() + 8000;
+    let handle = 0;
+    const look = () => {
+      const root = frame.current;
+      const target = root ? operationElement(root, operation) : null;
+      if (target) {
+        handle = requestAnimationFrame(() =>
+          target.scrollIntoView({ block: "start", behavior: "smooth" }),
+        );
+        return;
+      }
+      if (performance.now() < deadline) handle = requestAnimationFrame(look);
+    };
+    handle = requestAnimationFrame(look);
+    return () => cancelAnimationFrame(handle);
+  }, [spec, operation]);
 
   useEffect(() => {
     const load = loaderFor(source);
@@ -118,7 +172,7 @@ export function ApiReference({ source }: { source: string }) {
   if (spec === null) return <Empty>reading the document…</Empty>;
 
   return (
-    <div className="rounded-card border border-line">
+    <div ref={frame} className="rounded-card border border-line">
       <SuspenseReveal fallback={<Empty>loading the reference…</Empty>}>
         <Reference
           configuration={{
@@ -126,6 +180,9 @@ export function ApiReference({ source }: { source: string }) {
             // Its sidebar would be a second navigation tree beside the one the
             // app already has, listing the same endpoints.
             showSidebar: false,
+            // Its search answers to ⌘K too, and would open over the app's own
+            // palette - the one a reader just used to land on this operation.
+            hideSearch: true,
             forceDarkModeState: theme,
           }}
         />
