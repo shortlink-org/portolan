@@ -93,13 +93,13 @@ export function Drafts() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="label border-b border-line">
-                <th className="py-2 pr-3 font-normal">show</th>
+                <th className="py-2 pr-3 pl-2 font-normal">show</th>
                 <th className="py-2 pr-3 font-normal">project</th>
                 <th className="py-2 pr-3 font-normal">branch</th>
                 <th className="py-2 pr-3 font-normal">changes</th>
                 <th className="py-2 pr-3 font-normal">base → tip</th>
                 <th className="py-2 pr-3 font-normal">saved</th>
-                <th className="py-2 font-normal" />
+                <th className="py-2 pr-2 font-normal" />
               </tr>
             </thead>
             <tbody>
@@ -111,7 +111,7 @@ export function Drafts() {
                 return (
                   <FragmentRows key={key}>
                     <tr className={`align-middle hover:bg-surface ${health.kind === "fresh" || mode === "static" ? "border-b border-line" : ""}`}>
-                      <td className="py-2.5 pr-3">
+                      <td className="py-2.5 pr-3 pl-2">
                         <input
                           type="checkbox"
                           aria-label={`Show ${draft.branch} in the catalog`}
@@ -147,7 +147,7 @@ export function Drafts() {
                         {draft.base} → {draft.tip}
                       </td>
                       <td className="mono py-2.5 pr-3 text-xs text-muted">{when(draft.savedAt)}</td>
-                      <td className="py-2.5 text-right whitespace-nowrap">
+                      <td className="py-2.5 pr-2 text-right whitespace-nowrap">
                         <Link
                           to={paths.draftCompare(draft.project, draft.branch)}
                           className="mono mr-2 inline-flex items-center gap-1 rounded-control border border-line px-2 py-1 text-xs text-muted hover:border-line-strong hover:text-ink"
@@ -170,7 +170,7 @@ export function Drafts() {
                     {mode === "dev" && health.kind !== "fresh" ? (
                       <tr className="border-b border-line">
                         <td />
-                        <td colSpan={6} className="pb-2.5 pr-3">
+                        <td colSpan={6} className="pb-2.5 pr-2">
                           {running ? (
                             <Notice tone="text-accent" icon={<LoaderCircle size={13} aria-hidden className="animate-spin" />}>
                               regenerating…
