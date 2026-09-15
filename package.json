@@ -80,7 +80,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",
-    "@ai-sdk/react": "4.0.102",
+    "@ai-sdk/react": "4.0.104",
     "@asyncapi/react-component": "^3.1.8",
     "@aws-sdk/client-eventbridge": "^3.1131.0",
     "@blocknote/core": "^0.54.2",
@@ -99,7 +99,7 @@
     "@tanstack/react-virtual": "^3.14.12",
     "@vitejs/plugin-react": "^6.1.1",
     "@xyflow/react": "^12.11.5",
-    "ai": "7.0.100",
+    "ai": "7.0.101",
     "ajv": "^8.20.0",
     "cn": "0.3.0",
     "elkjs": "^0.12.0",
