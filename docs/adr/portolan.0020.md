@@ -6,6 +6,7 @@
 - **Date:** 2026-09-15
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0020-task-links-are-read-from-the-history-never-written-into-a-fragment.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0020-task-links-are-read-from-the-history-never-written-into-a-fragment.md)
+- **Committed:** Victor Login, 2026-09-15 (`6dd9a04`)
 
 ### Context and Problem Statement
 
