@@ -163,6 +163,7 @@ export interface CatalogIndex {
   columnsByBlock: Map<string, ColumnOwner[]>;
   /** table id -> the columns pointing at it through a foreign key */
   fkIntoTable: Map<string, ColumnOwner[]>;
+  flowById: Map<string, Flow>;
   flowBySlug: Map<string, Flow>;
   /** event id -> flow slugs that reference it in a step */
   flowsByEvent: Map<string, string[]>;
@@ -232,6 +233,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
       }
     }
   }
+  const flowById = new Map<string, Flow>();
   const flowBySlug = new Map<string, Flow>();
   const flowsByEvent = new Map<string, string[]>();
   const adrById = new Map<string, Adr>();
@@ -441,6 +443,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   }
 
   for (const flow of catalog.flows) {
+    flowById.set(flow.id, flow);
     flowBySlug.set(flow.slug, flow);
     for (const step of walkSteps(flow.steps)) {
       if (step.ref && eventById.has(step.ref)) {
@@ -497,6 +500,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     rpcProviderByMethod,
     externalById,
     externalProviderByMethod,
+    flowById,
     flowBySlug,
     flowsByEvent,
     adrById,

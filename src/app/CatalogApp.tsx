@@ -48,7 +48,9 @@ import { ModulePage } from "../pages/ModulePage";
 import { ExternalPage } from "../pages/ExternalPage";
 import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
-import { activeCatalogProfile, catalogError } from "../data";
+import { activeCatalogProfile, catalogError, index } from "../data";
+import { paths } from "../routes";
+import { CanonicalSlug, slugForId } from "./canonical";
 import { SidePanel } from "../components/Overlay";
 import { Empty } from "../components/PageHeader";
 import { WithDetail } from "../selection/DetailPanel";
@@ -151,14 +153,23 @@ function AppRoutes({
       <Route
         path="/flows/:flow"
         element={
-          <WithDetail id="flow">
-            <FlowDetail />
-          </WithDetail>
+          <CanonicalSlug index={index} param="flow" slugFor={slugForId.flow} path={paths.flow}>
+            <WithDetail id="flow">
+              <FlowDetail />
+            </WithDetail>
+          </CanonicalSlug>
         }
       />
       <Route path="/adrs" element={<AdrIndex />} />
       <Route path="/rfcs" element={<RfcIndex />} />
-      <Route path="/rfcs/:rfc" element={<RfcDetail />} />
+      <Route
+        path="/rfcs/:rfc"
+        element={
+          <CanonicalSlug index={index} param="rfc" slugFor={slugForId.rfc} path={paths.rfc}>
+            <RfcDetail />
+          </CanonicalSlug>
+        }
+      />
       <Route path="/language" element={<Language />} />
       <Route path="/plugins" element={<PluginIndex />} />
       <Route path="/plugins/:name/settings" element={<PluginSettings />} />
@@ -178,7 +189,14 @@ function AppRoutes({
           </SuspenseReveal>
         }
       />
-      <Route path="/adrs/:adr" element={<AdrDetail />} />
+      <Route
+        path="/adrs/:adr"
+        element={
+          <CanonicalSlug index={index} param="adr" slugFor={slugForId.adr} path={paths.adr}>
+            <AdrDetail />
+          </CanonicalSlug>
+        }
+      />
       <Route path="/problems" element={<Problems />} />
       <Route
         path="/settings/*"
@@ -192,7 +210,14 @@ function AppRoutes({
       <Route path="/drafts" element={<Drafts />} />
       <Route path="/drafts/:project/:branch" element={<DraftCompare />} />
       <Route path="/drafts/:project/:branch/e/:entity" element={<DraftEntityPage />} />
-      <Route path="/externals/:external" element={<ExternalPage />} />
+      <Route
+        path="/externals/:external"
+        element={
+          <CanonicalSlug index={index} param="external" slugFor={slugForId.external} path={paths.external}>
+            <ExternalPage />
+          </CanonicalSlug>
+        }
+      />
       {/* A module sits at the estate level, not under a service: it is
           published by one and read by four, so hanging it off a service would
           put one entity at four URLs. */}
@@ -200,9 +225,11 @@ function AppRoutes({
       <Route
         path="/registry/:module"
         element={
-          <WithDetail id="module">
-            <ModulePage />
-          </WithDetail>
+          <CanonicalSlug index={index} param="module" slugFor={slugForId.module} path={paths.module}>
+            <WithDetail id="module">
+              <ModulePage />
+            </WithDetail>
+          </CanonicalSlug>
         }
       />
       <Route
