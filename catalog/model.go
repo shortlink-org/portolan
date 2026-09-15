@@ -443,12 +443,33 @@ type RpcMethod struct {
 
 type HttpRoute struct {
 	// Method is upper case: POST. It is empty when a framework extractor
-	// proved the mount but no declaration proved the verb (extract-django's
-	// `Planet.fetch`); such a route is never matched against an outbound
-	// call, and a renderer shows the path alone.
+	// proved the mount but neither a declaration nor the handler's reads name
+	// the verb (extract-django's `Planet.fetch`); such a route is never
+	// matched against an outbound call, and a renderer shows the path alone.
 	Method string `json:"method"`
 	// Path is the template as the document writes it: /v1/users/{id}.
 	Path string `json:"path"`
+	// MethodBasis says who named the verb. Absent reads "declared": a
+	// document, a decorator or a route table spelled it. "inferred" is a verb
+	// no declaration names and the handler's own reads imply (extract-django's
+	// `request.FILES` means POST); the merge links a call to such a route, at
+	// medium confidence, and MethodEvidence says what was read.
+	MethodBasis    HTTPMethodBasis     `json:"methodBasis,omitempty"`
+	MethodEvidence *HTTPMethodEvidence `json:"methodEvidence,omitempty"`
+}
+
+type HTTPMethodBasis string
+
+const (
+	HTTPMethodDeclared HTTPMethodBasis = "declared"
+	HTTPMethodInferred HTTPMethodBasis = "inferred"
+)
+
+// HTTPMethodEvidence is the reading an inferred verb rests on: the rule
+// ("reads request.FILES") and where it was read ("geo/views.py:64").
+type HTTPMethodEvidence struct {
+	Rule   string `json:"rule"`
+	Source string `json:"source"`
 }
 
 // SoapRoute is the wire-level part of one WSDL operation. Request, response
@@ -519,6 +540,11 @@ type HTTPDestinationResolution struct {
 	Basis    string `json:"basis"`
 	Provider string `json:"provider"`
 	Route    string `json:"route"`
+	// Confidence is absent for a link whose route and verb are both declared,
+	// and reads "high". "medium" is a link to a route whose verb is inferred;
+	// MethodEvidence then carries the provider route's reading.
+	Confidence     string              `json:"confidence,omitempty"`
+	MethodEvidence *HTTPMethodEvidence `json:"methodEvidence,omitempty"`
 }
 
 type RpcCall struct {

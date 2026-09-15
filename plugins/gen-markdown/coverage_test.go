@@ -27,7 +27,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.RpcEnum{}):              "name doc values",
 	reflect.TypeOf(catalog.RpcEnumValue{}):         "name number doc",
 	reflect.TypeOf(catalog.RpcMethod{}):            "name doc request requestRef response responseRef streaming deprecated http soap",
-	reflect.TypeOf(catalog.HttpRoute{}):            "method path",
+	reflect.TypeOf(catalog.HttpRoute{}):            "method path methodBasis methodEvidence",
 	reflect.TypeOf(catalog.SoapRoute{}):            "action version style endpoint binding faults headers",
 	reflect.TypeOf(catalog.RpcMessage{}):           "name fields discriminator",
 	reflect.TypeOf(catalog.RpcDiscriminator{}):     "property variants",

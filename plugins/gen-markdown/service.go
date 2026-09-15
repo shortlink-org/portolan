@@ -234,6 +234,15 @@ func (s *site) providesBlock(from string, provides []catalog.RpcService, owner *
 				// An empty method is a mounted route whose verb no
 				// declaration proves; the path alone is what is known.
 				route = code(strings.TrimSpace(method.HTTP.Method + " " + method.HTTP.Path))
+				// A verb no declaration names says so, with the reading it
+				// rests on.
+				if method.HTTP.MethodBasis == catalog.HTTPMethodInferred {
+					route += " (verb inferred"
+					if evidence := method.HTTP.MethodEvidence; evidence != nil {
+						route += ": " + evidence.Rule + " at " + code(evidence.Source)
+					}
+					route += ")"
+				}
 			}
 			if method.SOAP != nil {
 				soap := "SOAP"

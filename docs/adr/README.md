@@ -24,3 +24,4 @@
 | [portolan.0018](portolan.0018.md) | A Gateway Route contributes hosts only through a valid attachment | accepted | 2026-09-14 | [portolan](../portolan/README.md) |
 | [portolan.0019](portolan.0019.md) | A branch draft is generated in dev, compared from its merge-base and saved beside main | accepted | 2026-09-15 | [portolan](../portolan/README.md) |
 | [portolan.0020](portolan.0020.md) | Task links are read from the history, never written into a fragment | accepted | 2026-09-15 | [portolan](../portolan/README.md) |
+| [portolan.0021](portolan.0021.md) | An inferred HTTP verb links a call, at medium confidence | accepted | 2026-09-15 | [portolan](../portolan/README.md) |

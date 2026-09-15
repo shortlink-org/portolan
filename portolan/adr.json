@@ -441,6 +441,26 @@
         "author": "Victor Login",
         "date": "2026-09-15T19:41:09+07:00"
       }
+    },
+    {
+      "id": "portolan.0021",
+      "slug": "portolan-0021-an-inferred-http-verb-links-a-call-at-medium-confidence",
+      "number": 21,
+      "title": "An inferred HTTP verb links a call, at medium confidence",
+      "status": "accepted",
+      "date": "2026-09-15",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nA Django URLConf proves a path, and often nothing about the verb: a view\nmounted as a plain function answers every verb Django routes to it.\n`extract-django` reads the verb from what the code declares - decorators,\n`http_method_names`, a branch on `request.method`, a project wrapper - and,\nwhen none of those speaks, infers it from what the handler reads off the\nrequest: `request.POST`, `request.FILES`, `request.body` or `request.read()`\nmean POST, `request.GET` alone means GET.\n\nThe catalog had no way to say a verb was inferred. So the extractor kept the\ninferred verb out of `provides` and left `http.method` empty there, carrying\nit only in the OpenAPI export as `x-portolan-verb: inferred`. The merge\nmatches an outbound `http-client/\u003cVERB\u003e \u003cpath\u003e` call against `provides` by\nverb and path, and never against an empty verb, so a caller of such a route\nstayed unresolved. On one real estate four routes were affected: two proxy\nGETs and two upload POSTs.\n\n## Decision Drivers\n\n- A call that plainly reaches a route should link; an unresolved call on\n  Problems that everyone knows the answer to trains readers to ignore it.\n- A guess must not read as a declaration, on the route or on the link.\n- The status vocabulary - verified, declared, unresolved - is read by the\n  problem rules, the map and every chip; a fourth value costs all of them.\n- A declared route, and every committed fragment, must read as it did.\n\n## Considered Options\n\n1. **The route carries the verb with its basis; the link keeps status\n   `declared` and lowers its resolution confidence.**\n2. **A new status, `inferred`,** on the call and the step.\n3. **Keep the verb out of `provides`** and leave such calls unresolved.\n4. **Write the verb into `provides` as if declared.**\n\n## Decision Outcome\n\nChosen option: **1.**\n\nAn `HttpRoute` gains `methodBasis` - absent reads `declared`, `inferred` is a\nverb no declaration names - and, for an inferred verb, `methodEvidence`: the\nrule and where it was read, `{rule: \"reads request.FILES\", source:\n\"geo/views.py:64\"}`. Validation refuses an inferred basis with no verb or no\nevidence. The field is the same shape as `basis` elsewhere in the catalog:\nwho said so, with the default left unwritten.\n\nThe merge treats an inferred verb as a candidate like any other; an empty verb\nstill never is. A link made on one keeps status `declared`, because the route\nit names is declared by the URLConf, and its `destination.resolution` carries\n`confidence: medium` with the provider's `methodEvidence`. A link on a\ndeclared verb writes no confidence, which reads `high`, and so every existing\nresolution is unchanged. `confidence` uses the vocabulary a flow trigger and\na composition seam already use; `extract-django` already set its trigger to\n`medium` for the same inference. When two fragments give the same method a\nroute on the same path, a declared verb replaces an inferred one, and either\nreplaces an empty one.\n\nThe page shows the lowered confidence and the reading in the step's HTTP\ndestination evidence, and a \"verb inferred\" mark beside the route on the\nservice's contract; generated Markdown says the same.\n\nOption 2 was rejected because the uncertainty is in one part of one match, not\nin whether the relationship is stated by source: the call site is read, the\nroute is mounted. A status would move every such edge out of the declared set\nthat the map and the problem rules count, for a fact the resolution can carry.\nOption 3 left a known link unresolved. Option 4 made a guess indistinguishable\nfrom a decorator.\n\nA call that uses a different verb from the inferred one still does not link,\nthough Django would route it: the inference names the verb the handler is\nwritten for, and a caller using another one is worth a look. A unique-suffix\nmatch is also a heuristic and writes no confidence yet; it keeps saying so\nthrough its basis.\n",
+      "relates": {},
+      "source": "adr/0021-an-inferred-http-verb-links-a-call-at-medium-confidence.md",
+      "created": {
+        "commit": "413a23f0a521c60325fd59cfb9e607da5907a43d",
+        "author": "Victor Login",
+        "date": "2026-09-15T23:11:30+07:00"
+      }
     }
   ]
 }

@@ -39,3 +39,4 @@
 | [portolan.0018](adr/portolan.0018.md) | A Gateway Route contributes hosts only through a valid attachment | accepted | 2026-09-14 |
 | [portolan.0019](adr/portolan.0019.md) | A branch draft is generated in dev, compared from its merge-base and saved beside main | accepted | 2026-09-15 |
 | [portolan.0020](adr/portolan.0020.md) | Task links are read from the history, never written into a fragment | accepted | 2026-09-15 |
+| [portolan.0021](adr/portolan.0021.md) | An inferred HTTP verb links a call, at medium confidence | accepted | 2026-09-15 |

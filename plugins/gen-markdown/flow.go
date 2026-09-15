@@ -296,7 +296,14 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 			if n.Destination != nil {
 				destination := n.Destination.Method + " " + orDefault(n.Destination.FullPath, n.Destination.EndpointExpression)
 				if n.Destination.Resolution != nil {
-					destination += " → " + n.Destination.Resolution.Provider + " " + n.Destination.Resolution.Route + " (" + n.Destination.Resolution.Basis + ")"
+					destination += " → " + n.Destination.Resolution.Provider + " " + n.Destination.Resolution.Route + " (" + n.Destination.Resolution.Basis
+					if n.Destination.Resolution.Confidence != "" {
+						destination += ", " + n.Destination.Resolution.Confidence + " confidence"
+					}
+					if evidence := n.Destination.Resolution.MethodEvidence; evidence != nil {
+						destination += ", verb inferred: " + evidence.Rule + " at " + code(evidence.Source)
+					}
+					destination += ")"
 				}
 				notes = append(notes, "destination: "+destination)
 			}

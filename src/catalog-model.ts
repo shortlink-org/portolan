@@ -436,12 +436,41 @@ export interface RpcMethod {
 export interface HttpRoute {
   /**
    * Upper case: `POST`. Empty when a framework extractor proved the mount but
-   * no declaration proved the verb; such a route is never matched against an
-   * outbound call, and renderers show the path alone.
+   * neither a declaration nor the handler's reads name the verb; such a route
+   * is never matched against an outbound call, and renderers show the path
+   * alone.
    */
   method: string;
   /** As templated in the document: `/v1/users/{id}`. */
   path: string;
+  /**
+   * Who named the verb. Absent reads `declared`: a document, a decorator or a
+   * route table spelled it. `inferred` is a verb no declaration names and the
+   * handler's reads imply (extract-django: `request.FILES` means POST). The
+   * merge links a call to such a route at medium confidence.
+   */
+  methodBasis?: HttpMethodBasis;
+  /** The reading an inferred verb rests on. */
+  methodEvidence?: HttpMethodEvidence;
+}
+
+export type HttpMethodBasis = "declared" | "inferred";
+
+export const HTTP_METHOD_BASES: readonly HttpMethodBasis[] = [
+  "declared",
+  "inferred",
+] as const;
+
+export interface HttpMethodEvidence {
+  /** What was read: `reads request.FILES`. */
+  rule: string;
+  /** Where: `geo/views.py:64`. */
+  source: string;
+}
+
+/** The basis a route's verb carries, `declared` when it carries none. */
+export function httpMethodBasis(route: HttpRoute): HttpMethodBasis {
+  return route.methodBasis ?? "declared";
 }
 
 export interface SoapRoute {
@@ -514,7 +543,20 @@ export interface HTTPDestination {
   join?: { expression: string; source: string };
   /** Runtime URL modifiers after the proven join; not evaluated statically. */
   transforms?: { expression: string; source: string }[];
-  resolution?: { basis: "full-path" | "exact-route" | "unique-suffix" | "kubernetes-host"; provider: string; route: string };
+  resolution?: HTTPDestinationResolution;
+}
+export interface HTTPDestinationResolution {
+  basis: "full-path" | "exact-route" | "unique-suffix" | "kubernetes-host";
+  provider: string;
+  route: string;
+  /**
+   * Absent for a link whose route and verb are both declared, and reads
+   * `high`. `medium` is a link to a route whose verb is inferred; the status
+   * stays `declared`, because the route is, and this says what it rests on.
+   */
+  confidence?: "high" | "medium" | "low";
+  /** The provider route's reading, when its verb is inferred. */
+  methodEvidence?: HttpMethodEvidence;
 }
 export interface HTTPBaseURL {
   expression: string;

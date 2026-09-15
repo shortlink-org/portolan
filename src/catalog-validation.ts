@@ -15,6 +15,7 @@ import {
   CLASSIFICATIONS,
   COMPONENT_KINDS,
   GROUP_KINDS,
+  HTTP_METHOD_BASES,
   REDIS_OPERATIONS,
   STORE_KINDS,
   STREAMING,
@@ -408,6 +409,25 @@ export function validateCatalog(catalog: Catalog): Catalog {
               `method "${provided.id}/${method.name}" streams "${method.streaming}"; expected one of ${STREAMING.join(", ")}`,
               `service ${service.id}`,
             );
+          }
+          if (method.http?.methodBasis !== undefined) {
+            if (!HTTP_METHOD_BASES.includes(method.http.methodBasis)) {
+              fail(
+                `method "${provided.id}/${method.name}" names its verb on basis "${method.http.methodBasis}"; expected one of ${HTTP_METHOD_BASES.join(", ")}`,
+                `service ${service.id}`,
+              );
+            }
+            // An inferred verb is a verb and a reading; either one missing
+            // leaves a guess nobody can check.
+            if (
+              method.http.methodBasis === "inferred" &&
+              (!method.http.method || !method.http.methodEvidence)
+            ) {
+              fail(
+                `method "${provided.id}/${method.name}" infers its HTTP verb but carries no ${method.http.method ? "evidence for it" : "verb"}`,
+                `service ${service.id}`,
+              );
+            }
           }
           if (
             method.soap?.version !== undefined &&
