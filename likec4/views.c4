@@ -64,9 +64,13 @@ ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
     include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
-    include shop.oms -> bus where kind is bus with { title '2 events'  notes 'OrderCancelled
+    include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
+OrderConfirmed
 OrderPlaced' }
-    include bus -> shop.oms where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include bus -> shop.oms where kind is bus with { title '4 events'  notes 'BasketCheckedOut
+OrderPlaced
+PaymentAuthorized
+PaymentDeclined' }
     include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
 QuoteIssued' }
     include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
@@ -80,7 +84,9 @@ QuoteIssued' }
     include shop.billing -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
     include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
     include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include shop.oms -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    exclude payments.ledger -> shop.oms where kind is consumes
     exclude payments.ledger -> shop.billing where kind is consumes
     exclude payments.ledger -> delivery.core where kind is consumes
     exclude shop.cart -> shop.oms where kind is consumes
@@ -174,9 +180,13 @@ ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
     include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
-    include shop.oms -> bus where kind is bus with { title '2 events'  notes 'OrderCancelled
+    include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
+OrderConfirmed
 OrderPlaced' }
-    include bus -> shop.oms where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include bus -> shop.oms where kind is bus with { title '4 events'  notes 'BasketCheckedOut
+OrderPlaced
+PaymentAuthorized
+PaymentDeclined' }
     include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
 QuoteIssued' }
     include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
@@ -190,7 +200,9 @@ QuoteIssued' }
     include shop.billing -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
     include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
     include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    include shop.oms -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
+    exclude payments.ledger -> shop.oms where kind is consumes
     exclude payments.ledger -> shop.billing where kind is consumes
     exclude payments.ledger -> delivery.core where kind is consumes
     exclude shop.cart -> shop.oms where kind is consumes
@@ -264,9 +276,13 @@ ShipmentInTransit
 ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
-    include shop.oms -> bus where kind is bus with { title '2 events'  notes 'OrderCancelled
+    include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
+OrderConfirmed
 OrderPlaced' }
-    include bus -> shop.oms where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
+    include bus -> shop.oms where kind is bus with { title '4 events'  notes 'BasketCheckedOut
+OrderPlaced
+PaymentAuthorized
+PaymentDeclined' }
     include payments.ledger -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include payments.ledger -> stripe where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
     autoLayout LeftRight 100 70
@@ -1732,7 +1748,7 @@ OrderPlaced' }
     }
     shop.oms -> oms_pg 'by_id' {
       color declared  line solid  head none
-      notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21'
+      notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35'
     }
     alt {
       when 'order.status is Status::Cancelled' {
@@ -1742,11 +1758,11 @@ OrderPlaced' }
       else 'otherwise' {
         shop.oms -> oms_pg 'save' {
           color declared  line solid  head none
-          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26'
+          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
         }
         shop.oms -> bus 'OrderCancelled' {
           color declared  line solid  head onormal
-          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26'
+          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
         }
       }
     }
@@ -1766,6 +1782,64 @@ OrderPlaced' }
     shop.oms -> oms_pg 'by_id' {
       color declared  line solid  head none
       notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42'
+    }
+  }
+
+  dynamic view flow_oms_cancel_order_on_payment_declined {
+    title 'Cancel order on payment declined'
+    description 'Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing.'
+    bus -> shop.oms 'PaymentDeclined' {
+      color declared  line solid  head onormal
+      notes 'examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs:17'
+    }
+    shop.oms -> shop.oms 'CancelOrder' {
+      color declared  line solid  head none
+      notes 'examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs:18'
+    }
+    shop.oms -> oms_pg 'by_id' {
+      color declared  line solid  head none
+      notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35'
+    }
+    alt {
+      when 'order.status is Status::Cancelled' {
+        break 'ends the flow' {
+        }
+      }
+      else 'otherwise' {
+        shop.oms -> oms_pg 'save' {
+          color declared  line solid  head none
+          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
+        }
+        shop.oms -> bus 'OrderCancelled' {
+          color declared  line solid  head onormal
+          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
+        }
+      }
+    }
+  }
+
+  dynamic view flow_oms_confirm_order_on_payment_authorized {
+    title 'Confirm order on payment authorized'
+    description 'Applies the ledger\'s public fact; it never calls Authorize.'
+    bus -> shop.oms 'PaymentAuthorized' {
+      color declared  line solid  head onormal
+      notes 'examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:16'
+    }
+    shop.oms -> shop.oms 'ConfirmOrder' {
+      color declared  line solid  head none
+      notes 'examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:17'
+    }
+    shop.oms -> oms_pg 'by_id' {
+      color declared  line solid  head none
+      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:26'
+    }
+    shop.oms -> oms_pg 'save' {
+      color declared  line solid  head none
+      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38'
+    }
+    shop.oms -> bus 'OrderConfirmed' {
+      color declared  line solid  head onormal
+      notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38'
     }
   }
 
@@ -1791,6 +1865,85 @@ OrderPlaced' }
     shop.oms -> bus 'OrderPlaced' {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31'
+    }
+  }
+
+  dynamic view flow_oms_request_payment_on_order_placed {
+    title 'Request payment on order placed'
+    description 'The stored OrderPlaced triggers the RPC. Applying its answer also recovers a ledger save whose subsequent event publication failed.'
+    bus -> shop.oms 'OrderPlaced' {
+      color declared  line solid  head onormal
+      notes 'examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:28'
+    }
+    shop.oms -> shop.oms 'RequestPayment' {
+      color declared  line solid  head none
+      notes 'examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:29'
+    }
+    shop.oms -> oms_pg 'by_id' {
+      color declared  line solid  head none
+      notes 'examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:49'
+    }
+    shop.oms -> payments.ledger 'AuthorizeRequest → AuthorizeResponse' {
+      color declared  line solid  head normal
+      notes 'examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:53'
+    }
+    alt {
+      when 'self.request.handle(&event.order_id).await? is Some((Authorization::Authorized { payment_id }, amount))' {
+        shop.oms -> shop.oms 'ConfirmOrder' {
+          color declared  line solid  head none
+          notes 'examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:31'
+        }
+        shop.oms -> oms_pg 'by_id' {
+          color declared  line solid  head none
+          notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:26'
+        }
+        shop.oms -> oms_pg 'save' {
+          color declared  line solid  head none
+          notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38'
+        }
+        shop.oms -> bus 'OrderConfirmed' {
+          color declared  line solid  head onormal
+          notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38'
+        }
+      }
+      else 'self.request.handle(&event.order_id).await? is Some((Authorization::Declined(reason), _))' {
+        shop.oms -> shop.oms 'CancelOrder' {
+          color declared  line solid  head none
+          notes 'examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:43'
+        }
+        shop.oms -> oms_pg 'by_id' {
+          color declared  line solid  head none
+          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35'
+        }
+        alt {
+          when 'order.status is Status::Cancelled' {
+            break 'ends the flow' {
+            }
+          }
+          else 'otherwise' {
+            shop.oms -> oms_pg 'save' {
+              color declared  line solid  head none
+              notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
+            }
+            shop.oms -> bus 'OrderCancelled' {
+              color declared  line solid  head onormal
+              notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
+            }
+          }
+        }
+      }
+      else 'self.request.handle(&event.order_id).await? is None' {
+      }
+      else 'otherwise' {
+      }
+    }
+  }
+
+  dynamic view flow_oms_request_payment_on_order_placed_cross {
+    title 'Request payment on order placed — crossings only'
+    shop.oms -> payments.ledger 'AuthorizeRequest → AuthorizeResponse' {
+      color declared  line solid  head normal
+      notes 'examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:53'
     }
   }
 

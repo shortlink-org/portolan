@@ -8,7 +8,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
+import org.portolan.payments.ledger.domain.payment.DeclineReason;
 import org.portolan.payments.ledger.domain.payment.event.PaymentAuthorized;
+import org.portolan.payments.ledger.domain.payment.event.PaymentDeclined;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,6 +23,17 @@ class CheckoutContractTest {
         var event = new PaymentAuthorized("basket-1", "basket-1", new Money(900, "EUR"), Instant.parse("2026-09-05T12:00:01Z"));
         var expected = Files.readString(Path.of("../../scenarios/fixtures/payment-authorized.json"));
         assertEquals("ledger.PaymentAuthorized", Wire.name(event));
+        assertEquals("payments.ledger.payment", Wire.channel(event));
+        assertEquals(json.readTree(expected), json.readTree(json.writeValueAsBytes(event)));
+    }
+
+    @Test
+    void declineMatchesThePublicFactConsumedByOms() throws Exception {
+        var json = JsonMapper.builder().addModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS).build();
+        var event = new PaymentDeclined("basket-1", "basket-1", DeclineReason.CARD_REFUSED, Instant.parse("2026-09-05T12:00:01Z"));
+        var expected = Files.readString(Path.of("../../scenarios/fixtures/payment-declined.json"));
+        assertEquals("ledger.PaymentDeclined", Wire.name(event));
         assertEquals("payments.ledger.payment", Wire.channel(event));
         assertEquals(json.readTree(expected), json.readTree(json.writeValueAsBytes(event)));
     }

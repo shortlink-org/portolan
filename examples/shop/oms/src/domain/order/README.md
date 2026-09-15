@@ -11,10 +11,13 @@ stateDiagram-v2
     [*] --> placed
     placed --> confirmed: confirm · OrderConfirmed
     placed --> cancelled: cancel · OrderCancelled
+    placed --> cancelled: payment declined · OrderCancelled
     confirmed --> cancelled: cancel · OrderCancelled
 ```
 
 The moves are one table, `TRANSITIONS` in `status.rs`, and one method makes
 them, `move_to`: an edge the table lacks is refused before anything else
-happens. Fulfilled is not a state yet - nothing in the estate delivers - and
+happens. A declined payment takes the same `cancel` edge, but only out of
+placed: a decline that arrives after confirmation changes nothing (ADR
+oms.0007). Fulfilled is not a state yet - nothing in the estate delivers - and
 will arrive with the service that does.

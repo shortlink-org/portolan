@@ -31,7 +31,7 @@ printed temporary directory.
 OrderPlaced requests payment only after its transaction commits. The payment id
 is the order id for this checkout attempt. Both the RPC answer and the ledger
 fact reach the same confirmation operation; that operation never calls ledger.
-A known decline leaves the order placed; an outage is retried by message delivery.
+A known decline cancels the order (oms.0007); an outage is retried by message delivery.
 
 This covers authorization, not capture or fulfilment. Ledger still lacks an
 outbox and gateway idempotency; a lost gateway result before ledger persistence

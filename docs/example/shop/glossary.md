@@ -3,7 +3,7 @@
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Shop](README.md)
-- **Terms:** 11
+- **Terms:** 12
 - **Read from:** [`examples/shop/oms/GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -12,8 +12,9 @@ One meaning per word inside this context, as the glossary beside the code states
 
 - **Basket** — The cart's aggregate. An order carries its basket's id and is placed from it exactly once.
 - **Bus** — NATS JetStream when configured, in process otherwise. One stream per service, named for its subjects.
-- **Cancelled** — The order will not be fulfilled. Terminal.
+- **Cancelled** — The order will not be fulfilled: the customer asked, or the payment was declined. Terminal.
 - **Confirmed** — The payment is authorised; the order may be fulfilled.
+- **Decline** — Ledger's refusal to hold an order's total, with a reason from a closed set. Final for the checkout: it cancels a placed order, never retried.
 - **Line** — One SKU of the order, how many, and the unit price it was added to the basket at. Copied, never repriced.
 - **Money** — An amount in the minor unit of a currency.
 - **Order** — What a basket became at checkout: the lines and the total the customer agreed to, under one lock. The aggregate root.

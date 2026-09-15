@@ -425,6 +425,14 @@
       "diagram": "oms-cancel-order.mmd"
     },
     {
+      "id": "flow.oms-cancel-order-on-payment-declined",
+      "slug": "oms-cancel-order-on-payment-declined",
+      "name": "Cancel order on payment declined",
+      "owner": "shop",
+      "source": "examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs",
+      "diagram": "oms-cancel-order-on-payment-declined.mmd"
+    },
+    {
       "id": "shop.oms-cdc.oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope",
       "slug": "oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope",
       "name": "oms-cdc · public.order_lines · CDC",
@@ -441,6 +449,14 @@
       "diagram": "oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.mmd"
     },
     {
+      "id": "flow.oms-confirm-order-on-payment-authorized",
+      "slug": "oms-confirm-order-on-payment-authorized",
+      "name": "Confirm order on payment authorized",
+      "owner": "shop",
+      "source": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
+      "diagram": "oms-confirm-order-on-payment-authorized.mmd"
+    },
+    {
       "id": "flow.oms-get-order",
       "slug": "oms-get-order",
       "name": "Get order",
@@ -455,6 +471,14 @@
       "owner": "shop",
       "source": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs",
       "diagram": "oms-place-order-on-basket-checked-out.mmd"
+    },
+    {
+      "id": "flow.oms-request-payment-on-order-placed",
+      "slug": "oms-request-payment-on-order-placed",
+      "name": "Request payment on order placed",
+      "owner": "shop",
+      "source": "examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs",
+      "diagram": "oms-request-payment-on-order-placed.mmd"
     },
     {
       "id": "flow.pricing-archive-price-list",

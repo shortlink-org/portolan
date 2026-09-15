@@ -25,7 +25,7 @@
       "slug": "cancelled",
       "context": "shop",
       "name": "Cancelled",
-      "definition": "The order will not be fulfilled. Terminal.",
+      "definition": "The order will not be fulfilled: the customer asked, or the payment was declined. Terminal.",
       "source": "examples/shop/oms/GLOSSARY.md:11"
     },
     {
@@ -34,7 +34,15 @@
       "context": "shop",
       "name": "Confirmed",
       "definition": "The payment is authorised; the order may be fulfilled.",
-      "source": "examples/shop/oms/GLOSSARY.md:13"
+      "source": "examples/shop/oms/GLOSSARY.md:14"
+    },
+    {
+      "id": "shop.decline",
+      "slug": "decline",
+      "context": "shop",
+      "name": "Decline",
+      "definition": "Ledger's refusal to hold an order's total, with a reason from a closed set. Final for the checkout: it cancels a placed order, never retried.",
+      "source": "examples/shop/oms/GLOSSARY.md:16"
     },
     {
       "id": "shop.line",
@@ -42,7 +50,7 @@
       "context": "shop",
       "name": "Line",
       "definition": "One SKU of the order, how many, and the unit price it was added to the basket at. Copied, never repriced.",
-      "source": "examples/shop/oms/GLOSSARY.md:15"
+      "source": "examples/shop/oms/GLOSSARY.md:19"
     },
     {
       "id": "shop.money",
@@ -50,7 +58,7 @@
       "context": "shop",
       "name": "Money",
       "definition": "An amount in the minor unit of a currency.",
-      "source": "examples/shop/oms/GLOSSARY.md:18"
+      "source": "examples/shop/oms/GLOSSARY.md:22"
     },
     {
       "id": "shop.order",
@@ -58,7 +66,7 @@
       "context": "shop",
       "name": "Order",
       "definition": "What a basket became at checkout: the lines and the total the customer agreed to, under one lock. The aggregate root.",
-      "source": "examples/shop/oms/GLOSSARY.md:20"
+      "source": "examples/shop/oms/GLOSSARY.md:24"
     },
     {
       "id": "shop.outbox",
@@ -66,7 +74,7 @@
       "context": "shop",
       "name": "Outbox",
       "definition": "The table an event waits in, written in the transaction that produced it, until the relay puts it on the bus.",
-      "source": "examples/shop/oms/GLOSSARY.md:23"
+      "source": "examples/shop/oms/GLOSSARY.md:27"
     },
     {
       "id": "shop.payments",
@@ -74,7 +82,7 @@
       "context": "shop",
       "name": "Payments",
       "definition": "The ledger that authorises an order's total. A port here; nothing provides it yet.",
-      "source": "examples/shop/oms/GLOSSARY.md:26"
+      "source": "examples/shop/oms/GLOSSARY.md:30"
     },
     {
       "id": "shop.placed",
@@ -82,7 +90,7 @@
       "context": "shop",
       "name": "Placed",
       "definition": "The order exists and is waiting for its payment to be authorised. Where every order starts.",
-      "source": "examples/shop/oms/GLOSSARY.md:29"
+      "source": "examples/shop/oms/GLOSSARY.md:33"
     },
     {
       "id": "shop.relay",
@@ -90,7 +98,7 @@
       "context": "shop",
       "name": "Relay",
       "definition": "The loop that moves outbox rows to the bus and marks them published.",
-      "source": "examples/shop/oms/GLOSSARY.md:32"
+      "source": "examples/shop/oms/GLOSSARY.md:36"
     }
   ]
 }

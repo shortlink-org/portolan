@@ -127,6 +127,10 @@ stateDiagram-v2
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
 
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared | `oms-confirm-order-on-payment-authorized#s1` |
+
 #### v1 — current
 
 The gateway agreed to hold the money. Nothing has moved yet.
@@ -171,6 +175,10 @@ Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/do
 `payments.ledger.payment.PaymentDeclined`
 
 On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
+
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared | `oms-cancel-order-on-payment-declined#s1` |
 
 #### v1 — current
 

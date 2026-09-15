@@ -4,10 +4,21 @@ use crate::domain::order::port::Orders;
 use crate::domain::order::vo::Money;
 use crate::domain::order::{Error, Status};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Ledger's closed set, named on the wire as ledger names it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DeclineReason {
     CardRefused,
     OrderCancelled,
+}
+
+impl DeclineReason {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DeclineReason::CardRefused => "CARD_REFUSED",
+            DeclineReason::OrderCancelled => "ORDER_CANCELLED",
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

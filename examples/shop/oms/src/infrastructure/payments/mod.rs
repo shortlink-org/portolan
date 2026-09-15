@@ -24,16 +24,3 @@ impl Payments for AnyPayments {
         }
     }
 }
-
-/// Ledger-owned integration contract, distinct from its private gateway handle.
-pub const TOPIC: &str = "payments.ledger.payment";
-pub const PAYMENT_AUTHORIZED: &str = "ledger.PaymentAuthorized";
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PaymentAuthorized {
-    pub payment_id: String,
-    pub order_id: String,
-    pub amount: Money,
-    pub occurred_at: chrono::DateTime<chrono::Utc>,
-}

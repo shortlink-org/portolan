@@ -7,9 +7,9 @@ exact total, using the order id as the stable payment id for this checkout.
 
 ## What follows from it
 
-The OrderPlaced policy applies an authorized reply through confirm_order. A
-known decline leaves the order placed; an outage fails delivery for retry.
-The separately delivered authorization event can also confirm, without another RPC.
+The OrderPlaced policy applies an authorized reply through confirm_order and a
+known decline through cancel_order (oms.0007); an outage fails delivery for retry.
+The separately delivered ledger events can also confirm or cancel, without another RPC.
 
 ## Answers
 
@@ -19,5 +19,5 @@ new payment attempts after a decline.
 
 ## Sequence
 
-Committed OrderPlaced → request_payment → Payments.Authorize → confirmation.
+Committed OrderPlaced → request_payment → Payments.Authorize → confirmation or cancellation.
 See oms.0006 for ownership and recovery limits.

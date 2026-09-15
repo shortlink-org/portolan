@@ -23,6 +23,8 @@ told.
 - Requests ledger authorization from the committed `OrderPlaced`, with the order
   id as the stable payment id. Confirms from the RPC answer or
   `ledger.PaymentAuthorized`, once, without authorizing again.
+- Cancels a placed order whose payment is declined, from the RPC answer or
+  `ledger.PaymentDeclined`, once; a late decline leaves a confirmed order alone.
 - Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an
   outbox, over NATS JetStream.
 
@@ -33,8 +35,8 @@ basket's, the money is `payments`' and the parcel is `delivery`'s. Does not
 hold a catalogue or know who a customer is beyond the id the cart passed on.
 The provider is `examples/payments/ledger`. The consumer-owned protobuf subset
 matches its field numbers and outcomes; no gateway authorization handle leaves
-ledger. A declined payment leaves the order placed for an explicit cancellation
-or a future payment-retry decision; an unavailable ledger fails delivery for retry.
+ledger. Does not retry a declined payment: the order is cancelled and paying
+another way is a new checkout. An unavailable ledger fails delivery for retry.
 
 ## Decisions
 
@@ -43,8 +45,8 @@ or a future payment-retry decision; an unavailable ledger fails delivery for ret
 - [oms.0003](../../adr/oms.0003.md) — Lines and the total are copied from the basket, never repriced
 - [oms.0004](../../adr/oms.0004.md) — Cancelling is allowed until the parcel moves
 - [oms.0005](../../adr/oms.0005.md) — Original placeholder for payment confirmation (superseded by oms.0006)
-
 - [oms.0006](../../adr/oms.0006.md) — OrderPlaced requests authorization; confirmation applies the fact idempotently
+- [oms.0007](../../adr/oms.0007.md) — A declined payment cancels the order
 
 ## Running it
 
@@ -167,13 +169,19 @@ a contract change rather than a string somebody starts sending.
 
 </details>
 
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | [`examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto) |
+
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
 | [`OrderCancelled`](aggregates/order.md#event-shop-oms-order-ordercancelled) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
 | [`OrderConfirmed`](aggregates/order.md#event-shop-oms-order-orderconfirmed) | v1 | — |
-| [`OrderPlaced`](aggregates/order.md#event-shop-oms-order-orderplaced) | v1 | — |
+| [`OrderPlaced`](aggregates/order.md#event-shop-oms-order-orderplaced) | v1 | [shop.oms (declared)](README.md) |
 
 ## Schema modules
 
@@ -205,3 +213,4 @@ a contract change rather than a string somebody starts sending.
 | [oms.0004](../../adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
 | [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 |
 | [oms.0006](../../adr/oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 |
+| [oms.0007](../../adr/oms.0007.md) | A declined payment cancels the order | accepted | 2026-09-15 |

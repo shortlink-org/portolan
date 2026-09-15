@@ -45,7 +45,7 @@ sequenceDiagram
    `shop.v1.OrderService/CancelOrder` · status: declared · [`examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs#L41)
 <a id="step-s2"></a>
 2. **shop.oms** → **oms-pg** — by_id
-   status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L21)
+   status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L35)
 
 > **One of**
 >
@@ -56,10 +56,10 @@ sequenceDiagram
 >
 > <a id="step-s3"></a>
 > 3. **shop.oms** → **oms-pg** — save
->    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L26)
+>    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
 > <a id="step-s4"></a>
 > 4. **shop.oms** → **bus** — OrderCancelled
->    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L26)
+>    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
 
 <a id="step-s6"></a>
 5. **shop.oms** → **oms-pg** — by_id

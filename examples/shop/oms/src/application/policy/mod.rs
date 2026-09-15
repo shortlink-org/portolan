@@ -1,7 +1,7 @@
 //! Policies: "when X has happened, do Y". Each reacts to one event off the bus
 //! and runs one use case; the subscriptions that feed them are made in main.
 
+pub mod cancel_order_on_payment_declined;
 pub mod confirm_order_on_payment_authorized;
 pub mod place_order_on_basket_checked_out;
-
 pub mod request_payment_on_order_placed;

@@ -4,6 +4,7 @@
 - **Date:** 2026-09-10
 - **Scope:** shop.oms
 - **Supersedes:** oms.0005
+- **Note:** Its paragraph leaving a declined order placed is replaced by oms.0007.
 
 ## Context and Problem Statement
 

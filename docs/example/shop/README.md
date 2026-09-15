@@ -19,4 +19,4 @@ What a customer is buying, what it costs and what they owe for it: the basket wh
 
 ## Language
 
-- [Glossary](glossary.md) — 11 terms this context spells one way
+- [Glossary](glossary.md) — 12 terms this context spells one way

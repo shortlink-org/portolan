@@ -1,0 +1,13 @@
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    p0-)p1: PaymentDeclined
+    p1->>p1: CancelOrder
+    p1->>p2: by_id
+    alt order.status is Status::Cancelled
+    else otherwise
+        p1->>p2: save
+        p1-)p0: OrderCancelled
+    end

@@ -7,6 +7,7 @@
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md)
 - **Committed:** Victor Login, 2026-09-10 (`2431809`)
+- **Note:** Its paragraph leaving a declined order placed is replaced by oms.0007.
 - **Supersedes:** [oms.0005](oms.0005.md)
 
 ### Context and Problem Statement

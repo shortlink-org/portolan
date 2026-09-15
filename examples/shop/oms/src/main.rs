@@ -7,11 +7,14 @@
 use std::sync::Arc;
 
 use oms::application::order::usecases::{cancel_order, confirm_order, get_order, place_order, request_payment, wall_clock};
+use oms::application::policy::cancel_order_on_payment_declined::CancelOrderOnPaymentDeclined;
 use oms::application::policy::confirm_order_on_payment_authorized::ConfirmOrderOnPaymentAuthorized;
 use oms::application::policy::place_order_on_basket_checked_out::PlaceOrderOnBasketCheckedOut;
-use oms::application::policy::request_payment_on_order_placed::{ORDER_PLACED, RequestPaymentOnOrderPlaced};
+use oms::application::policy::request_payment_on_order_placed::RequestPaymentOnOrderPlaced;
+use oms::domain::order::event::OrderPlaced;
 use oms::infrastructure::cart::{self, BasketCheckedOut};
-use oms::infrastructure::payments::{AnyPayments, PAYMENT_AUTHORIZED, TOPIC as PAYMENTS_TOPIC, client::PaymentsClient, stand_in::PermissivePayments};
+use oms::infrastructure::ledger::{self, PaymentAuthorized, PaymentDeclined};
+use oms::infrastructure::payments::{AnyPayments, client::PaymentsClient, stand_in::PermissivePayments};
 use oms::infrastructure::repository::order::PostgresOrders;
 use oms::infrastructure::transport::grpc::order::OrderHandlers;
 use oms::infrastructure::transport::grpc::order::generated::shop::v1::order_service_server::OrderServiceServer;
@@ -50,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cancel_order = Arc::new(cancel_order::UseCase::new(orders.clone(), wall_clock()));
 
     // The policies, subscribed on the bus by the subject their event travels on.
+    // Each handler decodes its event; a malformed one fails delivery.
     let on_checkout = Arc::new(PlaceOrderOnBasketCheckedOut::new(place_order));
     let handler: Handler = Arc::new(move |message: Message| {
         let policy = on_checkout.clone();
@@ -59,18 +63,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     });
     bus.subscribe(cart::TOPIC, cart::BASKET_CHECKED_OUT, handler).await?;
-    let on_placed = Arc::new(RequestPaymentOnOrderPlaced::new(request_payment, confirm_order.clone(), wall_clock()));
+    let on_placed = Arc::new(RequestPaymentOnOrderPlaced::new(
+        request_payment,
+        confirm_order.clone(),
+        cancel_order.clone(),
+        wall_clock(),
+    ));
     let handler: Handler = Arc::new(move |message: Message| {
         let policy = on_placed.clone();
-        Box::pin(async move { policy.handle(&message).await.map_err(|e| BusError(e.to_string())) })
+        Box::pin(async move {
+            let event = OrderPlaced::decode(&message.payload).map_err(|e| BusError(format!("decoding {}: {e}", OrderPlaced::NAME)))?;
+            policy.handle(&event).await.map_err(|e| BusError(e.to_string()))
+        })
     });
-    bus.subscribe(oms::infrastructure::repository::order::TOPIC, ORDER_PLACED, handler).await?;
+    bus.subscribe(oms::infrastructure::repository::order::TOPIC, OrderPlaced::NAME, handler).await?;
     let on_authorized = Arc::new(ConfirmOrderOnPaymentAuthorized::new(confirm_order));
     let handler: Handler = Arc::new(move |message: Message| {
         let policy = on_authorized.clone();
-        Box::pin(async move { policy.handle(&message).await.map_err(|e| BusError(e.to_string())) })
+        Box::pin(async move {
+            let event = PaymentAuthorized::decode(&message.payload).map_err(|e| BusError(format!("decoding {}: {e}", ledger::PAYMENT_AUTHORIZED)))?;
+            policy.handle(&event).await.map_err(|e| BusError(e.to_string()))
+        })
     });
-    bus.subscribe(PAYMENTS_TOPIC, PAYMENT_AUTHORIZED, handler).await?;
+    bus.subscribe(ledger::TOPIC, ledger::PAYMENT_AUTHORIZED, handler).await?;
+    let on_declined = Arc::new(CancelOrderOnPaymentDeclined::new(cancel_order.clone()));
+    let handler: Handler = Arc::new(move |message: Message| {
+        let policy = on_declined.clone();
+        Box::pin(async move {
+            let event = PaymentDeclined::decode(&message.payload).map_err(|e| BusError(format!("decoding {}: {e}", ledger::PAYMENT_DECLINED)))?;
+            policy.handle(&event).await.map_err(|e| BusError(e.to_string()))
+        })
+    });
+    bus.subscribe(ledger::TOPIC, ledger::PAYMENT_DECLINED, handler).await?;
 
     let addr = env("GRPC_ADDR").unwrap_or_else(|| "127.0.0.1:50051".into()).parse()?;
     let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);

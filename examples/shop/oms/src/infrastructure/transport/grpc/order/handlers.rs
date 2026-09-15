@@ -46,6 +46,7 @@ impl<O: Orders + 'static> OrderService for OrderHandlers<O> {
                 .handle(cancel_order::Input {
                     order_id: order_id.clone(),
                     reason: "customer asked".into(),
+                    declined_payment_id: None,
                 })
                 .await
                 .map_err(status)?;

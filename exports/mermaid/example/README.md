@@ -55,10 +55,13 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Observed: CancelOrder](observed-oms-cancelorder.mmd) — `flow.observed-oms-cancelorder`
 - [Observed: GetOrder](observed-oms-getorder.mmd) — `flow.observed-oms-getorder`
 - [Cancel order](oms-cancel-order.mmd) — `flow.oms-cancel-order`
+- [Cancel order on payment declined](oms-cancel-order-on-payment-declined.mmd) — `flow.oms-cancel-order-on-payment-declined`
 - [oms-cdc · public.order_lines · CDC](oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.mmd) — `shop.oms-cdc.oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope`
 - [oms-cdc · public.orders · CDC](oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope.mmd) — `shop.oms-cdc.oms-cdc-public-orders-shop-oms-public-orders-shop-oms-public-orders-envelope`
+- [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.mmd) — `flow.oms-confirm-order-on-payment-authorized`
 - [Get order](oms-get-order.mmd) — `flow.oms-get-order`
 - [Place order on basket checked out](oms-place-order-on-basket-checked-out.mmd) — `flow.oms-place-order-on-basket-checked-out`
+- [Request payment on order placed](oms-request-payment-on-order-placed.mmd) — `flow.oms-request-payment-on-order-placed`
 - [Archive price list](pricing-archive-price-list.mmd) — `flow.pricing-archive-price-list`
 - [Expire quote on checkout](pricing-expire-quote-on-checkout.mmd) — `flow.pricing-expire-quote-on-checkout`
 - [Get quote](pricing-get-quote.mmd) — `flow.pricing-get-quote`

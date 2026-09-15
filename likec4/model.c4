@@ -153,7 +153,8 @@ listens for this.'
         }
         OrderPlaced = event 'OrderPlaced' {
           description 'An order came into being from a checked-out basket. Placed, not yet paid
-for: whoever moves money listens for this.'
+for: whoever moves money listens for this. This service reads it back off
+the bus too, to ask for that money itself.'
         }
       }
     }
@@ -312,10 +313,16 @@ payment was captured, and what that means for a parcel is decided here.'
     description 'shop.v1.OrderService/GetOrder · declared · examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto'
     style { color declared  line dashed  head normal }
   }
+  payments.ledger -[consumes]-> shop.oms 'PaymentAuthorized' {
+    style { color declared  line dashed  head onormal }
+  }
   payments.ledger -[consumes]-> shop.billing 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
   payments.ledger -[consumes]-> delivery.core 'PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
+  }
+  payments.ledger -[consumes]-> shop.oms 'PaymentDeclined' {
     style { color declared  line dashed  head onormal }
   }
   payments.ledger -[calls]-> shop.oms 'GetOrder' {
@@ -375,6 +382,11 @@ payment was captured, and what that means for a parcel is decided here.'
   }
   shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
+  }
+  shop.oms -[calls]-> payments.ledger 'Authorize' {
+    technology 'gRPC'
+    description 'payments.v1.PaymentService/Authorize · declared · examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto'
+    style { color declared  line dashed  head normal }
   }
   shop.oms -[owns]-> shop._store_shop_oms_pg 'owns' {
     style { color muted  line solid  head none }
@@ -471,10 +483,10 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.oms_cdc -[bus]-> oms_cdc_kafka '2 events' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms -[bus]-> bus '2 events' {
+  shop.oms -[bus]-> bus '3 events' {
     style { color verified  line solid  head onormal }
   }
-  bus -[bus]-> shop.oms 'BasketCheckedOut' {
+  bus -[bus]-> shop.oms '4 events' {
     style { color verified  line solid  head onormal }
   }
   shop.pricing -[bus]-> bus '2 events' {
@@ -484,9 +496,6 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color declared  line dashed  head onormal }
   }
   client -[uses]-> storefront.bff '9 flows' {
-    style { color declared  line dashed  head normal }
-  }
-  client -[uses]-> payments.ledger '5 flows' {
     style { color declared  line dashed  head normal }
   }
   client -[uses]-> shop.billing '7 flows' {

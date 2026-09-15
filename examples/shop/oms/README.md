@@ -15,6 +15,8 @@ told.
 - Requests ledger authorization from the committed `OrderPlaced`, with the order
   id as the stable payment id. Confirms from the RPC answer or
   `ledger.PaymentAuthorized`, once, without authorizing again.
+- Cancels a placed order whose payment is declined, from the RPC answer or
+  `ledger.PaymentDeclined`, once; a late decline leaves a confirmed order alone.
 - Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an
   outbox, over NATS JetStream.
 
@@ -25,8 +27,8 @@ basket's, the money is `payments`' and the parcel is `delivery`'s. Does not
 hold a catalogue or know who a customer is beyond the id the cart passed on.
 The provider is `examples/payments/ledger`. The consumer-owned protobuf subset
 matches its field numbers and outcomes; no gateway authorization handle leaves
-ledger. A declined payment leaves the order placed for an explicit cancellation
-or a future payment-retry decision; an unavailable ledger fails delivery for retry.
+ledger. Does not retry a declined payment: the order is cancelled and paying
+another way is a new checkout. An unavailable ledger fails delivery for retry.
 
 ## Decisions
 
@@ -35,8 +37,8 @@ or a future payment-retry decision; an unavailable ledger fails delivery for ret
 - [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced
 - [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves
 - [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Original placeholder for payment confirmation (superseded by oms.0006)
-
 - [oms.0006](docs/adr/0006-order-placed-requests-ledger-authorization.md) — OrderPlaced requests authorization; confirmation applies the fact idempotently
+- [oms.0007](docs/adr/0007-a-declined-payment-cancels-the-order.md) — A declined payment cancels the order
 
 ## Running it
 

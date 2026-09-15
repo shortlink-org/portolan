@@ -17,12 +17,15 @@ stateDiagram-v2
     [*] --> placed
     placed --> confirmed: confirm · OrderConfirmed
     placed --> cancelled: cancel · OrderCancelled
+    placed --> cancelled: payment declined · OrderCancelled
     confirmed --> cancelled: cancel · OrderCancelled
 ```
 
 The moves are one table, `TRANSITIONS` in `status.rs`, and one method makes
 them, `move_to`: an edge the table lacks is refused before anything else
-happens. Fulfilled is not a state yet - nothing in the estate delivers - and
+happens. A declined payment takes the same `cancel` edge, but only out of
+placed: a decline that arrives after confirmation changes nothing (ADR
+oms.0007). Fulfilled is not a state yet - nothing in the estate delivers - and
 will arrive with the service that does.
 
 ## Entities
@@ -102,11 +105,11 @@ stateDiagram-v2
 
 | Operation | Kind | Exposed by | Doc | Source |
 | --- | --- | --- | --- | --- |
-| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L20) |
+| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L34) |
 | `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. | [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L25) |
 | `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. | [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L41) |
 | `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. | [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L26) |
-| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L37) |
+| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L48) |
 
 ## Events
 
@@ -162,10 +165,15 @@ Source: [`examples/shop/oms/src/domain/order/event/order_confirmed.rs`](https://
 
 On the wire as `oms.OrderPlaced`, on `shop.oms.order`.
 
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.oms](../README.md) | declared | `oms-request-payment-on-order-placed#s1` |
+
 #### v1 — current
 
 An order came into being from a checked-out basket. Placed, not yet paid
-for: whoever moves money listens for this.
+for: whoever moves money listens for this. This service reads it back off
+the bus too, to ask for that money itself.
 
 Source: [`examples/shop/oms/src/domain/order/event/order_placed.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/event/order_placed.rs)
 

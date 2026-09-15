@@ -94,8 +94,11 @@
 | [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
+| [Cancel order on payment declined](flows/oms-cancel-order-on-payment-declined.md) | [shop](shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
+| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+| [Request payment on order placed](flows/oms-request-payment-on-order-placed.md) | [shop](shop/README.md) | The stored OrderPlaced triggers the RPC. Applying its answer also recovers a ledger save whose subsequent event publication failed. |
 | [Archive price list](flows/pricing-archive-price-list.md) | [shop](shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
 | [Expire quote on checkout](flows/pricing-expire-quote-on-checkout.md) | [shop](shop/README.md) | Ends the promise once the basket it priced is checked out. |
 | [Get quote](flows/pricing-get-quote.md) | [shop](shop/README.md) | Package get_quote reads one quote. |
@@ -148,6 +151,7 @@
 | [oms.0004](adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
 | [oms.0005](adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 |
 | [oms.0006](adr/oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 |
+| [oms.0007](adr/oms.0007.md) | A declined payment cancels the order | accepted | 2026-09-15 |
 | [org.0001](adr/org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 |
 | [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
 | [org.0003](adr/org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 |
@@ -2973,9 +2977,9 @@ consumer/provider protobuf subsets and the authorization event payload.
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | — |
+| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [`PaymentCaptured`](aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | — |
+| [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [`RefundIssued`](aggregates/refund.md#event-payments-ledger-refund-refundissued) | v1 | — |
 
 ## Schema modules
@@ -3138,6 +3142,10 @@ stateDiagram-v2
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
 
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared | `oms-confirm-order-on-payment-authorized#s1` |
+
 #### v1 — current
 
 The gateway agreed to hold the money. Nothing has moved yet.
@@ -3182,6 +3190,10 @@ Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/do
 `payments.ledger.payment.PaymentDeclined`
 
 On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
+
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared | `oms-cancel-order-on-payment-declined#s1` |
 
 #### v1 — current
 
@@ -3306,7 +3318,7 @@ What a customer is buying, what it costs and what they owe for it: the basket wh
 
 ## Language
 
-- [Glossary](glossary.md) — 11 terms this context spells one way
+- [Glossary](glossary.md) — 12 terms this context spells one way
 
 <!-- shop/glossary.md -->
 
@@ -3315,7 +3327,7 @@ What a customer is buying, what it costs and what they owe for it: the basket wh
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Shop](README.md)
-- **Terms:** 11
+- **Terms:** 12
 - **Read from:** [`examples/shop/oms/GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -3324,8 +3336,9 @@ One meaning per word inside this context, as the glossary beside the code states
 
 - **Basket** — The cart's aggregate. An order carries its basket's id and is placed from it exactly once.
 - **Bus** — NATS JetStream when configured, in process otherwise. One stream per service, named for its subjects.
-- **Cancelled** — The order will not be fulfilled. Terminal.
+- **Cancelled** — The order will not be fulfilled: the customer asked, or the payment was declined. Terminal.
 - **Confirmed** — The payment is authorised; the order may be fulfilled.
+- **Decline** — Ledger's refusal to hold an order's total, with a reason from a closed set. Final for the checkout: it cancels a placed order, never retried.
 - **Line** — One SKU of the order, how many, and the unit price it was added to the basket at. Copied, never repriced.
 - **Money** — An amount in the minor unit of a currency.
 - **Order** — What a basket became at checkout: the lines and the total the customer agreed to, under one lock. The aggregate root.
@@ -4231,6 +4244,8 @@ told.
 - Requests ledger authorization from the committed `OrderPlaced`, with the order
   id as the stable payment id. Confirms from the RPC answer or
   `ledger.PaymentAuthorized`, once, without authorizing again.
+- Cancels a placed order whose payment is declined, from the RPC answer or
+  `ledger.PaymentDeclined`, once; a late decline leaves a confirmed order alone.
 - Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an
   outbox, over NATS JetStream.
 
@@ -4241,8 +4256,8 @@ basket's, the money is `payments`' and the parcel is `delivery`'s. Does not
 hold a catalogue or know who a customer is beyond the id the cart passed on.
 The provider is `examples/payments/ledger`. The consumer-owned protobuf subset
 matches its field numbers and outcomes; no gateway authorization handle leaves
-ledger. A declined payment leaves the order placed for an explicit cancellation
-or a future payment-retry decision; an unavailable ledger fails delivery for retry.
+ledger. Does not retry a declined payment: the order is cancelled and paying
+another way is a new checkout. An unavailable ledger fails delivery for retry.
 
 ## Decisions
 
@@ -4251,8 +4266,8 @@ or a future payment-retry decision; an unavailable ledger fails delivery for ret
 - [oms.0003](../../adr/oms.0003.md) — Lines and the total are copied from the basket, never repriced
 - [oms.0004](../../adr/oms.0004.md) — Cancelling is allowed until the parcel moves
 - [oms.0005](../../adr/oms.0005.md) — Original placeholder for payment confirmation (superseded by oms.0006)
-
 - [oms.0006](../../adr/oms.0006.md) — OrderPlaced requests authorization; confirmation applies the fact idempotently
+- [oms.0007](../../adr/oms.0007.md) — A declined payment cancels the order
 
 ## Running it
 
@@ -4375,13 +4390,19 @@ a contract change rather than a string somebody starts sending.
 
 </details>
 
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | [`examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto) |
+
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
 | [`OrderCancelled`](aggregates/order.md#event-shop-oms-order-ordercancelled) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
 | [`OrderConfirmed`](aggregates/order.md#event-shop-oms-order-orderconfirmed) | v1 | — |
-| [`OrderPlaced`](aggregates/order.md#event-shop-oms-order-orderplaced) | v1 | — |
+| [`OrderPlaced`](aggregates/order.md#event-shop-oms-order-orderplaced) | v1 | [shop.oms (declared)](README.md) |
 
 ## Schema modules
 
@@ -4413,6 +4434,7 @@ a contract change rather than a string somebody starts sending.
 | [oms.0004](../../adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
 | [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 |
 | [oms.0006](../../adr/oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 |
+| [oms.0007](../../adr/oms.0007.md) | A declined payment cancels the order | accepted | 2026-09-15 |
 
 <!-- shop/oms/aggregates/order.md -->
 
@@ -4435,12 +4457,15 @@ stateDiagram-v2
     [*] --> placed
     placed --> confirmed: confirm · OrderConfirmed
     placed --> cancelled: cancel · OrderCancelled
+    placed --> cancelled: payment declined · OrderCancelled
     confirmed --> cancelled: cancel · OrderCancelled
 ```
 
 The moves are one table, `TRANSITIONS` in `status.rs`, and one method makes
 them, `move_to`: an edge the table lacks is refused before anything else
-happens. Fulfilled is not a state yet - nothing in the estate delivers - and
+happens. A declined payment takes the same `cancel` edge, but only out of
+placed: a decline that arrives after confirmation changes nothing (ADR
+oms.0007). Fulfilled is not a state yet - nothing in the estate delivers - and
 will arrive with the service that does.
 
 ## Entities
@@ -4520,11 +4545,11 @@ stateDiagram-v2
 
 | Operation | Kind | Exposed by | Doc | Source |
 | --- | --- | --- | --- | --- |
-| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L20) |
+| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L34) |
 | `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. | [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L25) |
 | `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. | [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L41) |
 | `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. | [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L26) |
-| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L37) |
+| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L48) |
 
 ## Events
 
@@ -4580,10 +4605,15 @@ Source: [`examples/shop/oms/src/domain/order/event/order_confirmed.rs`](https://
 
 On the wire as `oms.OrderPlaced`, on `shop.oms.order`.
 
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.oms](../README.md) | declared | `oms-request-payment-on-order-placed#s1` |
+
 #### v1 — current
 
 An order came into being from a checked-out basket. Placed, not yet paid
-for: whoever moves money listens for this.
+for: whoever moves money listens for this. This service reads it back off
+the bus too, to ask for that money itself.
 
 Source: [`examples/shop/oms/src/domain/order/event/order_placed.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/event/order_placed.rs)
 
@@ -6318,8 +6348,11 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [Observed: CancelOrder](observed-oms-cancelorder.md) | [shop](../shop/README.md) | Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Observed: GetOrder](observed-oms-getorder.md) | [shop](../shop/README.md) | Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Reads one order by id. |
+| [Cancel order on payment declined](oms-cancel-order-on-payment-declined.md) | [shop](../shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
+| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+| [Request payment on order placed](oms-request-payment-on-order-placed.md) | [shop](../shop/README.md) | The stored OrderPlaced triggers the RPC. Applying its answer also recovers a ledger save whose subsequent event publication failed. |
 | [Archive price list](pricing-archive-price-list.md) | [shop](../shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
 | [Expire quote on checkout](pricing-expire-quote-on-checkout.md) | [shop](../shop/README.md) | Ends the promise once the basket it priced is checked out. |
 | [Get quote](pricing-get-quote.md) | [shop](../shop/README.md) | Package get_quote reads one quote. |
@@ -9301,7 +9334,7 @@ sequenceDiagram
    `shop.v1.OrderService/CancelOrder` · status: declared · [`examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs#L41)
 <a id="step-s2"></a>
 2. **shop.oms** → **oms-pg** — by_id
-   status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L21)
+   status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L35)
 
 > **One of**
 >
@@ -9312,14 +9345,135 @@ sequenceDiagram
 >
 > <a id="step-s3"></a>
 > 3. **shop.oms** → **oms-pg** — save
->    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L26)
+>    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
 > <a id="step-s4"></a>
 > 4. **shop.oms** → **bus** — OrderCancelled
->    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L26)
+>    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
 
 <a id="step-s6"></a>
 5. **shop.oms** → **oms-pg** — by_id
    status: declared · [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L42)
+
+<!-- flows/oms-cancel-order-on-payment-declined.md -->
+
+# Cancel order on payment declined
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Id:** `flow.oms-cancel-order-on-payment-declined`
+- **Owner:** [shop](../shop/README.md)
+- **Trigger:** `event` · PaymentDeclined
+- **Root confidence:** high
+- **Source:** [`examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs)
+
+Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing.
+
+## Participants
+
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    p0-)p1: PaymentDeclined
+    p1->>p1: CancelOrder
+    p1->>p2: by_id
+    alt order.status is Status::Cancelled
+    else otherwise
+        p1->>p2: save
+        p1-)p0: OrderCancelled
+    end
+```
+
+## Steps
+
+<a id="step-s1"></a>
+1. **bus** → **shop.oms** — PaymentDeclined
+   [`payments.ledger.payment.PaymentDeclined`](../payments/ledger/aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) · status: declared · [`examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs:17`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs#L17)
+<a id="step-s2"></a>
+2. **shop.oms** ↺ **shop.oms** — CancelOrder
+   `shop.oms.order/CancelOrder` · status: declared · [`examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/cancel_order_on_payment_declined.rs#L18)
+<a id="step-s3"></a>
+3. **shop.oms** → **oms-pg** — by_id
+   status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L35)
+
+> **One of**
+>
+> *order.status is Status::Cancelled — *ends the flow**
+>
+>
+> *otherwise*
+>
+> <a id="step-s4"></a>
+> 4. **shop.oms** → **oms-pg** — save
+>    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
+> <a id="step-s5"></a>
+> 5. **shop.oms** → **bus** — OrderCancelled
+>    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
+
+<!-- flows/oms-confirm-order-on-payment-authorized.md -->
+
+# Confirm order on payment authorized
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Id:** `flow.oms-confirm-order-on-payment-authorized`
+- **Owner:** [shop](../shop/README.md)
+- **Trigger:** `event` · PaymentAuthorized
+- **Root confidence:** high
+- **Source:** [`examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs)
+
+Applies the ledger's public fact; it never calls Authorize.
+
+## Participants
+
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    p0-)p1: PaymentAuthorized
+    p1->>p1: ConfirmOrder
+    p1->>p2: by_id
+    p1->>p2: save
+    p1-)p0: OrderConfirmed
+```
+
+## Steps
+
+<a id="step-s1"></a>
+1. **bus** → **shop.oms** — PaymentAuthorized
+   [`payments.ledger.payment.PaymentAuthorized`](../payments/ledger/aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) · status: declared · [`examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs#L16)
+<a id="step-s2"></a>
+2. **shop.oms** ↺ **shop.oms** — ConfirmOrder
+   `shop.oms.order/ConfirmOrder` · status: declared · [`examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:17`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs#L17)
+<a id="step-s3"></a>
+3. **shop.oms** → **oms-pg** — by_id
+   status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L26)
+<a id="step-s4"></a>
+4. **shop.oms** → **oms-pg** — save
+   status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L38)
+<a id="step-s5"></a>
+5. **shop.oms** → **bus** — OrderConfirmed
+   [`shop.oms.order.OrderConfirmed`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderconfirmed) · status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L38)
 
 <!-- flows/oms-get-order.md -->
 
@@ -9432,6 +9586,121 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 | --- | --- | --- | --- |
 | [s1](oms-place-order-on-basket-checked-out.md#step-s1) | `consume cart.BasketCheckedOut` | 25.826 ms | `event.name=cart.BasketCheckedOut` `messaging.destination.name=shop.cart.basket` `messaging.operation.type=process` `messaging.system=nats` |
 | [s5](oms-place-order-on-basket-checked-out.md#step-s5) | `publish oms.OrderPlaced` | 0.766 ms | `event.name=oms.OrderPlaced` `messaging.destination.name=shop.oms.order` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+<!-- flows/oms-request-payment-on-order-placed.md -->
+
+# Request payment on order placed
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Id:** `flow.oms-request-payment-on-order-placed`
+- **Owner:** [shop](../shop/README.md)
+- **Trigger:** `event` · OrderPlaced
+- **Root confidence:** high
+- **Source:** [`examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs)
+
+The stored OrderPlaced triggers the RPC. Applying its answer also recovers a ledger save whose subsequent event publication failed.
+
+## Participants
+
+| Participant | Kind | Context | Entity |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    participant p3 as payments.ledger
+    p0-)p1: OrderPlaced
+    p1->>p1: RequestPayment
+    p1->>p2: by_id
+    p1->>p3: Authorize → AuthorizeResponse
+    alt self.request.handle(&event.order_id).await? is Some((Authorization::Authorized { payment_id }, amount))
+        p1->>p1: ConfirmOrder
+        p1->>p2: by_id
+        p1->>p2: save
+        p1-)p0: OrderConfirmed
+    else self.request.handle(&event.order_id).await? is Some((Authorization::Declined(reason), _))
+        p1->>p1: CancelOrder
+        p1->>p2: by_id
+        alt order.status is Status::Cancelled
+        else otherwise
+            p1->>p2: save
+            p1-)p0: OrderCancelled
+        end
+    else self.request.handle(&event.order_id).await? is None
+    else otherwise
+    end
+```
+
+## Steps
+
+<a id="step-s1"></a>
+1. **bus** → **shop.oms** — OrderPlaced
+   [`shop.oms.order.OrderPlaced`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) · status: declared · [`examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs#L28)
+<a id="step-s2"></a>
+2. **shop.oms** ↺ **shop.oms** — RequestPayment
+   `shop.oms.order/RequestPayment` · status: declared · [`examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs#L29)
+<a id="step-s3"></a>
+3. **shop.oms** → **oms-pg** — by_id
+   status: declared · [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L49)
+<a id="step-s4"></a>
+4. **shop.oms** → **payments.ledger** — Authorize → AuthorizeResponse
+   `payments.v1.PaymentService/Authorize` · status: declared · [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:53`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L53)
+
+> **One of**
+>
+> *self.request.handle(&event.order_id).await? is Some((Authorization::Authorized { payment_id }, amount))*
+>
+> <a id="step-s5"></a>
+> 5. **shop.oms** ↺ **shop.oms** — ConfirmOrder
+>    `shop.oms.order/ConfirmOrder` · status: declared · [`examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs#L31)
+> <a id="step-s6"></a>
+> 6. **shop.oms** → **oms-pg** — by_id
+>    status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L26)
+> <a id="step-s7"></a>
+> 7. **shop.oms** → **oms-pg** — save
+>    status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L38)
+> <a id="step-s8"></a>
+> 8. **shop.oms** → **bus** — OrderConfirmed
+>    [`shop.oms.order.OrderConfirmed`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderconfirmed) · status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L38)
+>
+> *self.request.handle(&event.order_id).await? is Some((Authorization::Declined(reason), _))*
+>
+> <a id="step-s9"></a>
+> 9. **shop.oms** ↺ **shop.oms** — CancelOrder
+>    `shop.oms.order/CancelOrder` · status: declared · [`examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/request_payment_on_order_placed.rs#L43)
+> <a id="step-s10"></a>
+> 10. **shop.oms** → **oms-pg** — by_id
+>    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L35)
+>
+> > **One of**
+> >
+> > *order.status is Status::Cancelled — *ends the flow**
+> >
+> >
+> > *otherwise*
+> >
+> > <a id="step-s11"></a>
+> > 11. **shop.oms** → **oms-pg** — save
+> >    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
+> > <a id="step-s12"></a>
+> > 12. **shop.oms** → **bus** — OrderCancelled
+> >    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
+>
+>
+> *self.request.handle(&event.order_id).await? is None*
+>
+>
+> *otherwise*
 
 <!-- flows/pricing-archive-price-list.md -->
 
@@ -9861,6 +10130,7 @@ sequenceDiagram
 | [oms.0004](oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0005](oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0006](oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 | [shop.oms](../shop/oms/README.md) |
+| [oms.0007](oms.0007.md) | A declined payment cancels the order | accepted | 2026-09-15 | [shop.oms](../shop/oms/README.md) |
 | [org.0001](org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 | org |
 | [org.0002](org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 | org |
 | [org.0003](org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 | org |
@@ -11865,6 +12135,7 @@ arrives it fills both places and nothing here changes shape.
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md)
 - **Committed:** Victor Login, 2026-09-10 (`2431809`)
+- **Note:** Its paragraph leaving a declined order placed is replaced by oms.0007.
 - **Supersedes:** [oms.0005](oms.0005.md)
 
 ### Context and Problem Statement
@@ -11913,6 +12184,82 @@ compensation and fulfilment orchestration are separate decisions.
 - This does not resolve an external gateway success lost before ledger persisted
   it, concurrent ledger requests, or cancellation racing a remote authorization.
   Those require gateway idempotency and durable compensation, not a proto change.
+
+<!-- adr/oms.0007.md -->
+
+# oms.0007 — A declined payment cancels the order
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-15
+- **Scope:** [shop.oms](../shop/oms/README.md)
+- **Source:** [`examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0007-a-declined-payment-cancels-the-order.md)
+- **Note:** Replaces the paragraph of oms.0006 that left a declined order placed; the rest of oms.0006 stands.
+
+### Context and Problem Statement
+
+oms.0006 acknowledges a confirmed decline and leaves the order placed, "for an
+explicit cancellation or a future payment-retry decision". Nobody makes that
+decision: nothing in the estate asks the customer for another card, and an
+order that is placed forever holds its basket's lines and reads as waiting for
+money that is not coming. What happens to an order whose payment is declined?
+
+### Decision Drivers
+
+- An order ends in a state that says what happened to it.
+- A decline arrives twice - the Authorize answer and `ledger.PaymentDeclined` -
+  and redelivery of either must change the order once.
+- A late decline must not undo a confirmation, as a late authorization must not
+  resurrect a cancellation.
+- One payment id per checkout (oms.0006) is kept.
+
+### Considered Options
+
+1. **Leave it placed** — what oms.0006 did; a later retry or a person decides.
+2. **Cancel the order** — the decline is final for this checkout; the customer
+   checks out again to pay with something else.
+3. **Retry the payment** — a new attempt with a new payment id, bounded, then cancel.
+
+### Decision Outcome
+
+Chosen option: **cancel the order**.
+
+| | order state | payment ids | what it needs |
+|---|---|---|---|
+| leave it placed | open, indefinitely | one | a decision nobody owns |
+| cancel | cancelled, with the reason | one | a policy over the existing cancel |
+| retry | placed, then either | many per checkout | attempt numbering, a timeout, a process manager |
+
+Both paths reach the same `cancel_order` use case: `RequestPaymentOnOrderPlaced`
+with a declined answer, and `CancelOrderOnPaymentDeclined` with the ledger's
+fact. The cancellation applies only to a placed order whose id is the payment
+id; a confirmed order stays confirmed and a cancelled one changes nothing, so
+the second delivery is a no-op. The reason on `OrderCancelled` names the
+ledger's closed decline reason. `ORDER_CANCELLED` means the order was already
+cancelled when ledger read it, and the same rule makes it a no-op.
+
+What is given up is the customer's second chance inside one order: a refused
+card ends the checkout, and paying another way is a new basket. That is the
+cheaper loss while nothing can ask the customer anything; option 3 supersedes
+this one when something can.
+
+### Consequences
+
+- Good: every order leaves `placed` - confirmed by an authorization, cancelled
+  by a decline or the customer.
+- Good: consumers of `OrderCancelled` already tell a customer's cancellation
+  from a declined payment by its reason (oms.0004).
+- Bad: a decline caused by a mistake at ledger cancels a checkout that could
+  have been paid; ledger's closed reasons and its outage-is-not-a-decline rule
+  are what keep that rare.
+- Bad: a decline racing a confirmation for the same payment id is resolved by
+  whichever commits first. One payment id per checkout makes that a ledger
+  inconsistency, not a normal path.
+
+## Relates to
+
+- **Events:** [`payments.ledger.payment.PaymentDeclined`](../payments/ledger/aggregates/payment.md#event-payments-ledger-payment-paymentdeclined), [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled)
 
 <!-- adr/org.0001.md -->
 

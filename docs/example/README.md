@@ -88,8 +88,11 @@
 | [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
+| [Cancel order on payment declined](flows/oms-cancel-order-on-payment-declined.md) | [shop](shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
+| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+| [Request payment on order placed](flows/oms-request-payment-on-order-placed.md) | [shop](shop/README.md) | The stored OrderPlaced triggers the RPC. Applying its answer also recovers a ledger save whose subsequent event publication failed. |
 | [Archive price list](flows/pricing-archive-price-list.md) | [shop](shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
 | [Expire quote on checkout](flows/pricing-expire-quote-on-checkout.md) | [shop](shop/README.md) | Ends the promise once the basket it priced is checked out. |
 | [Get quote](flows/pricing-get-quote.md) | [shop](shop/README.md) | Package get_quote reads one quote. |
@@ -142,6 +145,7 @@
 | [oms.0004](adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
 | [oms.0005](adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 |
 | [oms.0006](adr/oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 |
+| [oms.0007](adr/oms.0007.md) | A declined payment cancels the order | accepted | 2026-09-15 |
 | [org.0001](adr/org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 |
 | [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
 | [org.0003](adr/org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 |

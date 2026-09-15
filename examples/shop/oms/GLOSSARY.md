@@ -8,9 +8,13 @@ placed from it exactly once.
 **Bus.** NATS JetStream when configured, in process otherwise. One stream
 per service, named for its subjects.
 
-**Cancelled.** The order will not be fulfilled. Terminal.
+**Cancelled.** The order will not be fulfilled: the customer asked, or the
+payment was declined. Terminal.
 
 **Confirmed.** The payment is authorised; the order may be fulfilled.
+
+**Decline.** Ledger's refusal to hold an order's total, with a reason from a
+closed set. Final for the checkout: it cancels a placed order, never retried.
 
 **Line.** One SKU of the order, how many, and the unit price it was added to
 the basket at. Copied, never repriced.

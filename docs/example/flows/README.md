@@ -57,8 +57,11 @@
 | [Observed: CancelOrder](observed-oms-cancelorder.md) | [shop](../shop/README.md) | Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Observed: GetOrder](observed-oms-getorder.md) | [shop](../shop/README.md) | Read from 2 traces in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Reads one order by id. |
+| [Cancel order on payment declined](oms-cancel-order-on-payment-declined.md) | [shop](../shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
+| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+| [Request payment on order placed](oms-request-payment-on-order-placed.md) | [shop](../shop/README.md) | The stored OrderPlaced triggers the RPC. Applying its answer also recovers a ledger save whose subsequent event publication failed. |
 | [Archive price list](pricing-archive-price-list.md) | [shop](../shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
 | [Expire quote on checkout](pricing-expire-quote-on-checkout.md) | [shop](../shop/README.md) | Ends the promise once the basket it priced is checked out. |
 | [Get quote](pricing-get-quote.md) | [shop](../shop/README.md) | Package get_quote reads one quote. |

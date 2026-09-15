@@ -284,9 +284,9 @@ consumer/provider protobuf subsets and the authorization event payload.
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | — |
+| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [`PaymentCaptured`](aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | — |
+| [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [`RefundIssued`](aggregates/refund.md#event-payments-ledger-refund-refundissued) | v1 | — |
 
 ## Schema modules
