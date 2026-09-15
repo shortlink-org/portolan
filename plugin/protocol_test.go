@@ -42,3 +42,30 @@ func TestRepositoryPathIsSpelledFromTheRepository(t *testing.T) {
 		}
 	}
 }
+
+// A path spelled from Root is spelled from the repository the same way.
+func TestRootPathIsSpelledFromTheRepository(t *testing.T) {
+	vendored := plugin.Input{Root: "vendor/repos/acme/shop/services/oms", Repository: "vendor/repos/acme/shop"}
+	monorepo := plugin.Input{Root: "examples/shop/pricing"}
+	whole := plugin.Input{Root: "vendor/repos/acme/shop", Repository: "vendor/repos/acme/shop"}
+	temporary := plugin.Input{Root: "/tmp/fixture"}
+
+	for _, tc := range []struct {
+		in   plugin.Input
+		rel  string
+		want string
+	}{
+		{vendored, "internal/app.go:12", "services/oms/internal/app.go:12"},
+		{vendored, ".", "services/oms"},
+		{whole, ".", ""},
+		{whole, "internal/app.go", "internal/app.go"},
+		{monorepo, "internal/di/app.go:67", "examples/shop/pricing/internal/di/app.go:67"},
+		{monorepo, "", "examples/shop/pricing"},
+		{temporary, "internal/app.go:3", "internal/app.go:3"},
+		{plugin.Input{Root: "."}, "internal/app.go", "internal/app.go"},
+	} {
+		if got := tc.in.RootSource(tc.rel); got != tc.want {
+			t.Errorf("Root %q: RootSource(%q) = %q, want %q", tc.in.Root, tc.rel, got, tc.want)
+		}
+	}
+}

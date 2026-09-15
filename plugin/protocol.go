@@ -113,6 +113,28 @@ func (in Input) RepositorySource(where string) string {
 	return in.RepositoryPath(where)
 }
 
+// RootPath is RepositoryPath for a path a plugin found under Root and spelled
+// from Root: `internal/di/app.go` under `examples/shop/pricing` is
+// `examples/shop/pricing/internal/di/app.go` in a monorepo and
+// `internal/di/app.go` in a fetched copy rooted there. An absolute Root - a
+// test's temporary directory, never the host's request - names no place in a
+// workspace, and the path stays spelled from Root.
+func (in Input) RootPath(rel string) string {
+	rel = filepath.ToSlash(rel)
+	if in.Root == "" || filepath.IsAbs(in.Root) || path.IsAbs(rel) || filepath.IsAbs(rel) {
+		return rel
+	}
+	return in.RepositoryPath(path.Join(filepath.ToSlash(in.Root), rel))
+}
+
+// RootSource is RootPath for a source with or without a `:line` after it.
+func (in Input) RootSource(where string) string {
+	if at := strings.LastIndexByte(where, ':'); at > 0 && at < len(where)-1 && strings.Trim(where[at+1:], "0123456789") == "" {
+		return in.RootPath(where[:at]) + where[at:]
+	}
+	return in.RootPath(where)
+}
+
 // FileHistory is one file's first and last commit. Revised is nil when the
 // file has one commit.
 type FileHistory struct {
