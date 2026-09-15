@@ -1,3 +1,10 @@
+import { usePickedDraft } from "../drafts/store";
+import { useActiveFlows } from "../drafts/active-flows";
+import { addedFlow, branchFlow } from "../drafts/branch-flow";
+import { draftFlowView } from "../drafts/branch-view";
+import type { Draft, DraftEntity } from "../drafts/model";
+import { DraftOnlyStrip } from "../drafts/DraftOnlyStrip";
+import { DraftBanner } from "../drafts/DraftBanner";
 import { useDocumentTitle } from "../app/title";
 import {
   useCallback,
@@ -106,9 +113,63 @@ function Summary({
   );
 }
 
-export function FlowDetail() {
-  const { flow: slug } = useParams();
-  const flow: Flow | undefined = slug ? index.flowBySlug.get(slug) : undefined;
+export function FlowDetail({
+  draftOnly,
+}: {
+  /** A flow only this branch has, shown on the same page (portolan.0019). */
+  draftOnly?: { draft: Draft; entity: DraftEntity } | undefined;
+} = {}) {
+  const { flow: routeSlug } = useParams();
+  // Keyed on the entity, the store's own object: the prop around it is rebuilt
+  // every time the route re-renders, and a flow rebuilt with it would be a new
+  // flow to every memo and effect below.
+  const draftOnlyEntity = draftOnly?.entity;
+  const onlyInBranch = useMemo(() => (draftOnlyEntity ? addedFlow(draftOnlyEntity) : null), [draftOnlyEntity]);
+  const slug = onlyInBranch?.flow.slug ?? routeSlug;
+  const mainFlow: Flow | undefined = onlyInBranch
+    ? undefined
+    : slug
+      ? index.flowBySlug.get(slug)
+      : undefined;
+  // With a branch version picked, the whole page reads the branch's flow -
+  // rail, table, walkthrough, detail panel - and the canvas draws the view
+  // saved with the draft. What changed is a mark on the rows, nothing more.
+  // The draft and its entity are the store's own objects, so they are what
+  // the memo keys on - the pair around them is rebuilt every render.
+  const picked = usePickedDraft(mainFlow?.id ?? "");
+  const draftEntity = picked?.entity;
+  const pickedDraft = draftOnly?.draft ?? picked?.draft;
+  const branch = useMemo(
+    () => (mainFlow && draftEntity ? branchFlow(mainFlow, draftEntity) : null),
+    [mainFlow, draftEntity],
+  );
+  const shown = onlyInBranch ?? branch;
+  // Both of the flow's views, since which one is on screen is decided below.
+  const branchCanvases = useMemo(() => {
+    if (!shown || !pickedDraft) return null;
+    try {
+      return {
+        plain: draftFlowView(pickedDraft, shown.drawn, shown.marks, false),
+        cross: draftFlowView(pickedDraft, shown.drawn, shown.marks, true),
+      };
+    } catch {
+      return null;
+    }
+  }, [shown, pickedDraft]);
+  const flow: Flow | undefined = shown?.flow ?? mainFlow;
+  const setActiveFlow = useActiveFlows((s) => s.set);
+  // Registered on one effect and withdrawn on another, keyed on the slug alone.
+  // A re-render must not withdraw it even for a moment: React runs every
+  // cleanup of a commit before any effect, and the selection sync reading the
+  // hash in between would find no such flow and rewrite the step as unknown.
+  useEffect(() => {
+    if (shown) setActiveFlow(shown.flow.slug, shown.flow, onlyInBranch ? window.location.pathname : undefined);
+  }, [shown, onlyInBranch, setActiveFlow]);
+  const registeredSlug = shown?.flow.slug;
+  useEffect(() => {
+    if (!registeredSlug) return;
+    return () => setActiveFlow(registeredSlug, null);
+  }, [registeredSlug, setActiveFlow]);
 
   const [crossRequested, setCrossOnly] = useState(false);
   const [compact, setCompact] = useState(false);
@@ -154,6 +215,7 @@ export function FlowDetail() {
   const hasCrossings = allSteps.length > hidden.size;
   // Route changes can reuse this page while the previous flow's filter is on.
   const crossOnly = crossRequested && hasCrossings;
+  const branchCanvas = (crossOnly ? branchCanvases?.cross : branchCanvases?.plain) ?? null;
   const paths = useMemo(
     () => (flow ? flowPaths(flow) : { paths: [], truncated: false }),
     [flow],
@@ -424,7 +486,7 @@ export function FlowDetail() {
    */
   const pairingBroken =
     allSteps.length - hiddenCount > 0 &&
-    flowPairing(flow, crossOnly).edgeOf.size === 0;
+    (branchCanvas ? branchCanvas.pairing : flowPairing(flow, crossOnly)).edgeOf.size === 0;
 
   const cycle = (delta: number): void => {
     if (matches.length === 0) return;
@@ -440,6 +502,7 @@ export function FlowDetail() {
         onCycle={cycle}
       />
       <StepRail
+        marks={shown?.marks}
         groups={groups}
         answers={answers}
         activeId={activeId}
@@ -480,9 +543,15 @@ export function FlowDetail() {
                 ask this flow
               </button>
             ) : null}
-            <PinButton kind="flow" id={flow.id} label={flow.name} />
+            {draftOnly ? null : <PinButton kind="flow" id={flow.id} label={flow.name} />}
           </div>
         </div>
+
+        {draftOnly ? (
+          <DraftOnlyStrip draft={draftOnly.draft} entity={draftOnly.entity} className="mt-2" />
+        ) : (
+          <DraftBanner id={flow.id} className="mt-2" />
+        )}
 
         <Summary
           text={flow.summary}
@@ -561,6 +630,7 @@ export function FlowDetail() {
               onResize={settle}
             >
               <FlowView
+                draft={branchCanvas ? { model: branchCanvas.model, pairing: branchCanvas.pairing } : undefined}
                 flow={flow}
                 crossOnly={crossOnly}
                 variant={prefs.variant}

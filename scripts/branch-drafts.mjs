@@ -17,10 +17,9 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { DRAFT_SCHEMA, diffBranch } from "../src/lib/branch-draft.ts";
 import reserved from "../src/likec4/reserved.json" with { type: "json" };
 
 export const DRAFTS_DIR = "portolan-drafts";
@@ -135,9 +134,14 @@ export function listBranches(workspace, projects) {
     const base = git(workspace, ["merge-base", main, tip], { allowFailure: true });
     if (!base || base === tip) continue;
     const changed = git(workspace, ["diff", "--name-only", base, tip]).split("\n").filter(Boolean);
-    branches.push({ branch, tip, base, projects: projectsTouched(projects, changed) });
+    const ahead = Number(git(workspace, ["rev-list", "--count", `${base}..${tip}`]));
+    branches.push({ branch, tip, base, ahead, projects: projectsTouched(projects, changed) });
   }
-  return { main, branches };
+  return {
+    main,
+    projects: projects.filter((project) => typeof project?.id === "string").map((project) => ({ id: project.id, name: project.name ?? project.id })),
+    branches,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -232,7 +236,10 @@ async function catalogHere(projectId, out) {
   writeFileSync(out, JSON.stringify({ catalog, manifest, warnings }));
 }
 
+let lastProgress = "";
+
 function progress(message) {
+  lastProgress = message;
   process.stdout.write(`${EVENT_PREFIX}${JSON.stringify({ type: "draft-progress", message })}\n`);
 }
 
@@ -273,6 +280,9 @@ export async function draftViews(entities, sides) {
   const { likec4Sources } = await import("./gen-likec4.mjs");
   const { LikeC4 } = await import("likec4");
   const views = {};
+  // The model elements those views draw, ancestors included: a lane the
+  // branch adds is an element main's model does not have.
+  const elements = {};
   for (const [side, { catalog, manifest }] of Object.entries(sides)) {
     const flows = entities.filter((entity) => entity.kind === "flow" && (side === "branch" ? entity.change !== "removed" : entity.change === "removed"));
     if (flows.length === 0) continue;
@@ -292,7 +302,15 @@ export async function draftViews(entities, sides) {
           const slug = (side === "branch" ? flow.branch : flow.base)?.slug;
           if (!slug) continue;
           for (const id of Object.keys(laidOut)) {
-            if (id === flowViewId(slug) || id === `${flowViewId(slug)}_cross`) views[id] = laidOut[id];
+            if (id !== flowViewId(slug) && id !== `${flowViewId(slug)}_cross`) continue;
+            views[id] = laidOut[id];
+            for (const node of laidOut[id].nodes ?? []) {
+              const parts = String(node.modelRef ?? node.id).split(".");
+              for (let at = 1; at <= parts.length; at++) {
+                const fqn = parts.slice(0, at).join(".");
+                if (model.$data.elements[fqn]) elements[fqn] = model.$data.elements[fqn];
+              }
+            }
           }
         }
       } finally {
@@ -302,22 +320,44 @@ export async function draftViews(entities, sides) {
       rmSync(holder, { recursive: true, force: true });
     }
   }
-  return views;
+  return { views, elements };
 }
 
 // ---------------------------------------------------------------------------
 // Drafts
 
-export async function generateDraft(workspace, { project, branch }) {
-  const target = draftPath(project, branch);
+/**
+ * Where a generated draft waits for the reader to save or discard it. A
+ * regeneration that is not kept must leave the saved draft as it was, so it is
+ * written here rather than over it.
+ */
+export function pendingPath(project, branch) {
+  return join(".portolan", "branch-drafts", "pending", relative(DRAFTS_DIR, draftPath(project, branch)));
+}
+
+/** Where a deleted draft is kept until the next deletion of it, for an undo. */
+function trashPath(project, branch) {
+  return join(".portolan", "branch-drafts", "trash", relative(DRAFTS_DIR, draftPath(project, branch)));
+}
+
+export async function generateDraft(workspace, { project, branch, pending = false }) {
+  // Imported here, not at the top: local-api.mjs loads this file from the
+  // published package too, where Node strips no TypeScript, and listing or
+  // deleting a draft needs none.
+  const { DRAFT_SCHEMA, diffBranch } = await import("../src/lib/branch-draft.ts");
+  const target = pending ? pendingPath(project, branch) : draftPath(project, branch);
   const main = mainRef(workspace);
   const tip = tipOf(workspace, branch);
-  if (!tip) throw new Error(`no branch ${JSON.stringify(branch)}, locally or on origin`);
+  const failed = (message) => {
+    recordFailure(workspace, project, branch, message);
+    return new Error(message);
+  };
+  if (!tip) throw failed(`no branch ${JSON.stringify(branch)}, locally or on origin`);
   const base = git(workspace, ["merge-base", main, tip], { allowFailure: true });
-  if (!base) throw new Error(`${branch} shares no history with ${main}`);
-  if (base === tip) throw new Error(`${main} already contains ${branch}; there is nothing to draft`);
+  if (!base) throw failed(`${branch} shares no history with ${main}`);
+  if (base === tip) throw failed(`${main} already contains ${branch}; there is nothing to draft`);
 
-  progress(`${branch} @ ${tip.slice(0, 12)}, from ${base.slice(0, 12)} on ${main}`);
+  progress(`merge-base ${main} ${branch}: ${base.slice(0, 12)}, tip ${tip.slice(0, 12)}`);
   const holder = mkdtempSync(join(tmpdir(), "portolan-draft-"));
   // A cancelled run is a signal, and a signal skips `finally`: the worktrees
   // would stay registered in the repository until somebody prunes them.
@@ -333,7 +373,7 @@ export async function generateDraft(workspace, { project, branch }) {
     const after = await catalogAt(workspace, tip, project, holder, "branch");
     progress("compare the catalogs");
     const entities = diffBranch(before.catalog, after.catalog);
-    const views = await draftViews(entities, { branch: after, base: before });
+    const { views, elements } = await draftViews(entities, { branch: after, base: before });
     const draft = {
       schema: DRAFT_SCHEMA,
       project,
@@ -342,12 +382,12 @@ export async function generateDraft(workspace, { project, branch }) {
       base,
       generatedAt: new Date().toISOString(),
       entities,
-      ...(Object.keys(views).length > 0 ? { views } : {}),
+      ...(Object.keys(views).length > 0 ? { views, elements } : {}),
     };
     const file = join(workspace, target);
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, `${JSON.stringify(draft, null, 2)}\n`);
-    forgetFailure(workspace, project, branch);
+    if (!pending) forgetFailure(workspace, project, branch);
     return { path: target, entities: entities.length, views: Object.keys(views).length, warnings: after.warnings };
   } catch (cause) {
     recordFailure(workspace, project, branch, cause instanceof Error ? cause.message : String(cause));
@@ -379,6 +419,7 @@ export function listDrafts(workspace) {
         catch { drafts.push({ path, project: project.name, status: "unreadable" }); continue; }
         const tip = tipOf(workspace, draft.branch);
         const failure = failures[`${draft.project}\n${draft.branch}`];
+        const ahead = tip && tip !== draft.tip ? Number(git(workspace, ["rev-list", "--count", `${draft.tip}..${tip}`], { allowFailure: true }) ?? 0) : 0;
         drafts.push({
           path,
           project: draft.project,
@@ -388,7 +429,7 @@ export function listDrafts(workspace) {
           generatedAt: draft.generatedAt,
           entities: draft.entities?.length ?? 0,
           status: failure ? "failed" : !tip ? "gone" : tip !== draft.tip ? "moved" : "fresh",
-          ...(tip && tip !== draft.tip ? { currentTip: tip } : {}),
+          ...(tip && tip !== draft.tip ? { currentTip: tip, ahead } : {}),
           ...(failure ? { failure } : {}),
         });
       }
@@ -397,14 +438,66 @@ export function listDrafts(workspace) {
   return drafts.sort((left, right) => `${left.project}/${left.branch}`.localeCompare(`${right.project}/${right.branch}`));
 }
 
+/** Every saved draft file, as written. */
+export function readDrafts(workspace) {
+  const root = join(workspace, DRAFTS_DIR);
+  const drafts = [];
+  if (!existsSync(root)) return drafts;
+  for (const project of readdirSync(root, { withFileTypes: true })) {
+    if (!project.isDirectory()) continue;
+    for (const entry of readdirSync(join(root, project.name), { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+      try { drafts.push(JSON.parse(readFileSync(join(root, project.name, entry.name), "utf8"))); }
+      catch { /* listed as unreadable by listDrafts */ }
+    }
+  }
+  return drafts.sort((left, right) => `${left.project}/${left.branch}`.localeCompare(`${right.project}/${right.branch}`));
+}
+
+/** A generated draft that has not been saved or discarded yet, or null. */
+export function readPending(workspace, { project, branch }) {
+  try { return JSON.parse(readFileSync(join(workspace, pendingPath(project, branch)), "utf8")); }
+  catch { return null; }
+}
+
+function move(from, to) {
+  mkdirSync(dirname(to), { recursive: true });
+  writeFileSync(to, readFileSync(from));
+  rmSync(from);
+  const folder = dirname(from);
+  if (readdirSync(folder).length === 0) rmSync(folder, { recursive: true });
+}
+
+/** Keeps a pending draft: it replaces the saved one, if there was one. */
+export function saveDraft(workspace, { project, branch }) {
+  const from = join(workspace, pendingPath(project, branch));
+  if (!existsSync(from)) throw Object.assign(new Error(`no generated draft of ${branch} waits to be saved`), { status: 404 });
+  move(from, join(workspace, draftPath(project, branch)));
+  forgetFailure(workspace, project, branch);
+  return draftPath(project, branch);
+}
+
+export function discardDraft(workspace, { project, branch }) {
+  const file = join(workspace, pendingPath(project, branch));
+  if (!existsSync(file)) return false;
+  rmSync(file);
+  return true;
+}
+
+/** Deletes a saved draft, keeping it aside so the deletion can be undone. */
 export function deleteDraft(workspace, { project, branch }) {
   const file = join(workspace, draftPath(project, branch));
   if (!existsSync(file)) return false;
-  rmSync(file);
-  const folder = dirname(file);
-  if (readdirSync(folder).length === 0) rmSync(folder, { recursive: true });
+  move(file, join(workspace, trashPath(project, branch)));
   forgetFailure(workspace, project, branch);
   return true;
+}
+
+export function restoreDraft(workspace, { project, branch }) {
+  const from = join(workspace, trashPath(project, branch));
+  if (!existsSync(from)) throw Object.assign(new Error(`no deleted draft of ${branch} to restore`), { status: 404 });
+  move(from, join(workspace, draftPath(project, branch)));
+  return draftPath(project, branch);
 }
 
 // A failed regeneration is not a draft and never reaches the repository; it
@@ -422,7 +515,7 @@ function writeFailures(workspace, failures) {
 }
 
 function recordFailure(workspace, project, branch, message) {
-  writeFailures(workspace, { ...readFailures(workspace), [`${project}\n${branch}`]: { message, at: new Date().toISOString() } });
+  writeFailures(workspace, { ...readFailures(workspace), [`${project}\n${branch}`]: { message, at: new Date().toISOString(), step: lastProgress } });
 }
 
 function forgetFailure(workspace, project, branch) {
@@ -430,6 +523,37 @@ function forgetFailure(workspace, project, branch) {
   if (!(`${project}\n${branch}` in failures)) return;
   delete failures[`${project}\n${branch}`];
   writeFailures(workspace, failures);
+}
+
+// ---------------------------------------------------------------------------
+// The site
+
+const DRAFTS_MODULE = "virtual:portolan-drafts";
+const resolvedDraftsModule = `\0${DRAFTS_MODULE}`;
+
+/**
+ * The saved drafts as one module, in dev and in the static build alike. The
+ * dev server re-reads them on every page load; a page that changed them in
+ * place asks the local API instead.
+ */
+export function draftsPlugin(workspace) {
+  return {
+    name: "portolan-drafts",
+    resolveId(id) { return id === DRAFTS_MODULE ? resolvedDraftsModule : undefined; },
+    load(id) {
+      if (id !== resolvedDraftsModule) return;
+      return `export default ${JSON.stringify(readDrafts(workspace))};`;
+    },
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.headers.accept?.includes("text/html")) {
+          const mod = server.moduleGraph.getModuleById(resolvedDraftsModule);
+          if (mod) server.moduleGraph.invalidateModule(mod);
+        }
+        next();
+      });
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -455,7 +579,7 @@ async function main(args) {
   } else if (command === "list") {
     console.log(JSON.stringify(listDrafts(workspace), null, 2));
   } else if (command === "generate") {
-    const result = await generateDraft(workspace, { project, branch });
+    const result = await generateDraft(workspace, { project, branch, pending: args.includes("--pending") });
     for (const warning of result.warnings) console.warn(`  warning  ${warning}`);
     process.stdout.write(`${EVENT_PREFIX}${JSON.stringify({ type: "draft-ready", project, branch, ...result })}\n`);
     console.log(`${result.path}: ${result.entities} entit${result.entities === 1 ? "y" : "ies"}, ${result.views} view${result.views === 1 ? "" : "s"}`);

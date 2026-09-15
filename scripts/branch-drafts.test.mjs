@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { deleteDraft, draftPath, listBranches, listDrafts, projectSteps, projectsTouched, validBranch } from "./branch-drafts.mjs";
+import { deleteDraft, discardDraft, draftPath, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, validBranch } from "./branch-drafts.mjs";
 
 const created = [];
 afterEach(() => {
@@ -88,9 +88,10 @@ describe("branches and saved drafts", { timeout: 30_000 }, () => {
     git("switch", "-q", "main");
     commit("README.md", "main moves on\n");
 
-    const { main, branches } = listBranches(root, PROJECTS);
+    const { main, branches, projects } = listBranches(root, PROJECTS);
     expect(main).toBe("main");
-    expect(branches).toEqual([{ branch: "demo/passkeys", tip, base, projects: ["auth"] }]);
+    expect(branches).toEqual([{ branch: "demo/passkeys", tip, base, ahead: 1, projects: ["auth"] }]);
+    expect(projects.map((project) => project.id)).toEqual(["portolan", "auth", "cart"]);
   });
 
   it("says whether a saved draft's branch is where it was, moved or gone, and deletes it", () => {
@@ -124,5 +125,27 @@ describe("branches and saved drafts", { timeout: 30_000 }, () => {
     expect(deleteDraft(root, { project: "auth", branch: "demo/passkeys" })).toBe(true);
     expect(deleteDraft(root, { project: "auth", branch: "demo/passkeys" })).toBe(false);
     expect(existsSync(join(root, "portolan-drafts", "auth"))).toBe(false);
+
+    // A deletion keeps the draft aside until it is undone.
+    restoreDraft(root, { project: "auth", branch: "demo/passkeys" });
+    expect(listDrafts(root).map((draft) => draft.branch)).toEqual(["demo/passkeys"]);
+  });
+
+  it("keeps a generated draft pending until it is saved over the old one or discarded", () => {
+    const { root } = repository();
+    const pending = join(root, pendingPath("auth", "demo/passkeys"));
+    const write = (tip) => {
+      mkdirSync(join(pending, ".."), { recursive: true });
+      writeFileSync(pending, JSON.stringify({ project: "auth", branch: "demo/passkeys", tip, entities: [] }));
+    };
+    write("one");
+    expect(readPending(root, { project: "auth", branch: "demo/passkeys" })).toMatchObject({ tip: "one" });
+    saveDraft(root, { project: "auth", branch: "demo/passkeys" });
+    expect(readDrafts(root).map((draft) => draft.tip)).toEqual(["one"]);
+
+    write("two");
+    expect(discardDraft(root, { project: "auth", branch: "demo/passkeys" })).toBe(true);
+    expect(readPending(root, { project: "auth", branch: "demo/passkeys" })).toBeNull();
+    expect(readDrafts(root).map((draft) => draft.tip)).toEqual(["one"]);
   });
 });

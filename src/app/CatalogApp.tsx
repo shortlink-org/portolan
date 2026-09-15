@@ -42,6 +42,9 @@ import { GraphPage } from "../pages/GraphPage";
 import { Problems } from "../pages/Problems";
 import { Settings } from "../pages/Settings";
 import { Changes } from "../pages/Changes";
+import { Drafts } from "../pages/Drafts";
+import { DraftCompare } from "../pages/DraftCompare";
+import { DraftEntityPage } from "../pages/DraftEntityPage";
 import { RegistryIndex } from "../pages/RegistryIndex";
 import { ModulePage } from "../pages/ModulePage";
 import { ExternalPage } from "../pages/ExternalPage";
@@ -155,6 +158,9 @@ function AppRoutes({
       <Route path="/problems" element={<Problems />} />
       <Route path="/settings/*" element={<Settings />} />
       <Route path="/changes" element={<Changes />} />
+      <Route path="/drafts" element={<Drafts />} />
+      <Route path="/drafts/:project/:branch" element={<DraftCompare />} />
+      <Route path="/drafts/:project/:branch/e/:entity" element={<DraftEntityPage />} />
       <Route path="/externals/:external" element={<ExternalPage />} />
       {/* A module sits at the estate level, not under a service: it is
           published by one and read by four, so hanging it off a service would

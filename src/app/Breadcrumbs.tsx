@@ -75,6 +75,17 @@ export function crumbsFor(pathname: string): Crumb[] {
   if (parts[0] === "changes")
     return [{ label: "changes", to: paths.changes() }];
 
+  if (parts[0] === "drafts")
+    return [
+      { label: "drafts", to: paths.drafts() },
+      ...(parts[1] && parts[2]
+        ? [{ label: decodeURIComponent(parts[2]), to: `/drafts/${parts[1]}/${parts[2]}` }]
+        : []),
+      ...(parts[3] === "e" && parts[4]
+        ? [{ label: decodeURIComponent(parts[4]), to: pathname }]
+        : []),
+    ];
+
   if (parts[0] === "externals") {
     const slug = parts[1];
     if (!slug) return [];

@@ -1,0 +1,4473 @@
+{
+  "schema": "portolan.draft/v1",
+  "project": "shop-cart",
+  "branch": "demo/cart-coupons",
+  "tip": "c3e992f35cc872c3eb90812956fc047b73f1dc98",
+  "base": "f38de4959d6e5026b5832c51b476e8d2d4147e60",
+  "generatedAt": "2026-09-15T05:41:49.100Z",
+  "entities": [
+    {
+      "kind": "flow",
+      "id": "flow.cart-apply-coupon",
+      "change": "added",
+      "branch": {
+        "id": "flow.cart-apply-coupon",
+        "slug": "cart-apply-coupon",
+        "name": "Apply coupon",
+        "summary": " Source-backed cross-protocol continuations are included.",
+        "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+        "trigger": {
+          "kind": "http",
+          "label": "POST /v1/baskets/{basketId}/coupon",
+          "confidence": "high"
+        },
+        "owner": "shop",
+        "participants": [
+          {
+            "id": "client",
+            "kind": "actor",
+            "context": null
+          },
+          {
+            "id": "shop.cart",
+            "kind": "service",
+            "context": "shop"
+          },
+          {
+            "id": "shop.pricing",
+            "kind": "service",
+            "context": "shop"
+          },
+          {
+            "id": "cart-pg",
+            "kind": "store",
+            "context": "shop",
+            "entityRef": "shop.cart.pg"
+          },
+          {
+            "id": "bus",
+            "kind": "broker",
+            "context": null
+          }
+        ],
+        "steps": [
+          {
+            "type": "step",
+            "id": "s1",
+            "from": "client",
+            "to": "shop.cart",
+            "kind": "rpc",
+            "label": "applyCoupon",
+            "status": "declared",
+            "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+          },
+          {
+            "type": "step",
+            "id": "s2",
+            "from": "shop.cart",
+            "to": "shop.pricing",
+            "kind": "rpc",
+            "label": "RedeemCoupon",
+            "status": "declared",
+            "ref": "shop.v1.Pricing/RedeemCoupon",
+            "line": "examples/shop/cart/src/application/basket/usecases/apply_coupon/usecase.ts:34"
+          },
+          {
+            "type": "step",
+            "id": "s3",
+            "from": "shop.cart",
+            "to": "cart-pg",
+            "kind": "call",
+            "label": "save",
+            "status": "declared",
+            "line": "examples/shop/cart/src/application/basket/usecases/apply_coupon/usecase.ts:39"
+          },
+          {
+            "type": "step",
+            "id": "s4",
+            "from": "shop.cart",
+            "to": "bus",
+            "kind": "event",
+            "label": "CouponApplied",
+            "status": "declared",
+            "ref": "shop.cart.basket.CouponApplied",
+            "line": "examples/shop/cart/src/application/basket/usecases/apply_coupon/usecase.ts:39"
+          },
+          {
+            "type": "step",
+            "id": "response-s1",
+            "from": "shop.cart",
+            "to": "client",
+            "kind": "response",
+            "label": "HTTP response",
+            "status": "declared",
+            "note": "Synthesized from the proven synchronous HTTP handler return.",
+            "replyTo": "s1"
+          }
+        ],
+        "includes": [],
+        "composition": []
+      }
+    },
+    {
+      "kind": "flow",
+      "id": "flow.cart-merge-baskets",
+      "change": "removed",
+      "base": {
+        "id": "flow.cart-merge-baskets",
+        "slug": "cart-merge-baskets",
+        "name": "Merge baskets",
+        "summary": " Source-backed cross-protocol continuations are included.",
+        "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+        "trigger": {
+          "kind": "http",
+          "label": "POST /v1/baskets/{basketId}/merge",
+          "confidence": "high"
+        },
+        "owner": "shop",
+        "participants": [
+          {
+            "id": "client",
+            "kind": "actor",
+            "context": null
+          },
+          {
+            "id": "shop.cart",
+            "kind": "service",
+            "context": "shop"
+          },
+          {
+            "id": "auth.auth",
+            "kind": "service",
+            "context": "auth"
+          },
+          {
+            "id": "cart-pg",
+            "kind": "store",
+            "context": "shop",
+            "entityRef": "shop.cart.pg"
+          },
+          {
+            "id": "bus",
+            "kind": "broker",
+            "context": null
+          }
+        ],
+        "steps": [
+          {
+            "type": "step",
+            "id": "s1",
+            "from": "client",
+            "to": "shop.cart",
+            "kind": "rpc",
+            "label": "mergeBaskets",
+            "status": "declared",
+            "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+          },
+          {
+            "type": "step",
+            "id": "s2",
+            "from": "shop.cart",
+            "to": "auth.auth",
+            "kind": "rpc",
+            "label": "validateSession",
+            "status": "declared",
+            "ref": "auth.v1/validateSession",
+            "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
+          },
+          {
+            "type": "step",
+            "id": "s3",
+            "from": "shop.cart",
+            "to": "cart-pg",
+            "kind": "call",
+            "label": "openFor",
+            "status": "declared",
+            "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35"
+          },
+          {
+            "type": "step",
+            "id": "s4",
+            "from": "shop.cart",
+            "to": "cart-pg",
+            "kind": "call",
+            "label": "save",
+            "status": "declared",
+            "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          },
+          {
+            "type": "step",
+            "id": "s5",
+            "from": "shop.cart",
+            "to": "bus",
+            "kind": "event",
+            "label": "BasketCreated",
+            "status": "declared",
+            "ref": "shop.cart.basket.BasketCreated",
+            "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          },
+          {
+            "type": "step",
+            "id": "s6",
+            "from": "shop.cart",
+            "to": "bus",
+            "kind": "event",
+            "label": "BasketItemAdded",
+            "status": "declared",
+            "ref": "shop.cart.basket.BasketItemAdded",
+            "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          },
+          {
+            "type": "step",
+            "id": "s7",
+            "from": "shop.cart",
+            "to": "cart-pg",
+            "kind": "call",
+            "label": "save",
+            "status": "declared",
+            "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+          },
+          {
+            "type": "step",
+            "id": "s8",
+            "from": "shop.cart",
+            "to": "bus",
+            "kind": "event",
+            "label": "BasketMerged",
+            "status": "declared",
+            "ref": "shop.cart.basket.BasketMerged",
+            "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+          },
+          {
+            "type": "step",
+            "id": "response-s1",
+            "from": "shop.cart",
+            "to": "client",
+            "kind": "response",
+            "label": "HTTP response",
+            "status": "declared",
+            "note": "Synthesized from the proven synchronous HTTP handler return.",
+            "replyTo": "s1"
+          }
+        ],
+        "includes": [],
+        "composition": []
+      }
+    },
+    {
+      "kind": "flow",
+      "id": "flow.observed-cart-post-v1-baskets-basketid-merge",
+      "change": "added",
+      "branch": {
+        "id": "flow.observed-cart-post-v1-baskets-basketid-merge",
+        "slug": "observed-cart-post-v1-baskets-basketid-merge",
+        "name": "Observed: POST /v1/baskets/:basketId/merge",
+        "summary": "Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.",
+        "source": "telemetry/traces.jsonl",
+        "owner": "shop",
+        "participants": [
+          {
+            "id": "client",
+            "kind": "actor",
+            "context": null
+          },
+          {
+            "id": "shop.cart",
+            "kind": "service",
+            "context": "shop"
+          },
+          {
+            "id": "auth.auth",
+            "kind": "service",
+            "context": "auth"
+          },
+          {
+            "id": "bus",
+            "kind": "broker",
+            "context": null
+          }
+        ],
+        "steps": [
+          {
+            "type": "step",
+            "id": "s1",
+            "from": "client",
+            "to": "shop.cart",
+            "kind": "rpc",
+            "label": "POST /v1/baskets/:basketId/merge",
+            "status": "verified",
+            "seen": {
+              "traces": 1
+            }
+          },
+          {
+            "type": "step",
+            "id": "s2",
+            "from": "shop.cart",
+            "to": "auth.auth",
+            "kind": "rpc",
+            "ref": "auth.v1/validateSession",
+            "label": "validateSession",
+            "status": "verified",
+            "seen": {
+              "traces": 1
+            }
+          },
+          {
+            "type": "step",
+            "id": "s3",
+            "from": "shop.cart",
+            "to": "bus",
+            "kind": "event",
+            "ref": "shop.cart.basket.BasketItemAdded",
+            "label": "BasketItemAdded",
+            "status": "verified",
+            "seen": {
+              "traces": 1
+            }
+          },
+          {
+            "type": "step",
+            "id": "s4",
+            "from": "shop.cart",
+            "to": "bus",
+            "kind": "event",
+            "ref": "shop.cart.basket.BasketCreated",
+            "label": "BasketCreated",
+            "status": "verified",
+            "seen": {
+              "traces": 1
+            }
+          },
+          {
+            "type": "step",
+            "id": "s5",
+            "from": "shop.cart",
+            "to": "bus",
+            "kind": "event",
+            "ref": "shop.cart.basket.BasketMerged",
+            "label": "BasketMerged",
+            "status": "verified",
+            "seen": {
+              "traces": 1
+            }
+          }
+        ],
+        "examples": [
+          {
+            "id": "telemetry/traces.jsonl#2f1e3fbc117e7892a3d2dc7365ff06c7",
+            "recording": "examples/shop/cart/telemetry/traces.jsonl",
+            "traceId": "2f1e3fbc117e7892a3d2dc7365ff06c7",
+            "recordedAt": "2026-09-04T18:33:36.633Z",
+            "durationMs": 14.668,
+            "steps": [
+              {
+                "step": "s1",
+                "label": "POST /v1/baskets/:basketId/merge",
+                "durationMs": 14.668,
+                "attributes": {
+                  "http.request.method": "POST",
+                  "http.response.status_code": "200",
+                  "http.route": "/v1/baskets/:basketId/merge",
+                  "server.address": "localhost",
+                  "server.port": "8081"
+                }
+              },
+              {
+                "step": "s2",
+                "label": "GET",
+                "durationMs": 4.518,
+                "attributes": {
+                  "http.request.method": "GET",
+                  "http.response.status_code": "200",
+                  "server.address": "localhost",
+                  "server.port": "8080"
+                }
+              },
+              {
+                "step": "s3",
+                "label": "publish cart.BasketItemAdded",
+                "durationMs": 0.326,
+                "attributes": {
+                  "event.name": "cart.BasketItemAdded",
+                  "messaging.destination.name": "shop.cart.basket",
+                  "messaging.operation.type": "publish",
+                  "messaging.system": "outbox"
+                }
+              },
+              {
+                "step": "s4",
+                "label": "publish cart.BasketCreated",
+                "durationMs": 0.281,
+                "attributes": {
+                  "event.name": "cart.BasketCreated",
+                  "messaging.destination.name": "shop.cart.basket",
+                  "messaging.operation.type": "publish",
+                  "messaging.system": "outbox"
+                }
+              },
+              {
+                "step": "s5",
+                "label": "publish cart.BasketMerged",
+                "durationMs": 0.281,
+                "attributes": {
+                  "event.name": "cart.BasketMerged",
+                  "messaging.destination.name": "shop.cart.basket",
+                  "messaging.operation.type": "publish",
+                  "messaging.system": "outbox"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "kind": "service",
+      "id": "shop.cart",
+      "change": "changed",
+      "place": {
+        "context": "shop"
+      },
+      "base": {
+        "id": "shop.cart",
+        "slug": "cart",
+        "name": "Shopping Cart",
+        "repo": "github.com/shortlink-org/portolan",
+        "path": "examples/shop/cart",
+        "readme": "# Shopping Cart\n\nService `cart` — bounded context **shop**. TypeScript on Node.js.\n\nOwns the basket: the one mutable thing between a customer arriving and an\norder existing. A basket belongs to a visitor's token or to a signed-in\ncustomer, changes as items go in and out, and stops changing the moment it is\nchecked out — from then on the order is somebody else's aggregate and the\nbasket is a record of what was bought.\n\n## What it does\n\n- Creates a basket for a visitor and lets items go in and out of it.\n- Merges a visitor's basket into a customer's after login.\n- Checks out: confirms the session with `auth`, takes a quote from `pricing`,\n  freezes the basket and says so with `BasketCheckedOut`.\n- Abandons baskets nobody has touched for a day, and says so.\n\n## What it does not do\n\nDoes not place the order, charge anything or reserve stock: `BasketCheckedOut`\nis where its job ends. Does not hold a catalogue - a SKU is a string it was\ngiven, with the price it was given. Does not know who a customer is beyond an\nopaque id `auth` vouched for.\n\n## Decisions\n\n- [cart.0001](docs/adr/0001-typescript-on-node.md) — TypeScript on Node.js, and the stack around it\n- [cart.0002](docs/adr/0002-currency-frozen-at-the-first-item.md) — A basket freezes its currency at the first item\n- [cart.0003](docs/adr/0003-prices-captured-never-recomputed.md) — Line prices are captured when added, never recomputed\n- [cart.0004](docs/adr/0004-checkout-confirms-with-auth-and-pricing.md) — Checkout confirms the session with `auth` and the total with `pricing`\n- [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none\n- [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes\n- [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token\n- [cart.0008](docs/adr/0008-events-leave-over-nats-jetstream.md) — Events leave the service over NATS JetStream, and the outbox stays\n\n## Running it\n\n```bash\ndocker compose up -d\nnpm start\n```\n\n`AUTH_URL` and `PRICING_ADDR` point checkout at running peers; without them\nevery session is live and the quote is the sum of the lines. `NATS_URL` is\nwhere events leave the service; without it the bus is in process and nothing\ndoes. `TRACER_URI` switches tracing on. `npm test` runs everything; without\nDocker the tests that need Postgres or NATS are skipped.",
+        "provides": [
+          {
+            "id": "cart.v1",
+            "methods": [
+              {
+                "name": "createBasket",
+                "response": "BasketCreated",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets"
+                }
+              },
+              {
+                "name": "getBasket",
+                "response": "Basket",
+                "http": {
+                  "method": "GET",
+                  "path": "/v1/baskets/{basketId}"
+                }
+              },
+              {
+                "name": "addItem",
+                "request": "AddItemRequest",
+                "response": "Basket",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets/{basketId}/items"
+                }
+              },
+              {
+                "name": "removeItem",
+                "response": "Basket",
+                "http": {
+                  "method": "DELETE",
+                  "path": "/v1/baskets/{basketId}/items/{sku}"
+                }
+              },
+              {
+                "name": "mergeBaskets",
+                "request": "MergeRequest",
+                "response": "Basket",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets/{basketId}/merge"
+                }
+              },
+              {
+                "name": "checkout",
+                "response": "CheckedOut",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets/{basketId}/checkout"
+                }
+              }
+            ],
+            "source": "examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml",
+            "messages": [
+              {
+                "name": "BasketCreated",
+                "fields": [
+                  {
+                    "name": "basketId",
+                    "type": "string (uuid)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "token",
+                    "type": "string",
+                    "doc": "The capability to change this basket; sent back as X-Basket-Token.",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "Basket",
+                "fields": [
+                  {
+                    "name": "basketId",
+                    "type": "string (uuid)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "customerId",
+                    "type": "string",
+                    "doc": "Present once the basket belongs to a signed-in customer."
+                  },
+                  {
+                    "name": "currency",
+                    "type": "string",
+                    "doc": "Set by the first line; absent while the basket is empty."
+                  },
+                  {
+                    "name": "status",
+                    "type": "string enum(open | checked-out | abandoned | merged)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "items",
+                    "type": "[]LineItem",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "subtotal",
+                    "type": "Money",
+                    "doc": ""
+                  },
+                  {
+                    "name": "touchedAt",
+                    "type": "string (date-time)",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "Error",
+                "fields": [
+                  {
+                    "name": "message",
+                    "type": "string",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "AddItemRequest",
+                "fields": [
+                  {
+                    "name": "sku",
+                    "type": "string",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "quantity",
+                    "type": "integer",
+                    "doc": "",
+                    "required": true,
+                    "rules": [
+                      {
+                        "name": "gte",
+                        "value": "1"
+                      },
+                      {
+                        "name": "lte",
+                        "value": "99"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "unitPrice",
+                    "type": "Money",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "MergeRequest",
+                "fields": [
+                  {
+                    "name": "fromBasketId",
+                    "type": "string (uuid)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "fromToken",
+                    "type": "string",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "CheckedOut",
+                "fields": [
+                  {
+                    "name": "basketId",
+                    "type": "string (uuid)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "quoteId",
+                    "type": "string",
+                    "doc": "The quote pricing issued; the order is placed against it.",
+                    "required": true
+                  },
+                  {
+                    "name": "total",
+                    "type": "Money",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "LineItem",
+                "fields": [
+                  {
+                    "name": "sku",
+                    "type": "string",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "quantity",
+                    "type": "integer",
+                    "doc": "",
+                    "required": true,
+                    "rules": [
+                      {
+                        "name": "gte",
+                        "value": "1"
+                      },
+                      {
+                        "name": "lte",
+                        "value": "99"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "unitPrice",
+                    "type": "Money",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "Money",
+                "fields": [
+                  {
+                    "name": "amountMinor",
+                    "type": "integer (int64)",
+                    "doc": "Amount in the minor unit of the currency.",
+                    "required": true
+                  },
+                  {
+                    "name": "currency",
+                    "type": "string",
+                    "doc": "ISO 4217 code",
+                    "required": true
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "consumes": [
+          {
+            "id": "auth.v1/validateSession",
+            "peer": "auth.auth",
+            "status": "verified",
+            "source": "examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
+          },
+          {
+            "id": "shop.v1.Pricing/GetQuote",
+            "peer": "shop.pricing",
+            "status": "declared",
+            "source": "examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto"
+          }
+        ],
+        "owners": [
+          "@shortlink-org/shop"
+        ],
+        "channels": [
+          {
+            "address": "shop.cart.basket",
+            "title": "Basket",
+            "doc": "One subject per aggregate, dotted the way a NATS subject is. The subject is the topic the outbox row held, and the event's name is on the message metadata, so a subscriber dispatches without parsing the payload.",
+            "messages": [
+              {
+                "name": "cart.BasketCreated",
+                "title": "Basket created",
+                "doc": "A basket exists, for a visitor or for a customer.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketItemAdded",
+                "title": "Item added",
+                "doc": "A line was added, or an existing line grew.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketItemRemoved",
+                "title": "Item removed",
+                "doc": "A line is gone from the basket.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketCheckedOut",
+                "title": "Basket checked out",
+                "doc": "The basket is closed and an order is expected. This is the message anything downstream of the cart waits for.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketAbandoned",
+                "title": "Basket abandoned",
+                "doc": "Nobody touched the basket for long enough that it was let go.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketMerged",
+                "title": "Basket merged",
+                "doc": "A visitor signed in and their basket was folded into their own.",
+                "direction": "send"
+              }
+            ],
+            "source": "examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml"
+          }
+        ],
+        "commands": [
+          {
+            "runner": "npm",
+            "name": "build",
+            "run": "npm run build",
+            "body": "tsc -p tsconfig.build.json && mkdir -p dist/infrastructure/repository/basket && cp -R src/infrastructure/repository/basket/migrations dist/infrastructure/repository/basket/",
+            "source": "examples/shop/cart/package.json:12"
+          },
+          {
+            "runner": "npm",
+            "name": "start",
+            "run": "npm start",
+            "body": "node dist/main.js",
+            "source": "examples/shop/cart/package.json:13"
+          },
+          {
+            "runner": "npm",
+            "name": "typecheck",
+            "run": "npm run typecheck",
+            "body": "tsc -p tsconfig.json --noEmit",
+            "source": "examples/shop/cart/package.json:14"
+          },
+          {
+            "runner": "npm",
+            "name": "test",
+            "run": "npm test",
+            "body": "vitest run",
+            "source": "examples/shop/cart/package.json:15"
+          },
+          {
+            "runner": "npm",
+            "name": "generate",
+            "run": "npm run generate",
+            "body": "npm run generate:api && npm run generate:auth && npm run generate:pricing",
+            "source": "examples/shop/cart/package.json:16"
+          },
+          {
+            "runner": "npm",
+            "name": "generate:api",
+            "run": "npm run generate:api",
+            "body": "openapi-typescript src/infrastructure/transport/http/gen/openapi.yaml -o src/infrastructure/transport/http/gen/types.ts",
+            "source": "examples/shop/cart/package.json:17"
+          },
+          {
+            "runner": "npm",
+            "name": "generate:auth",
+            "run": "npm run generate:auth",
+            "body": "openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts",
+            "source": "examples/shop/cart/package.json:18"
+          },
+          {
+            "runner": "npm",
+            "name": "generate:pricing",
+            "run": "npm run generate:pricing",
+            "body": "buf generate",
+            "source": "examples/shop/cart/package.json:19"
+          }
+        ],
+        "hosts": [
+          "cart",
+          "cart.shop",
+          "cart.shop.svc",
+          "cart.shop.svc.cluster.local",
+          "shop.example.com"
+        ],
+        "dials": [
+          "auth.auth.svc",
+          "nats.shop.svc",
+          "pricing.shop.svc"
+        ],
+        "stores": [
+          "shop.cart.pg"
+        ]
+      },
+      "branch": {
+        "id": "shop.cart",
+        "slug": "cart",
+        "name": "Shopping Cart",
+        "repo": "github.com/shortlink-org/portolan",
+        "path": "examples/shop/cart",
+        "readme": "# Shopping Cart\n\nService `cart` — bounded context **shop**. TypeScript on Node.js.\n\nOwns the basket: the one mutable thing between a customer arriving and an\norder existing. A basket belongs to a visitor's token or to a signed-in\ncustomer, changes as items go in and out, and stops changing the moment it is\nchecked out — from then on the order is somebody else's aggregate and the\nbasket is a record of what was bought.\n\n## What it does\n\n- Creates a basket for a visitor and lets items go in and out of it.\n- Merges a visitor's basket into a customer's after login.\n- Checks out: confirms the session with `auth`, takes a quote from `pricing`,\n  freezes the basket and says so with `BasketCheckedOut`.\n- Abandons baskets nobody has touched for a day, and says so.\n\n## What it does not do\n\nDoes not place the order, charge anything or reserve stock: `BasketCheckedOut`\nis where its job ends. Does not hold a catalogue - a SKU is a string it was\ngiven, with the price it was given. Does not know who a customer is beyond an\nopaque id `auth` vouched for.\n\n## Decisions\n\n- [cart.0001](docs/adr/0001-typescript-on-node.md) — TypeScript on Node.js, and the stack around it\n- [cart.0002](docs/adr/0002-currency-frozen-at-the-first-item.md) — A basket freezes its currency at the first item\n- [cart.0003](docs/adr/0003-prices-captured-never-recomputed.md) — Line prices are captured when added, never recomputed\n- [cart.0004](docs/adr/0004-checkout-confirms-with-auth-and-pricing.md) — Checkout confirms the session with `auth` and the total with `pricing`\n- [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none\n- [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes\n- [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token\n- [cart.0008](docs/adr/0008-events-leave-over-nats-jetstream.md) — Events leave the service over NATS JetStream, and the outbox stays\n\n## Running it\n\n```bash\ndocker compose up -d\nnpm start\n```\n\n`AUTH_URL` and `PRICING_ADDR` point checkout at running peers; without them\nevery session is live and the quote is the sum of the lines. `NATS_URL` is\nwhere events leave the service; without it the bus is in process and nothing\ndoes. `TRACER_URI` switches tracing on. `npm test` runs everything; without\nDocker the tests that need Postgres or NATS are skipped.",
+        "provides": [
+          {
+            "id": "cart.v1",
+            "methods": [
+              {
+                "name": "createBasket",
+                "response": "BasketCreated",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets"
+                }
+              },
+              {
+                "name": "getBasket",
+                "response": "Basket",
+                "http": {
+                  "method": "GET",
+                  "path": "/v1/baskets/{basketId}"
+                }
+              },
+              {
+                "name": "addItem",
+                "request": "AddItemRequest",
+                "response": "Basket",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets/{basketId}/items"
+                }
+              },
+              {
+                "name": "removeItem",
+                "response": "Basket",
+                "http": {
+                  "method": "DELETE",
+                  "path": "/v1/baskets/{basketId}/items/{sku}"
+                }
+              },
+              {
+                "name": "applyCoupon",
+                "request": "ApplyCouponRequest",
+                "response": "Basket",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets/{basketId}/coupon"
+                }
+              },
+              {
+                "name": "checkout",
+                "response": "CheckedOut",
+                "http": {
+                  "method": "POST",
+                  "path": "/v1/baskets/{basketId}/checkout"
+                }
+              }
+            ],
+            "source": "examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml",
+            "messages": [
+              {
+                "name": "BasketCreated",
+                "fields": [
+                  {
+                    "name": "basketId",
+                    "type": "string (uuid)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "token",
+                    "type": "string",
+                    "doc": "The capability to change this basket; sent back as X-Basket-Token.",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "Basket",
+                "fields": [
+                  {
+                    "name": "basketId",
+                    "type": "string (uuid)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "customerId",
+                    "type": "string",
+                    "doc": "Present once the basket belongs to a signed-in customer."
+                  },
+                  {
+                    "name": "currency",
+                    "type": "string",
+                    "doc": "Set by the first line; absent while the basket is empty."
+                  },
+                  {
+                    "name": "status",
+                    "type": "string enum(open | checked-out | abandoned | merged)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "items",
+                    "type": "[]LineItem",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "subtotal",
+                    "type": "Money",
+                    "doc": ""
+                  },
+                  {
+                    "name": "coupon",
+                    "type": "object",
+                    "doc": ""
+                  },
+                  {
+                    "name": "touchedAt",
+                    "type": "string (date-time)",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "Error",
+                "fields": [
+                  {
+                    "name": "message",
+                    "type": "string",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "AddItemRequest",
+                "fields": [
+                  {
+                    "name": "sku",
+                    "type": "string",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "quantity",
+                    "type": "integer",
+                    "doc": "",
+                    "required": true,
+                    "rules": [
+                      {
+                        "name": "gte",
+                        "value": "1"
+                      },
+                      {
+                        "name": "lte",
+                        "value": "99"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "unitPrice",
+                    "type": "Money",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "ApplyCouponRequest",
+                "fields": [
+                  {
+                    "name": "code",
+                    "type": "string",
+                    "doc": "",
+                    "required": true,
+                    "rules": [
+                      {
+                        "name": "min_len",
+                        "value": "3"
+                      },
+                      {
+                        "name": "max_len",
+                        "value": "32"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "CheckedOut",
+                "fields": [
+                  {
+                    "name": "basketId",
+                    "type": "string (uuid)",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "quoteId",
+                    "type": "string",
+                    "doc": "The quote pricing issued; the order is placed against it.",
+                    "required": true
+                  },
+                  {
+                    "name": "total",
+                    "type": "Money",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "LineItem",
+                "fields": [
+                  {
+                    "name": "sku",
+                    "type": "string",
+                    "doc": "",
+                    "required": true
+                  },
+                  {
+                    "name": "quantity",
+                    "type": "integer",
+                    "doc": "",
+                    "required": true,
+                    "rules": [
+                      {
+                        "name": "gte",
+                        "value": "1"
+                      },
+                      {
+                        "name": "lte",
+                        "value": "99"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "unitPrice",
+                    "type": "Money",
+                    "doc": "",
+                    "required": true
+                  }
+                ]
+              },
+              {
+                "name": "Money",
+                "fields": [
+                  {
+                    "name": "amountMinor",
+                    "type": "integer (int64)",
+                    "doc": "Amount in the minor unit of the currency.",
+                    "required": true
+                  },
+                  {
+                    "name": "currency",
+                    "type": "string",
+                    "doc": "ISO 4217 code",
+                    "required": true
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "consumes": [
+          {
+            "id": "auth.v1/validateSession",
+            "peer": "auth.auth",
+            "status": "verified",
+            "source": "examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
+          },
+          {
+            "id": "shop.v1.Pricing/GetQuote",
+            "peer": "shop.pricing",
+            "status": "declared",
+            "source": "examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto"
+          },
+          {
+            "id": "shop.v1.Pricing/RedeemCoupon",
+            "peer": "shop.pricing",
+            "status": "declared",
+            "source": "examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto"
+          }
+        ],
+        "owners": [
+          "@shortlink-org/shop"
+        ],
+        "channels": [
+          {
+            "address": "shop.cart.basket",
+            "title": "Basket",
+            "doc": "One subject per aggregate, dotted the way a NATS subject is. The subject is the topic the outbox row held, and the event's name is on the message metadata, so a subscriber dispatches without parsing the payload.",
+            "messages": [
+              {
+                "name": "cart.BasketCreated",
+                "title": "Basket created",
+                "doc": "A basket exists, for a visitor or for a customer.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketItemAdded",
+                "title": "Item added",
+                "doc": "A line was added, or an existing line grew.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketItemRemoved",
+                "title": "Item removed",
+                "doc": "A line is gone from the basket.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.CouponApplied",
+                "title": "Coupon applied",
+                "doc": "Pricing accepted a coupon and the basket took the discount it agreed to.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketCheckedOut",
+                "title": "Basket checked out",
+                "doc": "The basket is closed and an order is expected. This is the message anything downstream of the cart waits for.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketAbandoned",
+                "title": "Basket abandoned",
+                "doc": "Nobody touched the basket for long enough that it was let go.",
+                "direction": "send"
+              },
+              {
+                "name": "cart.BasketMerged",
+                "title": "Basket merged",
+                "doc": "A visitor signed in and their basket was folded into their own.",
+                "direction": "send"
+              }
+            ],
+            "source": "examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml"
+          }
+        ],
+        "commands": [
+          {
+            "runner": "npm",
+            "name": "build",
+            "run": "npm run build",
+            "body": "tsc -p tsconfig.build.json && mkdir -p dist/infrastructure/repository/basket && cp -R src/infrastructure/repository/basket/migrations dist/infrastructure/repository/basket/",
+            "source": "examples/shop/cart/package.json:12"
+          },
+          {
+            "runner": "npm",
+            "name": "start",
+            "run": "npm start",
+            "body": "node dist/main.js",
+            "source": "examples/shop/cart/package.json:13"
+          },
+          {
+            "runner": "npm",
+            "name": "typecheck",
+            "run": "npm run typecheck",
+            "body": "tsc -p tsconfig.json --noEmit",
+            "source": "examples/shop/cart/package.json:14"
+          },
+          {
+            "runner": "npm",
+            "name": "test",
+            "run": "npm test",
+            "body": "vitest run",
+            "source": "examples/shop/cart/package.json:15"
+          },
+          {
+            "runner": "npm",
+            "name": "generate",
+            "run": "npm run generate",
+            "body": "npm run generate:api && npm run generate:auth && npm run generate:pricing",
+            "source": "examples/shop/cart/package.json:16"
+          },
+          {
+            "runner": "npm",
+            "name": "generate:api",
+            "run": "npm run generate:api",
+            "body": "openapi-typescript src/infrastructure/transport/http/gen/openapi.yaml -o src/infrastructure/transport/http/gen/types.ts",
+            "source": "examples/shop/cart/package.json:17"
+          },
+          {
+            "runner": "npm",
+            "name": "generate:auth",
+            "run": "npm run generate:auth",
+            "body": "openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts",
+            "source": "examples/shop/cart/package.json:18"
+          },
+          {
+            "runner": "npm",
+            "name": "generate:pricing",
+            "run": "npm run generate:pricing",
+            "body": "buf generate",
+            "source": "examples/shop/cart/package.json:19"
+          }
+        ],
+        "hosts": [
+          "cart",
+          "cart.shop",
+          "cart.shop.svc",
+          "cart.shop.svc.cluster.local",
+          "shop.example.com"
+        ],
+        "dials": [
+          "auth.auth.svc",
+          "nats.shop.svc",
+          "pricing.shop.svc"
+        ],
+        "stores": [
+          "shop.cart.pg"
+        ]
+      }
+    },
+    {
+      "kind": "aggregate",
+      "id": "shop.cart.basket",
+      "change": "changed",
+      "place": {
+        "context": "shop",
+        "service": "cart"
+      },
+      "base": {
+        "id": "shop.cart.basket",
+        "slug": "basket",
+        "name": "Basket",
+        "readme": "# Basket\n\nThe one mutable thing between a customer arriving and an order existing: a\nvisitor's or a customer's lines, under one lock. It changes as items go in and\nout and stops changing the moment it is checked out; from then on the order is\nsomebody else's aggregate and the basket is a record of what was bought.\n\n## States\n\n`open` → `checked-out` | `abandoned` | `merged`, and nothing leads back. The\ntable is `status.ts`, and `moveTo` is the only way through it; lines go in\nand out only while the basket is `open`. Each way out publishes: checkout\n`BasketCheckedOut`, the sweep `BasketAbandoned`, a merge `BasketMerged` from\nthe basket that emptied.\n\n## Invariants\n\n- One currency, set by the first line and never changed (cart.0002).\n- A line's price is what it was given when added, never recomputed (cart.0003).\n- One to 99 of a SKU per line; at most 50 distinct SKUs.\n- A version travels with every write; a write from a stale read is refused.",
+        "root": "Basket",
+        "entities": [
+          {
+            "id": "shop.cart.basket.basket",
+            "slug": "basket",
+            "name": "Basket",
+            "doc": "Basket is the aggregate root: a visitor's or a customer's lines, their\ncurrency and their state, decided under one lock. Every method that changes\nit answers with the fact, and publishing is the caller's business. Where\nit can go from where it is, `status.ts` says in one table; `moveTo` is the\nonly way through it.",
+            "fields": [
+              {
+                "name": "id",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "token",
+                "type": "string",
+                "doc": "The capability to change an anonymous basket (cart.0007)."
+              },
+              {
+                "name": "customerId",
+                "type": "string | undefined",
+                "doc": ""
+              },
+              {
+                "name": "currency",
+                "type": "Currency | undefined",
+                "doc": "Set by the first line, never changed (cart.0002)."
+              },
+              {
+                "name": "status",
+                "type": "BasketStatus",
+                "doc": ""
+              },
+              {
+                "name": "items",
+                "type": "BasketItem[]",
+                "doc": ""
+              },
+              {
+                "name": "touchedAt",
+                "type": "Date",
+                "doc": ""
+              },
+              {
+                "name": "version",
+                "type": "number",
+                "doc": "Bumped by every write; a write from a stale read is refused."
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.basket-error",
+            "slug": "basket-error",
+            "name": "BasketError",
+            "doc": "What the basket refuses, and why, in a word a caller can switch on.",
+            "fields": [
+              {
+                "name": "code",
+                "type": "BasketErrorCode",
+                "doc": ""
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.basket-item",
+            "slug": "basket-item",
+            "name": "BasketItem",
+            "doc": "One line: a SKU, how many, and what each one cost when it went in.",
+            "fields": [
+              {
+                "name": "sku",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "quantity",
+                "type": "number",
+                "doc": ""
+              },
+              {
+                "name": "unitPrice",
+                "type": "Money",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "valueObjects": [
+          {
+            "id": "shop.cart.basket.currency",
+            "slug": "currency",
+            "name": "Currency",
+            "doc": "ISO 4217, upper case. A basket has one, set by its first line.",
+            "fields": [
+              {
+                "name": "code",
+                "type": "string",
+                "doc": ""
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.line-item",
+            "slug": "line-item",
+            "name": "LineItem",
+            "doc": "What the caller asks to put in: the estate's shared shape for a line.",
+            "fields": [
+              {
+                "name": "sku",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "quantity",
+                "type": "number",
+                "doc": ""
+              },
+              {
+                "name": "unitPrice",
+                "type": "Money",
+                "doc": ""
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.money",
+            "slug": "money",
+            "name": "Money",
+            "doc": "An amount in the minor unit of the currency: an integer, never a float.",
+            "fields": [
+              {
+                "name": "amountMinor",
+                "type": "number",
+                "doc": ""
+              },
+              {
+                "name": "currency",
+                "type": "Currency",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "operations": [
+          {
+            "id": "AddItem",
+            "kind": "command",
+            "doc": "Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002).",
+            "exposedBy": [
+              "addItem"
+            ]
+          },
+          {
+            "id": "Checkout",
+            "kind": "command",
+            "doc": "Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004).",
+            "exposedBy": [
+              "checkout"
+            ]
+          },
+          {
+            "id": "CreateBasket",
+            "kind": "command",
+            "doc": "Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007).",
+            "exposedBy": [
+              "createBasket"
+            ]
+          },
+          {
+            "id": "ExpireIdleBaskets",
+            "kind": "command",
+            "doc": "The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the service runs it once a minute."
+          },
+          {
+            "id": "GetBasket",
+            "kind": "query",
+            "doc": "The basket as it stands, for whoever holds its token.",
+            "exposedBy": [
+              "getBasket"
+            ]
+          },
+          {
+            "id": "MergeBaskets",
+            "kind": "command",
+            "doc": "Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged.",
+            "exposedBy": [
+              "mergeBaskets"
+            ]
+          },
+          {
+            "id": "RemoveItem",
+            "kind": "command",
+            "doc": "Takes a line out of a basket outright.",
+            "exposedBy": [
+              "removeItem"
+            ]
+          }
+        ],
+        "lifecycle": {
+          "states": [
+            "open",
+            "checked-out",
+            "abandoned",
+            "merged"
+          ],
+          "transitions": [
+            {
+              "from": "open",
+              "to": "checked-out",
+              "on": "checkout",
+              "source": "examples/shop/cart/src/domain/basket/basket.ts:92",
+              "emits": "shop.cart.basket.BasketCheckedOut"
+            },
+            {
+              "from": "open",
+              "to": "abandoned",
+              "on": "abandon",
+              "source": "examples/shop/cart/src/domain/basket/basket.ts:100",
+              "emits": "shop.cart.basket.BasketAbandoned"
+            },
+            {
+              "from": "open",
+              "to": "merged",
+              "on": "mergeInto",
+              "source": "examples/shop/cart/src/domain/basket/basket.ts:111",
+              "emits": "shop.cart.basket.BasketMerged"
+            }
+          ]
+        }
+      },
+      "branch": {
+        "id": "shop.cart.basket",
+        "slug": "basket",
+        "name": "Basket",
+        "readme": "# Basket\n\nThe one mutable thing between a customer arriving and an order existing: a\nvisitor's or a customer's lines, under one lock. It changes as items go in and\nout and stops changing the moment it is checked out; from then on the order is\nsomebody else's aggregate and the basket is a record of what was bought.\n\n## States\n\n`open` → `checked-out` | `abandoned` | `merged`, and nothing leads back. The\ntable is `status.ts`, and `moveTo` is the only way through it; lines go in\nand out only while the basket is `open`. Each way out publishes: checkout\n`BasketCheckedOut`, the sweep `BasketAbandoned`, a merge `BasketMerged` from\nthe basket that emptied.\n\n## Invariants\n\n- One currency, set by the first line and never changed (cart.0002).\n- A line's price is what it was given when added, never recomputed (cart.0003).\n- One to 99 of a SKU per line; at most 50 distinct SKUs.\n- A version travels with every write; a write from a stale read is refused.",
+        "root": "Basket",
+        "entities": [
+          {
+            "id": "shop.cart.basket.basket",
+            "slug": "basket",
+            "name": "Basket",
+            "doc": "Basket is the aggregate root: a visitor's or a customer's lines, their\ncurrency and their state, decided under one lock. Every method that changes\nit answers with the fact, and publishing is the caller's business. Where\nit can go from where it is, `status.ts` says in one table; `moveTo` is the\nonly way through it.",
+            "fields": [
+              {
+                "name": "id",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "token",
+                "type": "string",
+                "doc": "The capability to change an anonymous basket (cart.0007)."
+              },
+              {
+                "name": "customerId",
+                "type": "string | undefined",
+                "doc": ""
+              },
+              {
+                "name": "currency",
+                "type": "Currency | undefined",
+                "doc": "Set by the first line, never changed (cart.0002)."
+              },
+              {
+                "name": "status",
+                "type": "BasketStatus",
+                "doc": ""
+              },
+              {
+                "name": "items",
+                "type": "BasketItem[]",
+                "doc": ""
+              },
+              {
+                "name": "touchedAt",
+                "type": "Date",
+                "doc": ""
+              },
+              {
+                "name": "version",
+                "type": "number",
+                "doc": "Bumped by every write; a write from a stale read is refused."
+              },
+              {
+                "name": "coupon",
+                "type": "AppliedCoupon | undefined",
+                "doc": "The coupon pricing accepted, if any; one per basket."
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.basket-error",
+            "slug": "basket-error",
+            "name": "BasketError",
+            "doc": "What the basket refuses, and why, in a word a caller can switch on.",
+            "fields": [
+              {
+                "name": "code",
+                "type": "BasketErrorCode",
+                "doc": ""
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.basket-item",
+            "slug": "basket-item",
+            "name": "BasketItem",
+            "doc": "One line: a SKU, how many, and what each one cost when it went in.",
+            "fields": [
+              {
+                "name": "sku",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "quantity",
+                "type": "number",
+                "doc": ""
+              },
+              {
+                "name": "unitPrice",
+                "type": "Money",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "valueObjects": [
+          {
+            "id": "shop.cart.basket.applied-coupon",
+            "slug": "applied-coupon",
+            "name": "AppliedCoupon",
+            "doc": "A coupon pricing accepted for a basket: the code as the customer typed it,\nnormalised, and the discount pricing agreed to. The discount is pricing's\nanswer, never computed here (cart.0003 holds for money off as for prices).",
+            "fields": [
+              {
+                "name": "code",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "discount",
+                "type": "Money",
+                "doc": ""
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.currency",
+            "slug": "currency",
+            "name": "Currency",
+            "doc": "ISO 4217, upper case. A basket has one, set by its first line.",
+            "fields": [
+              {
+                "name": "code",
+                "type": "string",
+                "doc": ""
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.line-item",
+            "slug": "line-item",
+            "name": "LineItem",
+            "doc": "What the caller asks to put in: the estate's shared shape for a line.",
+            "fields": [
+              {
+                "name": "sku",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "quantity",
+                "type": "number",
+                "doc": ""
+              },
+              {
+                "name": "unitPrice",
+                "type": "Money",
+                "doc": ""
+              }
+            ]
+          },
+          {
+            "id": "shop.cart.basket.money",
+            "slug": "money",
+            "name": "Money",
+            "doc": "An amount in the minor unit of the currency: an integer, never a float.",
+            "fields": [
+              {
+                "name": "amountMinor",
+                "type": "number",
+                "doc": ""
+              },
+              {
+                "name": "currency",
+                "type": "Currency",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "operations": [
+          {
+            "id": "AddItem",
+            "kind": "command",
+            "doc": "Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002).",
+            "exposedBy": [
+              "addItem"
+            ]
+          },
+          {
+            "id": "ApplyCoupon",
+            "kind": "command",
+            "doc": "Asks pricing whether a coupon is good for the basket's lines, and for how much, then takes the discount pricing agreed to: one coupon per basket, in the basket's currency, never more than the lines are worth. The discount is pricing's answer (cart.0003), and the coupon is on the quote at checkout (cart.0004).",
+            "exposedBy": [
+              "applyCoupon"
+            ]
+          },
+          {
+            "id": "Checkout",
+            "kind": "command",
+            "doc": "Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004).",
+            "exposedBy": [
+              "checkout"
+            ]
+          },
+          {
+            "id": "CreateBasket",
+            "kind": "command",
+            "doc": "Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007).",
+            "exposedBy": [
+              "createBasket"
+            ]
+          },
+          {
+            "id": "ExpireIdleBaskets",
+            "kind": "command",
+            "doc": "The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the service runs it once a minute."
+          },
+          {
+            "id": "GetBasket",
+            "kind": "query",
+            "doc": "The basket as it stands, for whoever holds its token.",
+            "exposedBy": [
+              "getBasket"
+            ]
+          },
+          {
+            "id": "RemoveItem",
+            "kind": "command",
+            "doc": "Takes a line out of a basket outright.",
+            "exposedBy": [
+              "removeItem"
+            ]
+          }
+        ],
+        "lifecycle": {
+          "states": [
+            "open",
+            "checked-out",
+            "abandoned",
+            "merged"
+          ],
+          "transitions": [
+            {
+              "from": "open",
+              "to": "checked-out",
+              "on": "checkout",
+              "source": "examples/shop/cart/src/domain/basket/basket.ts:114",
+              "emits": "shop.cart.basket.BasketCheckedOut"
+            },
+            {
+              "from": "open",
+              "to": "abandoned",
+              "on": "abandon",
+              "source": "examples/shop/cart/src/domain/basket/basket.ts:122",
+              "emits": "shop.cart.basket.BasketAbandoned"
+            },
+            {
+              "from": "open",
+              "to": "merged",
+              "on": "mergeInto",
+              "source": "examples/shop/cart/src/domain/basket/basket.ts:133",
+              "emits": "shop.cart.basket.BasketMerged"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "event",
+      "id": "shop.cart.basket.CouponApplied",
+      "change": "added",
+      "place": {
+        "context": "shop",
+        "service": "cart",
+        "aggregate": "basket"
+      },
+      "branch": {
+        "id": "shop.cart.basket.CouponApplied",
+        "slug": "coupon-applied",
+        "name": "CouponApplied",
+        "versions": [
+          {
+            "version": "v1",
+            "doc": "Pricing accepted a coupon and the basket took the discount it agreed to.",
+            "source": "examples/shop/cart/src/domain/basket/events/coupon-applied.ts",
+            "fields": [
+              {
+                "name": "basketId",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "code",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "discount",
+                "type": "Money",
+                "doc": ""
+              },
+              {
+                "name": "occurredAt",
+                "type": "Date",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "consumers": [],
+        "wire": {
+          "name": "cart.CouponApplied",
+          "channel": "shop.cart.basket"
+        }
+      }
+    }
+  ],
+  "views": {
+    "flow_cart_apply_coupon": {
+      "_type": "dynamic",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views.c4",
+      "description": {
+        "txt": "Source-backed cross-protocol continuations are included."
+      },
+      "title": "Apply coupon",
+      "id": "flow_cart_apply_coupon",
+      "variant": "diagram",
+      "flow": [
+        "step-01",
+        "step-02",
+        "step-03",
+        "step-04",
+        "step-05"
+      ],
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "gJqxMxbnsxDWQN3KgLkD8DyZ6Vypn-CrXEDEw1-TQwM",
+      "sequenceLayout": {
+        "actors": [
+          {
+            "id": "client",
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_source",
+                "cx": 160,
+                "cy": 250,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-05_target",
+                "cx": 160,
+                "cy": 594,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "shop.cart",
+            "x": 400,
+            "y": 0,
+            "width": 392,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_target",
+                "cx": 196,
+                "cy": 250,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-02_source",
+                "cx": 196,
+                "cy": 272,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-03_source",
+                "cx": 196,
+                "cy": 389,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-04_source",
+                "cx": 196,
+                "cy": 491,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-05_source",
+                "cx": 196,
+                "cy": 594,
+                "height": 40,
+                "type": "source",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "shop.pricing",
+            "x": 872,
+            "y": 0,
+            "width": 411,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-02_target",
+                "cx": 206,
+                "cy": 272,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "cart_pg",
+            "x": 1363,
+            "y": 0,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-03_target",
+                "cx": 160,
+                "cy": 389,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "bus",
+            "x": 1763,
+            "y": 4,
+            "width": 320,
+            "height": 172,
+            "ports": [
+              {
+                "id": "step-04_target",
+                "cx": 160,
+                "cy": 487,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          }
+        ],
+        "compounds": [],
+        "steps": [
+          {
+            "id": "step-01",
+            "sourceHandle": "step-01_source",
+            "targetHandle": "step-01_target",
+            "labelBBox": {
+              "width": 178,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-02",
+            "sourceHandle": "step-02_source",
+            "targetHandle": "step-02_target",
+            "labelBBox": {
+              "width": 144,
+              "height": 43
+            }
+          },
+          {
+            "id": "step-03",
+            "sourceHandle": "step-03_source",
+            "targetHandle": "step-03_target",
+            "labelBBox": {
+              "width": 72,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-04",
+            "sourceHandle": "step-04_source",
+            "targetHandle": "step-04_target",
+            "labelBBox": {
+              "width": 138,
+              "height": 29
+            }
+          },
+          {
+            "id": "step-05",
+            "sourceHandle": "step-05_source",
+            "targetHandle": "step-05_target",
+            "labelBBox": {
+              "width": 140,
+              "height": 28
+            }
+          }
+        ],
+        "parallelAreas": [],
+        "subflows": [],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 2083,
+          "height": 672
+        }
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1681,
+        "height": 752
+      },
+      "nodes": [
+        {
+          "id": "client",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-05"
+          ],
+          "outEdges": [
+            "step-01"
+          ],
+          "title": "client",
+          "modelRef": "client",
+          "shape": "person",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "actor",
+          "x": 0,
+          "y": 290,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 135,
+            "y": 76,
+            "width": 51,
+            "height": 24
+          }
+        },
+        {
+          "id": "shop.cart",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-01"
+          ],
+          "outEdges": [
+            "step-02",
+            "step-03",
+            "step-04",
+            "step-05"
+          ],
+          "title": "Shopping Cart",
+          "modelRef": "shop.cart",
+          "shape": "rectangle",
+          "color": "ctx3",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/shop/cart"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_shop_cart",
+          "x": 616,
+          "y": 290,
+          "width": 392,
+          "height": 180,
+          "labelBBox": {
+            "x": 17,
+            "y": 55,
+            "width": 357,
+            "height": 67
+          }
+        },
+        {
+          "id": "shop.pricing",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-02"
+          ],
+          "outEdges": [],
+          "title": "Pricing",
+          "modelRef": "shop.pricing",
+          "shape": "rectangle",
+          "color": "ctx3",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/shop/pricing"
+          },
+          "tags": [],
+          "technology": "gRPC",
+          "kind": "service",
+          "navigateTo": "svc_shop_pricing",
+          "x": 1269,
+          "y": 0,
+          "width": 411,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 376,
+            "height": 67
+          }
+        },
+        {
+          "id": "cart_pg",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-03"
+          ],
+          "outEdges": [],
+          "title": "cart-pg",
+          "modelRef": "cart_pg",
+          "shape": "storage",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "store",
+          "x": 1315,
+          "y": 290,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 127,
+            "y": 76,
+            "width": 66,
+            "height": 24
+          }
+        },
+        {
+          "id": "bus",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-04"
+          ],
+          "outEdges": [],
+          "title": "bus",
+          "modelRef": "bus",
+          "shape": "queue",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "broker",
+          "x": 1315,
+          "y": 580,
+          "width": 320,
+          "height": 172,
+          "labelBBox": {
+            "x": 142,
+            "y": 72,
+            "width": 36,
+            "height": 24
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "step-01",
+          "source": "client",
+          "target": "shop.cart",
+          "label": "ApplyCouponRequest",
+          "points": [
+            [
+              320,
+              380
+            ],
+            [
+              406,
+              380
+            ],
+            [
+              513,
+              380
+            ],
+            [
+              605,
+              380
+            ]
+          ],
+          "labelBBox": {
+            "x": 389,
+            "y": 348,
+            "width": 162,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "1vm7fc4"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "kind": "uses",
+          "astPath": "/steps@0",
+          "notes": {
+            "txt": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+          }
+        },
+        {
+          "id": "step-02",
+          "source": "shop.cart",
+          "target": "shop.pricing",
+          "label": "RedeemCoupon",
+          "points": [
+            [
+              1008,
+              294
+            ],
+            [
+              1087,
+              260
+            ],
+            [
+              1179,
+              219
+            ],
+            [
+              1260,
+              184
+            ]
+          ],
+          "labelBBox": {
+            "x": 1077,
+            "y": 167,
+            "width": 128,
+            "height": 35
+          },
+          "parent": null,
+          "relations": [
+            "kls9en",
+            "1t4uwyl",
+            "18netj0"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "technology": "gRPC",
+          "astPath": "/steps@1",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/apply_coupon/usecase.ts:34"
+          }
+        },
+        {
+          "id": "step-03",
+          "source": "shop.cart",
+          "target": "cart_pg",
+          "label": "save",
+          "points": [
+            [
+              1008,
+              380
+            ],
+            [
+              1105,
+              380
+            ],
+            [
+              1222,
+              380
+            ],
+            [
+              1314,
+              380
+            ]
+          ],
+          "labelBBox": {
+            "x": 1113,
+            "y": 348,
+            "width": 56,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@2",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/apply_coupon/usecase.ts:39"
+          }
+        },
+        {
+          "id": "step-04",
+          "source": "shop.cart",
+          "target": "bus",
+          "label": "CouponApplied",
+          "points": [
+            [
+              1008,
+              464
+            ],
+            [
+              1102,
+              505
+            ],
+            [
+              1215,
+              554
+            ],
+            [
+              1306,
+              593
+            ]
+          ],
+          "labelBBox": {
+            "x": 1080,
+            "y": 465,
+            "width": 122,
+            "height": 21
+          },
+          "parent": null,
+          "relations": [
+            "zd62k9"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@3",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/apply_coupon/usecase.ts:39"
+          }
+        },
+        {
+          "id": "step-05",
+          "source": "shop.cart",
+          "target": "client",
+          "label": "HTTP response",
+          "points": [
+            [
+              330,
+              436
+            ],
+            [
+              347,
+              440
+            ],
+            [
+              364,
+              443
+            ],
+            [
+              380,
+              446
+            ],
+            [
+              457,
+              457
+            ],
+            [
+              478,
+              456
+            ],
+            [
+              555,
+              446
+            ],
+            [
+              575,
+              443
+            ],
+            [
+              595,
+              440
+            ],
+            [
+              615,
+              436
+            ]
+          ],
+          "labelBBox": {
+            "x": 408,
+            "y": 414,
+            "width": 124,
+            "height": 20
+          },
+          "dir": "back",
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@4",
+          "notes": {
+            "txt": "Synthesized from the proven synchronous HTTP handler return."
+          }
+        }
+      ]
+    },
+    "flow_observed_cart_post_v1_baskets_basketid_merge": {
+      "_type": "dynamic",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views.c4",
+      "description": {
+        "txt": "Read from 1 trace in telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen."
+      },
+      "title": "Observed: POST /v1/baskets/:basketId/merge",
+      "id": "flow_observed_cart_post_v1_baskets_basketid_merge",
+      "variant": "diagram",
+      "flow": [
+        "step-01",
+        "step-02",
+        "step-03",
+        "step-04",
+        "step-05"
+      ],
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "Vcjl23xlDBpy08beVO2Durwx3y3__gHF8PMwmkyW7Cw",
+      "sequenceLayout": {
+        "actors": [
+          {
+            "id": "client",
+            "x": 0,
+            "y": -4,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_source",
+                "cx": 160,
+                "cy": 254,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "shop.cart",
+            "x": 400,
+            "y": -4,
+            "width": 392,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_target",
+                "cx": 196,
+                "cy": 254,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-02_source",
+                "cx": 196,
+                "cy": 276,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-03_source",
+                "cx": 196,
+                "cy": 393,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-04_source",
+                "cx": 196,
+                "cy": 496,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-05_source",
+                "cx": 196,
+                "cy": 598,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "auth.auth",
+            "x": 872,
+            "y": -4,
+            "width": 360,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-02_target",
+                "cx": 180,
+                "cy": 276,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "bus",
+            "x": 1312,
+            "y": 0,
+            "width": 320,
+            "height": 172,
+            "ports": [
+              {
+                "id": "step-03_target",
+                "cx": 160,
+                "cy": 389,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-04_target",
+                "cx": 160,
+                "cy": 492,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-05_target",
+                "cx": 160,
+                "cy": 594,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          }
+        ],
+        "compounds": [],
+        "steps": [
+          {
+            "id": "step-01",
+            "sourceHandle": "step-01_source",
+            "targetHandle": "step-01_target",
+            "labelBBox": {
+              "width": 259,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-02",
+            "sourceHandle": "step-02_source",
+            "targetHandle": "step-02_target",
+            "labelBBox": {
+              "width": 233,
+              "height": 43
+            }
+          },
+          {
+            "id": "step-03",
+            "sourceHandle": "step-03_source",
+            "targetHandle": "step-03_target",
+            "labelBBox": {
+              "width": 153,
+              "height": 29
+            }
+          },
+          {
+            "id": "step-04",
+            "sourceHandle": "step-04_source",
+            "targetHandle": "step-04_target",
+            "labelBBox": {
+              "width": 135,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-05",
+            "sourceHandle": "step-05_source",
+            "targetHandle": "step-05_target",
+            "labelBBox": {
+              "width": 132,
+              "height": 28
+            }
+          }
+        ],
+        "parallelAreas": [],
+        "subflows": [],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1632,
+          "height": 672
+        }
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1799,
+        "height": 523
+      },
+      "nodes": [
+        {
+          "id": "client",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "step-01"
+          ],
+          "title": "client",
+          "modelRef": "client",
+          "shape": "person",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "actor",
+          "x": 0,
+          "y": 231,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 135,
+            "y": 76,
+            "width": 51,
+            "height": 24
+          }
+        },
+        {
+          "id": "shop.cart",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-01"
+          ],
+          "outEdges": [
+            "step-02",
+            "step-03",
+            "step-04",
+            "step-05"
+          ],
+          "title": "Shopping Cart",
+          "modelRef": "shop.cart",
+          "shape": "rectangle",
+          "color": "ctx3",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/shop/cart"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_shop_cart",
+          "x": 697,
+          "y": 231,
+          "width": 392,
+          "height": 180,
+          "labelBBox": {
+            "x": 17,
+            "y": 55,
+            "width": 357,
+            "height": 67
+          }
+        },
+        {
+          "id": "auth.auth",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-02"
+          ],
+          "outEdges": [],
+          "title": "Authentication & Sessions",
+          "modelRef": "auth.auth",
+          "shape": "rectangle",
+          "color": "ctx0",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/auth"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_auth_auth",
+          "x": 1439,
+          "y": 0,
+          "width": 360,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 324,
+            "height": 67
+          }
+        },
+        {
+          "id": "bus",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-03",
+            "step-04",
+            "step-05"
+          ],
+          "outEdges": [],
+          "title": "bus",
+          "modelRef": "bus",
+          "shape": "queue",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "broker",
+          "x": 1459,
+          "y": 312,
+          "width": 320,
+          "height": 172,
+          "labelBBox": {
+            "x": 142,
+            "y": 72,
+            "width": 36,
+            "height": 24
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "step-01",
+          "source": "client",
+          "target": "shop.cart",
+          "label": "POST /v1/baskets/:basketId/merge",
+          "points": [
+            [
+              320,
+              321
+            ],
+            [
+              427,
+              321
+            ],
+            [
+              570,
+              321
+            ],
+            [
+              686,
+              321
+            ]
+          ],
+          "labelBBox": {
+            "x": 389,
+            "y": 289,
+            "width": 243,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "1vm7fc4"
+          ],
+          "color": "verified",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "kind": "uses",
+          "astPath": "/steps@0"
+        },
+        {
+          "id": "step-02",
+          "source": "shop.cart",
+          "target": "auth.auth",
+          "label": "validateSession → SessionInfo",
+          "description": {
+            "txt": "auth.v1/validateSession · verified · examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
+          },
+          "points": [
+            [
+              1089,
+              259
+            ],
+            [
+              1194,
+              225
+            ],
+            [
+              1324,
+              184
+            ],
+            [
+              1429,
+              150
+            ]
+          ],
+          "labelBBox": {
+            "x": 1158,
+            "y": 130,
+            "width": 217,
+            "height": 35
+          },
+          "parent": null,
+          "relations": [
+            "g18v76"
+          ],
+          "color": "verified",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "kind": "calls",
+          "technology": "HTTP",
+          "astPath": "/steps@1"
+        },
+        {
+          "id": "step-03",
+          "source": "shop.cart",
+          "target": "bus",
+          "label": "BasketItemAdded",
+          "points": [
+            [
+              1089,
+              332
+            ],
+            [
+              1177,
+              338
+            ],
+            [
+              1283,
+              346
+            ],
+            [
+              1379,
+              358
+            ],
+            [
+              1401,
+              361
+            ],
+            [
+              1425,
+              364
+            ],
+            [
+              1448,
+              368
+            ]
+          ],
+          "labelBBox": {
+            "x": 1198,
+            "y": 304,
+            "width": 137,
+            "height": 21
+          },
+          "parent": null,
+          "relations": [
+            "zd62k9"
+          ],
+          "color": "verified",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@2"
+        },
+        {
+          "id": "step-04",
+          "source": "shop.cart",
+          "target": "bus",
+          "label": "BasketCreated",
+          "points": [
+            [
+              1089,
+              408
+            ],
+            [
+              1109,
+              415
+            ],
+            [
+              1129,
+              420
+            ],
+            [
+              1149,
+              424
+            ],
+            [
+              1247,
+              443
+            ],
+            [
+              1359,
+              438
+            ],
+            [
+              1449,
+              427
+            ]
+          ],
+          "labelBBox": {
+            "x": 1207,
+            "y": 392,
+            "width": 119,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "zd62k9"
+          ],
+          "color": "verified",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@3"
+        },
+        {
+          "id": "step-05",
+          "source": "shop.cart",
+          "target": "bus",
+          "label": "BasketMerged",
+          "points": [
+            [
+              989,
+              411
+            ],
+            [
+              1034,
+              447
+            ],
+            [
+              1091,
+              484
+            ],
+            [
+              1149,
+              503
+            ],
+            [
+              1246,
+              534
+            ],
+            [
+              1279,
+              524
+            ],
+            [
+              1379,
+              503
+            ],
+            [
+              1402,
+              498
+            ],
+            [
+              1426,
+              491
+            ],
+            [
+              1449,
+              482
+            ]
+          ],
+          "labelBBox": {
+            "x": 1208,
+            "y": 471,
+            "width": 116,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "zd62k9"
+          ],
+          "color": "verified",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@4"
+        }
+      ]
+    },
+    "flow_observed_cart_post_v1_baskets_basketid_merge_cross": {
+      "_type": "dynamic",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views.c4",
+      "description": null,
+      "title": "Observed: POST /v1/baskets/:basketId/merge — crossings only",
+      "id": "flow_observed_cart_post_v1_baskets_basketid_merge_cross",
+      "variant": "diagram",
+      "flow": [
+        "step-01"
+      ],
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "jq5bHvqSr-UtiE3I8D7Zgpr52oIeSoigiUFWBmWOW2I",
+      "sequenceLayout": {
+        "actors": [
+          {
+            "id": "shop.cart",
+            "x": 0,
+            "y": 0,
+            "width": 392,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_source",
+                "cx": 196,
+                "cy": 250,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "auth.auth",
+            "x": 472,
+            "y": 0,
+            "width": 360,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_target",
+                "cx": 180,
+                "cy": 250,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          }
+        ],
+        "compounds": [],
+        "steps": [
+          {
+            "id": "step-01",
+            "sourceHandle": "step-01_source",
+            "targetHandle": "step-01_target",
+            "labelBBox": {
+              "width": 233,
+              "height": 43
+            }
+          }
+        ],
+        "parallelAreas": [],
+        "subflows": [],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 832,
+          "height": 343
+        }
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1103,
+        "height": 180
+      },
+      "nodes": [
+        {
+          "id": "shop.cart",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "step-01"
+          ],
+          "title": "Shopping Cart",
+          "modelRef": "shop.cart",
+          "shape": "rectangle",
+          "color": "ctx3",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/shop/cart"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_shop_cart",
+          "x": 0,
+          "y": 0,
+          "width": 392,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 357,
+            "height": 67
+          }
+        },
+        {
+          "id": "auth.auth",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-01"
+          ],
+          "outEdges": [],
+          "title": "Authentication & Sessions",
+          "modelRef": "auth.auth",
+          "shape": "rectangle",
+          "color": "ctx0",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/auth"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_auth_auth",
+          "x": 743,
+          "y": 0,
+          "width": 360,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 324,
+            "height": 67
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "step-01",
+          "source": "shop.cart",
+          "target": "auth.auth",
+          "label": "validateSession → SessionInfo",
+          "description": {
+            "txt": "auth.v1/validateSession · verified · examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
+          },
+          "points": [
+            [
+              392,
+              90
+            ],
+            [
+              498,
+              90
+            ],
+            [
+              628,
+              90
+            ],
+            [
+              732,
+              90
+            ]
+          ],
+          "labelBBox": {
+            "x": 462,
+            "y": 48,
+            "width": 217,
+            "height": 35
+          },
+          "parent": null,
+          "relations": [
+            "g18v76"
+          ],
+          "color": "verified",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "kind": "calls",
+          "technology": "HTTP",
+          "astPath": "/steps@0"
+        }
+      ]
+    },
+    "flow_cart_merge_baskets": {
+      "_type": "dynamic",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views.c4",
+      "description": {
+        "txt": "Source-backed cross-protocol continuations are included."
+      },
+      "title": "Merge baskets",
+      "id": "flow_cart_merge_baskets",
+      "variant": "diagram",
+      "flow": [
+        "step-01",
+        "step-02",
+        "step-03",
+        "step-04",
+        "step-05",
+        "step-06",
+        "step-07",
+        "step-08",
+        "step-09"
+      ],
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "oi-sXB5tNZDR_HX3gUFu7fdUqzpc-HH195TNtwAd2ZQ",
+      "sequenceLayout": {
+        "actors": [
+          {
+            "id": "client",
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_source",
+                "cx": 160,
+                "cy": 250,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-09_target",
+                "cx": 160,
+                "cy": 1002,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "shop.cart",
+            "x": 400,
+            "y": 0,
+            "width": 392,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_target",
+                "cx": 196,
+                "cy": 250,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-02_source",
+                "cx": 196,
+                "cy": 272,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-03_source",
+                "cx": 196,
+                "cy": 389,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-04_source",
+                "cx": 196,
+                "cy": 491,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-05_source",
+                "cx": 196,
+                "cy": 593,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-06_source",
+                "cx": 196,
+                "cy": 696,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-07_source",
+                "cx": 196,
+                "cy": 798,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-08_source",
+                "cx": 196,
+                "cy": 900,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-09_source",
+                "cx": 196,
+                "cy": 1002,
+                "height": 40,
+                "type": "source",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "auth.auth",
+            "x": 872,
+            "y": 0,
+            "width": 360,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-02_target",
+                "cx": 180,
+                "cy": 272,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "cart_pg",
+            "x": 1312,
+            "y": 0,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-03_target",
+                "cx": 160,
+                "cy": 389,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-04_target",
+                "cx": 160,
+                "cy": 491,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-07_target",
+                "cx": 160,
+                "cy": 798,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "bus",
+            "x": 1712,
+            "y": 4,
+            "width": 320,
+            "height": 172,
+            "ports": [
+              {
+                "id": "step-05_target",
+                "cx": 160,
+                "cy": 589,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-06_target",
+                "cx": 160,
+                "cy": 692,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-08_target",
+                "cx": 160,
+                "cy": 896,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          }
+        ],
+        "compounds": [],
+        "steps": [
+          {
+            "id": "step-01",
+            "sourceHandle": "step-01_source",
+            "targetHandle": "step-01_target",
+            "labelBBox": {
+              "width": 134,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-02",
+            "sourceHandle": "step-02_source",
+            "targetHandle": "step-02_target",
+            "labelBBox": {
+              "width": 233,
+              "height": 43
+            }
+          },
+          {
+            "id": "step-03",
+            "sourceHandle": "step-03_source",
+            "targetHandle": "step-03_target",
+            "labelBBox": {
+              "width": 94,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-04",
+            "sourceHandle": "step-04_source",
+            "targetHandle": "step-04_target",
+            "labelBBox": {
+              "width": 71,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-05",
+            "sourceHandle": "step-05_source",
+            "targetHandle": "step-05_target",
+            "labelBBox": {
+              "width": 135,
+              "height": 29
+            }
+          },
+          {
+            "id": "step-06",
+            "sourceHandle": "step-06_source",
+            "targetHandle": "step-06_target",
+            "labelBBox": {
+              "width": 153,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-07",
+            "sourceHandle": "step-07_source",
+            "targetHandle": "step-07_target",
+            "labelBBox": {
+              "width": 71,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-08",
+            "sourceHandle": "step-08_source",
+            "targetHandle": "step-08_target",
+            "labelBBox": {
+              "width": 132,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-09",
+            "sourceHandle": "step-09_source",
+            "targetHandle": "step-09_target",
+            "labelBBox": {
+              "width": 140,
+              "height": 28
+            }
+          }
+        ],
+        "parallelAreas": [],
+        "subflows": [],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 2032,
+          "height": 1080
+        }
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1680,
+        "height": 967
+      },
+      "nodes": [
+        {
+          "id": "client",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-09"
+          ],
+          "outEdges": [
+            "step-01"
+          ],
+          "title": "client",
+          "modelRef": "client",
+          "shape": "person",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "actor",
+          "x": 0,
+          "y": 462,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 135,
+            "y": 76,
+            "width": 51,
+            "height": 24
+          }
+        },
+        {
+          "id": "shop.cart",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-01"
+          ],
+          "outEdges": [
+            "step-02",
+            "step-03",
+            "step-04",
+            "step-05",
+            "step-06",
+            "step-07",
+            "step-08",
+            "step-09"
+          ],
+          "title": "Shopping Cart",
+          "modelRef": "shop.cart",
+          "shape": "rectangle",
+          "color": "ctx3",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/shop/cart"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_shop_cart",
+          "x": 577,
+          "y": 462,
+          "width": 392,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 357,
+            "height": 67
+          }
+        },
+        {
+          "id": "auth.auth",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-02"
+          ],
+          "outEdges": [],
+          "title": "Authentication & Sessions",
+          "modelRef": "auth.auth",
+          "shape": "rectangle",
+          "color": "ctx0",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/auth"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_auth_auth",
+          "x": 1320,
+          "y": 0,
+          "width": 360,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 324,
+            "height": 67
+          }
+        },
+        {
+          "id": "cart_pg",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-03",
+            "step-04",
+            "step-07"
+          ],
+          "outEdges": [],
+          "title": "cart-pg",
+          "modelRef": "cart_pg",
+          "shape": "storage",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "store",
+          "x": 1340,
+          "y": 308,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 127,
+            "y": 76,
+            "width": 66,
+            "height": 24
+          }
+        },
+        {
+          "id": "bus",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-05",
+            "step-06",
+            "step-08"
+          ],
+          "outEdges": [],
+          "title": "bus",
+          "modelRef": "bus",
+          "shape": "queue",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "broker",
+          "x": 1340,
+          "y": 774,
+          "width": 320,
+          "height": 172,
+          "labelBBox": {
+            "x": 142,
+            "y": 72,
+            "width": 36,
+            "height": 24
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "step-01",
+          "source": "client",
+          "target": "shop.cart",
+          "label": "MergeRequest",
+          "points": [
+            [
+              320,
+              552
+            ],
+            [
+              395,
+              552
+            ],
+            [
+              486,
+              552
+            ],
+            [
+              567,
+              552
+            ]
+          ],
+          "labelBBox": {
+            "x": 392,
+            "y": 520,
+            "width": 118,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@0",
+          "notes": {
+            "txt": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+          }
+        },
+        {
+          "id": "step-02",
+          "source": "shop.cart",
+          "target": "auth.auth",
+          "label": "validateSession → SessionInfo",
+          "description": {
+            "txt": "auth.v1/validateSession · verified · examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
+          },
+          "points": [
+            [
+              838,
+              462
+            ],
+            [
+              885,
+              401
+            ],
+            [
+              954,
+              322
+            ],
+            [
+              1030,
+              270
+            ],
+            [
+              1114,
+              212
+            ],
+            [
+              1220,
+              169
+            ],
+            [
+              1310,
+              140
+            ]
+          ],
+          "labelBBox": {
+            "x": 1039,
+            "y": 119,
+            "width": 217,
+            "height": 35
+          },
+          "parent": null,
+          "relations": [
+            "7sp585"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "kind": "calls",
+          "technology": "HTTP",
+          "astPath": "/steps@1",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
+          }
+        },
+        {
+          "id": "step-03",
+          "source": "shop.cart",
+          "target": "cart_pg",
+          "label": "openFor",
+          "points": [
+            [
+              863,
+              462
+            ],
+            [
+              908,
+              422
+            ],
+            [
+              967,
+              379
+            ],
+            [
+              1030,
+              358
+            ],
+            [
+              1129,
+              325
+            ],
+            [
+              1246,
+              335
+            ],
+            [
+              1339,
+              353
+            ]
+          ],
+          "labelBBox": {
+            "x": 1108,
+            "y": 304,
+            "width": 78,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@2",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35"
+          }
+        },
+        {
+          "id": "step-04",
+          "source": "shop.cart",
+          "target": "cart_pg",
+          "label": "save",
+          "points": [
+            [
+              969,
+              511
+            ],
+            [
+              1085,
+              486
+            ],
+            [
+              1230,
+              455
+            ],
+            [
+              1339,
+              432
+            ]
+          ],
+          "labelBBox": {
+            "x": 1120,
+            "y": 420,
+            "width": 55,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@3",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          }
+        },
+        {
+          "id": "step-05",
+          "source": "shop.cart",
+          "target": "bus",
+          "label": "BasketCreated",
+          "points": [
+            [
+              969,
+              635
+            ],
+            [
+              1082,
+              683
+            ],
+            [
+              1222,
+              743
+            ],
+            [
+              1330,
+              788
+            ]
+          ],
+          "labelBBox": {
+            "x": 1088,
+            "y": 637,
+            "width": 119,
+            "height": 21
+          },
+          "parent": null,
+          "relations": [
+            "jiu4e7"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@4",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          }
+        },
+        {
+          "id": "step-06",
+          "source": "shop.cart",
+          "target": "bus",
+          "label": "BasketItemAdded",
+          "points": [
+            [
+              834,
+              642
+            ],
+            [
+              880,
+              703
+            ],
+            [
+              949,
+              779
+            ],
+            [
+              1030,
+              818
+            ],
+            [
+              1122,
+              862
+            ],
+            [
+              1237,
+              873
+            ],
+            [
+              1330,
+              873
+            ]
+          ],
+          "labelBBox": {
+            "x": 1079,
+            "y": 786,
+            "width": 137,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "jiu4e7"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@5",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+          }
+        },
+        {
+          "id": "step-07",
+          "source": "shop.cart",
+          "target": "cart_pg",
+          "label": "save",
+          "points": [
+            [
+              970,
+              582
+            ],
+            [
+              1060,
+              589
+            ],
+            [
+              1167,
+              587
+            ],
+            [
+              1260,
+              559
+            ],
+            [
+              1308,
+              544
+            ],
+            [
+              1355,
+              516
+            ],
+            [
+              1395,
+              487
+            ]
+          ],
+          "labelBBox": {
+            "x": 1120,
+            "y": 527,
+            "width": 55,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@6",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+          }
+        },
+        {
+          "id": "step-08",
+          "source": "shop.cart",
+          "target": "bus",
+          "label": "BasketMerged",
+          "points": [
+            [
+              805,
+              642
+            ],
+            [
+              842,
+              735
+            ],
+            [
+              915,
+              874
+            ],
+            [
+              1030,
+              936
+            ],
+            [
+              1122,
+              985
+            ],
+            [
+              1237,
+              967
+            ],
+            [
+              1330,
+              937
+            ]
+          ],
+          "labelBBox": {
+            "x": 1089,
+            "y": 904,
+            "width": 116,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "jiu4e7"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@7",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+          }
+        },
+        {
+          "id": "step-09",
+          "source": "shop.cart",
+          "target": "client",
+          "label": "HTTP response",
+          "points": [
+            [
+              330,
+              608
+            ],
+            [
+              347,
+              612
+            ],
+            [
+              364,
+              615
+            ],
+            [
+              380,
+              618
+            ],
+            [
+              444,
+              627
+            ],
+            [
+              514,
+              621
+            ],
+            [
+              577,
+              609
+            ]
+          ],
+          "labelBBox": {
+            "x": 389,
+            "y": 586,
+            "width": 124,
+            "height": 20
+          },
+          "dir": "back",
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@8",
+          "notes": {
+            "txt": "Synthesized from the proven synchronous HTTP handler return."
+          }
+        }
+      ]
+    },
+    "flow_cart_merge_baskets_cross": {
+      "_type": "dynamic",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views.c4",
+      "description": null,
+      "title": "Merge baskets — crossings only",
+      "id": "flow_cart_merge_baskets_cross",
+      "variant": "diagram",
+      "flow": [
+        "step-01"
+      ],
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "dmkvsUVm_8Luq_qUKkckKWOk7dgIhWrDi3ehCHgaUSw",
+      "sequenceLayout": {
+        "actors": [
+          {
+            "id": "shop.cart",
+            "x": 0,
+            "y": 0,
+            "width": 392,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_source",
+                "cx": 196,
+                "cy": 250,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "auth.auth",
+            "x": 472,
+            "y": 0,
+            "width": 360,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_target",
+                "cx": 180,
+                "cy": 250,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          }
+        ],
+        "compounds": [],
+        "steps": [
+          {
+            "id": "step-01",
+            "sourceHandle": "step-01_source",
+            "targetHandle": "step-01_target",
+            "labelBBox": {
+              "width": 233,
+              "height": 43
+            }
+          }
+        ],
+        "parallelAreas": [],
+        "subflows": [],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 832,
+          "height": 343
+        }
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1103,
+        "height": 180
+      },
+      "nodes": [
+        {
+          "id": "shop.cart",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "step-01"
+          ],
+          "title": "Shopping Cart",
+          "modelRef": "shop.cart",
+          "shape": "rectangle",
+          "color": "ctx3",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/shop/cart"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_shop_cart",
+          "x": 0,
+          "y": 0,
+          "width": 392,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 357,
+            "height": 67
+          }
+        },
+        {
+          "id": "auth.auth",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-01"
+          ],
+          "outEdges": [],
+          "title": "Authentication & Sessions",
+          "modelRef": "auth.auth",
+          "shape": "rectangle",
+          "color": "ctx0",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/auth"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_auth_auth",
+          "x": 743,
+          "y": 0,
+          "width": 360,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 324,
+            "height": 67
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "step-01",
+          "source": "shop.cart",
+          "target": "auth.auth",
+          "label": "validateSession → SessionInfo",
+          "description": {
+            "txt": "auth.v1/validateSession · verified · examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
+          },
+          "points": [
+            [
+              392,
+              90
+            ],
+            [
+              498,
+              90
+            ],
+            [
+              628,
+              90
+            ],
+            [
+              732,
+              90
+            ]
+          ],
+          "labelBBox": {
+            "x": 462,
+            "y": 48,
+            "width": 217,
+            "height": 35
+          },
+          "parent": null,
+          "relations": [
+            "7sp585"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "kind": "calls",
+          "technology": "HTTP",
+          "astPath": "/steps@0",
+          "notes": {
+            "txt": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
+          }
+        }
+      ]
+    }
+  },
+  "elements": {
+    "client": {
+      "style": {
+        "shape": "person",
+        "color": "muted"
+      },
+      "title": "client",
+      "kind": "actor",
+      "id": "client"
+    },
+    "shop": {
+      "style": {
+        "shape": "rectangle",
+        "opacity": 5,
+        "border": "dashed",
+        "color": "ctx3"
+      },
+      "description": {
+        "txt": "What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing."
+      },
+      "title": "Shop",
+      "kind": "context",
+      "id": "shop"
+    },
+    "shop.cart": {
+      "style": {
+        "shape": "rectangle",
+        "color": "ctx3"
+      },
+      "technology": "HTTP",
+      "description": {
+        "txt": "github.com/shortlink-org/portolan/examples/shop/cart"
+      },
+      "title": "Shopping Cart",
+      "kind": "service",
+      "id": "shop.cart"
+    },
+    "shop.pricing": {
+      "style": {
+        "shape": "rectangle",
+        "color": "ctx3"
+      },
+      "technology": "gRPC",
+      "description": {
+        "txt": "github.com/shortlink-org/portolan/examples/shop/pricing"
+      },
+      "title": "Pricing",
+      "kind": "service",
+      "id": "shop.pricing"
+    },
+    "cart_pg": {
+      "style": {
+        "shape": "storage",
+        "color": "muted"
+      },
+      "title": "cart-pg",
+      "kind": "store",
+      "id": "cart_pg"
+    },
+    "bus": {
+      "style": {
+        "shape": "queue",
+        "color": "muted"
+      },
+      "title": "bus",
+      "kind": "broker",
+      "id": "bus"
+    },
+    "auth": {
+      "style": {
+        "shape": "rectangle",
+        "opacity": 5,
+        "border": "dashed",
+        "color": "ctx0"
+      },
+      "description": {
+        "txt": "Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session."
+      },
+      "title": "Authentication",
+      "kind": "context",
+      "id": "auth"
+    },
+    "auth.auth": {
+      "style": {
+        "shape": "rectangle",
+        "color": "ctx0"
+      },
+      "technology": "HTTP",
+      "description": {
+        "txt": "github.com/shortlink-org/portolan/examples/auth"
+      },
+      "title": "Authentication & Sessions",
+      "kind": "service",
+      "id": "auth.auth"
+    }
+  }
+}

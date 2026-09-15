@@ -52,6 +52,14 @@ export const paths = {
   plugin: (name: string) => `/plugins#plugin-${name}`,
   problems: () => "/problems",
   changes: () => "/changes",
+  /** Every saved branch draft of every project. */
+  drafts: () => "/drafts",
+  /** What one branch changed in one project. */
+  draftCompare: (project: string, branch: string) =>
+    `/drafts/${encodeURIComponent(project)}/${encodeURIComponent(branch)}`,
+  /** An entity only a branch has. */
+  draftEntity: (project: string, branch: string, id: string) =>
+    `/drafts/${encodeURIComponent(project)}/${encodeURIComponent(branch)}/e/${encodeURIComponent(id)}`,
   settings: () => "/settings",
   settingsProjects: () => "/settings/projects",
   settingsPipeline: () => "/settings/pipeline",
@@ -428,6 +436,9 @@ const ROUTES: RegExp[] = [
   /^\/plugins$/,
   /^\/problems$/,
   /^\/changes$/,
+  /^\/drafts$/,
+  /^\/drafts\/[^/]+\/[^/]+$/,
+  /^\/drafts\/[^/]+\/[^/]+\/e\/[^/]+$/,
   /^\/settings(?:\/(?:projects|pipeline|delivery|recordings|rules|integrations|preferences|about))?$/,
   /^\/plugins\/[^/]+\/settings$/,
   /^\/externals\/[^/]+$/,

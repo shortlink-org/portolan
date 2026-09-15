@@ -1,0 +1,3965 @@
+{
+  "schema": "portolan.draft/v1",
+  "project": "auth",
+  "branch": "demo/session-audit",
+  "tip": "1093f7e83183e2081fa415020b7f1cd3767b18de",
+  "base": "f38de4959d6e5026b5832c51b476e8d2d4147e60",
+  "generatedAt": "2026-09-15T05:41:37.856Z",
+  "entities": [
+    {
+      "kind": "flow",
+      "id": "flow.auth-login",
+      "change": "changed",
+      "base": {
+        "id": "flow.auth-login",
+        "slug": "auth-login",
+        "name": "Login",
+        "summary": "Turns credentials into a session. Source-backed cross-protocol continuations are included.",
+        "source": "examples/auth/internal/session/infrastructure/http/login.go",
+        "trigger": {
+          "kind": "http",
+          "label": "login",
+          "confidence": "high"
+        },
+        "owner": "auth",
+        "participants": [
+          {
+            "id": "client",
+            "kind": "actor",
+            "context": null
+          },
+          {
+            "id": "auth.auth",
+            "kind": "service",
+            "context": "auth"
+          },
+          {
+            "id": "auth-pg",
+            "kind": "store",
+            "context": "auth",
+            "entityRef": "auth.auth.pg"
+          },
+          {
+            "id": "bus",
+            "kind": "broker",
+            "context": null
+          },
+          {
+            "id": "risk-v1",
+            "kind": "unknown",
+            "context": null,
+            "label": "risk.v1"
+          }
+        ],
+        "steps": [
+          {
+            "evidence": [
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/infrastructure/http/login.go:11",
+                "symbol": "login"
+              }
+            ],
+            "type": "step",
+            "id": "s1",
+            "from": "client",
+            "to": "auth.auth",
+            "kind": "rpc",
+            "label": "login",
+            "status": "declared",
+            "line": "examples/auth/internal/session/infrastructure/http/login.go:11"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "provider-signature",
+                "source": "examples/auth/internal/session/infrastructure/identity/adapter.go:19",
+                "symbol": "NewAuthenticator"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:57",
+                "symbol": "CheckCredentials"
+              }
+            ],
+            "type": "step",
+            "id": "s2",
+            "from": "auth.auth",
+            "to": "auth.auth",
+            "kind": "call",
+            "label": "CheckCredentials",
+            "status": "declared",
+            "note": "Port `Authenticator`, bound at assembly to the CheckCredentials use case.",
+            "line": "examples/auth/internal/session/application/login/usecase.go:57"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+                "symbol": "user.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+                "symbol": "ByEmail"
+              }
+            ],
+            "type": "step",
+            "id": "s3",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "ByEmail",
+            "status": "declared",
+            "line": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "ByEmail"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "provider-signature",
+                "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+                "symbol": "New"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:50",
+                "symbol": "Check"
+              }
+            ],
+            "type": "step",
+            "id": "s4",
+            "from": "auth.auth",
+            "to": "auth.auth",
+            "kind": "call",
+            "label": "Check",
+            "status": "declared",
+            "note": "Port `Lockout`, bound at assembly to the Check use case.",
+            "line": "examples/auth/internal/user/application/check_credentials/usecase.go:50"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/lockout/application/check/usecase.go:25",
+                "symbol": "examples/auth/internal/lockout/application/check:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/lockout/application/check/usecase.go:26",
+                "symbol": "lockout.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/lockout/application/check/usecase.go:26",
+                "symbol": "ByUserID"
+              }
+            ],
+            "type": "step",
+            "id": "s5",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "ByUserID",
+            "status": "declared",
+            "line": "examples/auth/internal/lockout/application/check/usecase.go:26",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "ByUserID"
+            }
+          },
+          {
+            "type": "alt",
+            "id": "alt10",
+            "branches": [
+              {
+                "title": "!uc.verifier.Verify(in.Password, u.Password)",
+                "steps": [
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "provider-signature",
+                        "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+                        "symbol": "New"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:59",
+                        "symbol": "RecordFailure"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s6",
+                    "from": "auth.auth",
+                    "to": "auth.auth",
+                    "kind": "call",
+                    "label": "RecordFailure",
+                    "status": "declared",
+                    "note": "Port `Lockout`, bound at assembly to the RecordFailure use case.",
+                    "line": "examples/auth/internal/user/application/check_credentials/usecase.go:59"
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                        "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                        "symbol": "lockout.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                        "symbol": "ByUserID"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s7",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "ByUserID",
+                    "status": "declared",
+                    "note": "inside a loop over `retries`.",
+                    "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "ByUserID"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                        "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                        "symbol": "lockout.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                        "symbol": "Save"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s8",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "Save",
+                    "status": "declared",
+                    "note": "inside a loop over `retries`.",
+                    "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "Save"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                        "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                        "symbol": "AccountLocked"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s9",
+                    "from": "auth.auth",
+                    "to": "bus",
+                    "kind": "event",
+                    "ref": "auth.auth.lockout.AccountLocked",
+                    "label": "AccountLocked",
+                    "status": "declared",
+                    "note": "inside a loop over `retries`.",
+                    "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53"
+                  },
+                  {
+                    "type": "step",
+                    "id": "response-s1",
+                    "from": "auth.auth",
+                    "to": "client",
+                    "kind": "response",
+                    "label": "HTTP response",
+                    "status": "declared",
+                    "note": "Synthesized from the proven synchronous HTTP handler return.",
+                    "replyTo": "s1"
+                  }
+                ],
+                "terminal": true
+              },
+              {
+                "title": "otherwise",
+                "steps": []
+              }
+            ]
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "provider-signature",
+                "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+                "symbol": "New"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:68",
+                "symbol": "RecordSuccess"
+              }
+            ],
+            "type": "step",
+            "id": "s11",
+            "from": "auth.auth",
+            "to": "auth.auth",
+            "kind": "call",
+            "label": "RecordSuccess",
+            "status": "declared",
+            "note": "Port `Lockout`, bound at assembly to the RecordSuccess use case.",
+            "line": "examples/auth/internal/user/application/check_credentials/usecase.go:68"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:29",
+                "symbol": "examples/auth/internal/lockout/application/record_success:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+                "symbol": "lockout.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+                "symbol": "ByUserID"
+              }
+            ],
+            "type": "step",
+            "id": "s12",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "ByUserID",
+            "status": "declared",
+            "note": "inside a loop over `retries`.",
+            "line": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "ByUserID"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:29",
+                "symbol": "examples/auth/internal/lockout/application/record_success:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+                "symbol": "lockout.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+                "symbol": "Save"
+              }
+            ],
+            "type": "step",
+            "id": "s13",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "Save",
+            "status": "declared",
+            "note": "inside a loop over `retries`.",
+            "line": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "Save"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "contract",
+                "rule": "generated-client-method",
+                "source": "examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go",
+                "symbol": "risk.v1.RiskService/Assess"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:62",
+                "symbol": "Assess"
+              }
+            ],
+            "type": "step",
+            "id": "s14",
+            "from": "auth.auth",
+            "to": "risk-v1",
+            "kind": "rpc",
+            "ref": "risk.v1.RiskService/Assess",
+            "label": "Assess",
+            "status": "unresolved",
+            "line": "examples/auth/internal/session/application/login/usecase.go:62"
+          },
+          {
+            "type": "alt",
+            "id": "alt18",
+            "branches": [
+              {
+                "title": "verdict == VerdictBlock",
+                "steps": [
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:90",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:91",
+                        "symbol": "session.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:91",
+                        "symbol": "ByUserID"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s15",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "ByUserID",
+                    "status": "declared",
+                    "line": "examples/auth/internal/session/application/login/usecase.go:91",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "ByUserID"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:90",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:101",
+                        "symbol": "session.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:101",
+                        "symbol": "Save"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s16",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "Save",
+                    "status": "declared",
+                    "note": "inside a loop over `sessions`.",
+                    "line": "examples/auth/internal/session/application/login/usecase.go:101",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "Save"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:90",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:101",
+                        "symbol": "SessionEnded"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s17",
+                    "from": "auth.auth",
+                    "to": "bus",
+                    "kind": "event",
+                    "ref": "auth.auth.session.SessionEnded",
+                    "label": "SessionEnded",
+                    "status": "declared",
+                    "note": "inside a loop over `sessions`.",
+                    "line": "examples/auth/internal/session/application/login/usecase.go:101"
+                  },
+                  {
+                    "type": "step",
+                    "id": "response-s1-exit-2",
+                    "from": "auth.auth",
+                    "to": "client",
+                    "kind": "response",
+                    "label": "HTTP response",
+                    "status": "declared",
+                    "note": "Synthesized from the proven synchronous HTTP handler return.",
+                    "replyTo": "s1"
+                  }
+                ],
+                "terminal": true
+              },
+              {
+                "title": "otherwise",
+                "steps": []
+              }
+            ]
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/session/application/login/usecase.go:77",
+                "symbol": "session.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:77",
+                "symbol": "Save"
+              }
+            ],
+            "type": "step",
+            "id": "s19",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "Save",
+            "status": "declared",
+            "line": "examples/auth/internal/session/application/login/usecase.go:77",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "Save"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:77",
+                "symbol": "SessionStarted"
+              }
+            ],
+            "type": "step",
+            "id": "s20",
+            "from": "auth.auth",
+            "to": "bus",
+            "kind": "event",
+            "ref": "auth.auth.session.SessionStarted",
+            "label": "SessionStarted",
+            "status": "declared",
+            "line": "examples/auth/internal/session/application/login/usecase.go:77"
+          },
+          {
+            "type": "step",
+            "id": "response-s1-exit-3",
+            "from": "auth.auth",
+            "to": "client",
+            "kind": "response",
+            "label": "HTTP response",
+            "status": "declared",
+            "note": "Synthesized from the proven synchronous HTTP handler return.",
+            "replyTo": "s1"
+          }
+        ],
+        "includes": [],
+        "composition": []
+      },
+      "branch": {
+        "id": "flow.auth-login",
+        "slug": "auth-login",
+        "name": "Login",
+        "summary": "Turns credentials into a session. Source-backed cross-protocol continuations are included.",
+        "source": "examples/auth/internal/session/infrastructure/http/login.go",
+        "trigger": {
+          "kind": "http",
+          "label": "login",
+          "confidence": "high"
+        },
+        "owner": "auth",
+        "participants": [
+          {
+            "id": "client",
+            "kind": "actor",
+            "context": null
+          },
+          {
+            "id": "auth.auth",
+            "kind": "service",
+            "context": "auth"
+          },
+          {
+            "id": "auth-pg",
+            "kind": "store",
+            "context": "auth",
+            "entityRef": "auth.auth.pg"
+          },
+          {
+            "id": "bus",
+            "kind": "broker",
+            "context": null
+          },
+          {
+            "id": "risk-v1",
+            "kind": "unknown",
+            "context": null,
+            "label": "risk.v1"
+          }
+        ],
+        "steps": [
+          {
+            "evidence": [
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/infrastructure/http/login.go:11",
+                "symbol": "login"
+              }
+            ],
+            "type": "step",
+            "id": "s1",
+            "from": "client",
+            "to": "auth.auth",
+            "kind": "rpc",
+            "label": "login",
+            "status": "declared",
+            "line": "examples/auth/internal/session/infrastructure/http/login.go:11"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "provider-signature",
+                "source": "examples/auth/internal/session/infrastructure/identity/adapter.go:19",
+                "symbol": "NewAuthenticator"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:57",
+                "symbol": "CheckCredentials"
+              }
+            ],
+            "type": "step",
+            "id": "s2",
+            "from": "auth.auth",
+            "to": "auth.auth",
+            "kind": "call",
+            "label": "CheckCredentials",
+            "status": "declared",
+            "note": "Port `Authenticator`, bound at assembly to the CheckCredentials use case.",
+            "line": "examples/auth/internal/session/application/login/usecase.go:57"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+                "symbol": "user.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+                "symbol": "ByEmail"
+              }
+            ],
+            "type": "step",
+            "id": "s3",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "ByEmail",
+            "status": "declared",
+            "line": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "ByEmail"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "provider-signature",
+                "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+                "symbol": "New"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:50",
+                "symbol": "Check"
+              }
+            ],
+            "type": "step",
+            "id": "s4",
+            "from": "auth.auth",
+            "to": "auth.auth",
+            "kind": "call",
+            "label": "Check",
+            "status": "declared",
+            "note": "Port `Lockout`, bound at assembly to the Check use case.",
+            "line": "examples/auth/internal/user/application/check_credentials/usecase.go:50"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/lockout/application/check/usecase.go:25",
+                "symbol": "examples/auth/internal/lockout/application/check:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/lockout/application/check/usecase.go:26",
+                "symbol": "lockout.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/lockout/application/check/usecase.go:26",
+                "symbol": "ByUserID"
+              }
+            ],
+            "type": "step",
+            "id": "s5",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "ByUserID",
+            "status": "declared",
+            "line": "examples/auth/internal/lockout/application/check/usecase.go:26",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "ByUserID"
+            }
+          },
+          {
+            "type": "alt",
+            "id": "alt10",
+            "branches": [
+              {
+                "title": "!uc.verifier.Verify(in.Password, u.Password)",
+                "steps": [
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "provider-signature",
+                        "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+                        "symbol": "New"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:59",
+                        "symbol": "RecordFailure"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s6",
+                    "from": "auth.auth",
+                    "to": "auth.auth",
+                    "kind": "call",
+                    "label": "RecordFailure",
+                    "status": "declared",
+                    "note": "Port `Lockout`, bound at assembly to the RecordFailure use case.",
+                    "line": "examples/auth/internal/user/application/check_credentials/usecase.go:59"
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                        "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                        "symbol": "lockout.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                        "symbol": "ByUserID"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s7",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "ByUserID",
+                    "status": "declared",
+                    "note": "inside a loop over `retries`.",
+                    "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "ByUserID"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                        "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                        "symbol": "lockout.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                        "symbol": "Save"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s8",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "Save",
+                    "status": "declared",
+                    "note": "inside a loop over `retries`.",
+                    "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "Save"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                        "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                        "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                        "symbol": "AccountLocked"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s9",
+                    "from": "auth.auth",
+                    "to": "bus",
+                    "kind": "event",
+                    "ref": "auth.auth.lockout.AccountLocked",
+                    "label": "AccountLocked",
+                    "status": "declared",
+                    "note": "inside a loop over `retries`.",
+                    "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53"
+                  },
+                  {
+                    "type": "step",
+                    "id": "response-s1",
+                    "from": "auth.auth",
+                    "to": "client",
+                    "kind": "response",
+                    "label": "HTTP response",
+                    "status": "declared",
+                    "note": "Synthesized from the proven synchronous HTTP handler return.",
+                    "replyTo": "s1"
+                  }
+                ],
+                "terminal": true
+              },
+              {
+                "title": "otherwise",
+                "steps": []
+              }
+            ]
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "provider-signature",
+                "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+                "symbol": "New"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:68",
+                "symbol": "RecordSuccess"
+              }
+            ],
+            "type": "step",
+            "id": "s11",
+            "from": "auth.auth",
+            "to": "auth.auth",
+            "kind": "call",
+            "label": "RecordSuccess",
+            "status": "declared",
+            "note": "Port `Lockout`, bound at assembly to the RecordSuccess use case.",
+            "line": "examples/auth/internal/user/application/check_credentials/usecase.go:68"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:29",
+                "symbol": "examples/auth/internal/lockout/application/record_success:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+                "symbol": "lockout.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+                "symbol": "ByUserID"
+              }
+            ],
+            "type": "step",
+            "id": "s12",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "ByUserID",
+            "status": "declared",
+            "note": "inside a loop over `retries`.",
+            "line": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "ByUserID"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+              },
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:29",
+                "symbol": "examples/auth/internal/lockout/application/record_success:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+                "symbol": "lockout.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+                "symbol": "Save"
+              }
+            ],
+            "type": "step",
+            "id": "s13",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "Save",
+            "status": "declared",
+            "note": "inside a loop over `retries`.",
+            "line": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "Save"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "contract",
+                "rule": "generated-client-method",
+                "source": "examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go",
+                "symbol": "risk.v1.RiskService/Assess"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:62",
+                "symbol": "Assess"
+              }
+            ],
+            "type": "step",
+            "id": "s14",
+            "from": "auth.auth",
+            "to": "risk-v1",
+            "kind": "rpc",
+            "ref": "risk.v1.RiskService/Assess",
+            "label": "Assess",
+            "status": "unresolved",
+            "line": "examples/auth/internal/session/application/login/usecase.go:62"
+          },
+          {
+            "type": "alt",
+            "id": "alt18",
+            "branches": [
+              {
+                "title": "verdict == VerdictBlock",
+                "steps": [
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:93",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:94",
+                        "symbol": "session.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:94",
+                        "symbol": "ByUserID"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s15",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "ByUserID",
+                    "status": "declared",
+                    "line": "examples/auth/internal/session/application/login/usecase.go:94",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "ByUserID"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:93",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                      },
+                      {
+                        "kind": "binding",
+                        "rule": "domain-port-convention",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:104",
+                        "symbol": "session.Repository"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:104",
+                        "symbol": "Save"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s16",
+                    "from": "auth.auth",
+                    "to": "auth-pg",
+                    "kind": "call",
+                    "label": "Save",
+                    "status": "declared",
+                    "note": "inside a loop over `sessions`.",
+                    "line": "examples/auth/internal/session/application/login/usecase.go:104",
+                    "storeAccess": {
+                      "store": "auth.auth.pg",
+                      "method": "Save"
+                    }
+                  },
+                  {
+                    "evidence": [
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                      },
+                      {
+                        "kind": "function",
+                        "rule": "source-function",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:93",
+                        "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                      },
+                      {
+                        "kind": "call-site",
+                        "rule": "source-expression",
+                        "source": "examples/auth/internal/session/application/login/usecase.go:104",
+                        "symbol": "SessionEnded"
+                      }
+                    ],
+                    "type": "step",
+                    "id": "s17",
+                    "from": "auth.auth",
+                    "to": "bus",
+                    "kind": "event",
+                    "ref": "auth.auth.session.SessionEnded",
+                    "label": "SessionEnded",
+                    "status": "declared",
+                    "note": "inside a loop over `sessions`.",
+                    "line": "examples/auth/internal/session/application/login/usecase.go:104"
+                  },
+                  {
+                    "type": "step",
+                    "id": "response-s1-exit-2",
+                    "from": "auth.auth",
+                    "to": "client",
+                    "kind": "response",
+                    "label": "HTTP response",
+                    "status": "declared",
+                    "note": "Synthesized from the proven synchronous HTTP handler return.",
+                    "replyTo": "s1"
+                  }
+                ],
+                "terminal": true
+              },
+              {
+                "title": "otherwise",
+                "steps": []
+              }
+            ]
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "binding",
+                "rule": "domain-port-convention",
+                "source": "examples/auth/internal/session/application/login/usecase.go:80",
+                "symbol": "session.Repository"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:80",
+                "symbol": "Save"
+              }
+            ],
+            "type": "step",
+            "id": "s19",
+            "from": "auth.auth",
+            "to": "auth-pg",
+            "kind": "call",
+            "label": "Save",
+            "status": "declared",
+            "line": "examples/auth/internal/session/application/login/usecase.go:80",
+            "storeAccess": {
+              "store": "auth.auth.pg",
+              "method": "Save"
+            }
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:80",
+                "symbol": "SessionStarted"
+              }
+            ],
+            "type": "step",
+            "id": "s20",
+            "from": "auth.auth",
+            "to": "bus",
+            "kind": "event",
+            "ref": "auth.auth.session.SessionStarted",
+            "label": "SessionStarted",
+            "status": "declared",
+            "line": "examples/auth/internal/session/application/login/usecase.go:80"
+          },
+          {
+            "evidence": [
+              {
+                "kind": "function",
+                "rule": "source-function",
+                "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+              },
+              {
+                "kind": "call-site",
+                "rule": "source-expression",
+                "source": "examples/auth/internal/session/application/login/usecase.go:80",
+                "symbol": "LoginAudited"
+              }
+            ],
+            "type": "step",
+            "id": "s21",
+            "from": "auth.auth",
+            "to": "bus",
+            "kind": "event",
+            "ref": "auth.auth.session.LoginAudited",
+            "label": "LoginAudited",
+            "status": "declared",
+            "line": "examples/auth/internal/session/application/login/usecase.go:80"
+          },
+          {
+            "type": "step",
+            "id": "response-s1-exit-3",
+            "from": "auth.auth",
+            "to": "client",
+            "kind": "response",
+            "label": "HTTP response",
+            "status": "declared",
+            "note": "Synthesized from the proven synchronous HTTP handler return.",
+            "replyTo": "s1"
+          }
+        ],
+        "includes": [],
+        "composition": []
+      }
+    },
+    {
+      "kind": "event",
+      "id": "auth.auth.session.LoginAudited",
+      "change": "added",
+      "place": {
+        "context": "auth",
+        "service": "auth",
+        "aggregate": "session"
+      },
+      "branch": {
+        "id": "auth.auth.session.LoginAudited",
+        "slug": "login-audited",
+        "name": "LoginAudited",
+        "versions": [
+          {
+            "version": "v1",
+            "doc": "LoginAudited is the audit record of a login that issued a session: who, from what client, when. It is its own fact rather than a field of SessionStarted because the audit trail is kept by somebody else, for longer, and must not change shape when the session does.",
+            "source": "examples/auth/internal/session/domain/event/login_audited.go",
+            "fields": [
+              {
+                "name": "aggregateID",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "occurredAt",
+                "type": "time.Time",
+                "doc": ""
+              },
+              {
+                "name": "userID",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "userAgent",
+                "type": "string",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "consumers": [],
+        "wire": {
+          "name": "auth.LoginAudited",
+          "channel": "auth_session"
+        }
+      }
+    },
+    {
+      "kind": "event",
+      "id": "auth.auth.session.SessionStarted",
+      "change": "changed",
+      "place": {
+        "context": "auth",
+        "service": "auth",
+        "aggregate": "session"
+      },
+      "base": {
+        "id": "auth.auth.session.SessionStarted",
+        "slug": "session-started",
+        "name": "SessionStarted",
+        "versions": [
+          {
+            "version": "v1",
+            "doc": "SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.",
+            "source": "examples/auth/internal/session/domain/event/session_started.go",
+            "fields": [
+              {
+                "name": "aggregateID",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "occurredAt",
+                "type": "time.Time",
+                "doc": ""
+              },
+              {
+                "name": "userID",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "expiresAt",
+                "type": "time.Time",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "consumers": [],
+        "wire": {
+          "name": "auth.SessionStarted",
+          "channel": "auth_session"
+        }
+      },
+      "branch": {
+        "id": "auth.auth.session.SessionStarted",
+        "slug": "session-started",
+        "name": "SessionStarted",
+        "versions": [
+          {
+            "version": "v1",
+            "doc": "SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check. UserAgent is what the client called itself, so a person looking at their sessions can tell their laptop from their phone.",
+            "source": "examples/auth/internal/session/domain/event/session_started.go",
+            "fields": [
+              {
+                "name": "aggregateID",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "occurredAt",
+                "type": "time.Time",
+                "doc": ""
+              },
+              {
+                "name": "userID",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "userAgent",
+                "type": "string",
+                "doc": ""
+              },
+              {
+                "name": "expiresAt",
+                "type": "time.Time",
+                "doc": ""
+              }
+            ]
+          }
+        ],
+        "consumers": [],
+        "wire": {
+          "name": "auth.SessionStarted",
+          "channel": "auth_session"
+        }
+      }
+    }
+  ],
+  "views": {
+    "flow_auth_login": {
+      "_type": "dynamic",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "views.c4",
+      "description": {
+        "txt": "Turns credentials into a session. Source-backed cross-protocol continuations are included."
+      },
+      "title": "Login",
+      "id": "flow_auth_login",
+      "variant": "diagram",
+      "flow": [
+        "step-01",
+        "step-02",
+        "step-03",
+        "step-04",
+        "step-05",
+        {
+          "flow": [
+            {
+              "flow": [
+                {
+                  "flow": [
+                    "step-06:alt.01:when.01:break.01",
+                    "step-06:alt.01:when.01:break.02",
+                    "step-06:alt.01:when.01:break.03",
+                    "step-06:alt.01:when.01:break.04",
+                    "step-06:alt.01:when.01:break.05"
+                  ],
+                  "_type": "break",
+                  "id": "step-06:alt.01:when.01:break",
+                  "title": "ends the flow"
+                }
+              ],
+              "_type": "alt-when",
+              "id": "step-06:alt.01:when",
+              "title": "!uc.verifier.Verify(in.Password, u.Password)"
+            }
+          ],
+          "_type": "alt",
+          "id": "step-06:alt"
+        },
+        "step-07",
+        "step-08",
+        "step-09",
+        "step-10",
+        {
+          "flow": [
+            {
+              "flow": [
+                {
+                  "flow": [
+                    "step-11:alt.01:when.01:break.01",
+                    "step-11:alt.01:when.01:break.02",
+                    "step-11:alt.01:when.01:break.03",
+                    "step-11:alt.01:when.01:break.04"
+                  ],
+                  "_type": "break",
+                  "id": "step-11:alt.01:when.01:break",
+                  "title": "ends the flow"
+                }
+              ],
+              "_type": "alt-when",
+              "id": "step-11:alt.01:when",
+              "title": "verdict == VerdictBlock"
+            }
+          ],
+          "_type": "alt",
+          "id": "step-11:alt"
+        },
+        "step-12",
+        "step-13",
+        "step-14",
+        "step-15"
+      ],
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "hash": "d1w7fBeOniG7q8X_s7A6f0gBNgJeYxg8rtggDrBhTow",
+      "sequenceLayout": {
+        "actors": [
+          {
+            "id": "client",
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_source",
+                "cx": 160,
+                "cy": 250,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.05_target",
+                "cx": 160,
+                "cy": 1286,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.04_target",
+                "cx": 160,
+                "cy": 2301,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              },
+              {
+                "id": "step-15_target",
+                "cx": 160,
+                "cy": 2761,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "auth.auth",
+            "x": 400,
+            "y": 0,
+            "width": 360,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_target",
+                "cx": 180,
+                "cy": 250,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-02_source",
+                "cx": 180,
+                "cy": 272,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-02_target",
+                "cx": 180,
+                "cy": 334,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              },
+              {
+                "id": "step-03_source",
+                "cx": 180,
+                "cy": 418,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-04_source",
+                "cx": 180,
+                "cy": 520,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-04_target",
+                "cx": 180,
+                "cy": 582,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              },
+              {
+                "id": "step-05_source",
+                "cx": 180,
+                "cy": 644,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.01_source",
+                "cx": 180,
+                "cy": 856,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.01_target",
+                "cx": 180,
+                "cy": 918,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.02_source",
+                "cx": 180,
+                "cy": 980,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.03_source",
+                "cx": 180,
+                "cy": 1082,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.04_source",
+                "cx": 180,
+                "cy": 1184,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.05_source",
+                "cx": 180,
+                "cy": 1286,
+                "height": 40,
+                "type": "source",
+                "position": "left"
+              },
+              {
+                "id": "step-07_source",
+                "cx": 180,
+                "cy": 1440,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-07_target",
+                "cx": 180,
+                "cy": 1502,
+                "height": 24,
+                "type": "target",
+                "position": "right"
+              },
+              {
+                "id": "step-08_source",
+                "cx": 180,
+                "cy": 1564,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-09_source",
+                "cx": 180,
+                "cy": 1666,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-10_source",
+                "cx": 180,
+                "cy": 1768,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.01_source",
+                "cx": 180,
+                "cy": 1995,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.02_source",
+                "cx": 180,
+                "cy": 2097,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.03_source",
+                "cx": 180,
+                "cy": 2199,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.04_source",
+                "cx": 180,
+                "cy": 2301,
+                "height": 40,
+                "type": "source",
+                "position": "left"
+              },
+              {
+                "id": "step-12_source",
+                "cx": 180,
+                "cy": 2455,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-13_source",
+                "cx": 180,
+                "cy": 2557,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-14_source",
+                "cx": 180,
+                "cy": 2659,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-15_source",
+                "cx": 180,
+                "cy": 2761,
+                "height": 40,
+                "type": "source",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "auth_pg",
+            "x": 840,
+            "y": 0,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-03_target",
+                "cx": 160,
+                "cy": 418,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-05_target",
+                "cx": 160,
+                "cy": 644,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.02_target",
+                "cx": 160,
+                "cy": 980,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-06:alt.01:when.01:break.03_target",
+                "cx": 160,
+                "cy": 1082,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-08_target",
+                "cx": 160,
+                "cy": 1564,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-09_target",
+                "cx": 160,
+                "cy": 1666,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.01_target",
+                "cx": 160,
+                "cy": 1995,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.02_target",
+                "cx": 160,
+                "cy": 2097,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-12_target",
+                "cx": 160,
+                "cy": 2455,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "bus",
+            "x": 1240,
+            "y": 4,
+            "width": 320,
+            "height": 172,
+            "ports": [
+              {
+                "id": "step-06:alt.01:when.01:break.04_target",
+                "cx": 160,
+                "cy": 1180,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-11:alt.01:when.01:break.03_target",
+                "cx": 160,
+                "cy": 2195,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-13_target",
+                "cx": 160,
+                "cy": 2553,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-14_target",
+                "cx": 160,
+                "cy": 2655,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "risk_v1",
+            "x": 1640,
+            "y": 0,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-10_target",
+                "cx": 160,
+                "cy": 1768,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          }
+        ],
+        "compounds": [],
+        "steps": [
+          {
+            "id": "step-01",
+            "sourceHandle": "step-01_source",
+            "targetHandle": "step-01_target",
+            "labelBBox": {
+              "width": 128,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-02",
+            "sourceHandle": "step-02_source",
+            "targetHandle": "step-02_target",
+            "labelBBox": {
+              "width": 153,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-03",
+            "sourceHandle": "step-03_source",
+            "targetHandle": "step-03_target",
+            "labelBBox": {
+              "width": 93,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-04",
+            "sourceHandle": "step-04_source",
+            "targetHandle": "step-04_target",
+            "labelBBox": {
+              "width": 81,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-05",
+            "sourceHandle": "step-05_source",
+            "targetHandle": "step-05_target",
+            "labelBBox": {
+              "width": 102,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-06:alt.01:when.01:break.01",
+            "sourceHandle": "step-06:alt.01:when.01:break.01_source",
+            "targetHandle": "step-06:alt.01:when.01:break.01_target",
+            "labelBBox": {
+              "width": 130,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-06:alt.01:when.01:break.02",
+            "sourceHandle": "step-06:alt.01:when.01:break.02_source",
+            "targetHandle": "step-06:alt.01:when.01:break.02_target",
+            "labelBBox": {
+              "width": 102,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-06:alt.01:when.01:break.03",
+            "sourceHandle": "step-06:alt.01:when.01:break.03_source",
+            "targetHandle": "step-06:alt.01:when.01:break.03_target",
+            "labelBBox": {
+              "width": 74,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-06:alt.01:when.01:break.04",
+            "sourceHandle": "step-06:alt.01:when.01:break.04_source",
+            "targetHandle": "step-06:alt.01:when.01:break.04_target",
+            "labelBBox": {
+              "width": 138,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-06:alt.01:when.01:break.05",
+            "sourceHandle": "step-06:alt.01:when.01:break.05_source",
+            "targetHandle": "step-06:alt.01:when.01:break.05_target",
+            "labelBBox": {
+              "width": 140,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-07",
+            "sourceHandle": "step-07_source",
+            "targetHandle": "step-07_target",
+            "labelBBox": {
+              "width": 148,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-08",
+            "sourceHandle": "step-08_source",
+            "targetHandle": "step-08_target",
+            "labelBBox": {
+              "width": 110,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-09",
+            "sourceHandle": "step-09_source",
+            "targetHandle": "step-09_target",
+            "labelBBox": {
+              "width": 82,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-10",
+            "sourceHandle": "step-10_source",
+            "targetHandle": "step-10_target",
+            "labelBBox": {
+              "width": 94,
+              "height": 43
+            }
+          },
+          {
+            "id": "step-11:alt.01:when.01:break.01",
+            "sourceHandle": "step-11:alt.01:when.01:break.01_source",
+            "targetHandle": "step-11:alt.01:when.01:break.01_target",
+            "labelBBox": {
+              "width": 110,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-11:alt.01:when.01:break.02",
+            "sourceHandle": "step-11:alt.01:when.01:break.02_source",
+            "targetHandle": "step-11:alt.01:when.01:break.02_target",
+            "labelBBox": {
+              "width": 82,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-11:alt.01:when.01:break.03",
+            "sourceHandle": "step-11:alt.01:when.01:break.03_source",
+            "targetHandle": "step-11:alt.01:when.01:break.03_target",
+            "labelBBox": {
+              "width": 140,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-11:alt.01:when.01:break.04",
+            "sourceHandle": "step-11:alt.01:when.01:break.04_source",
+            "targetHandle": "step-11:alt.01:when.01:break.04_target",
+            "labelBBox": {
+              "width": 148,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-12",
+            "sourceHandle": "step-12_source",
+            "targetHandle": "step-12_target",
+            "labelBBox": {
+              "width": 82,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-13",
+            "sourceHandle": "step-13_source",
+            "targetHandle": "step-13_target",
+            "labelBBox": {
+              "width": 145,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-14",
+            "sourceHandle": "step-14_source",
+            "targetHandle": "step-14_target",
+            "labelBBox": {
+              "width": 131,
+              "height": 28
+            }
+          },
+          {
+            "id": "step-15",
+            "sourceHandle": "step-15_source",
+            "targetHandle": "step-15_target",
+            "labelBBox": {
+              "width": 148,
+              "height": 28
+            }
+          }
+        ],
+        "parallelAreas": [],
+        "subflows": [
+          {
+            "id": "step-06:alt.01:when.01:break",
+            "x": 70,
+            "y": 786,
+            "width": 1370,
+            "height": 572
+          },
+          {
+            "id": "step-06:alt.01:when",
+            "x": 38,
+            "y": 736,
+            "width": 1434,
+            "height": 654
+          },
+          {
+            "id": "step-06:alt",
+            "x": 38,
+            "y": 706,
+            "width": 1434,
+            "height": 694
+          },
+          {
+            "id": "step-11:alt.01:when.01:break",
+            "x": 70,
+            "y": 1925,
+            "width": 1370,
+            "height": 448
+          },
+          {
+            "id": "step-11:alt.01:when",
+            "x": 38,
+            "y": 1875,
+            "width": 1434,
+            "height": 530
+          },
+          {
+            "id": "step-11:alt",
+            "x": 38,
+            "y": 1845,
+            "width": 1434,
+            "height": 570
+          }
+        ],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1960,
+          "height": 2839
+        }
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1527,
+        "height": 2051
+      },
+      "nodes": [
+        {
+          "id": "client",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-06:alt.01:when.01:break.05",
+            "step-11:alt.01:when.01:break.04",
+            "step-15"
+          ],
+          "outEdges": [
+            "step-01"
+          ],
+          "title": "client",
+          "modelRef": "client",
+          "shape": "person",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "actor",
+          "x": 0,
+          "y": 863,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 135,
+            "y": 76,
+            "width": 51,
+            "height": 24
+          }
+        },
+        {
+          "id": "auth.auth",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-01",
+            "step-02",
+            "step-04",
+            "step-06:alt.01:when.01:break.01",
+            "step-07"
+          ],
+          "outEdges": [
+            "step-02",
+            "step-03",
+            "step-04",
+            "step-05",
+            "step-06:alt.01:when.01:break.01",
+            "step-06:alt.01:when.01:break.02",
+            "step-06:alt.01:when.01:break.03",
+            "step-06:alt.01:when.01:break.04",
+            "step-06:alt.01:when.01:break.05",
+            "step-07",
+            "step-08",
+            "step-09",
+            "step-10",
+            "step-11:alt.01:when.01:break.01",
+            "step-11:alt.01:when.01:break.02",
+            "step-11:alt.01:when.01:break.03",
+            "step-11:alt.01:when.01:break.04",
+            "step-12",
+            "step-13",
+            "step-14",
+            "step-15"
+          ],
+          "title": "Authentication & Sessions",
+          "modelRef": "auth.auth",
+          "shape": "rectangle",
+          "color": "ctx0",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "github.com/shortlink-org/portolan/examples/auth"
+          },
+          "tags": [],
+          "technology": "HTTP",
+          "kind": "service",
+          "navigateTo": "svc_auth_auth",
+          "x": 585,
+          "y": 863,
+          "width": 360,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 324,
+            "height": 67
+          }
+        },
+        {
+          "id": "auth_pg",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-03",
+            "step-05",
+            "step-06:alt.01:when.01:break.02",
+            "step-06:alt.01:when.01:break.03",
+            "step-08",
+            "step-09",
+            "step-11:alt.01:when.01:break.01",
+            "step-11:alt.01:when.01:break.02",
+            "step-12"
+          ],
+          "outEdges": [],
+          "title": "auth-pg",
+          "modelRef": "auth_pg",
+          "shape": "storage",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "store",
+          "x": 1207,
+          "y": 478,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 124,
+            "y": 76,
+            "width": 72,
+            "height": 24
+          }
+        },
+        {
+          "id": "bus",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-06:alt.01:when.01:break.04",
+            "step-11:alt.01:when.01:break.03",
+            "step-13",
+            "step-14"
+          ],
+          "outEdges": [],
+          "title": "bus",
+          "modelRef": "bus",
+          "shape": "queue",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "broker",
+          "x": 1207,
+          "y": 1483,
+          "width": 320,
+          "height": 172,
+          "labelBBox": {
+            "x": 141,
+            "y": 72,
+            "width": 36,
+            "height": 24
+          }
+        },
+        {
+          "id": "risk_v1",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "step-10"
+          ],
+          "outEdges": [],
+          "title": "risk.v1",
+          "modelRef": "risk_v1",
+          "shape": "rectangle",
+          "color": "unresolved",
+          "style": {
+            "border": "dashed",
+            "opacity": 15,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "unknown",
+          "x": 1207,
+          "y": 1871,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 129,
+            "y": 76,
+            "width": 62,
+            "height": 24
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "step-01",
+          "source": "client",
+          "target": "auth.auth",
+          "label": "LoginRequest",
+          "points": [
+            [
+              306,
+              863
+            ],
+            [
+              330,
+              852
+            ],
+            [
+              355,
+              842
+            ],
+            [
+              380,
+              836
+            ],
+            [
+              442,
+              820
+            ],
+            [
+              462,
+              822
+            ],
+            [
+              525,
+              836
+            ],
+            [
+              548,
+              842
+            ],
+            [
+              572,
+              850
+            ],
+            [
+              596,
+              859
+            ]
+          ],
+          "labelBBox": {
+            "x": 399,
+            "y": 793,
+            "width": 112,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@0",
+          "notes": {
+            "txt": "examples/auth/internal/session/infrastructure/http/login.go:11"
+          }
+        },
+        {
+          "id": "step-02",
+          "source": "auth.auth",
+          "target": "auth.auth",
+          "label": "CheckCredentials",
+          "points": [
+            [
+              751,
+              863
+            ],
+            [
+              748,
+              807
+            ],
+            [
+              752,
+              753
+            ],
+            [
+              765,
+              753
+            ],
+            [
+              777,
+              753
+            ],
+            [
+              782,
+              807
+            ],
+            [
+              778,
+              863
+            ]
+          ],
+          "labelBBox": {
+            "x": 699,
+            "y": 721,
+            "width": 137,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@1",
+          "notes": {
+            "txt": "Port `Authenticator`, bound at assembly to the CheckCredentials use case. — examples/auth/internal/session/application/login/usecase.go:57"
+          }
+        },
+        {
+          "id": "step-03",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "ByEmail",
+          "points": [
+            [
+              776,
+              863
+            ],
+            [
+              802,
+              658
+            ],
+            [
+              877,
+              164
+            ],
+            [
+              1005,
+              66
+            ],
+            [
+              1055,
+              28
+            ],
+            [
+              1094,
+              32
+            ],
+            [
+              1146,
+              66
+            ],
+            [
+              1286,
+              157
+            ],
+            [
+              1337,
+              359
+            ],
+            [
+              1355,
+              477
+            ]
+          ],
+          "labelBBox": {
+            "x": 1040,
+            "y": 7,
+            "width": 77,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@2",
+          "notes": {
+            "txt": "examples/auth/internal/user/application/check_credentials/usecase.go:42"
+          }
+        },
+        {
+          "id": "step-04",
+          "source": "auth.auth",
+          "target": "auth.auth",
+          "label": "Check",
+          "points": [
+            [
+              743,
+              863
+            ],
+            [
+              728,
+              761
+            ],
+            [
+              735,
+              643
+            ],
+            [
+              765,
+              643
+            ],
+            [
+              794,
+              643
+            ],
+            [
+              801,
+              761
+            ],
+            [
+              786,
+              863
+            ]
+          ],
+          "labelBBox": {
+            "x": 735,
+            "y": 611,
+            "width": 65,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@3",
+          "notes": {
+            "txt": "Port `Lockout`, bound at assembly to the Check use case. — examples/auth/internal/user/application/check_credentials/usecase.go:50"
+          }
+        },
+        {
+          "id": "step-05",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "ByUserID",
+          "points": [
+            [
+              782,
+              863
+            ],
+            [
+              815,
+              685
+            ],
+            [
+              899,
+              297
+            ],
+            [
+              1005,
+              220
+            ],
+            [
+              1056,
+              183
+            ],
+            [
+              1091,
+              190
+            ],
+            [
+              1146,
+              220
+            ],
+            [
+              1245,
+              274
+            ],
+            [
+              1305,
+              394
+            ],
+            [
+              1337,
+              477
+            ]
+          ],
+          "labelBBox": {
+            "x": 1035,
+            "y": 163,
+            "width": 86,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@4",
+          "notes": {
+            "txt": "examples/auth/internal/lockout/application/check/usecase.go:26"
+          }
+        },
+        {
+          "id": "step-06:alt.01:when.01:break.01",
+          "source": "auth.auth",
+          "target": "auth.auth",
+          "label": "RecordFailure",
+          "points": [
+            [
+              738,
+              863
+            ],
+            [
+              709,
+              719
+            ],
+            [
+              717,
+              533
+            ],
+            [
+              765,
+              533
+            ],
+            [
+              812,
+              533
+            ],
+            [
+              821,
+              719
+            ],
+            [
+              791,
+              863
+            ]
+          ],
+          "labelBBox": {
+            "x": 710,
+            "y": 501,
+            "width": 114,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@5/branches@0/steps@0/steps@0",
+          "notes": {
+            "txt": "Port `Lockout`, bound at assembly to the RecordFailure use case. — examples/auth/internal/user/application/check_credentials/usecase.go:59"
+          }
+        },
+        {
+          "id": "step-06:alt.01:when.01:break.02",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "ByUserID",
+          "points": [
+            [
+              773,
+              863
+            ],
+            [
+              789,
+              730
+            ],
+            [
+              841,
+              484
+            ],
+            [
+              1005,
+              374
+            ],
+            [
+              1098,
+              312
+            ],
+            [
+              1214,
+              400
+            ],
+            [
+              1288,
+              477
+            ]
+          ],
+          "labelBBox": {
+            "x": 1035,
+            "y": 321,
+            "width": 86,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@5/branches@0/steps@0/steps@1",
+          "notes": {
+            "txt": "inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:36"
+          }
+        },
+        {
+          "id": "step-06:alt.01:when.01:break.03",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "Save",
+          "points": [
+            [
+              787,
+              863
+            ],
+            [
+              817,
+              761
+            ],
+            [
+              882,
+              600
+            ],
+            [
+              1005,
+              528
+            ],
+            [
+              1065,
+              493
+            ],
+            [
+              1140,
+              496
+            ],
+            [
+              1206,
+              510
+            ]
+          ],
+          "labelBBox": {
+            "x": 1049,
+            "y": 468,
+            "width": 58,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@5/branches@0/steps@0/steps@2",
+          "notes": {
+            "txt": "inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53"
+          }
+        },
+        {
+          "id": "step-06:alt.01:when.01:break.04",
+          "source": "auth.auth",
+          "target": "bus",
+          "label": "AccountLocked",
+          "points": [
+            [
+              853,
+              1043
+            ],
+            [
+              966,
+              1159
+            ],
+            [
+              1161,
+              1359
+            ],
+            [
+              1275,
+              1476
+            ]
+          ],
+          "labelBBox": {
+            "x": 1017,
+            "y": 1174,
+            "width": 122,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "1xw98kg"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@5/branches@0/steps@0/steps@3",
+          "notes": {
+            "txt": "inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53"
+          }
+        },
+        {
+          "id": "step-06:alt.01:when.01:break.05",
+          "source": "auth.auth",
+          "target": "client",
+          "label": "HTTP response",
+          "points": [
+            [
+              330,
+              953
+            ],
+            [
+              409,
+              953
+            ],
+            [
+              504,
+              953
+            ],
+            [
+              585,
+              953
+            ]
+          ],
+          "labelBBox": {
+            "x": 393,
+            "y": 921,
+            "width": 124,
+            "height": 20
+          },
+          "dir": "back",
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@5/branches@0/steps@0/steps@4",
+          "notes": {
+            "txt": "Synthesized from the proven synchronous HTTP handler return."
+          }
+        },
+        {
+          "id": "step-07",
+          "source": "auth.auth",
+          "target": "auth.auth",
+          "label": "RecordSuccess",
+          "points": [
+            [
+              735,
+              863
+            ],
+            [
+              689,
+              678
+            ],
+            [
+              699,
+              423
+            ],
+            [
+              765,
+              423
+            ],
+            [
+              831,
+              423
+            ],
+            [
+              841,
+              678
+            ],
+            [
+              795,
+              863
+            ]
+          ],
+          "labelBBox": {
+            "x": 701,
+            "y": 391,
+            "width": 132,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@6",
+          "notes": {
+            "txt": "Port `Lockout`, bound at assembly to the RecordSuccess use case. — examples/auth/internal/user/application/check_credentials/usecase.go:68"
+          }
+        },
+        {
+          "id": "step-08",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "ByUserID",
+          "points": [
+            [
+              825,
+              863
+            ],
+            [
+              869,
+              804
+            ],
+            [
+              932,
+              729
+            ],
+            [
+              1005,
+              682
+            ],
+            [
+              1065,
+              643
+            ],
+            [
+              1140,
+              616
+            ],
+            [
+              1206,
+              599
+            ]
+          ],
+          "labelBBox": {
+            "x": 1031,
+            "y": 585,
+            "width": 94,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@7",
+          "notes": {
+            "txt": "inside a loop over `retries`. — examples/auth/internal/lockout/application/record_success/usecase.go:31"
+          }
+        },
+        {
+          "id": "step-09",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "Save",
+          "points": [
+            [
+              945,
+              866
+            ],
+            [
+              1010,
+              832
+            ],
+            [
+              1083,
+              790
+            ],
+            [
+              1146,
+              748
+            ],
+            [
+              1187,
+              721
+            ],
+            [
+              1229,
+              688
+            ],
+            [
+              1265,
+              658
+            ]
+          ],
+          "labelBBox": {
+            "x": 1045,
+            "y": 716,
+            "width": 66,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@8",
+          "notes": {
+            "txt": "inside a loop over `retries`. — examples/auth/internal/lockout/application/record_success/usecase.go:43"
+          }
+        },
+        {
+          "id": "step-10",
+          "source": "auth.auth",
+          "target": "risk_v1",
+          "label": "Assess",
+          "description": {
+            "txt": "risk.v1.RiskService/Assess · unresolved · examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go"
+          },
+          "points": [
+            [
+              770,
+              1043
+            ],
+            [
+              783,
+              1204
+            ],
+            [
+              829,
+              1547
+            ],
+            [
+              1005,
+              1765
+            ],
+            [
+              1055,
+              1826
+            ],
+            [
+              1129,
+              1871
+            ],
+            [
+              1197,
+              1902
+            ]
+          ],
+          "labelBBox": {
+            "x": 1039,
+            "y": 1723,
+            "width": 78,
+            "height": 35
+          },
+          "parent": null,
+          "relations": [
+            "119hcse"
+          ],
+          "color": "unresolved",
+          "line": "solid",
+          "head": "normal",
+          "tags": [],
+          "kind": "calls",
+          "technology": "gRPC",
+          "astPath": "/steps@9",
+          "notes": {
+            "txt": "examples/auth/internal/session/application/login/usecase.go:62"
+          }
+        },
+        {
+          "id": "step-11:alt.01:when.01:break.01",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "ByUserID",
+          "points": [
+            [
+              945,
+              955
+            ],
+            [
+              1012,
+              948
+            ],
+            [
+              1087,
+              932
+            ],
+            [
+              1146,
+              894
+            ],
+            [
+              1234,
+              838
+            ],
+            [
+              1294,
+              735
+            ],
+            [
+              1329,
+              659
+            ]
+          ],
+          "labelBBox": {
+            "x": 1031,
+            "y": 862,
+            "width": 94,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@10/branches@0/steps@0/steps@0",
+          "notes": {
+            "txt": "examples/auth/internal/session/application/login/usecase.go:94"
+          }
+        },
+        {
+          "id": "step-11:alt.01:when.01:break.02",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "Save",
+          "points": [
+            [
+              945,
+              1028
+            ],
+            [
+              1012,
+              1045
+            ],
+            [
+              1087,
+              1048
+            ],
+            [
+              1146,
+              1011
+            ],
+            [
+              1270,
+              934
+            ],
+            [
+              1326,
+              764
+            ],
+            [
+              1350,
+              659
+            ]
+          ],
+          "labelBBox": {
+            "x": 1045,
+            "y": 979,
+            "width": 66,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@10/branches@0/steps@0/steps@1",
+          "notes": {
+            "txt": "inside a loop over `sessions`. — examples/auth/internal/session/application/login/usecase.go:104"
+          }
+        },
+        {
+          "id": "step-11:alt.01:when.01:break.03",
+          "source": "auth.auth",
+          "target": "bus",
+          "label": "SessionEnded",
+          "points": [
+            [
+              794,
+              1043
+            ],
+            [
+              830,
+              1141
+            ],
+            [
+              899,
+              1299
+            ],
+            [
+              1005,
+              1400
+            ],
+            [
+              1059,
+              1451
+            ],
+            [
+              1131,
+              1489
+            ],
+            [
+              1197,
+              1516
+            ]
+          ],
+          "labelBBox": {
+            "x": 1016,
+            "y": 1368,
+            "width": 124,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "1xw98kg"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@10/branches@0/steps@0/steps@2",
+          "notes": {
+            "txt": "inside a loop over `sessions`. — examples/auth/internal/session/application/login/usecase.go:104"
+          }
+        },
+        {
+          "id": "step-11:alt.01:when.01:break.04",
+          "source": "auth.auth",
+          "target": "client",
+          "label": "HTTP response",
+          "points": [
+            [
+              330,
+              1009
+            ],
+            [
+              347,
+              1013
+            ],
+            [
+              364,
+              1016
+            ],
+            [
+              380,
+              1019
+            ],
+            [
+              444,
+              1028
+            ],
+            [
+              461,
+              1027
+            ],
+            [
+              525,
+              1019
+            ],
+            [
+              544,
+              1016
+            ],
+            [
+              565,
+              1012
+            ],
+            [
+              585,
+              1008
+            ]
+          ],
+          "labelBBox": {
+            "x": 389,
+            "y": 987,
+            "width": 132,
+            "height": 20
+          },
+          "dir": "back",
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@10/branches@0/steps@0/steps@3",
+          "notes": {
+            "txt": "Synthesized from the proven synchronous HTTP handler return."
+          }
+        },
+        {
+          "id": "step-12",
+          "source": "auth.auth",
+          "target": "auth_pg",
+          "label": "Save",
+          "points": [
+            [
+              865,
+              1043
+            ],
+            [
+              945,
+              1104
+            ],
+            [
+              1059,
+              1165
+            ],
+            [
+              1146,
+              1106
+            ],
+            [
+              1296,
+              1006
+            ],
+            [
+              1343,
+              784
+            ],
+            [
+              1358,
+              659
+            ]
+          ],
+          "labelBBox": {
+            "x": 1045,
+            "y": 1074,
+            "width": 66,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "solid",
+          "head": "none",
+          "tags": [],
+          "astPath": "/steps@11",
+          "notes": {
+            "txt": "examples/auth/internal/session/application/login/usecase.go:80"
+          }
+        },
+        {
+          "id": "step-13",
+          "source": "auth.auth",
+          "target": "bus",
+          "label": "SessionStarted",
+          "points": [
+            [
+              772,
+              1043
+            ],
+            [
+              787,
+              1180
+            ],
+            [
+              837,
+              1437
+            ],
+            [
+              1005,
+              1556
+            ],
+            [
+              1060,
+              1594
+            ],
+            [
+              1131,
+              1603
+            ],
+            [
+              1196,
+              1600
+            ]
+          ],
+          "labelBBox": {
+            "x": 1014,
+            "y": 1524,
+            "width": 129,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "1xw98kg"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@12",
+          "notes": {
+            "txt": "examples/auth/internal/session/application/login/usecase.go:80"
+          }
+        },
+        {
+          "id": "step-14",
+          "source": "auth.auth",
+          "target": "bus",
+          "label": "LoginAudited",
+          "points": [
+            [
+              783,
+              1043
+            ],
+            [
+              817,
+              1217
+            ],
+            [
+              902,
+              1591
+            ],
+            [
+              1005,
+              1665
+            ],
+            [
+              1068,
+              1710
+            ],
+            [
+              1152,
+              1692
+            ],
+            [
+              1223,
+              1659
+            ]
+          ],
+          "labelBBox": {
+            "x": 1021,
+            "y": 1633,
+            "width": 115,
+            "height": 20
+          },
+          "parent": null,
+          "relations": [
+            "1xw98kg"
+          ],
+          "color": "declared",
+          "line": "solid",
+          "head": "onormal",
+          "tags": [],
+          "kind": "bus",
+          "astPath": "/steps@13",
+          "notes": {
+            "txt": "examples/auth/internal/session/application/login/usecase.go:80"
+          }
+        },
+        {
+          "id": "step-15",
+          "source": "auth.auth",
+          "target": "client",
+          "label": "HTTP response",
+          "points": [
+            [
+              285,
+              1048
+            ],
+            [
+              315,
+              1066
+            ],
+            [
+              347,
+              1082
+            ],
+            [
+              380,
+              1092
+            ],
+            [
+              442,
+              1110
+            ],
+            [
+              463,
+              1109
+            ],
+            [
+              525,
+              1092
+            ],
+            [
+              563,
+              1081
+            ],
+            [
+              602,
+              1063
+            ],
+            [
+              637,
+              1043
+            ]
+          ],
+          "labelBBox": {
+            "x": 389,
+            "y": 1060,
+            "width": 132,
+            "height": 20
+          },
+          "dir": "back",
+          "parent": null,
+          "relations": [],
+          "color": "declared",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@14",
+          "notes": {
+            "txt": "Synthesized from the proven synchronous HTTP handler return."
+          }
+        }
+      ]
+    }
+  },
+  "elements": {
+    "client": {
+      "style": {
+        "shape": "person",
+        "color": "muted"
+      },
+      "title": "client",
+      "kind": "actor",
+      "id": "client"
+    },
+    "auth": {
+      "style": {
+        "shape": "rectangle",
+        "opacity": 5,
+        "border": "dashed",
+        "color": "ctx0"
+      },
+      "description": {
+        "txt": "Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session."
+      },
+      "title": "Authentication",
+      "kind": "context",
+      "id": "auth"
+    },
+    "auth.auth": {
+      "style": {
+        "shape": "rectangle",
+        "color": "ctx0"
+      },
+      "technology": "HTTP",
+      "description": {
+        "txt": "github.com/shortlink-org/portolan/examples/auth"
+      },
+      "title": "Authentication & Sessions",
+      "kind": "service",
+      "id": "auth.auth"
+    },
+    "auth_pg": {
+      "style": {
+        "shape": "storage",
+        "color": "muted"
+      },
+      "title": "auth-pg",
+      "kind": "store",
+      "id": "auth_pg"
+    },
+    "bus": {
+      "style": {
+        "shape": "queue",
+        "color": "muted"
+      },
+      "title": "bus",
+      "kind": "broker",
+      "id": "bus"
+    },
+    "risk_v1": {
+      "style": {
+        "shape": "rectangle",
+        "color": "unresolved",
+        "border": "dashed"
+      },
+      "title": "risk.v1",
+      "kind": "unknown",
+      "id": "risk_v1"
+    }
+  }
+}

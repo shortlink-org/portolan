@@ -51,3 +51,6 @@ Plan:
    go.
 5. Drafts of the demo branches saved in main and checked on the static site.
 
+Steps 1-5 are done. Open: where the canvas is positioned when a reader moves
+between versions.
+

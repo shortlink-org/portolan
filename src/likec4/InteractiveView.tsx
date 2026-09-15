@@ -114,7 +114,9 @@ export function InteractiveView({
     [onReady],
   );
 
-  if (!isLikeC4ViewId(viewId)) return <Missing viewId={viewId} />;
+  // A model built at runtime can hold views the generated bundle does not -
+  // a branch draft's flow - so it is asked about its own views.
+  if (model ? !model.findView(viewId) : !isLikeC4ViewId(viewId)) return <Missing viewId={viewId} />;
 
   const Renderer = model ? ModelView : ReactLikeC4;
   const rendered = (
@@ -126,7 +128,9 @@ export function InteractiveView({
         // only honest way to change it is to start the canvas again. The
         // selection is deliberately absent: re-keying would re-layout.
         key={`${viewId}:${variant}:${theme}`}
-        viewId={viewId}
+        // Checked above against whichever model draws it; a runtime model's
+        // ids are not in the generated union, so the type is asserted here.
+        viewId={viewId as Parameters<typeof ReactLikeC4>[0]["viewId"]}
         renderIcon={({ node, ...props }) => <RenderIcon {...props} node={{ ...node, icon: node.icon ?? undefined }} />}
         dynamicViewVariant={variant}
         colorScheme={theme}

@@ -1,7 +1,9 @@
+import { useEnabledDrafts } from "../drafts/store";
+import { draftGraphCss, withDraftEvents } from "../drafts/map-overlay";
 import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
 import { plural } from "../lib/format";
 import { CapabilityEmpty, Empty } from "../components/PageHeader";
 import {
@@ -36,10 +38,13 @@ export function GraphPage() {
   const environmentChips = useMemo(() => environmentsOf(catalog), []);
   const [environments, setEnvironments] = useState<Set<string>>(new Set());
 
+  // Events shown drafts add are nodes too, drawn dashed.
+  const shownDrafts = useEnabledDrafts();
   const whole = useMemo(
-    () => eventGraph(narrowToEnvironments(catalog, environments)),
-    [environments],
+    () => withDraftEvents(eventGraph(narrowToEnvironments(catalog, environments)), shownDrafts, index),
+    [environments, shownDrafts],
   );
+  const draftCss = useMemo(() => draftGraphCss(shownDrafts), [shownDrafts]);
   const graph = useMemo(
     () => filterEventGraph(whole, { contexts, statuses }),
     [whole, contexts, statuses],
@@ -255,12 +260,15 @@ export function GraphPage() {
             )}
           </div>
         ) : (
-          <DependencyGraphPane
-            graph={graph}
-            mode={mode}
-            onMode={setMode}
-            fitKey={fitKey}
-          />
+          <>
+            {draftCss ? <style>{draftCss}</style> : null}
+            <DependencyGraphPane
+              graph={graph}
+              mode={mode}
+              onMode={setMode}
+              fitKey={fitKey}
+            />
+          </>
         )}
       </div>
     </div>

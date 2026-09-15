@@ -1,3 +1,4 @@
+import { DraftFlowRows, DraftTreeMark } from "../drafts/nav";
 import { useMemo, useRef, useState } from "react";
 import { GripVertical, PinOff, TriangleAlert } from "lucide-react";
 import { NavLink } from "react-router";
@@ -41,6 +42,7 @@ function FlowRow({ entry }: { entry: FlowEntry }) {
     >
       <KindIcon kind="flow" />
       <span className="truncate">{flow.name}</span>
+      <DraftTreeMark id={flow.id} />
       <span className="ml-auto flex shrink-0 items-center gap-2 pl-2">
         <span className="flex items-center gap-0.5" aria-hidden>
           {dots.map((c) => (
@@ -115,6 +117,7 @@ export function FlowGroupNode({
           {shown.map((entry) => (
             <FlowRow key={entry.flow.slug} entry={entry} />
           ))}
+          {owner !== null ? <DraftFlowRows owner={owner} /> : null}
           {hidden > 0 && owner !== null ? (
             <NavLink
               to={`${paths.flows()}?owner=${encodeURIComponent(owner)}`}

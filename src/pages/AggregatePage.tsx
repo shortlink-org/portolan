@@ -1,3 +1,7 @@
+import { branchAggregate } from "../drafts/branch-entities";
+import { usePickedDraft } from "../drafts/store";
+import { DraftEventMark, DraftEventRows } from "../drafts/nav";
+import { DraftBanner } from "../drafts/DraftBanner";
 import { useMemo } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { Link2 } from "lucide-react";
@@ -126,11 +130,14 @@ function BlockList({
   blocks,
   linkTo,
   rootName,
+  rootDelta,
 }: {
   kind: BlockKind;
   blocks: Block[];
   linkTo: (block: Block) => string;
   rootName?: string;
+  /** Fields a branch added to or dropped from the root. */
+  rootDelta?: { added: number; removed: number } | null;
 }) {
   if (blocks.length === 0) {
     return (
@@ -179,6 +186,12 @@ function BlockList({
                 <span title="shape written inline">inline</span>
               )}
               <span>{fields.length}f</span>
+              {rootDelta && block.name === rootName ? (
+                <span className="mono" title="fields the branch added to the root, and dropped from it">
+                  {rootDelta.added ? <span className="text-verified">+{rootDelta.added}</span> : null}
+                  {rootDelta.removed ? <span className="ml-1 text-unresolved">−{rootDelta.removed}</span> : null}
+                </span>
+              ) : null}
             </span>
             <RowActions copy={block.id} label={block.name} />
           </div>
@@ -282,11 +295,14 @@ function OperationList({
   operations,
   service,
   aggregate,
+  marks,
 }: {
   kind: "command" | "query";
   operations: Operation[];
   service: Service;
   aggregate: Aggregate;
+  /** Operations a branch added or dropped, by id. */
+  marks?: ReadonlyMap<string, "added" | "removed"> | undefined;
 }) {
   // Whether this service records what exposes an operation at all. A catalog
   // written before anything read a transport layer says nothing either way,
@@ -314,6 +330,13 @@ function OperationList({
           className={`flex scroll-mt-12 items-start gap-2 border-l-2 px-2 py-1.5 bg-surface ${
             kind === "command" ? "border-verified" : "border-line-strong"
           }`}
+          style={
+            marks?.get(op.id) === "added"
+              ? { background: "color-mix(in srgb, var(--status-verified) 8%, var(--surface))" }
+              : marks?.get(op.id) === "removed"
+                ? { opacity: 0.6, textDecoration: "line-through" }
+                : undefined
+          }
         >
           <span className="mt-px shrink-0">
             <KindIcon kind={kind} />
@@ -327,6 +350,14 @@ function OperationList({
                 </span>
               ) : null}
               {op.kind === "command" ? <CommandLink id={op.id} /> : null}
+              {marks?.get(op.id) ? (
+                <span
+                  className={`mono inline-flex items-center gap-1 text-xs ${marks.get(op.id) === "added" ? "text-verified" : "text-unresolved"}`}
+                  title={marks.get(op.id) === "added" ? "added in this branch" : "removed in this branch"}
+                >
+                  {marks.get(op.id) === "added" ? "+ new in branch" : "− removed in branch"}
+                </span>
+              ) : null}
               {op.deprecated ? (
                 <span className="chip" title="marked @deprecated in the source">
                   deprecated
@@ -420,7 +451,15 @@ export function AggregatePage() {
   } = useParams();
   const context = catalog.contexts.find((c) => c.id === contextId);
   const service = context?.services.find((s) => s.slug === serviceSlug);
-  const aggregate = service?.aggregates.find((a) => a.slug === aggSlug);
+  const mainAggregate = service?.aggregates.find((a) => a.slug === aggSlug);
+  // With a branch version picked, the page reads the
+  // branch's operations and root, and marks what differs from main.
+  const pickedEntity = usePickedDraft(mainAggregate?.id ?? "")?.entity;
+  const branch = useMemo(
+    () => (mainAggregate && pickedEntity ? branchAggregate(mainAggregate, pickedEntity) : null),
+    [mainAggregate, pickedEntity],
+  );
+  const aggregate = branch?.aggregate ?? mainAggregate;
 
   const outline = useMemo(
     () => (aggregate ? markdownOutline(aggregate.readme) : []),
@@ -481,6 +520,7 @@ export function AggregatePage() {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
+          <DraftBanner id={aggregate.id} className="mb-[calc(var(--gutter)+1rem)]" />
           <InLanguage id={aggregate.id} />
 
           <BuildingBlocks
@@ -510,6 +550,7 @@ export function AggregatePage() {
               blocks={aggregate.entities}
               linkTo={entityPath}
               rootName={aggregate.root}
+              rootDelta={branch?.rootFields}
             />
           </div>
 
@@ -591,7 +632,7 @@ export function AggregatePage() {
                  be a link of its own: a count that says "4 consumers" and does
                  not take you to them is a count that lied. */
               <div
-                className="rows grid-cols-[auto_auto_1fr_auto_auto]"
+                className="rows grid-cols-[auto_auto_1fr_auto_auto_auto]"
                 data-nav-list
               >
                 {aggregate.events.map((event) => {
@@ -647,9 +688,11 @@ export function AggregatePage() {
                         reveal={event.id}
                         label={event.name}
                       />
+                      <DraftEventMark id={event.id} />
                     </div>
                   );
                 })}
+                <DraftEventRows aggregateId={aggregate.id} />
               </div>
             )}
           </div>
@@ -671,7 +714,7 @@ export function AggregatePage() {
               {commands.length === 0 ? (
                 <Empty>{aggregate.kind === "model-group" ? "no application commands discovered" : "nothing changes this aggregate from outside"}</Empty>
               ) : null}
-              <OperationList kind="command" operations={commands} service={service} aggregate={aggregate} />
+              <OperationList kind="command" operations={commands} service={service} aggregate={aggregate} marks={branch?.operationMarks} />
             </div>
             <div id={AGGREGATE_ANCHOR.queries}>
               <SectionTitle
@@ -687,7 +730,7 @@ export function AggregatePage() {
               {queries.length === 0 ? (
                 <Empty>{aggregate.kind === "model-group" ? "no application queries discovered" : "nothing reads this aggregate by name"}</Empty>
               ) : null}
-              <OperationList kind="query" operations={queries} service={service} aggregate={aggregate} />
+              <OperationList kind="query" operations={queries} service={service} aggregate={aggregate} marks={branch?.operationMarks} />
             </div>
           </div>
 

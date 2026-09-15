@@ -5,6 +5,8 @@ import { defineConfig } from "vitest/config";
 import { provenancePlugin } from "./scripts/provenance.mjs";
 // @ts-expect-error Node-only authoring module
 import { annotationsPlugin } from "./scripts/annotations.mjs";
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { draftsPlugin } from "./scripts/branch-drafts.mjs";
 
 const exampleCatalogTests = [
   "src/routes.test.ts",
@@ -28,7 +30,7 @@ const allTests = [
 const excludedTests = ["**/node_modules/**", "plugins/extract-ts/testdata/**"];
 
 export default defineConfig({
-  plugins: [provenancePlugin("."), annotationsPlugin(".")],
+  plugins: [provenancePlugin("."), annotationsPlugin("."), draftsPlugin(".")],
   test: {
     projects: [
       {

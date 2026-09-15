@@ -1,3 +1,5 @@
+import { DraftEventMark } from "../drafts/nav";
+import { DraftFlowCards } from "../drafts/DraftFlowCards";
 import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -263,6 +265,7 @@ export function FlowIndex() {
           className="mt-section grid gap-grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           data-nav-list
         >
+          <DraftFlowCards />
           {rows.map(({ flow, contexts, steps, health, counts }, i) => {
             const source = flow.source
               ? sourceHref(flow.source, flowRepoService(catalog, flow), allRepos(catalog))
@@ -289,6 +292,7 @@ export function FlowIndex() {
                     {flow.slug}
                   </Ident>
                   <RowActions copy={flow.id} label={flow.name} />
+                  <DraftEventMark id={flow.id} />
                   {/* How far the flow can be believed, as one dot and the
                       counts behind it: a card has room for both, and the
                       dot alone is the sidebar's answer. */}

@@ -29,7 +29,7 @@ import { formatLike } from "./json-format.mjs";
 import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
 import { gitFetchState, saveGitFetchSettings, checkGitAccess } from "./git-fetch-settings.mjs";
 import { listGitRefs } from "./git-refs.mjs";
-import { deleteDraft, draftPath, listBranches, listDrafts } from "./branch-drafts.mjs";
+import { deleteDraft, discardDraft, draftPath, listBranches, listDrafts, readDrafts, readPending, restoreDraft, saveDraft } from "./branch-drafts.mjs";
 import { eventBridgeState, saveEventBridgeSettings } from "./eventbridge-settings.mjs";
 import { annotationState, saveAnnotation } from "./annotations.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
@@ -1611,7 +1611,7 @@ function startDraftJob(workspace, { project, branch }) {
   jobs.set(id, job);
   let child;
   try {
-    child = spawn(process.execPath, [BRANCH_DRAFTS, "generate", "--project", project, "--branch", branch], {
+    child = spawn(process.execPath, [BRANCH_DRAFTS, "generate", "--pending", "--project", project, "--branch", branch], {
       cwd: workspace,
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
@@ -1664,7 +1664,11 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             return send(res, 200, djangoAggregateProposals(workspace));
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/drafts`) {
-            return send(res, 200, { drafts: listDrafts(workspace) });
+            return send(res, 200, { drafts: listDrafts(workspace), ...(url.searchParams.get("files") === "1" ? { files: readDrafts(workspace) } : {}) });
+          }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/drafts/pending`) {
+            const draft = readPending(workspace, { project: url.searchParams.get("project") ?? "", branch: url.searchParams.get("branch") ?? "" });
+            return draft ? send(res, 200, draft) : send(res, 404, { error: "No generated draft waits here." });
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/drafts/branches`) {
             return send(res, 200, listBranches(workspace, readManifest(join(workspace, "portolan.json")).projects ?? []));
@@ -1740,6 +1744,15 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             const project = String(input.project ?? "");
             const branch = String(input.branch ?? "");
             return send(res, 200, { deleted: deleteDraft(workspace, { project, branch }), path: draftPath(project, branch) });
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/drafts/restore`) {
+            return send(res, 200, { path: restoreDraft(workspace, { project: String(input.project ?? ""), branch: String(input.branch ?? "") }) });
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/drafts/save`) {
+            return send(res, 200, { path: saveDraft(workspace, { project: String(input.project ?? ""), branch: String(input.branch ?? "") }) });
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/drafts/discard`) {
+            return send(res, 200, { discarded: discardDraft(workspace, { project: String(input.project ?? ""), branch: String(input.branch ?? "") }) });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/git-fetch/refs`) {
             return send(res, 200, await listGitRefs(input.repository));

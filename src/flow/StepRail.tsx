@@ -189,6 +189,34 @@ function CrossChip({ step, context }: { step: Step; context: string | null }) {
   );
 }
 
+/** What a branch did to a step, drawn on its row. */
+export interface RailMark {
+  state: "added" | "changed" | "removed" | "main";
+  was?: string;
+  note?: string;
+}
+
+const MARK_COLOR: Record<RailMark["state"], string> = {
+  added: "var(--status-verified)",
+  changed: "var(--accent)",
+  removed: "var(--fg-muted)",
+  main: "var(--status-unresolved)",
+};
+
+const MARK_GLYPH: Record<RailMark["state"], string> = {
+  added: "+",
+  changed: "~",
+  removed: "−",
+  main: "!",
+};
+
+const MARK_TITLE: Record<RailMark["state"], string> = {
+  added: "added in the branch",
+  changed: "changed in the branch",
+  removed: "removed in the branch",
+  main: "changed on main since the branch's base",
+};
+
 function StepRow({
   row,
   answer,
@@ -199,6 +227,7 @@ function StepRow({
   crossContext,
   continuations,
   full,
+  mark,
 }: {
   row: OutlineStep;
   /** What the callee hands back, when a contract says. */
@@ -211,6 +240,7 @@ function StepRow({
   crossContext?: string | null | undefined;
   continuations: readonly Continuation[];
   full?: boolean;
+  mark?: RailMark | undefined;
 }) {
   const { step, number, depth, hidden, offPath, offStatus } = row;
   const self = step.from === step.to;
@@ -240,11 +270,18 @@ function StepRow({
         style={{
           borderLeftWidth: 2,
           borderLeftStyle: "solid",
-          borderLeftColor: errorResponse
-            ? "var(--response-error)"
-            : "transparent",
+          borderLeftColor: mark
+            ? MARK_COLOR[mark.state]
+            : errorResponse
+              ? "var(--response-error)"
+              : "transparent",
           paddingLeft: 8 + depth * 10,
-          background: errorResponse ? "var(--response-error-bg)" : undefined,
+          background: mark
+            ? `color-mix(in srgb, ${MARK_COLOR[mark.state]} 8%, transparent)`
+            : errorResponse
+              ? "var(--response-error-bg)"
+              : undefined,
+          textDecoration: mark?.state === "removed" ? "line-through" : undefined,
         }}
         aria-current={active ? "true" : undefined}
       >
@@ -276,6 +313,15 @@ function StepRow({
             >
               {stepTitle(step)}
             </span>
+            {mark ? (
+              <span
+                className="mono ml-auto shrink-0 pl-1"
+                style={{ color: MARK_COLOR[mark.state] }}
+                title={MARK_TITLE[mark.state]}
+              >
+                {MARK_GLYPH[mark.state]}
+              </span>
+            ) : null}
             {/* A standalone call keeps its contract answer on this line. Once
                 composition proves the nested return, the answer becomes its
                 own response step and is omitted from this map. */}
@@ -368,7 +414,10 @@ export function StepRail({
   crossContextOf,
   continuations,
   full,
+  marks,
 }: {
+  /** What a branch did to each step, by step id. */
+  marks?: ReadonlyMap<string, RailMark> | undefined;
   /** The rail's rows, already cut into chapters. */
   groups: readonly ChapterGroup[];
   /** What each step's callee hands back, by step id; see flow/answers.ts. */
@@ -441,6 +490,7 @@ export function StepRail({
                           crossContext={crossContextOf(row.step)}
                           continuations={continuations.get(row.step.id) ?? []}
                           full={full}
+                          mark={marks?.get(row.step.id)}
                         />
                       </li>
                     ),

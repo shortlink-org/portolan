@@ -18,6 +18,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { BranchPicker } from "./BranchPicker";
+import { DraftPicker } from "./DraftPicker";
 import { BuildStamp } from "./BuildStamp";
 import { useDensity } from "./density";
 import { usePhone } from "./responsive";
@@ -101,6 +102,7 @@ export function TopBar({
       >
         <CatalogPicker compact={phone} />
         <BranchPicker compact={phone} />
+        <DraftPicker compact={phone} />
 
         {/* Opens the palette rather than filtering in place: the sidebar box
             narrows the tree, this one searches the whole catalog. */}

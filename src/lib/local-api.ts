@@ -322,7 +322,7 @@ export interface TraceTrial {
   mappings: { services: Record<string, string>; events: Record<string, string>; routes: Record<string, string> };
 }
 
-export type RunMode = "write" | "check" | "preview" | "project-preview" | "trace-preview";
+export type RunMode = "write" | "check" | "preview" | "project-preview" | "trace-preview" | "draft";
 
 export type RunEvent =
   | { type: "run-started"; at: string; runId: string; mode: RunMode }
@@ -334,6 +334,8 @@ export type RunEvent =
   | ({ type: "trace-trial-ready"; at: string } & TraceTrial)
   | { type: "run-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "process-finished"; at: string; status: string; durationMs?: number; message?: string }
+  | { type: "draft-progress"; at: string; message: string }
+  | { type: "draft-ready"; at: string; project: string; branch: string; path: string; entities: number; views: number; warnings: string[] }
   | { type: "log"; at: string; stream: "stdout" | "stderr"; message: string };
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
@@ -518,6 +520,47 @@ export async function startGeneration(mode: "write" | "check" | "preview" = "pre
 export async function cancelGeneration(runId: string): Promise<void> {
   await json(`/runs/${encodeURIComponent(runId)}/cancel`, { method: "POST", headers: LOCAL_HEADER, body: "{}" });
 }
+
+// --- Branch drafts (portolan.0019) ------------------------------------------
+
+export interface SavedDraftStatus {
+  path: string;
+  project: string;
+  branch?: string;
+  tip?: string;
+  base?: string;
+  generatedAt?: string;
+  entities?: number;
+  status: "fresh" | "moved" | "gone" | "failed" | "unreadable";
+  currentTip?: string;
+  ahead?: number;
+  failure?: { message: string; at: string; step?: string };
+}
+
+export interface DraftBranches {
+  main: string;
+  projects: { id: string; name: string }[];
+  branches: { branch: string; tip: string; base: string; ahead: number; projects: string[] }[];
+}
+
+type BranchDraftFile = import("./branch-draft").BranchDraft;
+type DraftRef = { project: string; branch: string };
+// Only the two names: a caller may hand in a whole draft, which is far more
+// than the local API reads in one request.
+const draftBody = ({ project, branch }: DraftRef): RequestInit => ({ method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ project, branch }) });
+
+export function savedDrafts(): Promise<{ drafts: SavedDraftStatus[]; files: BranchDraftFile[] }> {
+  return json("/drafts?files=1");
+}
+export function draftBranches(): Promise<DraftBranches> { return json("/drafts/branches"); }
+export function generateBranchDraft(ref: DraftRef): Promise<{ runId: string; mode: "draft"; path: string }> { return json("/drafts/generate", draftBody(ref)); }
+export function pendingBranchDraft(ref: DraftRef): Promise<BranchDraftFile> {
+  return json(`/drafts/pending?project=${encodeURIComponent(ref.project)}&branch=${encodeURIComponent(ref.branch)}`);
+}
+export function saveBranchDraft(ref: DraftRef): Promise<{ path: string }> { return json("/drafts/save", draftBody(ref)); }
+export function discardBranchDraft(ref: DraftRef): Promise<{ discarded: boolean }> { return json("/drafts/discard", draftBody(ref)); }
+export function deleteBranchDraft(ref: DraftRef): Promise<{ deleted: boolean; path: string }> { return json("/drafts/delete", draftBody(ref)); }
+export function restoreBranchDraft(ref: DraftRef): Promise<{ path: string }> { return json("/drafts/restore", draftBody(ref)); }
 
 export function subscribeToRun(runId: string, onEvent: (event: RunEvent) => void, onEnd: () => void): () => void {
   const source = new EventSource(`${ROOT}/runs/${encodeURIComponent(runId)}/events`);

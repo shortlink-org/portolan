@@ -5,6 +5,7 @@
 // is derived from the id rather than supplied by the caller, so a click in the
 // sidebar and a click on a diagram node cannot disagree about what was clicked.
 
+import { useActiveFlows } from "../drafts/active-flows";
 import type {
   Aggregate,
   BoundedContext,
@@ -323,7 +324,9 @@ export function resolveSelection(id: string): Resolved | null {
 
   const parsed = parseFlowStepId(id);
   if (parsed) {
-    const flow = index.flowBySlug.get(parsed.flowSlug);
+    // A flow page showing a branch version resolves its
+    // steps against that version, so a step the branch added has a panel too.
+    const flow = useActiveFlows.getState().flows[parsed.flowSlug] ?? index.flowBySlug.get(parsed.flowSlug);
     if (flow) {
       const steps = walkSteps(flow.steps);
       const at = steps.findIndex((s) => s.id === parsed.stepId);

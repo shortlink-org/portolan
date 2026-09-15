@@ -7,6 +7,7 @@
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0019-a-branch-draft-is-generated-in-dev-compared-from-its-merge-base-and-saved-beside-main.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0019-a-branch-draft-is-generated-in-dev-compared-from-its-merge-base-and-saved-beside-main.md)
 - **Committed:** Victor Login, 2026-09-15 (`e183e55`)
+- **Revised:** Victor Login, 2026-09-15 (`af83021`)
 
 ### Context and Problem Statement
 

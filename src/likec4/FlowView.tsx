@@ -22,6 +22,8 @@ import {
   buildWalkthroughCss,
 } from "./frame-theme";
 import { centredViewport, readableViewport } from "./canvas-viewport";
+import type { LikeC4Model } from "@likec4/core/model";
+import type { EdgeStepPairing } from "./flow-edges";
 import type { Size } from "./canvas-viewport";
 import { flowStepId } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
@@ -45,8 +47,15 @@ export function FlowView({
   focusStep = null,
   canvas,
   onWalkthroughStep,
+  draft,
 }: {
   flow: Flow;
+  /**
+   * A branch's version of this flow - a model with the view saved in the
+   * draft in place of main's, and the pairing of the branch's steps to its
+   * edges (portolan.0019). Everything else on the canvas is unchanged.
+   */
+  draft?: { model: LikeC4Model.Layouted; pairing: EdgeStepPairing } | undefined;
   crossOnly: boolean;
   variant: "diagram" | "sequence";
   /** Catalog step ids to mark; the rest of the sequence is dimmed. */
@@ -63,7 +72,7 @@ export function FlowView({
   onWalkthroughStep: (stepId: string | null) => void;
 }) {
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
-  const pairing = flowPairing(flow, crossOnly);
+  const pairing = draft?.pairing ?? flowPairing(flow, crossOnly);
 
   const selection = useSelectionStore((s) => s.selection);
   const source = useSelectionStore((s) => s.source);
@@ -217,6 +226,7 @@ export function FlowView({
       onEdge={onEdge}
       onCanvas={onCanvasClick}
       onReady={onReady}
+      model={draft?.model}
     >
       <CanvasBridge
         handle={canvas}

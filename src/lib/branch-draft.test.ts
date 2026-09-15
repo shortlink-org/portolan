@@ -148,5 +148,6 @@ describe("alignSteps", () => {
     const aligned = alignSteps(base, branch);
     expect(aligned.branch.size).toBe(0);
     expect(aligned.removed.map((s) => s.label)).toEqual(["ByEmail"]);
+    expect(aligned.removedAfter.get("s2")).toBe("s1");
   });
 });

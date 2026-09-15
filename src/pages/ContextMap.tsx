@@ -11,6 +11,10 @@
 // it. A pattern chip that could not be checked would be an opinion in a tool
 // whose whole claim is that it does not hold opinions.
 
+import { useContext } from "react";
+import { index } from "../data";
+import { useEnabledDrafts } from "../drafts/store";
+import { DraftLinks, withDraftLinks } from "../drafts/map-overlay";
 import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -147,7 +151,8 @@ function Times({ n }: { n: number }) {
 function EventChip({ group }: { group: Grouped }) {
   const { link, takers } = group;
   const to = eventPath(link.id);
-  const title = `${link.id} — ${link.from} → ${takers.join(", ")} (${link.status})`;
+  const draftBranch = useContext(DraftLinks).get(link.id);
+  const title = `${link.id} — ${link.from} → ${takers.join(", ")} (${link.status})${draftBranch ? ` · only in ${draftBranch}` : ""}`;
   const body = (
     <>
       <EventIcon size={11} aria-hidden />
@@ -159,7 +164,8 @@ function EventChip({ group }: { group: Grouped }) {
   const style = {
     color: "var(--kind-event)",
     background: "color-mix(in srgb, var(--kind-event) 12%, transparent)",
-    borderColor: "transparent",
+    borderColor: draftBranch ? "var(--status-verified)" : "transparent",
+    ...(draftBranch ? { borderStyle: "dashed" as const } : {}),
   };
   return to ? (
     <Link to={to} className="chip" style={style} title={title}>
@@ -174,15 +180,17 @@ function EventChip({ group }: { group: Grouped }) {
 
 function CallChip({ group }: { group: Grouped }) {
   const { link, takers } = group;
+  const draftBranch = useContext(DraftLinks).get(link.id);
   return (
     <Ident
       value={link.id}
-      className="chip border-line-strong text-muted"
-      title={`${link.id} — ${takers.join(", ")} ${takers.length === 1 ? "calls" : "call"} ${link.from} (${link.status})`}
+      className={`chip ${draftBranch ? "border-dashed border-verified text-verified" : "border-line-strong text-muted"}`}
+      title={`${link.id} — ${takers.join(", ")} ${takers.length === 1 ? "calls" : "call"} ${link.from} (${link.status})${draftBranch ? ` · only in ${draftBranch}` : ""}`}
     >
       <StatusMark status={link.status} />
       {link.id}
       <Times n={takers.length} />
+      {draftBranch ? <span className="ml-1 text-[10px]">draft · {draftBranch}</span> : null}
     </Ident>
   );
 }
@@ -450,7 +458,13 @@ export function ContextMap() {
     () => narrowToEnvironments(catalog, environments),
     [environments],
   );
-  const relations = useMemo(() => contextMap(narrowed), [narrowed]);
+  // Calls and events shown drafts add across contexts are
+  // laid into the relationships, and their chips drawn dashed.
+  const shownDrafts = useEnabledDrafts();
+  const { relations, draftLinks } = useMemo(
+    () => withDraftLinks(contextMap(narrowed), shownDrafts, index),
+    [narrowed, shownDrafts],
+  );
   const toggleEnvironment = (env: string) =>
     setEnvironments((prev) => {
       const next = new Set(prev);
@@ -570,6 +584,7 @@ export function ContextMap() {
                 one domain has no neighbours — a map needs two to draw a line
               </Empty>
             ) : (
+              <DraftLinks.Provider value={draftLinks}>
               <div className="flex flex-col gap-grid">
                 {joined.map((relation, i) => (
                   <Relation key={relation.id} relation={relation} at={i} />
@@ -578,6 +593,7 @@ export function ContextMap() {
                   <SeparateWays relations={apart} at={joined.length} />
                 ) : null}
               </div>
+              </DraftLinks.Provider>
             )}
           </section>
         </div>

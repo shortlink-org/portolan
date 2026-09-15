@@ -8,6 +8,7 @@
 // Rows carry the same kind icons as the sidebar tree, and the same taxonomy
 // narrows the list: "e: item" searches events, "vo: money" value objects.
 
+import { useDraftBadges, useDraftPaletteItems } from "../drafts/nav";
 import { Fragment, useMemo, useRef, useState } from "react";
 import {
   Combobox,
@@ -46,7 +47,10 @@ const HINT_KINDS: Kind[] = [
 ];
 
 /** One row of the list, drawn the same whether it was searched for or recalled. */
-function Row({ hit: { item, excerpt } }: { hit: PaletteHit }) {
+function Row({ hit: { item: found, excerpt } }: { hit: PaletteHit }) {
+  // What a shown draft did to the row's entity is its badge.
+  const draftBadge = useDraftBadges().get(found.id);
+  const item = draftBadge ? { ...found, badge: draftBadge } : found;
   return (
     <ComboboxOption
       value={{ item, ...(excerpt ? { excerpt } : {}) }}
@@ -120,7 +124,8 @@ export function CommandPalette({
   const location = useLocation();
   const setSelection = useSelectionStore((s) => s.set);
 
-  const result = useMemo(() => search(ITEMS, open ? query : ""), [open, query]);
+  const draftItems = useDraftPaletteItems();
+  const result = useMemo(() => search([...draftItems, ...ITEMS], open ? query : ""), [draftItems, open, query]);
   const results = open ? result.hits : [];
 
   // Under an empty input: where the reader has been and what they pinned,

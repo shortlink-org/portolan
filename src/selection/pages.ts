@@ -5,6 +5,7 @@
 // contain it?" decides whether a navigation keeps the selection or drops it —
 // a selection nothing on screen can point at is a selection nobody can see.
 
+import { useActiveFlows } from "../drafts/active-flows";
 import { walkSteps } from "../catalog";
 import { catalog, index } from "../data";
 import { paths } from "../routes";
@@ -34,7 +35,8 @@ export function selectionPath(selection: Selection): string | null {
         resolved.event.slug,
       );
     case "flow-step":
-      return paths.flow(resolved.flow.slug);
+      // A flow only a branch has lives on its draft page.
+      return useActiveFlows.getState().pages[resolved.flow.slug] ?? paths.flow(resolved.flow.slug);
     // A table, a view and a column are read on the canvas of the store holding
     // them: a column's page is the picture of what it points at and where its
     // value came from.

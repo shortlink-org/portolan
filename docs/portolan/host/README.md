@@ -67,7 +67,9 @@ and validates the union. Nothing here draws anything.
   `provenance.mjs`, that provenance handed to the site as one virtual module;
   `output-diff.mjs`, where a generated file first differs from what the
   generator produces; `site-docs.mjs`, generated documentation put into the
-  built site; `local-api.mjs`, what the dev server answers the site with.
+  built site; `local-api.mjs`, what the dev server answers the site with;
+  `branch-drafts.mjs`, a branch's draft of one project - generated from
+  worktrees of its tip and merge-base, listed and deleted (portolan.0019).
 
 ## Commands
 

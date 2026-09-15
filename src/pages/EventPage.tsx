@@ -1,3 +1,8 @@
+import { addedEvent, branchEvent } from "../drafts/branch-entities";
+import { usePickedDraft } from "../drafts/store";
+import type { Draft, DraftEntity } from "../drafts/model";
+import { DraftOnlyStrip } from "../drafts/DraftOnlyStrip";
+import { DraftBanner } from "../drafts/DraftBanner";
 import { useCallback, useMemo, useState } from "react";
 import {
   Listbox,
@@ -318,18 +323,40 @@ function VersionPicker({
   );
 }
 
-export function EventPage() {
+export function EventPage({
+  draftOnly,
+}: {
+  /** An event only this branch has, shown on the same page. */
+  draftOnly?: { draft: Draft; entity: DraftEntity } | undefined;
+} = {}) {
   const {
-    context: contextId,
-    service: serviceSlug,
-    aggregate: aggSlug,
-    event: eventSlug,
+    context: routeContextId,
+    service: routeServiceSlug,
+    aggregate: routeAggSlug,
+    event: routeEventSlug,
   } = useParams();
   const [params, setParams] = useSearchParams();
+  // An event only a branch has sits under the aggregate
+  // that announces it, which main does have.
+  const draftOnlyEntity = draftOnly?.entity;
+  const parentOwner = draftOnlyEntity?.parent ? index.aggregateOwner.get(draftOnlyEntity.parent) : undefined;
+  const contextId = parentOwner ? index.serviceContext.get(parentOwner.id)?.id : routeContextId;
+  const serviceSlug = parentOwner?.slug ?? routeServiceSlug;
+  const aggSlug = draftOnlyEntity?.parent ? index.aggregateById.get(draftOnlyEntity.parent)?.slug : routeAggSlug;
+  const onlyInBranch = useMemo(() => (draftOnlyEntity ? addedEvent(draftOnlyEntity) : null), [draftOnlyEntity]);
+  const eventSlug = onlyInBranch?.slug ?? routeEventSlug;
   const context = catalog.contexts.find((c) => c.id === contextId);
   const service = context?.services.find((s) => s.slug === serviceSlug);
   const aggregate = service?.aggregates.find((a) => a.slug === aggSlug);
-  const event = aggregate?.events.find((e) => e.slug === eventSlug);
+  const mainEvent = onlyInBranch ? undefined : aggregate?.events.find((e) => e.slug === eventSlug);
+  // With a branch version picked, the latest version's
+  // schema is the branch's, and each row says what differs from main.
+  const pickedEntity = usePickedDraft(mainEvent?.id ?? "")?.entity;
+  const branch = useMemo(
+    () => (mainEvent && pickedEntity ? branchEvent(mainEvent, pickedEntity) : null),
+    [mainEvent, pickedEntity],
+  );
+  const event = onlyInBranch ?? branch?.event ?? mainEvent;
 
   const latest = event?.versions[event.versions.length - 1]?.version ?? "";
   const requestedVersion = params.get("version");
@@ -363,12 +390,21 @@ export function EventPage() {
   // The version's rows, with what it did to each against the one before.
   const rows = useMemo<SchemaRow[]>(() => {
     if (!event || !selected) return [];
+    // A branch's latest version is compared with main's,
+    // not with the version before it.
+    if (onlyInBranch) return selected.fields.map((field) => ({ ...field, change: "new" as const }));
+    if (branch && selected === event.versions[event.versions.length - 1]) {
+      return [
+        ...selected.fields.map((field) => ({ ...field, ...branch.marks.get(field.name) })),
+        ...branch.removed.map((field) => ({ ...field, change: "removed" as const })),
+      ];
+    }
     const { byField, removed } = schemaChanges(event, selected.version);
     return [
       ...selected.fields.map((field) => ({ ...field, ...byField.get(field.name) })),
       ...removed.map((field) => ({ ...field, change: "removed" as const })),
     ];
-  }, [event, selected]);
+  }, [event, selected, branch, onlyInBranch]);
   const scope = useMemo<Scope>(
     () =>
       event ? eventScope(index, event) : { aggregate: null, service: null },
@@ -598,6 +634,11 @@ export function EventPage() {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
+          {draftOnly ? (
+            <DraftOnlyStrip draft={draftOnly.draft} entity={draftOnly.entity} className="mb-[calc(var(--gutter)+1rem)]" />
+          ) : (
+            <DraftBanner id={event.id} className="mb-[calc(var(--gutter)+1rem)]" />
+          )}
           <InLanguage id={event.id} />
 
           {/* --- Schema ------------------------------------------------- */}

@@ -226,7 +226,9 @@ and validates the union. Nothing here draws anything.
   `provenance.mjs`, that provenance handed to the site as one virtual module;
   `output-diff.mjs`, where a generated file first differs from what the
   generator produces; `site-docs.mjs`, generated documentation put into the
-  built site; `local-api.mjs`, what the dev server answers the site with.
+  built site; `local-api.mjs`, what the dev server answers the site with;
+  `branch-drafts.mjs`, a branch's draft of one project - generated from
+  worktrees of its tip and merge-base, listed and deleted (portolan.0019).
 
 ## Commands
 
@@ -3859,6 +3861,7 @@ to distinguish desired attachment from controller-observed reachability.
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0019-a-branch-draft-is-generated-in-dev-compared-from-its-merge-base-and-saved-beside-main.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0019-a-branch-draft-is-generated-in-dev-compared-from-its-merge-base-and-saved-beside-main.md)
 - **Committed:** Victor Login, 2026-09-15 (`e183e55`)
+- **Revised:** Victor Login, 2026-09-15 (`af83021`)
 
 ### Context and Problem Statement
 

@@ -1,3 +1,7 @@
+import { usePickedDraft } from "../drafts/store";
+import { draftIntegrationGroups } from "../drafts/branch-entities";
+import { DraftBanner } from "../drafts/DraftBanner";
+import { DraftEventMark, DraftServiceEventRows } from "../drafts/nav";
 import { useState } from "react";
 import { TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
@@ -153,6 +157,10 @@ export function ServicePage() {
     });
   const context = catalog.contexts.find((c) => c.id === contextId);
   const service = context?.services.find((s) => s.slug === serviceSlug);
+  // With a branch version picked, the integrations tab
+  // lists the systems the branch calls that main has never drawn.
+  const pickedDraft = usePickedDraft(service?.id ?? "");
+  const pickedService = pickedDraft?.entity;
 
   const raw = params.get("tab");
   const tab: Tab = isTab(raw) ? raw : "overview";
@@ -198,7 +206,10 @@ export function ServicePage() {
   const showDomain =
     componentKind(service) === "service" || service.aggregates.length > 0;
   const hasModelGroups = service.aggregates.some((aggregate) => aggregate.kind === "model-group");
-  const integrations = integrationsFor(service, catalog);
+  const integrations = [
+    ...(pickedService && pickedDraft ? draftIntegrationGroups(service, pickedService, pickedDraft.draft.branch) : []),
+    ...integrationsFor(service, catalog),
+  ];
 
   const counts: Record<Tab, number | null> = {
     overview: null,
@@ -334,6 +345,7 @@ export function ServicePage() {
           </TabRow>
         </div>
       </PageHeader>
+      <DraftBanner id={service.id} className="mx-gutter mt-3" />
 
       <TabPanels className="p-gutter">
         <TabPanel>
@@ -460,7 +472,10 @@ export function ServicePage() {
                         >
                           {aggregate.slug}
                         </Link>
-                        <span className="meta">{aggregate.name}{aggregate.kind === "model-group" ? " · model group" : ""}</span>
+                        <span className="meta flex items-center gap-2">
+                          {aggregate.name}{aggregate.kind === "model-group" ? " · model group" : ""}
+                          <DraftEventMark id={aggregate.id} />
+                        </span>
                         <Link
                           to={`${to}#bb-events`}
                           className="mono rounded-control hover:underline"
@@ -523,8 +538,9 @@ export function ServicePage() {
                         >
                           {event.name}
                         </Link>
-                        <span className="mono text-muted">
+                        <span className="mono flex items-center gap-2 text-muted">
                           {aggregate.slug}
+                          <DraftEventMark id={event.id} />
                         </span>
                         <Link
                           to={`${to}#${EVENT_ANCHOR.consumers}`}
@@ -543,6 +559,7 @@ export function ServicePage() {
                       </div>
                     );
                   })}
+                  <DraftServiceEventRows serviceId={service.id} />
                 </div>
               )}
             </section>

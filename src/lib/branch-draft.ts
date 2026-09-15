@@ -52,6 +52,8 @@ export interface BranchDraft {
   entities: DraftEntity[];
   /** Layouted LikeC4 views of the flows the branch touched, by view id. */
   views?: Record<string, unknown>;
+  /** The LikeC4 model elements those views draw, by fqn. */
+  elements?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +200,11 @@ export interface StepAlignment {
   branch: Map<string, { change: StepChange; was?: Step }>;
   /** Base steps with no counterpart on the branch, in base order. */
   removed: Step[];
+  /**
+   * The branch step each removed step stood after, by the removed step's id;
+   * absent for one that stood before every branch step.
+   */
+  removedAfter: Map<string, string>;
 }
 
 function signature(step: Step): string {
@@ -231,7 +238,7 @@ export function alignSteps(base: Flow, branch: Flow): StepAlignment {
     }
   }
 
-  const alignment: StepAlignment = { branch: new Map(), removed: [] };
+  const alignment: StepAlignment = { branch: new Map(), removed: [], removedAfter: new Map() };
   let gapWas: Step[] = [];
   let gapNow: Step[] = [];
   const closeGap = () => {
@@ -246,6 +253,8 @@ export function alignSteps(base: Flow, branch: Flow): StepAlignment {
       }
     }
     alignment.removed.push(...unmatched);
+    const after = j > 0 ? now[j - 1]?.id : undefined;
+    if (after) for (const step of unmatched) alignment.removedAfter.set(step.id, after);
     gapWas = [];
     gapNow = [];
   };
