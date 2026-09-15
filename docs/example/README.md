@@ -66,6 +66,7 @@
 | [Add item](flows/cart-add-item.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Checkout](flows/cart-checkout.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Create basket](flows/cart-create-basket.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
+| [Expire idle baskets](flows/cart-expire-idle-baskets.md) | [shop](shop/README.md) | Abandons every open basket nobody touched for a day, and says so for each. |
 | [Get basket](flows/cart-get-basket.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Merge baskets](flows/cart-merge-baskets.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |

@@ -17,6 +17,7 @@ import { AuthSessions, PermissiveSessions } from "../infrastructure/auth/client.
 import { PermissivePricing, PricingClient } from "../infrastructure/pricing/client.ts";
 import { PostgresBaskets } from "../infrastructure/repository/basket/postgres.ts";
 import { BasketHandlers } from "../infrastructure/transport/http/basket/handlers.ts";
+import { ExpireIdleBasketsJob } from "../infrastructure/transport/job/expire_idle_baskets.ts";
 import { type Bus, InProcBus } from "../pkg/messaging/bus.ts";
 import { NatsBus } from "../pkg/messaging/nats.ts";
 import { TOKENS, type NewId, type NewToken, type Now } from "./tokens.ts";
@@ -69,6 +70,7 @@ export function buildContainer(settings: Settings): Container {
   container.bind(Checkout).toSelf();
   container.bind(ExpireIdleBaskets).toSelf();
   container.bind(BasketHandlers).toSelf();
+  container.bind(ExpireIdleBasketsJob).toSelf();
 
   return container;
 }

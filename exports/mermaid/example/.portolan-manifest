@@ -32,6 +32,7 @@
     "cart-add-item.mmd",
     "cart-checkout.mmd",
     "cart-create-basket.mmd",
+    "cart-expire-idle-baskets.mmd",
     "cart-get-basket.mmd",
     "cart-merge-baskets.mmd",
     "cart-remove-item.mmd",

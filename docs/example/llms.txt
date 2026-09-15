@@ -1,6 +1,6 @@
 # Example estate
 
-> Architecture catalog of Example estate: 5 bounded contexts, 9 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 63 flows and 43 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 5 bounded contexts, 9 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 64 flows and 43 decision records, read from the code, the specs and the traces of the estate.
 
 *Generated from the portolan catalog. Do not edit by hand.*
 
@@ -96,6 +96,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Add item](flows/cart-add-item.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included
 - [Checkout](flows/cart-checkout.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included
 - [Create basket](flows/cart-create-basket.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included
+- [Expire idle baskets](flows/cart-expire-idle-baskets.md): owned by [shop](shop/README.md). Abandons every open basket nobody touched for a day, and says so for each
 - [Get basket](flows/cart-get-basket.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included
 - [Merge baskets](flows/cart-merge-baskets.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included
 - [Remove item](flows/cart-remove-item.md): owned by [shop](shop/README.md). Source-backed cross-protocol continuations are included

@@ -72,6 +72,7 @@
 | [Add item](flows/cart-add-item.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Checkout](flows/cart-checkout.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Create basket](flows/cart-create-basket.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
+| [Expire idle baskets](flows/cart-expire-idle-baskets.md) | [shop](shop/README.md) | Abandons every open basket nobody touched for a day, and says so for each. |
 | [Get basket](flows/cart-get-basket.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Merge baskets](flows/cart-merge-baskets.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | Source-backed cross-protocol continuations are included. |
@@ -4068,7 +4069,7 @@ stateDiagram-v2
 | `AddItem` | command | `addItem` | Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002). |
 | `Checkout` | command | `checkout` | Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004). |
 | `CreateBasket` | command | `createBasket` | Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007). |
-| `ExpireIdleBaskets` | command | *internal* | The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the service runs it once a minute. |
+| `ExpireIdleBaskets` | command | *internal* | The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute. |
 | `GetBasket` | query | `getBasket` | The basket as it stands, for whoever holds its token. |
 | `MergeBaskets` | command | `mergeBaskets` | Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged. |
 | `RemoveItem` | command | `removeItem` | Takes a line out of a basket outright. |
@@ -6296,6 +6297,7 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [Add item](cart-add-item.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Checkout](cart-checkout.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Create basket](cart-create-basket.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
+| [Expire idle baskets](cart-expire-idle-baskets.md) | [shop](../shop/README.md) | Abandons every open basket nobody touched for a day, and says so for each. |
 | [Get basket](cart-get-basket.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Merge baskets](cart-merge-baskets.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
@@ -7964,6 +7966,59 @@ sequenceDiagram
 <a id="step-response-s1"></a>
 4. **shop.cart** → **client** — HTTP response
    status: declared · Synthesized from the proven synchronous HTTP handler return.
+
+<!-- flows/cart-expire-idle-baskets.md -->
+
+# Expire idle baskets
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Id:** `flow.cart-expire-idle-baskets`
+- **Owner:** [shop](../shop/README.md)
+- **Trigger:** `scheduled` · every minute
+- **Root confidence:** high
+- **Source:** [`examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts)
+
+Abandons every open basket nobody touched for a day, and says so for each.
+
+## Participants
+
+| Participant | Kind | Context | Entity | Label |
+| --- | --- | --- | --- | --- |
+| `scheduler` | actor | — | — | Scheduler |
+| `shop.cart` | service | [shop](../shop/README.md) | — | — |
+| `cart-pg` | store | [shop](../shop/README.md) | [shop.cart.pg](../shop/cart/stores/pg.md) | — |
+| `bus` | broker | — | — | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as Scheduler
+    participant p1 as shop.cart
+    participant p2 as cart-pg
+    participant p3 as bus
+    p0->>p1: expire-idle-baskets
+    p1->>p2: idleSince
+    p1->>p2: save
+    p1-)p3: BasketAbandoned
+```
+
+## Steps
+
+<a id="step-s1"></a>
+1. **scheduler** → **shop.cart** — expire-idle-baskets
+   status: declared · [`examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts#L18) · Fires every minute.
+<a id="step-s2"></a>
+2. **shop.cart** → **cart-pg** — idleSince
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts#L21)
+<a id="step-s3"></a>
+3. **shop.cart** → **cart-pg** — save
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts#L25) · inside a loop over `idle`.
+<a id="step-s4"></a>
+4. **shop.cart** → **bus** — BasketAbandoned
+   [`shop.cart.basket.BasketAbandoned`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketabandoned) · status: declared · [`examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts#L25) · inside a loop over `idle`.
 
 <!-- flows/cart-get-basket.md -->
 
@@ -11204,8 +11259,10 @@ what is unusual is only that nothing calls it from outside.
   react to it.
 - Bad: a sweep is a second process inside the service, alongside the relay,
   and has to be shut down with it.
-- Note: the catalog reads no flow for the sweep, because no endpoint or
-  event opens it; the operation is in the model, the sequence is not.
+- Note: the sweep's way in is a named job,
+  `infrastructure/transport/job/expire_idle_baskets.ts`, with its schedule
+  on it, so the catalog reads a flow for it the way it reads one for an
+  endpoint.
 
 <!-- adr/cart.0007.md -->
 

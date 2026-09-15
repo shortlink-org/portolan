@@ -33,6 +33,7 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Add item](cart-add-item.mmd) — `flow.cart-add-item`
 - [Checkout](cart-checkout.mmd) — `flow.cart-checkout`
 - [Create basket](cart-create-basket.mmd) — `flow.cart-create-basket`
+- [Expire idle baskets](cart-expire-idle-baskets.mmd) — `flow.cart-expire-idle-baskets`
 - [Get basket](cart-get-basket.mmd) — `flow.cart-get-basket`
 - [Merge baskets](cart-merge-baskets.mmd) — `flow.cart-merge-baskets`
 - [Remove item](cart-remove-item.mmd) — `flow.cart-remove-item`

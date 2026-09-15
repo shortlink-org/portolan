@@ -3,13 +3,13 @@ views {
   view landscape {
     title 'Estate'
     description 'Every architecture group, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe, developer
+    include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe, scheduler, developer
   }
 
   view containers {
     title 'Containers'
     description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, developer
+    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, scheduler, developer
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -48,7 +48,8 @@ RefundIssued' }
 InvoicePaid
 InvoiceVoided' }
     include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
-    include shop.cart -> bus where kind is bus with { title '5 events'  notes 'BasketCheckedOut
+    include shop.cart -> bus where kind is bus with { title '6 events'  notes 'BasketAbandoned
+BasketCheckedOut
 BasketCreated
 BasketItemAdded
 BasketItemRemoved
@@ -91,7 +92,7 @@ QuoteIssued' }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
     rank same { shop, oms_cdc_kafka }
-    rank source { client, developer }
+    rank source { client, scheduler, developer }
   }
 
   view landscape_portolan {
@@ -116,13 +117,13 @@ QuoteIssued' }
   view landscape_example {
     title 'Example estate'
     description 'The groups and outside systems selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, client, risk_v1, stripe
+    include auth, storefront, payments, shop, delivery, client, risk_v1, stripe, scheduler
   }
 
   view containers_example {
     title 'Example estate containers'
     description 'The services, stores and transports selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, scheduler
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -158,7 +159,8 @@ RefundIssued' }
 InvoicePaid
 InvoiceVoided' }
     include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
-    include shop.cart -> bus where kind is bus with { title '5 events'  notes 'BasketCheckedOut
+    include shop.cart -> bus where kind is bus with { title '6 events'  notes 'BasketAbandoned
+BasketCheckedOut
 BasketCreated
 BasketItemAdded
 BasketItemRemoved
@@ -201,7 +203,7 @@ QuoteIssued' }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
     rank same { shop, oms_cdc_kafka }
-    rank source { client }
+    rank source { client, scheduler }
   }
 
   view landscape_bagisto {
@@ -1452,6 +1454,27 @@ OrderPlaced' }
     shop.cart -> client 'HTTP response' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
+    }
+  }
+
+  dynamic view flow_cart_expire_idle_baskets {
+    title 'Expire idle baskets'
+    description 'Abandons every open basket nobody touched for a day, and says so for each.'
+    scheduler -> shop.cart 'expire-idle-baskets' {
+      color declared  line solid  head none
+      notes 'Fires every minute. — examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts:18'
+    }
+    shop.cart -> cart_pg 'idleSince' {
+      color declared  line solid  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:21'
+    }
+    shop.cart -> cart_pg 'save' {
+      color declared  line solid  head none
+      notes 'inside a loop over `idle`. — examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:25'
+    }
+    shop.cart -> bus 'BasketAbandoned' {
+      color declared  line solid  head onormal
+      notes 'inside a loop over `idle`. — examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:25'
     }
   }
 

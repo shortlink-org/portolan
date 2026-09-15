@@ -10,6 +10,7 @@ model {
   billing_pg = store 'billing-pg'
   celery_billing_mail = broker 'Celery · billing.mail'
   cart_pg = store 'cart-pg'
+  scheduler = actor 'Scheduler'
   core_pg = store 'core-pg'
   oms_cdc_source = store 'public.orders'
   oms_cdc_kafka = broker 'Kafka'
@@ -459,7 +460,7 @@ payment was captured, and what that means for a parcel is decided here.'
   bus -[bus]-> shop.billing 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  shop.cart -[bus]-> bus '5 events' {
+  shop.cart -[bus]-> bus '6 events' {
     style { color declared  line dashed  head onormal }
   }
   delivery.core -[bus]-> bus '8 events' {

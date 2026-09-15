@@ -249,6 +249,14 @@
       "diagram": "cart-create-basket.mmd"
     },
     {
+      "id": "flow.cart-expire-idle-baskets",
+      "slug": "cart-expire-idle-baskets",
+      "name": "Expire idle baskets",
+      "owner": "shop",
+      "source": "examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts",
+      "diagram": "cart-expire-idle-baskets.mmd"
+    },
+    {
       "id": "flow.cart-get-basket",
       "slug": "cart-get-basket",
       "name": "Get basket",
