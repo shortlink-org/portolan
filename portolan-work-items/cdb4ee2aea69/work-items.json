@@ -10,6 +10,13 @@
       "provider": "linear",
       "key": "SHO-11",
       "url": "https://linear.app/shortlink/issue/SHO-11"
+    },
+    {
+      "id": "shortlink:SHO-22",
+      "tracker": "shortlink",
+      "provider": "linear",
+      "key": "SHO-22",
+      "url": "https://linear.app/shortlink/issue/SHO-22"
     }
   ],
   "workItemLinks": [
@@ -37,6 +44,351 @@
             "src/pages/LazyFlowDetail.tsx",
             "src/pages/Overview.tsx",
             "src/pages/ServicePage.tsx"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "adr",
+        "id": "core.0003"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "flow",
+        "id": "flow.core-create-shipment-on-order-confirmed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts",
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "flow",
+        "id": "flow.core-plan-route"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "service",
+        "id": "delivery.core"
+      },
+      "basis": "service-directory",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/GLOSSARY.md",
+            "examples/shop/delivery/core/README.md",
+            "examples/shop/delivery/core/docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md",
+            "examples/shop/delivery/core/package.json",
+            "examples/shop/delivery/core/portolan/adr.json",
+            "examples/shop/delivery/core/portolan/commands.json",
+            "examples/shop/delivery/core/portolan/domain.json",
+            "examples/shop/delivery/core/portolan/glossary.json",
+            "examples/shop/delivery/core/portolan/stores.json",
+            "examples/shop/delivery/core/src/application/oms/events.ts",
+            "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.test.ts",
+            "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts",
+            "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts",
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/README.md",
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.test.ts",
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts",
+            "examples/shop/delivery/core/src/di/providers.ts",
+            "examples/shop/delivery/core/src/domain/shipment/README.md",
+            "examples/shop/delivery/core/src/domain/shipment/events/shipment-created.ts",
+            "examples/shop/delivery/core/src/domain/shipment/port.ts",
+            "examples/shop/delivery/core/src/domain/shipment/shipment.test.ts",
+            "examples/shop/delivery/core/src/domain/shipment/shipment.ts",
+            "examples/shop/delivery/core/src/infrastructure/bus/jetstream.test.ts",
+            "examples/shop/delivery/core/src/infrastructure/bus/jetstream.ts",
+            "examples/shop/delivery/core/src/infrastructure/ledger/client.test.ts",
+            "examples/shop/delivery/core/src/infrastructure/ledger/client.ts",
+            "examples/shop/delivery/core/src/infrastructure/ledger/gen/payments/v1/payments_pb.ts",
+            "examples/shop/delivery/core/src/infrastructure/ledger/proto/payments/v1/payments.proto",
+            "examples/shop/delivery/core/src/infrastructure/repository/shipment/dto.ts",
+            "examples/shop/delivery/core/src/infrastructure/repository/shipment/migrations/0003_ship_to_later.sql",
+            "examples/shop/delivery/core/src/infrastructure/repository/shipment/postgres.test.ts",
+            "examples/shop/delivery/core/src/infrastructure/repository/shipment/postgres.ts",
+            "examples/shop/delivery/core/src/main.ts",
+            "examples/shop/delivery/core/tsconfig.build.json"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s1",
+        "flow": "flow.core-create-shipment-on-order-confirmed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s2",
+        "flow": "flow.core-create-shipment-on-order-confirmed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/policy/create-shipment-on-order-confirmed.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s2",
+        "flow": "flow.core-plan-route"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s3",
+        "flow": "flow.core-create-shipment-on-order-confirmed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s3",
+        "flow": "flow.core-plan-route"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s4",
+        "flow": "flow.core-create-shipment-on-order-confirmed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s4",
+        "flow": "flow.core-plan-route"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s5",
+        "flow": "flow.core-create-shipment-on-order-confirmed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s5",
+        "flow": "flow.core-plan-route"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s6",
+        "flow": "flow.core-plan-route"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "workItem": "shortlink:SHO-22",
+      "target": {
+        "kind": "step",
+        "id": "s7",
+        "flow": "flow.core-create-shipment-on-order-confirmed"
+      },
+      "basis": "source-file",
+      "commits": [
+        {
+          "repository": "https://github.com/shortlink-org/portolan",
+          "sha": "c0e2f41e2adb5f8bb736f46129bfe6281c997b75",
+          "subject": "feat(delivery): a confirmed order becomes a shipment and asks the ledger to capture (SHO-22)",
+          "author": "Victor Login",
+          "date": "2026-09-15T17:00:55+07:00",
+          "paths": [
+            "examples/shop/delivery/core/src/application/shipment/usecases/create_shipment/usecase.ts"
           ]
         }
       ]

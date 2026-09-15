@@ -6,6 +6,7 @@
 - **Date:** 2026-09-15
 - **Scope:** [delivery.core](../delivery/core/README.md)
 - **Source:** [`examples/shop/delivery/core/docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/docs/adr/0003-delivery-asks-for-the-capture-when-it-creates-the-shipment.md)
+- **Committed:** Victor Login, 2026-09-15 (`c0e2f41`)
 
 ### Context and Problem Statement
 
