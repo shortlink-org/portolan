@@ -6,7 +6,8 @@
   "repos": [
     {
       "repo": "github.com/bagisto/bagisto",
-      "commit": "7b5df45abf39f05999ad951e651008a05144b06c"
+      "commit": "7b5df45abf39f05999ad951e651008a05144b06c",
+      "path": "vendor/repos/bagisto/bagisto"
     }
   ]
 }

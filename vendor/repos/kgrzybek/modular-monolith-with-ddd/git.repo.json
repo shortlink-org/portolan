@@ -6,7 +6,8 @@
   "repos": [
     {
       "repo": "github.com/kgrzybek/modular-monolith-with-ddd",
-      "commit": "91c8ef24b4cb6ef558c95d8267fa07d68c7059f8"
+      "commit": "91c8ef24b4cb6ef558c95d8267fa07d68c7059f8",
+      "path": "vendor/repos/kgrzybek/modular-monolith-with-ddd"
     }
   ]
 }

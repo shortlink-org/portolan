@@ -89,7 +89,7 @@
           }
         }
       ],
-      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice"
+      "source": "src/Backoffice"
     },
     {
       "id": "backoffice.backend.search",
@@ -130,37 +130,37 @@
             {
               "operation": "write",
               "method": "BackofficeCourseRepository.save",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/Create/BackofficeCourseCreator.php:16"
+              "source": "src/Backoffice/Courses/Application/Create/BackofficeCourseCreator.php:16"
             },
             {
               "operation": "read",
               "method": "BackofficeCourseRepository.searchAll",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/SearchAll/AllBackofficeCoursesSearcher.php:20"
+              "source": "src/Backoffice/Courses/Application/SearchAll/AllBackofficeCoursesSearcher.php:20"
             },
             {
               "operation": "read",
               "method": "BackofficeCourseRepository.matching",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Application/SearchByCriteria/BackofficeCoursesByCriteriaSearcher.php:25"
+              "source": "src/Backoffice/Courses/Application/SearchByCriteria/BackofficeCoursesByCriteriaSearcher.php:25"
             },
             {
               "operation": "write",
               "method": "BackofficeCourseRepository.save",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:22"
+              "source": "src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:22"
             },
             {
               "operation": "read",
               "method": "BackofficeCourseRepository.searchAll",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:37"
+              "source": "src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:37"
             },
             {
               "operation": "read",
               "method": "BackofficeCourseRepository.matching",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:42"
+              "source": "src/Backoffice/Courses/Infrastructure/Persistence/InMemoryCacheBackofficeCourseRepository.php:42"
             }
           ]
         }
       ],
-      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Backoffice"
+      "source": "src/Backoffice"
     },
     {
       "id": "mooc.backend.db",
@@ -201,17 +201,17 @@
             {
               "operation": "write",
               "method": "CourseRepository.save",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Create/CourseCreator.php:22"
+              "source": "src/Mooc/Courses/Application/Create/CourseCreator.php:22"
             },
             {
               "operation": "read",
               "method": "CourseRepository.search",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Find/CourseFinder.php:18"
+              "source": "src/Mooc/Courses/Application/Find/CourseFinder.php:18"
             },
             {
               "operation": "write",
               "method": "CourseRepository.save",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Courses/Application/Update/CourseRenamer.php:28"
+              "source": "src/Mooc/Courses/Application/Update/CourseRenamer.php:28"
             }
           ]
         },
@@ -247,17 +247,17 @@
             {
               "operation": "read",
               "method": "CoursesCounterRepository.search",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Find/CoursesCounterFinder.php:16"
+              "source": "src/Mooc/CoursesCounter/Application/Find/CoursesCounterFinder.php:16"
             },
             {
               "operation": "read",
               "method": "CoursesCounterRepository.search",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:24"
+              "source": "src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:24"
             },
             {
               "operation": "write",
               "method": "CoursesCounterRepository.save",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:29"
+              "source": "src/Mooc/CoursesCounter/Application/Increment/CoursesCounterIncrementer.php:29"
             }
           ]
         },
@@ -414,22 +414,22 @@
             {
               "operation": "write",
               "method": "VideoRepository.save",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Application/Create/VideoCreator.php:24"
+              "source": "src/Mooc/Videos/Application/Create/VideoCreator.php:24"
             },
             {
               "operation": "write",
               "method": "VideoRepository.save",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Application/Update/VideoTitleUpdater.php:27"
+              "source": "src/Mooc/Videos/Application/Update/VideoTitleUpdater.php:27"
             },
             {
               "operation": "read",
               "method": "VideoRepository.search",
-              "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc/Videos/Domain/VideoFinder.php:13"
+              "source": "src/Mooc/Videos/Domain/VideoFinder.php:13"
             }
           ]
         }
       ],
-      "source": "vendor/repos/CodelyTV/php-ddd-example/src/Mooc"
+      "source": "src/Mooc"
     }
   ]
 }

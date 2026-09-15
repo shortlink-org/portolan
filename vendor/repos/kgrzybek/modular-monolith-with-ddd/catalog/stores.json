@@ -158,17 +158,17 @@
             {
               "operation": "write",
               "method": "IntegrationEventGenericHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
             },
             {
               "operation": "read",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             },
             {
               "operation": "write",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             }
           ]
         },
@@ -213,22 +213,22 @@
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:25"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:25"
             },
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:44"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:44"
             },
             {
               "operation": "read",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:24"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:24"
             },
             {
               "operation": "write",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:24"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:24"
             }
           ]
         },
@@ -319,22 +319,22 @@
             {
               "operation": "write",
               "method": "MeetingGroupProposalRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:15"
+              "source": "src/Modules/Administration/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:15"
             },
             {
               "operation": "read",
               "method": "MeetingGroupProposalRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:20"
+              "source": "src/Modules/Administration/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:20"
             },
             {
               "operation": "read",
               "method": "GetMeetingGroupProposalQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Application/MeetingGroupProposals/GetMeetingGroupProposal/GetMeetingGroupProposalQueryHandler.cs:16"
+              "source": "src/Modules/Administration/Application/MeetingGroupProposals/GetMeetingGroupProposal/GetMeetingGroupProposalQueryHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "GetMeetingGroupProposalsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Application/MeetingGroupProposals/GetMeetingGroupProposals/GetMeetingGroupProposalsQueryHandler.cs:17"
+              "source": "src/Modules/Administration/Application/MeetingGroupProposals/GetMeetingGroupProposals/GetMeetingGroupProposalsQueryHandler.cs:17"
             }
           ]
         },
@@ -389,17 +389,17 @@
             {
               "operation": "write",
               "method": "MemberRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/Members/MemberRepository.cs:15"
+              "source": "src/Modules/Administration/Infrastructure/Domain/Members/MemberRepository.cs:15"
             },
             {
               "operation": "read",
               "method": "MemberRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Domain/Members/MemberRepository.cs:20"
+              "source": "src/Modules/Administration/Infrastructure/Domain/Members/MemberRepository.cs:20"
             },
             {
               "operation": "read",
               "method": "GetMemberQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Application/Members/GetMember/GetMemberQueryHandler.cs:16"
+              "source": "src/Modules/Administration/Application/Members/GetMember/GetMemberQueryHandler.cs:16"
             }
           ]
         },
@@ -439,12 +439,12 @@
             {
               "operation": "read",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             },
             {
               "operation": "write",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Administration/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Administration/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             }
           ]
         }
@@ -523,7 +523,7 @@
             "aggregate": "administration.module.meeting-group-proposals",
             "block": "administration.module.meeting-group-proposals.meeting-group-proposal"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/administration/Views/v_MeetingGroupProposals.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/administration/Views/v_MeetingGroupProposals.sql"
         },
         {
           "id": "administration.module.db.v_Members",
@@ -568,10 +568,10 @@
             "aggregate": "administration.module.members",
             "block": "administration.module.members.member"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/administration/Views/v_Members.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/administration/Views/v_Members.sql"
         }
       ],
-      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/administration"
+      "source": "src/Database/CompanyName.MyMeetings.Database/Structure/administration"
     },
     {
       "id": "meetings.module.db",
@@ -634,17 +634,17 @@
             {
               "operation": "write",
               "method": "IntegrationEventGenericHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
             },
             {
               "operation": "read",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             },
             {
               "operation": "write",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             }
           ]
         },
@@ -689,17 +689,17 @@
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
             },
             {
               "operation": "read",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             },
             {
               "operation": "write",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             }
           ]
         },
@@ -809,12 +809,12 @@
             {
               "operation": "read",
               "method": "GetAuthenticatedMemberMeetingsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetAuthenticatedMemberMeetings/GetAuthenticatedMemberMeetingsQueryHandler.cs:22"
+              "source": "src/Modules/Meetings/Application/Meetings/GetAuthenticatedMemberMeetings/GetAuthenticatedMemberMeetingsQueryHandler.cs:22"
             },
             {
               "operation": "read",
               "method": "GetMeetingAttendeesQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetMeetingAttendees/GetMeetingAttendeesQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/Meetings/GetMeetingAttendees/GetMeetingAttendeesQueryHandler.cs:16"
             }
           ]
         },
@@ -855,17 +855,17 @@
             {
               "operation": "write",
               "method": "MeetingCommentingConfigurationRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingCommentingConfigurations/MeetingCommentingConfigurationRepository.cs:16"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingCommentingConfigurations/MeetingCommentingConfigurationRepository.cs:16"
             },
             {
               "operation": "read",
               "method": "MeetingCommentingConfigurationRepository.GetByMeetingIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingCommentingConfigurations/MeetingCommentingConfigurationRepository.cs:21"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingCommentingConfigurations/MeetingCommentingConfigurationRepository.cs:21"
             },
             {
               "operation": "read",
               "method": "GetMeetingCommentingConfigurationQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingCommentingConfigurations/GetMeetingCommentingConfiguration/GetMeetingCommentingConfigurationQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingCommentingConfigurations/GetMeetingCommentingConfiguration/GetMeetingCommentingConfigurationQueryHandler.cs:16"
             }
           ]
         },
@@ -943,27 +943,27 @@
             {
               "operation": "write",
               "method": "MeetingCommentRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingComments/MeetingCommentRepository.cs:14"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingComments/MeetingCommentRepository.cs:14"
             },
             {
               "operation": "read",
               "method": "MeetingCommentRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingComments/MeetingCommentRepository.cs:19"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingComments/MeetingCommentRepository.cs:19"
             },
             {
               "operation": "read",
               "method": "GetMeetingCommentsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/GetMeetingComments/GetMeetingCommentsQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingComments/GetMeetingComments/GetMeetingCommentsQueryHandler.cs:16"
             },
             {
               "operation": "write",
               "method": "MeetingCommentLikedNotificationHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentLikedNotificationHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingComments/MeetingCommentLikedNotificationHandler.cs:16"
             },
             {
               "operation": "write",
               "method": "MeetingCommentUnlikeNotificationHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentUnlikeNotificationHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingComments/MeetingCommentUnlikeNotificationHandler.cs:16"
             }
           ]
         },
@@ -1020,22 +1020,22 @@
             {
               "operation": "read",
               "method": "GetAuthenticationMemberMeetingGroupsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetAuthenticationMemberMeetingGroups/GetAuthenticationMemberMeetingGroupsQueryHandler.cs:23"
+              "source": "src/Modules/Meetings/Application/MeetingGroups/GetAuthenticationMemberMeetingGroups/GetAuthenticationMemberMeetingGroupsQueryHandler.cs:23"
             },
             {
               "operation": "read",
               "method": "GetMeetingGroupDetailsQueryHandler.GetMembersCount",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:43"
+              "source": "src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:43"
             },
             {
               "operation": "read",
               "method": "MemberSubscriptionExpirationDateChangedNotificationHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MemberSubscriptions/MemberSubscriptionExpirationDateChangedNotificationHandler.cs:24"
+              "source": "src/Modules/Meetings/Application/MemberSubscriptions/MemberSubscriptionExpirationDateChangedNotificationHandler.cs:24"
             },
             {
               "operation": "read",
               "method": "MembersQueryHelper.GetMeetingGroupMember",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:30"
+              "source": "src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:30"
             }
           ]
         },
@@ -1102,27 +1102,27 @@
             {
               "operation": "write",
               "method": "MeetingGroupProposalRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:15"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:15"
             },
             {
               "operation": "read",
               "method": "MeetingGroupProposalRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:20"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingGroupProposals/MeetingGroupProposalRepository.cs:20"
             },
             {
               "operation": "read",
               "method": "GetAllMeetingGroupProposalsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroupProposals/GetAllMeetingGroupProposals/GetAllMeetingGroupProposalsQueryHandler.cs:18"
+              "source": "src/Modules/Meetings/Application/MeetingGroupProposals/GetAllMeetingGroupProposals/GetAllMeetingGroupProposalsQueryHandler.cs:18"
             },
             {
               "operation": "read",
               "method": "GetMeetingGroupProposalQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroupProposals/GetMeetingGroupProposal/GetMeetingGroupProposalQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingGroupProposals/GetMeetingGroupProposal/GetMeetingGroupProposalQueryHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "GetMemberMeetingGroupProposalsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroupProposals/GetMemberMeetingGroupProposals/GetMemberMeetingGroupProposalsQueryHandler.cs:23"
+              "source": "src/Modules/Meetings/Application/MeetingGroupProposals/GetMemberMeetingGroupProposals/GetMemberMeetingGroupProposalsQueryHandler.cs:23"
             }
           ]
         },
@@ -1189,42 +1189,42 @@
             {
               "operation": "write",
               "method": "MeetingGroupRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:15"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:15"
             },
             {
               "operation": "read",
               "method": "MeetingGroupRepository.Commit",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:20"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:20"
             },
             {
               "operation": "read",
               "method": "MeetingGroupRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:25"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingGroups/MeetingGroupRepository.cs:25"
             },
             {
               "operation": "read",
               "method": "GetAllMeetingGroupsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetAllMeetingGroups/GetAllMeetingGroupsQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingGroups/GetAllMeetingGroups/GetAllMeetingGroupsQueryHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "GetAuthenticationMemberMeetingGroupsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetAuthenticationMemberMeetingGroups/GetAuthenticationMemberMeetingGroupsQueryHandler.cs:23"
+              "source": "src/Modules/Meetings/Application/MeetingGroups/GetAuthenticationMemberMeetingGroups/GetAuthenticationMemberMeetingGroupsQueryHandler.cs:23"
             },
             {
               "operation": "read",
               "method": "GetMeetingGroupDetailsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:17"
+              "source": "src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:17"
             },
             {
               "operation": "read",
               "method": "GetMeetingGroupDetailsQueryHandler.GetMembersCount",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:43"
+              "source": "src/Modules/Meetings/Application/MeetingGroups/GetMeetingGroupDetails/GetMeetingGroupDetailsQueryHandler.cs:43"
             },
             {
               "operation": "read",
               "method": "SendMeetingGroupCreatedEmailCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingGroups/SendMeetingGroupCreatedEmail/SendMeetingGroupCreatedEmailCommandHandler.cs:23"
+              "source": "src/Modules/Meetings/Application/MeetingGroups/SendMeetingGroupCreatedEmail/SendMeetingGroupCreatedEmailCommandHandler.cs:23"
             }
           ]
         },
@@ -1269,37 +1269,37 @@
             {
               "operation": "write",
               "method": "MeetingMemberCommentLikeRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:21"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:21"
             },
             {
               "operation": "read",
               "method": "MeetingMemberCommentLikeRepository.GetAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:26"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:26"
             },
             {
               "operation": "read",
               "method": "MeetingMemberCommentLikeRepository.CountMemberCommentLikesAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:33"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:33"
             },
             {
               "operation": "delete",
               "method": "MeetingMemberCommentLikeRepository.Remove",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:52"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/MeetingMemberCommentLikes/MeetingMemberCommentLikeRepository.cs:52"
             },
             {
               "operation": "read",
               "method": "GetMeetingCommentLikersQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/GetMeetingCommentLikers/GetMeetingCommentLikersQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingComments/GetMeetingCommentLikers/GetMeetingCommentLikersQueryHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "MeetingCommentLikedNotificationHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentLikedNotificationHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingComments/MeetingCommentLikedNotificationHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "MeetingCommentUnlikeNotificationHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/MeetingCommentUnlikeNotificationHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingComments/MeetingCommentUnlikeNotificationHandler.cs:16"
             }
           ]
         },
@@ -1556,32 +1556,32 @@
             {
               "operation": "write",
               "method": "MeetingRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:14"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:14"
             },
             {
               "operation": "read",
               "method": "MeetingRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:19"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/Meetings/MeetingRepository.cs:19"
             },
             {
               "operation": "read",
               "method": "GetAuthenticatedMemberMeetingsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetAuthenticatedMemberMeetings/GetAuthenticatedMemberMeetingsQueryHandler.cs:22"
+              "source": "src/Modules/Meetings/Application/Meetings/GetAuthenticatedMemberMeetings/GetAuthenticatedMemberMeetingsQueryHandler.cs:22"
             },
             {
               "operation": "read",
               "method": "GetMeetingDetailsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetMeetingDetails/GetMeetingDetailsQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/Meetings/GetMeetingDetails/GetMeetingDetailsQueryHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "MeetingsQueryHelper.GetMeeting",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/MeetingsQueryHelper.cs:9"
+              "source": "src/Modules/Meetings/Application/Meetings/MeetingsQueryHelper.cs:9"
             },
             {
               "operation": "read",
               "method": "MembersQueryHelper.GetMeetingGroupMember",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:30"
+              "source": "src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:30"
             }
           ]
         },
@@ -1612,12 +1612,12 @@
             {
               "operation": "write",
               "method": "MemberSubscriptionRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberSubscriptions/MemberSubscriptionRepository.cs:15"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/Members/MemberSubscriptions/MemberSubscriptionRepository.cs:15"
             },
             {
               "operation": "read",
               "method": "MemberSubscriptionRepository.GetByIdOptionalAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberSubscriptions/MemberSubscriptionRepository.cs:20"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/Members/MemberSubscriptions/MemberSubscriptionRepository.cs:20"
             }
           ]
         },
@@ -1672,27 +1672,27 @@
             {
               "operation": "write",
               "method": "MemberRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberRepository.cs:15"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/Members/MemberRepository.cs:15"
             },
             {
               "operation": "read",
               "method": "MemberRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Domain/Members/MemberRepository.cs:20"
+              "source": "src/Modules/Meetings/Infrastructure/Domain/Members/MemberRepository.cs:20"
             },
             {
               "operation": "read",
               "method": "GetMeetingCommentLikersQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/MeetingComments/GetMeetingCommentLikers/GetMeetingCommentLikersQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/MeetingComments/GetMeetingCommentLikers/GetMeetingCommentLikersQueryHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "GetMeetingAttendeesQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Meetings/GetMeetingAttendees/GetMeetingAttendeesQueryHandler.cs:16"
+              "source": "src/Modules/Meetings/Application/Meetings/GetMeetingAttendees/GetMeetingAttendeesQueryHandler.cs:16"
             },
             {
               "operation": "read",
               "method": "MembersQueryHelper.GetMember",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:11"
+              "source": "src/Modules/Meetings/Application/Members/MembersQueryHelper.cs:11"
             }
           ]
         },
@@ -1732,12 +1732,12 @@
             {
               "operation": "read",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             },
             {
               "operation": "write",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Meetings/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Meetings/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             }
           ]
         }
@@ -1762,7 +1762,7 @@
             "meetings.module.db.Countries"
           ],
           "definition": "SELECT\n    [Country].[Code],\n    [Country].[Name]\nFROM meetings.Countries AS [Country]",
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Countries.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Countries.sql"
         },
         {
           "id": "meetings.module.db.v_MeetingAttendees",
@@ -1809,7 +1809,7 @@
             "meetings.module.db.Members"
           ],
           "definition": "SELECT\n    [MeetingAttendee].[MeetingId],\n    [MeetingAttendee].[AttendeeId],\n    [MeetingAttendee].[DecisionDate],\n    [MeetingAttendee].[RoleCode],\n    [MeetingAttendee].[GuestsNumber],\n\n    [Member].[FirstName],\n    [Member].[LastName]\nFROM [meetings].[MeetingAttendees] AS [MeetingAttendee]\n    INNER JOIN [meetings].[Members] AS [Member]\n        ON [MeetingAttendee].[AttendeeId] = [Member].[Id]",
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingAttendees.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingAttendees.sql"
         },
         {
           "id": "meetings.module.db.v_MeetingComments",
@@ -1859,7 +1859,7 @@
             "aggregate": "meetings.module.meeting-comments",
             "block": "meetings.module.meeting-comments.meeting-comment"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingComments.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingComments.sql"
         },
         {
           "id": "meetings.module.db.v_MeetingDetails",
@@ -1954,7 +1954,7 @@
             "aggregate": "meetings.module.meetings",
             "block": "meetings.module.meetings.meeting"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingDetails.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingDetails.sql"
         },
         {
           "id": "meetings.module.db.v_MeetingGroupMembers",
@@ -1984,7 +1984,7 @@
             "aggregate": "meetings.module.meeting-groups",
             "block": "meetings.module.meeting-groups.meeting-group-member"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroupMembers.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroupMembers.sql"
         },
         {
           "id": "meetings.module.db.v_MeetingGroupProposals",
@@ -2039,7 +2039,7 @@
             "aggregate": "meetings.module.meeting-group-proposals",
             "block": "meetings.module.meeting-group-proposals.meeting-group-proposal"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroupProposals.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroupProposals.sql"
         },
         {
           "id": "meetings.module.db.v_MeetingGroups",
@@ -2079,7 +2079,7 @@
             "aggregate": "meetings.module.meeting-groups",
             "block": "meetings.module.meeting-groups.meeting-group"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroups.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MeetingGroups.sql"
         },
         {
           "id": "meetings.module.db.v_Meetings",
@@ -2134,7 +2134,7 @@
             "aggregate": "meetings.module.meetings",
             "block": "meetings.module.meetings.meeting"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Meetings.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Meetings.sql"
         },
         {
           "id": "meetings.module.db.v_MemberMeetingGroups",
@@ -2195,7 +2195,7 @@
             "aggregate": "meetings.module.meeting-groups",
             "block": "meetings.module.meeting-groups.meeting-group"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MemberMeetingGroups.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MemberMeetingGroups.sql"
         },
         {
           "id": "meetings.module.db.v_MemberMeetings",
@@ -2266,7 +2266,7 @@
             "aggregate": "meetings.module.meetings",
             "block": "meetings.module.meetings.meeting"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MemberMeetings.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_MemberMeetings.sql"
         },
         {
           "id": "meetings.module.db.v_Members",
@@ -2301,10 +2301,10 @@
             "aggregate": "meetings.module.members",
             "block": "meetings.module.members.member"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Members.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings/Views/v_Members.sql"
         }
       ],
-      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/meetings"
+      "source": "src/Database/CompanyName.MyMeetings.Database/Structure/meetings"
     },
     {
       "id": "payments.module.db",
@@ -2349,17 +2349,17 @@
             {
               "operation": "write",
               "method": "IntegrationEventGenericHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
             },
             {
               "operation": "read",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             },
             {
               "operation": "write",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             }
           ]
         },
@@ -2404,27 +2404,27 @@
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
             },
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
             },
             {
               "operation": "read",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             },
             {
               "operation": "write",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             },
             {
               "operation": "write",
               "method": "PaymentsUnitOfWork.CommitAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/PaymentsUnitOfWork.cs:33"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/PaymentsUnitOfWork.cs:33"
             }
           ]
         },
@@ -2469,17 +2469,17 @@
             {
               "operation": "read",
               "method": "GetMeetingFeesQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/MeetingFees/GetMeetingFees/GetMeetingFeesQueryHandler.cs:16"
+              "source": "src/Modules/Payments/Application/MeetingFees/GetMeetingFees/GetMeetingFeesQueryHandler.cs:16"
             },
             {
               "operation": "write",
               "method": "MeetingFeesProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/MeetingFees/GetMeetingFees/MeetingFeesProjector.cs:24"
+              "source": "src/Modules/Payments/Application/MeetingFees/GetMeetingFees/MeetingFeesProjector.cs:24"
             },
             {
               "operation": "write",
               "method": "MeetingFeesProjector.UpdateStatus",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/MeetingFees/GetMeetingFees/MeetingFeesProjector.cs:56"
+              "source": "src/Modules/Payments/Application/MeetingFees/GetMeetingFees/MeetingFeesProjector.cs:56"
             }
           ]
         },
@@ -2571,27 +2571,27 @@
             {
               "operation": "write",
               "method": "SqlStreamAggregateStore.Save",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:28"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:28"
             },
             {
               "operation": "read",
               "method": "SqlStreamAggregateStore.Load",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:41"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:41"
             },
             {
               "operation": "read",
               "method": "SqlStreamAggregateStore.GetChanges",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:79"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:79"
             },
             {
               "operation": "write",
               "method": "SqlStreamAggregateStore.AppendChanges",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:84"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:84"
             },
             {
               "operation": "delete",
               "method": "SqlStreamAggregateStore.ClearChanges",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:90"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlStreamAggregateStore.cs:90"
             }
           ]
         },
@@ -2631,17 +2631,17 @@
             {
               "operation": "write",
               "method": "SqlOutboxAccessor.Save",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlOutboxAccessor.cs:24"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlOutboxAccessor.cs:24"
             },
             {
               "operation": "read",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             },
             {
               "operation": "write",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Payments/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             }
           ]
         },
@@ -2686,17 +2686,17 @@
             {
               "operation": "read",
               "method": "GetPayerQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Payers/GetPayer/GetPayerQueryHandler.cs:16"
+              "source": "src/Modules/Payments/Application/Payers/GetPayer/GetPayerQueryHandler.cs:16"
             },
             {
               "operation": "write",
               "method": "PayerDetailsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Payers/GetPayer/PayerDetailsProjector.cs:24"
+              "source": "src/Modules/Payments/Application/Payers/GetPayer/PayerDetailsProjector.cs:24"
             },
             {
               "operation": "read",
               "method": "PayerEmailProvider.GetPayerEmail",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Payers/GetPayerEmail/PayerEmailProvider.cs:8"
+              "source": "src/Modules/Payments/Application/Payers/GetPayerEmail/PayerEmailProvider.cs:8"
             }
           ]
         },
@@ -2745,32 +2745,32 @@
             {
               "operation": "read",
               "method": "GetPriceListItemQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/GetPriceListItemQueryHandler.cs:16"
+              "source": "src/Modules/Payments/Application/PriceListItems/GetPriceListItem/GetPriceListItemQueryHandler.cs:16"
             },
             {
               "operation": "write",
               "method": "PriceListItemsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:24"
+              "source": "src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:24"
             },
             {
               "operation": "write",
               "method": "PriceListItemsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:42"
+              "source": "src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:42"
             },
             {
               "operation": "write",
               "method": "PriceListItemsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:54"
+              "source": "src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:54"
             },
             {
               "operation": "write",
               "method": "PriceListItemsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:66"
+              "source": "src/Modules/Payments/Application/PriceListItems/GetPriceListItem/PriceListItemsProjector.cs:66"
             },
             {
               "operation": "read",
               "method": "PriceListFactory.GetPriceListItems",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/PriceListItems/PriceListFactory.cs:33"
+              "source": "src/Modules/Payments/Application/PriceListItems/PriceListFactory.cs:33"
             }
           ]
         },
@@ -2836,12 +2836,12 @@
             {
               "operation": "read",
               "method": "SqlServerCheckpointStore.GetCheckpoint",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlServerCheckpointStore.cs:15"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlServerCheckpointStore.cs:15"
             },
             {
               "operation": "write",
               "method": "SqlServerCheckpointStore.StoreCheckpoint",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Infrastructure/AggregateStore/SqlServerCheckpointStore.cs:35"
+              "source": "src/Modules/Payments/Infrastructure/AggregateStore/SqlServerCheckpointStore.cs:35"
             }
           ]
         },
@@ -2886,32 +2886,32 @@
             {
               "operation": "read",
               "method": "ExpireSubscriptionsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:23"
+              "source": "src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:23"
             },
             {
               "operation": "read",
               "method": "GetAuthenticatedPayerSubscriptionQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetPayerSubscription/GetAuthenticatedPayerSubscriptionQueryHandler.cs:23"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetPayerSubscription/GetAuthenticatedPayerSubscriptionQueryHandler.cs:23"
             },
             {
               "operation": "read",
               "method": "GetSubscriptionDetailsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/GetSubscriptionDetailsQueryHandler.cs:16"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/GetSubscriptionDetailsQueryHandler.cs:16"
             },
             {
               "operation": "write",
               "method": "SubscriptionDetailsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:25"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:25"
             },
             {
               "operation": "write",
               "method": "SubscriptionDetailsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:45"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:45"
             },
             {
               "operation": "write",
               "method": "SubscriptionDetailsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:59"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionDetails/SubscriptionDetailsProjector.cs:59"
             }
           ]
         },
@@ -2970,47 +2970,47 @@
             {
               "operation": "read",
               "method": "ExpireSubscriptionPaymentsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptionPayments/ExpireSubscriptionPaymentsCommandHandler.cs:24"
+              "source": "src/Modules/Payments/Application/Subscriptions/ExpireSubscriptionPayments/ExpireSubscriptionPaymentsCommandHandler.cs:24"
             },
             {
               "operation": "read",
               "method": "GetSubscriptionPaymentsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/GetSubscriptionPaymentsQueryHandler.cs:17"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/GetSubscriptionPaymentsQueryHandler.cs:17"
             },
             {
               "operation": "write",
               "method": "SubscriptionPaymentsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:27"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:27"
             },
             {
               "operation": "write",
               "method": "SubscriptionPaymentsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:50"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:50"
             },
             {
               "operation": "write",
               "method": "SubscriptionPaymentsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:62"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:62"
             },
             {
               "operation": "write",
               "method": "SubscriptionPaymentsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:86"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:86"
             },
             {
               "operation": "write",
               "method": "SubscriptionPaymentsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:98"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:98"
             },
             {
               "operation": "write",
               "method": "SubscriptionPaymentsProjector.When",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:110"
+              "source": "src/Modules/Payments/Application/Subscriptions/GetSubscriptionPayments/SubscriptionPaymentsProjector.cs:110"
             }
           ]
         }
       ],
-      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/payments"
+      "source": "src/Database/CompanyName.MyMeetings.Database/Structure/payments"
     },
     {
       "id": "registrations.module.db",
@@ -3055,17 +3055,17 @@
             {
               "operation": "write",
               "method": "IntegrationEventGenericHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
             },
             {
               "operation": "read",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             },
             {
               "operation": "write",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             }
           ]
         },
@@ -3110,22 +3110,22 @@
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
             },
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
             },
             {
               "operation": "read",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             },
             {
               "operation": "write",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             }
           ]
         },
@@ -3165,12 +3165,12 @@
             {
               "operation": "read",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             },
             {
               "operation": "write",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/Registrations/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             }
           ]
         },
@@ -3249,22 +3249,22 @@
             {
               "operation": "write",
               "method": "UserRegistrationRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:15"
+              "source": "src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:15"
             },
             {
               "operation": "read",
               "method": "UserRegistrationRepository.GetByIdAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:20"
+              "source": "src/Modules/Registrations/Infrastructure/Domain/UserRegistrations/UserRegistrationRepository.cs:20"
             },
             {
               "operation": "read",
               "method": "UserRegistrationProvider.GetById",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Application/UserRegistrations/GetUserRegistration/UserRegistrationProvider.cs:8"
+              "source": "src/Modules/Registrations/Application/UserRegistrations/GetUserRegistration/UserRegistrationProvider.cs:8"
             },
             {
               "operation": "read",
               "method": "UsersCounter.CountUsersWithLogin",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/Registrations/Application/UserRegistrations/UsersCounter.cs:16"
+              "source": "src/Modules/Registrations/Application/UserRegistrations/UsersCounter.cs:16"
             }
           ]
         }
@@ -3323,10 +3323,10 @@
             "aggregate": "registrations.module.user-registrations",
             "block": "registrations.module.user-registrations.user-registration"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/registrations/Views/v_UserRegistrations.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/registrations/Views/v_UserRegistrations.sql"
         }
       ],
-      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/registrations"
+      "source": "src/Database/CompanyName.MyMeetings.Database/Structure/registrations"
     },
     {
       "id": "user-access.module.db",
@@ -3371,17 +3371,17 @@
             {
               "operation": "write",
               "method": "IntegrationEventGenericHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/EventsBus/IntegrationEventGenericHandler.cs:13"
             },
             {
               "operation": "read",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             },
             {
               "operation": "write",
               "method": "ProcessInboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/Inbox/ProcessInboxCommandHandler.cs:20"
             }
           ]
         },
@@ -3426,22 +3426,22 @@
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:19"
             },
             {
               "operation": "write",
               "method": "CommandsScheduler.EnqueueAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/CommandsScheduler.cs:38"
             },
             {
               "operation": "read",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             },
             {
               "operation": "write",
               "method": "ProcessInternalCommandsCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/InternalCommands/ProcessInternalCommandsCommandHandler.cs:19"
             }
           ]
         },
@@ -3481,12 +3481,12 @@
             {
               "operation": "read",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             },
             {
               "operation": "write",
               "method": "ProcessOutboxCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
+              "source": "src/Modules/UserAccess/Infrastructure/Configuration/Processing/Outbox/ProcessOutboxCommandHandler.cs:32"
             }
           ]
         },
@@ -3530,12 +3530,12 @@
             {
               "operation": "read",
               "method": "GetAuthenticatedUserPermissionsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetAuthenticatedUserPermissions/GetAuthenticatedUserPermissionsQueryHandler.cs:23"
+              "source": "src/Modules/UserAccess/Application/Authorization/GetAuthenticatedUserPermissions/GetAuthenticatedUserPermissionsQueryHandler.cs:23"
             },
             {
               "operation": "read",
               "method": "GetUserPermissionsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetUserPermissions/GetUserPermissionsQueryHandler.cs:16"
+              "source": "src/Modules/UserAccess/Application/Authorization/GetUserPermissions/GetUserPermissionsQueryHandler.cs:16"
             }
           ]
         },
@@ -3565,12 +3565,12 @@
             {
               "operation": "read",
               "method": "GetAuthenticatedUserPermissionsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetAuthenticatedUserPermissions/GetAuthenticatedUserPermissionsQueryHandler.cs:23"
+              "source": "src/Modules/UserAccess/Application/Authorization/GetAuthenticatedUserPermissions/GetAuthenticatedUserPermissionsQueryHandler.cs:23"
             },
             {
               "operation": "read",
               "method": "GetUserPermissionsQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authorization/GetUserPermissions/GetUserPermissionsQueryHandler.cs:16"
+              "source": "src/Modules/UserAccess/Application/Authorization/GetUserPermissions/GetUserPermissionsQueryHandler.cs:16"
             }
           ]
         },
@@ -3637,22 +3637,22 @@
             {
               "operation": "write",
               "method": "UserRepository.AddAsync",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Infrastructure/Domain/Users/UserRepository.cs:14"
+              "source": "src/Modules/UserAccess/Infrastructure/Domain/Users/UserRepository.cs:14"
             },
             {
               "operation": "read",
               "method": "AuthenticateCommandHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Authentication/Authenticate/AuthenticateCommandHandler.cs:18"
+              "source": "src/Modules/UserAccess/Application/Authentication/Authenticate/AuthenticateCommandHandler.cs:18"
             },
             {
               "operation": "read",
               "method": "GetAuthenticatedUserQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Users/GetAuthenticatedUser/GetAuthenticatedUserQueryHandler.cs:23"
+              "source": "src/Modules/UserAccess/Application/Users/GetAuthenticatedUser/GetAuthenticatedUserQueryHandler.cs:23"
             },
             {
               "operation": "read",
               "method": "GetUserQueryHandler.Handle",
-              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Modules/UserAccess/Application/Users/GetUser/GetUserQueryHandler.cs:16"
+              "source": "src/Modules/UserAccess/Application/Users/GetUser/GetUserQueryHandler.cs:16"
             }
           ]
         }
@@ -3682,7 +3682,7 @@
             "aggregate": "user-access.module.users",
             "block": "user-access.module.users.user-role"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_UserPermissions.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_UserPermissions.sql"
         },
         {
           "id": "user-access.module.db.v_UserRoles",
@@ -3707,7 +3707,7 @@
             "aggregate": "user-access.module.users",
             "block": "user-access.module.users.user-role"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_UserRoles.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_UserRoles.sql"
         },
         {
           "id": "user-access.module.db.v_Users",
@@ -3752,10 +3752,10 @@
             "aggregate": "user-access.module.users",
             "block": "user-access.module.users.user"
           },
-          "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_Users.sql"
+          "source": "src/Database/CompanyName.MyMeetings.Database/Structure/users/Views/v_Users.sql"
         }
       ],
-      "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/src/Database/CompanyName.MyMeetings.Database/Structure/users"
+      "source": "src/Database/CompanyName.MyMeetings.Database/Structure/users"
     }
   ]
 }

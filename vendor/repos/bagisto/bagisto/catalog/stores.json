@@ -183,17 +183,17 @@
             {
               "operation": "read",
               "method": "admins.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/UserDataGrid.php:34"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/UserDataGrid.php:34"
             },
             {
               "operation": "read",
               "method": "admins.count",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Installer/src/Helpers/DatabaseManager.php:59"
+              "source": "packages/Webkul/Installer/src/Helpers/DatabaseManager.php:59"
             },
             {
               "operation": "write",
               "method": "admins.insert",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Installer/src/Helpers/DatabaseManager.php:150"
+              "source": "packages/Webkul/Installer/src/Helpers/DatabaseManager.php:150"
             }
           ]
         },
@@ -253,7 +253,7 @@
             {
               "operation": "read",
               "method": "roles.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/RolesDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/RolesDataGrid.php:18"
             }
           ]
         },
@@ -413,42 +413,42 @@
             {
               "operation": "read",
               "method": "attributes.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Catalog/AttributeDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Catalog/AttributeDataGrid.php:18"
             },
             {
               "operation": "read",
               "method": "attributes.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:201"
+              "source": "packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:201"
             },
             {
               "operation": "read",
               "method": "attributes.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:220"
+              "source": "packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:220"
             },
             {
               "operation": "write",
               "method": "Attribute.create",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Attribute/src/Repositories/AttributeRepository.php:54"
+              "source": "packages/Webkul/Attribute/src/Repositories/AttributeRepository.php:54"
             },
             {
               "operation": "read",
               "method": "Attribute.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Attribute/src/Repositories/AttributeRepository.php:159"
+              "source": "packages/Webkul/Attribute/src/Repositories/AttributeRepository.php:159"
             },
             {
               "operation": "read",
               "method": "Attribute.all",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Attribute/src/Repositories/AttributeRepository.php:226"
+              "source": "packages/Webkul/Attribute/src/Repositories/AttributeRepository.php:226"
             },
             {
               "operation": "read",
               "method": "attributes.value",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Transformers/OrderItemResource.php:84"
+              "source": "packages/Webkul/Sales/src/Transformers/OrderItemResource.php:84"
             },
             {
               "operation": "read",
               "method": "attributes.value",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Transformers/OrderItemResource.php:86"
+              "source": "packages/Webkul/Sales/src/Transformers/OrderItemResource.php:86"
             }
           ]
         },
@@ -542,12 +542,12 @@
             {
               "operation": "read",
               "method": "attribute_families.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Catalog/AttributeFamilyDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Catalog/AttributeFamilyDataGrid.php:18"
             },
             {
               "operation": "read",
               "method": "AttributeFamily.all",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Attribute/src/Repositories/AttributeFamilyRepository.php:131"
+              "source": "packages/Webkul/Attribute/src/Repositories/AttributeFamilyRepository.php:131"
             }
           ]
         },
@@ -754,7 +754,7 @@
             {
               "operation": "read",
               "method": "attribute_option_translations.pluck",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:278"
+              "source": "packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:278"
             }
           ]
         },
@@ -834,37 +834,37 @@
             {
               "operation": "read",
               "method": "categories.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Catalog/CategoryDataGrid.php:25"
+              "source": "packages/Webkul/Admin/src/DataGrids/Catalog/CategoryDataGrid.php:25"
             },
             {
               "operation": "write",
               "method": "Category.create",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Category/src/Repositories/CategoryRepository.php:105"
+              "source": "packages/Webkul/Category/src/Repositories/CategoryRepository.php:105"
             },
             {
               "operation": "read",
               "method": "Category.first",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Category/src/Repositories/CategoryRepository.php:151"
+              "source": "packages/Webkul/Category/src/Repositories/CategoryRepository.php:151"
             },
             {
               "operation": "read",
               "method": "Category.firstOrFail",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Category/src/Repositories/CategoryRepository.php:164"
+              "source": "packages/Webkul/Category/src/Repositories/CategoryRepository.php:164"
             },
             {
               "operation": "read",
               "method": "Category.all",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Category/src/Repositories/CategoryRepository.php:249"
+              "source": "packages/Webkul/Category/src/Repositories/CategoryRepository.php:249"
             },
             {
               "operation": "read",
               "method": "Category.find",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:136"
+              "source": "packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:136"
             },
             {
               "operation": "read",
               "method": "Category.chunk",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:142"
+              "source": "packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:142"
             }
           ]
         },
@@ -932,7 +932,7 @@
             {
               "operation": "read",
               "method": "locales.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/LocalesDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/LocalesDataGrid.php:18"
             }
           ]
         },
@@ -966,17 +966,17 @@
             {
               "operation": "read",
               "method": "countries.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/CartRule/src/Repositories/CartRuleRepository.php:321"
+              "source": "packages/Webkul/CartRule/src/Repositories/CartRuleRepository.php:321"
             },
             {
               "operation": "read",
               "method": "countries.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/CartRule/src/Repositories/CartRuleRepository.php:340"
+              "source": "packages/Webkul/CartRule/src/Repositories/CartRuleRepository.php:340"
             },
             {
               "operation": "read",
               "method": "countries.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Core.php:684"
+              "source": "packages/Webkul/Core/src/Core.php:684"
             }
           ]
         },
@@ -1054,12 +1054,12 @@
             {
               "operation": "read",
               "method": "currencies.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/CurrencyDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/CurrencyDataGrid.php:18"
             },
             {
               "operation": "read",
               "method": "Currency.count",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Repositories/CurrencyRepository.php:61"
+              "source": "packages/Webkul/Core/src/Repositories/CurrencyRepository.php:61"
             }
           ]
         },
@@ -1121,7 +1121,7 @@
             {
               "operation": "read",
               "method": "currency_exchange_rates.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/ExchangeRatesDataGrid.php:25"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/ExchangeRatesDataGrid.php:25"
             }
           ]
         },
@@ -1248,17 +1248,17 @@
             {
               "operation": "read",
               "method": "channels.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/ChannelDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/ChannelDataGrid.php:18"
             },
             {
               "operation": "write",
               "method": "Channel.update",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Console/Commands/DownCommand.php:31"
+              "source": "packages/Webkul/Core/src/Console/Commands/DownCommand.php:31"
             },
             {
               "operation": "write",
               "method": "Channel.update",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Console/Commands/UpCommand.php:31"
+              "source": "packages/Webkul/Core/src/Console/Commands/UpCommand.php:31"
             }
           ]
         },
@@ -1566,7 +1566,7 @@
             {
               "operation": "read",
               "method": "inventory_sources.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/InventorySourcesDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/InventorySourcesDataGrid.php:18"
             }
           ]
         },
@@ -1629,7 +1629,7 @@
             {
               "operation": "read",
               "method": "customer_groups.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Customers/GroupDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Customers/GroupDataGrid.php:18"
             }
           ]
         },
@@ -1799,7 +1799,7 @@
             {
               "operation": "read",
               "method": "customers.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Customers/CustomerDataGrid.php:37"
+              "source": "packages/Webkul/Admin/src/DataGrids/Customers/CustomerDataGrid.php:37"
             }
           ]
         },
@@ -1884,22 +1884,22 @@
             {
               "operation": "read",
               "method": "products.all",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Product/src/Helpers/Indexers/ElasticSearch.php:466"
+              "source": "packages/Webkul/Product/src/Helpers/Indexers/ElasticSearch.php:466"
             },
             {
               "operation": "read",
               "method": "Product.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Product/src/Repositories/ProductRepository.php:613"
+              "source": "packages/Webkul/Product/src/Repositories/ProductRepository.php:613"
             },
             {
               "operation": "read",
               "method": "Product.leftJoin",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Product/src/Repositories/ProductRepository.php:634"
+              "source": "packages/Webkul/Product/src/Repositories/ProductRepository.php:634"
             },
             {
               "operation": "read",
               "method": "Product.chunk",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:109"
+              "source": "packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:109"
             }
           ]
         },
@@ -1942,7 +1942,7 @@
             {
               "operation": "write",
               "method": "product_categories.upsert",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:1355"
+              "source": "packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:1355"
             }
           ]
         },
@@ -1985,7 +1985,7 @@
             {
               "operation": "write",
               "method": "product_relations.insert",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Product/src/Type/AbstractType.php:351"
+              "source": "packages/Webkul/Product/src/Type/AbstractType.php:351"
             }
           ]
         },
@@ -2028,7 +2028,7 @@
             {
               "operation": "write",
               "method": "product_super_attributes.upsert",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:1943"
+              "source": "packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:1943"
             }
           ]
         },
@@ -2232,17 +2232,17 @@
             {
               "operation": "read",
               "method": "product_attribute_values.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:242"
+              "source": "packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:242"
             },
             {
               "operation": "read",
               "method": "product_attribute_values.value",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Transformers/OrderItemResource.php:96"
+              "source": "packages/Webkul/Sales/src/Transformers/OrderItemResource.php:96"
             },
             {
               "operation": "read",
               "method": "product_attribute_values.value",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Transformers/OrderItemResource.php:111"
+              "source": "packages/Webkul/Sales/src/Transformers/OrderItemResource.php:111"
             }
           ]
         },
@@ -2334,17 +2334,17 @@
             {
               "operation": "read",
               "method": "product_reviews.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Customers/ReviewDataGrid.php:40"
+              "source": "packages/Webkul/Admin/src/DataGrids/Customers/ReviewDataGrid.php:40"
             },
             {
               "operation": "read",
               "method": "product_reviews.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Customers/View/ReviewDataGrid.php:39"
+              "source": "packages/Webkul/Admin/src/DataGrids/Customers/View/ReviewDataGrid.php:39"
             },
             {
               "operation": "read",
               "method": "ProductReview.paginate",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Product/src/Repositories/ProductReviewRepository.php:25"
+              "source": "packages/Webkul/Product/src/Repositories/ProductReviewRepository.php:25"
             }
           ]
         },
@@ -2406,7 +2406,7 @@
             {
               "operation": "read",
               "method": "product_images.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:319"
+              "source": "packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:319"
             }
           ]
         },
@@ -2525,7 +2525,7 @@
             {
               "operation": "read",
               "method": "tax_categories.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/TaxCategoryDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/TaxCategoryDataGrid.php:18"
             }
           ]
         },
@@ -2618,7 +2618,7 @@
             {
               "operation": "read",
               "method": "tax_rates.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/TaxRateDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/TaxRateDataGrid.php:18"
             }
           ]
         },
@@ -3090,7 +3090,7 @@
             {
               "operation": "read",
               "method": "CartItem.find",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Checkout/src/Repositories/CartItemRepository.php:23"
+              "source": "packages/Webkul/Checkout/src/Repositories/CartItemRepository.php:23"
             }
           ]
         },
@@ -3368,22 +3368,22 @@
             {
               "operation": "read",
               "method": "CoreConfig.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:59"
+              "source": "packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:59"
             },
             {
               "operation": "read",
               "method": "CoreConfig.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:65"
+              "source": "packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:65"
             },
             {
               "operation": "read",
               "method": "CoreConfig.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:72"
+              "source": "packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:72"
             },
             {
               "operation": "read",
               "method": "CoreConfig.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:77"
+              "source": "packages/Webkul/Core/src/Repositories/CoreConfigRepository.php:77"
             }
           ]
         },
@@ -3758,52 +3758,52 @@
             {
               "operation": "read",
               "method": "orders.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Customers/View/OrderDataGrid.php:21"
+              "source": "packages/Webkul/Admin/src/DataGrids/Customers/View/OrderDataGrid.php:21"
             },
             {
               "operation": "read",
               "method": "orders.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/OrderDataGrid.php:21"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/OrderDataGrid.php:21"
             },
             {
               "operation": "read",
               "method": "orders.leftJoin",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/RMA/OrderRMADataGrid.php:24"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/RMA/OrderRMADataGrid.php:24"
             },
             {
               "operation": "read",
               "method": "orders.pluck",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/RMA/RMADataGrid.php:42"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/RMA/RMADataGrid.php:42"
             },
             {
               "operation": "write",
               "method": "Order.update",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Customer/src/Repositories/CustomerRepository.php:93"
+              "source": "packages/Webkul/Customer/src/Repositories/CustomerRepository.php:93"
             },
             {
               "operation": "read",
               "method": "Order.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Customer/src/Repositories/CustomerRepository.php:102"
+              "source": "packages/Webkul/Customer/src/Repositories/CustomerRepository.php:102"
             },
             {
               "operation": "read",
               "method": "Order.first",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Generators/OrderSequencer.php:44"
+              "source": "packages/Webkul/Sales/src/Generators/OrderSequencer.php:44"
             },
             {
               "operation": "write",
               "method": "Order.create",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Repositories/OrderRepository.php:56"
+              "source": "packages/Webkul/Sales/src/Repositories/OrderRepository.php:56"
             },
             {
               "operation": "read",
               "method": "orders.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Shop/src/DataGrids/OrderDataGrid.php:18"
+              "source": "packages/Webkul/Shop/src/DataGrids/OrderDataGrid.php:18"
             },
             {
               "operation": "read",
               "method": "orders.leftJoin",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Shop/src/DataGrids/RMA/OrderDataGrid.php:25"
+              "source": "packages/Webkul/Shop/src/DataGrids/RMA/OrderDataGrid.php:25"
             }
           ]
         },
@@ -4179,12 +4179,12 @@
             {
               "operation": "read",
               "method": "shipments.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/OrderShipmentDataGrid.php:26"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/OrderShipmentDataGrid.php:26"
             },
             {
               "operation": "write",
               "method": "Shipment.create",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Repositories/ShipmentRepository.php:51"
+              "source": "packages/Webkul/Sales/src/Repositories/ShipmentRepository.php:51"
             }
           ]
         },
@@ -4475,27 +4475,27 @@
             {
               "operation": "read",
               "method": "invoices.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Customers/View/InvoiceDataGrid.php:19"
+              "source": "packages/Webkul/Admin/src/DataGrids/Customers/View/InvoiceDataGrid.php:19"
             },
             {
               "operation": "read",
               "method": "invoices.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/OrderInvoiceDataGrid.php:22"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/OrderInvoiceDataGrid.php:22"
             },
             {
               "operation": "read",
               "method": "Invoice.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Console/Commands/InvoiceOverdueCron.php:41"
+              "source": "packages/Webkul/Core/src/Console/Commands/InvoiceOverdueCron.php:41"
             },
             {
               "operation": "read",
               "method": "Invoice.first",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Generators/InvoiceSequencer.php:44"
+              "source": "packages/Webkul/Sales/src/Generators/InvoiceSequencer.php:44"
             },
             {
               "operation": "write",
               "method": "Invoice.create",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sales/src/Repositories/InvoiceRepository.php:61"
+              "source": "packages/Webkul/Sales/src/Repositories/InvoiceRepository.php:61"
             }
           ]
         },
@@ -4712,7 +4712,7 @@
             {
               "operation": "read",
               "method": "OrderPayment.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/RMA/OrderRMADataGrid.php:137"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/RMA/OrderRMADataGrid.php:137"
             }
           ]
         },
@@ -4876,12 +4876,12 @@
             {
               "operation": "read",
               "method": "country_states.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/CartRule/src/Repositories/CartRuleRepository.php:342"
+              "source": "packages/Webkul/CartRule/src/Repositories/CartRuleRepository.php:342"
             },
             {
               "operation": "read",
               "method": "country_states.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Core.php:720"
+              "source": "packages/Webkul/Core/src/Core.php:720"
             }
           ]
         },
@@ -4995,17 +4995,17 @@
             {
               "operation": "read",
               "method": "subscribers_list.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/Communications/NewsLetterDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/Communications/NewsLetterDataGrid.php:18"
             },
             {
               "operation": "delete",
               "method": "SubscribersList.destroy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Core/src/Repositories/SubscribersListRepository.php:25"
+              "source": "packages/Webkul/Core/src/Repositories/SubscribersListRepository.php:25"
             },
             {
               "operation": "read",
               "method": "SubscribersList.whereNull",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Marketing/src/Helpers/Campaign.php:64"
+              "source": "packages/Webkul/Marketing/src/Helpers/Campaign.php:64"
             }
           ]
         },
@@ -5242,12 +5242,12 @@
             {
               "operation": "read",
               "method": "product_flat.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Catalog/ProductDataGrid.php:42"
+              "source": "packages/Webkul/Admin/src/DataGrids/Catalog/ProductDataGrid.php:42"
             },
             {
               "operation": "read",
               "method": "product_flat.pluck",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:185"
+              "source": "packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:185"
             }
           ]
         },
@@ -5500,7 +5500,7 @@
             {
               "operation": "read",
               "method": "cart_rules.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/Promotions/CartRuleDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/Promotions/CartRuleDataGrid.php:18"
             }
           ]
         },
@@ -5738,7 +5738,7 @@
             {
               "operation": "read",
               "method": "cart_rule_coupons.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/Promotions/CartRuleCouponDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/Promotions/CartRuleCouponDataGrid.php:18"
             }
           ]
         },
@@ -6161,7 +6161,7 @@
             {
               "operation": "read",
               "method": "downloadable_link_purchased.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Shop/src/DataGrids/DownloadableProductDataGrid.php:32"
+              "source": "packages/Webkul/Shop/src/DataGrids/DownloadableProductDataGrid.php:32"
             }
           ]
         },
@@ -6609,17 +6609,17 @@
             {
               "operation": "read",
               "method": "cms_pages.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/CMS/CMSPageDataGrid.php:20"
+              "source": "packages/Webkul/Admin/src/DataGrids/CMS/CMSPageDataGrid.php:20"
             },
             {
               "operation": "read",
               "method": "Page.first",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/CMS/src/Repositories/PageRepository.php:89"
+              "source": "packages/Webkul/CMS/src/Repositories/PageRepository.php:89"
             },
             {
               "operation": "read",
               "method": "Page.first",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/CMS/src/Repositories/PageRepository.php:100"
+              "source": "packages/Webkul/CMS/src/Repositories/PageRepository.php:100"
             }
           ]
         },
@@ -6823,7 +6823,7 @@
             {
               "operation": "write",
               "method": "product_bundle_option_translations.upsert",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:2158"
+              "source": "packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:2158"
             }
           ]
         },
@@ -7089,7 +7089,7 @@
             {
               "operation": "read",
               "method": "refunds.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/OrderRefundDataGrid.php:19"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/OrderRefundDataGrid.php:19"
             }
           ]
         },
@@ -7351,7 +7351,7 @@
             {
               "operation": "read",
               "method": "catalog_rules.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/Promotions/CatalogRuleDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/Promotions/CatalogRuleDataGrid.php:18"
             }
           ]
         },
@@ -7777,7 +7777,7 @@
             {
               "operation": "read",
               "method": "bookings.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/BookingDataGrid.php:21"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/BookingDataGrid.php:21"
             }
           ]
         },
@@ -8251,12 +8251,12 @@
             {
               "operation": "read",
               "method": "gdpr_data_request.leftJoin",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Customers/GDPRDataGrid.php:45"
+              "source": "packages/Webkul/Admin/src/DataGrids/Customers/GDPRDataGrid.php:45"
             },
             {
               "operation": "read",
               "method": "gdpr_data_request.where",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Shop/src/DataGrids/GDPRRequestsDatagrid.php:48"
+              "source": "packages/Webkul/Shop/src/DataGrids/GDPRRequestsDatagrid.php:48"
             }
           ]
         },
@@ -8318,7 +8318,7 @@
             {
               "operation": "read",
               "method": "product_videos.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:328"
+              "source": "packages/Webkul/Admin/src/Exports/ProductDataGridExport.php:328"
             }
           ]
         },
@@ -8372,7 +8372,7 @@
             {
               "operation": "read",
               "method": "marketing_templates.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/Communications/EmailTemplateDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/Communications/EmailTemplateDataGrid.php:18"
             }
           ]
         },
@@ -8426,7 +8426,7 @@
             {
               "operation": "read",
               "method": "marketing_events.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/Communications/EventDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/Communications/EventDataGrid.php:18"
             }
           ]
         },
@@ -8540,7 +8540,7 @@
             {
               "operation": "read",
               "method": "marketing_campaigns.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/Communications/CampaignDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/Communications/CampaignDataGrid.php:18"
             }
           ]
         },
@@ -8708,7 +8708,7 @@
             {
               "operation": "read",
               "method": "order_transactions.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/OrderTransactionDataGrid.php:33"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/OrderTransactionDataGrid.php:33"
             }
           ]
         },
@@ -8813,22 +8813,22 @@
             {
               "operation": "read",
               "method": "Notification.with",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Notification/src/Repositories/NotificationRepository.php:23"
+              "source": "packages/Webkul/Notification/src/Repositories/NotificationRepository.php:23"
             },
             {
               "operation": "read",
               "method": "Notification.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Notification/src/Repositories/NotificationRepository.php:39"
+              "source": "packages/Webkul/Notification/src/Repositories/NotificationRepository.php:39"
             },
             {
               "operation": "read",
               "method": "Notification.with",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Notification/src/Repositories/NotificationRepository.php:54"
+              "source": "packages/Webkul/Notification/src/Repositories/NotificationRepository.php:54"
             },
             {
               "operation": "read",
               "method": "Notification.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Notification/src/Repositories/NotificationRepository.php:58"
+              "source": "packages/Webkul/Notification/src/Repositories/NotificationRepository.php:58"
             }
           ]
         },
@@ -8882,7 +8882,7 @@
             {
               "operation": "read",
               "method": "sitemaps.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/SearchSEO/SitemapDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/SearchSEO/SitemapDataGrid.php:18"
             }
           ]
         },
@@ -9258,12 +9258,12 @@
             {
               "operation": "write",
               "method": "Section.update",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Theme/src/Repositories/SectionRepository.php:75"
+              "source": "packages/Webkul/Theme/src/Repositories/SectionRepository.php:75"
             },
             {
               "operation": "write",
               "method": "Section.increment",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Theme/src/Repositories/SectionRepository.php:643"
+              "source": "packages/Webkul/Theme/src/Repositories/SectionRepository.php:643"
             }
           ]
         },
@@ -9437,7 +9437,7 @@
             {
               "operation": "read",
               "method": "search_terms.leftJoin",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/SearchSEO/SearchTermDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/SearchSEO/SearchTermDataGrid.php:18"
             }
           ]
         },
@@ -9514,7 +9514,7 @@
             {
               "operation": "read",
               "method": "url_rewrites.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Marketing/SearchSEO/URLRewriteDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Marketing/SearchSEO/URLRewriteDataGrid.php:18"
             }
           ]
         },
@@ -9693,12 +9693,12 @@
             {
               "operation": "read",
               "method": "imports.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Settings/DataTransfer/ImportDataGrid.php:19"
+              "source": "packages/Webkul/Admin/src/DataGrids/Settings/DataTransfer/ImportDataGrid.php:19"
             },
             {
               "operation": "write",
               "method": "Import.update",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/DataTransfer/src/Repositories/ImportRepository.php:25"
+              "source": "packages/Webkul/DataTransfer/src/Repositories/ImportRepository.php:25"
             }
           ]
         },
@@ -9859,7 +9859,7 @@
             {
               "operation": "write",
               "method": "product_channels.upsert",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:1393"
+              "source": "packages/Webkul/DataTransfer/src/Helpers/Importers/Product/Importer.php:1393"
             }
           ]
         },
@@ -10127,12 +10127,12 @@
             {
               "operation": "read",
               "method": "rma.whereIn",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/RMA/RMADataGrid.php:29"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/RMA/RMADataGrid.php:29"
             },
             {
               "operation": "read",
               "method": "rma.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Shop/src/DataGrids/RMA/RMADataGrid.php:30"
+              "source": "packages/Webkul/Shop/src/DataGrids/RMA/RMADataGrid.php:30"
             }
           ]
         },
@@ -10191,7 +10191,7 @@
             {
               "operation": "read",
               "method": "rma_reasons.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/RMA/ReasonDataGrid.php:16"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/RMA/ReasonDataGrid.php:16"
             }
           ]
         },
@@ -10283,12 +10283,12 @@
             {
               "operation": "read",
               "method": "rma_items.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/RMA/OrderRMADataGrid.php:20"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/RMA/OrderRMADataGrid.php:20"
             },
             {
               "operation": "read",
               "method": "rma_items.groupBy",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Shop/src/DataGrids/RMA/OrderDataGrid.php:21"
+              "source": "packages/Webkul/Shop/src/DataGrids/RMA/OrderDataGrid.php:21"
             }
           ]
         },
@@ -10510,7 +10510,7 @@
             {
               "operation": "read",
               "method": "RMARule.get",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/RMA/src/Repositories/RMARuleRepository.php:23"
+              "source": "packages/Webkul/RMA/src/Repositories/RMARuleRepository.php:23"
             }
           ]
         },
@@ -10649,7 +10649,7 @@
             {
               "operation": "write",
               "method": "RMACustomFieldOption.create",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/RMA/src/Repositories/RMACustomFieldOptionRepository.php:24"
+              "source": "packages/Webkul/RMA/src/Repositories/RMACustomFieldOptionRepository.php:24"
             }
           ]
         },
@@ -10919,12 +10919,12 @@
             {
               "operation": "read",
               "method": "eu_withdrawals.select",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Admin/src/DataGrids/Sales/EUWithdrawalDataGrid.php:18"
+              "source": "packages/Webkul/Admin/src/DataGrids/Sales/EUWithdrawalDataGrid.php:18"
             },
             {
               "operation": "read",
               "method": "Withdrawal.first",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/EUWithdrawal/src/Repositories/WithdrawalRepository.php:29"
+              "source": "packages/Webkul/EUWithdrawal/src/Repositories/WithdrawalRepository.php:29"
             }
           ]
         },
@@ -11024,12 +11024,12 @@
             {
               "operation": "read",
               "method": "Page.chunk",
-              "source": "vendor/repos/bagisto/bagisto/packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:113"
+              "source": "packages/Webkul/Sitemap/src/Jobs/ProcessSitemap.php:113"
             }
           ]
         }
       ],
-      "source": "vendor/repos/bagisto/bagisto"
+      "source": ""
     }
   ]
 }
