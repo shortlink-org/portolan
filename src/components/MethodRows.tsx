@@ -173,12 +173,22 @@ export function MethodRows({
                   <span
                     className="chip mono"
                     title={
-                      method.http.method
-                        ? "the route this operation answers on"
-                        : "the route this operation answers on; the HTTP verb is not declared in source"
+                      !method.http.method
+                        ? "the route this operation answers on; the HTTP verb is not declared in source"
+                        : method.http.methodBasis === "inferred"
+                          ? `the route this operation answers on; the HTTP verb is inferred, not declared${method.http.methodEvidence ? `: ${method.http.methodEvidence.rule} at ${method.http.methodEvidence.source}` : ""}`
+                          : "the route this operation answers on"
                     }
                   >
                     {method.http.method ? `${method.http.method} ${method.http.path}` : method.http.path}
+                  </span>
+                ) : null}
+                {method.http?.method && method.http.methodBasis === "inferred" ? (
+                  <span
+                    className="chip status-declared"
+                    title={method.http.methodEvidence ? `${method.http.methodEvidence.rule} at ${method.http.methodEvidence.source}` : "no declaration names this verb"}
+                  >
+                    verb inferred
                   </span>
                 ) : null}
                 {method.soap ? (

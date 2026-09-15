@@ -181,6 +181,24 @@ describe("mergeCatalogs", () => {
     expect(service?.provides.map((p) => p.id)).toEqual(["auth.v1.Users"]);
   });
 
+  it("lets a declared verb replace an inferred one on the same route, never the reverse", () => {
+    const withRoute = (http: NonNullable<Catalog["contexts"][number]["services"][number]["provides"][number]["methods"][number]["http"]>) => {
+      const ctx = context("geo", ["geo.geo"]);
+      ctx.services[0]!.provides = [{ id: "geo.api", source: "openapi.yaml", methods: [{ name: "upload_csv", http }] }];
+      return ctx;
+    };
+    const inferred = { method: "POST", path: "/geo/upload_csv", methodBasis: "inferred" as const, methodEvidence: { rule: "reads request.FILES", source: "geo/views.py:64" } };
+    const declared = { method: "POST", path: "/geo/upload_csv" };
+    const unknown = { method: "", path: "/geo/upload_csv" };
+    const route = (...routes: (typeof declared)[]) =>
+      mergeCatalogs(routes.map((http, index) => source(`${index}.json`, { contexts: [withRoute(http)] }))).catalog.contexts[0]!.services[0]!.provides[0]!.methods[0]!.http;
+
+    expect(route(inferred, declared)).toEqual(declared);
+    expect(route(declared, inferred)).toEqual(declared);
+    expect(route(unknown, inferred)).toEqual(inferred);
+    expect(route(inferred, unknown)).toEqual(inferred);
+  });
+
   it("retains and unions vendored proto descriptors across service fragments", () => {
     const first = context("shop", ["shop.oms"]);
     first.services[0]!.copies = [

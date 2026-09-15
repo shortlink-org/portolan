@@ -21,6 +21,8 @@ export function HTTPDestinationEvidence({ destination: d }: { destination: HTTPD
     ...(d.transforms ?? []).map((transform) => ["Runtime URL modifier (not evaluated)", `${transform.expression} · ${transform.source}`]),
     ["Provider", d.resolution?.provider],
     ["Provider route", d.resolution?.route],
+    ["Confidence", d.resolution?.confidence && d.resolution.confidence !== "high" ? `${d.resolution.confidence} (the provider's HTTP verb is inferred, not declared)` : undefined],
+    ["Inferred verb evidence", d.resolution?.methodEvidence ? `${d.resolution.methodEvidence.rule} at ${d.resolution.methodEvidence.source}` : undefined],
   ].filter(([, value]) => value);
   return <section aria-label="HTTP destination evidence" className="border-t border-line px-3 py-3">
     <h3 className="label mb-2">HTTP destination evidence</h3>

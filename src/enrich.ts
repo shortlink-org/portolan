@@ -26,6 +26,7 @@ import type {
   FlowNode,
   RpcCall,
   HTTPDestination,
+  HttpMethodEvidence,
   Service,
   Status,
   Step,
@@ -296,6 +297,11 @@ interface HTTPProvider {
   path: string;
   /** Set when the manifests, not the route alone, chose this provider. */
   basis?: "kubernetes-host";
+  /**
+   * Set when the route's verb is inferred from what the handler reads rather
+   * than declared; a link to it is kept at medium confidence.
+   */
+  inferredMethod?: HttpMethodEvidence;
 }
 
 /**
@@ -330,14 +336,25 @@ function resolveHTTPCalls(input: Catalog): Catalog {
         for (const method of provided.methods) {
           // A route with an empty method is mounted but its verb is unknown
           // (extract-django's `Planet.fetch`); the path alone never confirms
-          // a link, so it is kept out of the candidates deliberately.
+          // a link, so it is kept out of the candidates deliberately. A verb
+          // inferred from the handler's reads is a candidate, and the link
+          // made on it says so.
           if (!method.http || !method.http.method) continue;
+          const inferred = method.http.methodBasis === "inferred";
           providers.push({
             service: service.id,
             context: context.id,
             ref: `${provided.id}/${method.name}`,
             method: method.http.method.toUpperCase(),
             path: method.http.path,
+            ...(inferred
+              ? {
+                  inferredMethod: method.http.methodEvidence ?? {
+                    rule: "inferred",
+                    source: provided.source,
+                  },
+                }
+              : {}),
           });
         }
       }
@@ -394,6 +411,12 @@ function resolveHTTPCalls(input: Catalog): Catalog {
     return { ...destination, resolution: {
       basis: provider.basis ?? (destination.fullPath ? "full-path" : sameHTTPShape(provider.path, raw?.path ?? "") ? "exact-route" : "unique-suffix"),
       provider: provider.service, route: provider.path,
+      // The route is declared, so the link keeps status declared; the verb it
+      // matched on is a reading, so the link is not as strong as one on a
+      // declared verb, and carries the reading to be checked.
+      ...(provider.inferredMethod
+        ? { confidence: "medium" as const, methodEvidence: { ...provider.inferredMethod } }
+        : {}),
     } };
   };
   let changed = false;

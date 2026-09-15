@@ -37,6 +37,7 @@ import type {
   GatewayExposureDrift,
   Loop,
   Parallel,
+  HttpRoute,
   RpcMethod,
   RpcService,
   Service,
@@ -972,7 +973,7 @@ function copyInterface(provided: RpcService): RpcService {
 function copyMethod(method: RpcMethod): RpcMethod {
   return {
     ...method,
-    ...(method.http ? { http: { ...method.http } } : {}),
+    ...(method.http ? { http: copyRoute(method.http) } : {}),
     ...(method.soap
       ? {
           soap: {
@@ -985,12 +986,34 @@ function copyMethod(method: RpcMethod): RpcMethod {
   };
 }
 
+function copyRoute(route: HttpRoute): HttpRoute {
+  return {
+    ...route,
+    ...(route.methodEvidence ? { methodEvidence: { ...route.methodEvidence } } : {}),
+  };
+}
+
+/** No verb, an inferred verb, a declared verb: weakest first. */
+function routeStrength(route: HttpRoute): number {
+  if (!route.method) return 0;
+  return route.methodBasis === "inferred" ? 1 : 2;
+}
+
 function enrichMethod(mine: RpcMethod, theirs: RpcMethod): void {
   for (const field of ["doc", "request", "requestRef", "response", "responseRef", "streaming"] as const) {
     if (!mine[field] && theirs[field]) mine[field] = theirs[field] as never;
   }
   if (!mine.deprecated && theirs.deprecated) mine.deprecated = true;
-  if (!mine.http && theirs.http) mine.http = { ...theirs.http };
+  // A route a second fragment knows better replaces a weaker one on the same
+  // path: a declared verb beats an inferred one, and either beats none.
+  if (
+    theirs.http &&
+    (!mine.http ||
+      (mine.http.path === theirs.http.path &&
+        routeStrength(theirs.http) > routeStrength(mine.http)))
+  ) {
+    mine.http = copyRoute(theirs.http);
+  }
   if (!mine.soap && theirs.soap) {
     mine.soap = copyMethod(theirs).soap;
   } else if (mine.soap && theirs.soap) {

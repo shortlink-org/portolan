@@ -22,6 +22,7 @@ const rules: Record<string, string> = {
   "full-path": "Recovered full HTTP path",
   "exact-route": "Exact HTTP route",
   "unique-suffix": "Unique route suffix (heuristic)",
+  "inferred-http-verb": "Provider's HTTP verb read from what the handler reads (inferred, medium confidence)",
   "continuation-entrypoint": "Matched continuation entrypoint",
   "response-to-request": "Response associated with request",
   "unresolved-target": "No unique target established",

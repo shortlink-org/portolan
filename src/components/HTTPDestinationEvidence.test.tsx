@@ -14,6 +14,20 @@ it("shows the join and the config default behind a resolved destination", () => 
   expect(html).not.toContain("heuristic");
 });
 
+it("says a link rests on an inferred verb, and what it was read from", () => {
+  const html = renderToStaticMarkup(<HTTPDestinationEvidence destination={{
+    callSite: "client.go:10", endpointExpression: "/geo/upload_csv", method: "POST",
+    resolution: { basis: "exact-route", provider: "avia.aviaadmin", route: "/geo/upload_csv", confidence: "medium", methodEvidence: { rule: "reads request.FILES", source: "geo/views.py:64" } },
+  }} />);
+  expect(html).toContain("medium (the provider&#x27;s HTTP verb is inferred, not declared)");
+  expect(html).toContain("reads request.FILES at geo/views.py:64");
+  const declared = renderToStaticMarkup(<HTTPDestinationEvidence destination={{
+    callSite: "client.go:10", endpointExpression: "/book", method: "POST",
+    resolution: { basis: "exact-route", provider: "aviasupp", route: "/book" },
+  }} />);
+  expect(declared).not.toContain("Confidence");
+});
+
 it("labels suffix resolution as a heuristic", () => {
   const html = renderToStaticMarkup(<HTTPDestinationEvidence destination={{
     callSite: "client.go:10", endpointExpression: "/settings", method: "POST",

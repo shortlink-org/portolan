@@ -352,6 +352,80 @@ describe("enrichCatalog: HTTP route correlation", () => {
     ]);
   });
 
+  it("links a caller to a route whose verb is inferred, at medium confidence", () => {
+    // extract-django writes a verb no declaration names but the handler's
+    // reads imply (`request.FILES` => POST) with its basis and the reading.
+    const caller = httpCaller("/geo/upload_csv");
+    const geo = service("shop", "geo", {
+      provides: [
+        {
+          id: "shop.geo.geo",
+          source: "geo/portolan/openapi.inferred.yaml",
+          methods: [
+            {
+              name: "geo_upload_csv",
+              doc: "",
+              request: "",
+              response: "",
+              http: {
+                method: "POST",
+                path: "/geo/upload_csv",
+                methodBasis: "inferred",
+                methodEvidence: { rule: "reads request.FILES", source: "geo/views.py:64" },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const upload = flow("upload", [
+      step("shop.oms", "http-peer", "rpc", {
+        ref: "http-client/POST /geo/upload_csv",
+        label: "POST /geo/upload_csv",
+        status: "unresolved",
+      }),
+    ]);
+
+    const once = enrichCatalog(estate([upload], [caller, geo])).catalog;
+    const call = serviceOf(once, "shop.oms").consumes[0]!;
+    expect(call).toMatchObject({
+      id: "shop.geo.geo/geo_upload_csv",
+      peer: "shop.geo",
+      status: "declared",
+      destination: {
+        resolution: {
+          basis: "exact-route",
+          provider: "shop.geo",
+          confidence: "medium",
+          methodEvidence: { rule: "reads request.FILES", source: "geo/views.py:64" },
+        },
+      },
+    });
+    expect(walkSteps(once.flows[0]!.steps)[0]).toMatchObject({
+      to: "shop.geo",
+      status: "declared",
+      destination: { resolution: { confidence: "medium" } },
+    });
+    expect(enrichCatalog(once).catalog).toEqual(once);
+    expect(() => validateCatalog(once)).not.toThrow();
+
+    // A declared verb on the same route links at the confidence it always had.
+    const declared = structuredClone(geo);
+    declared.provides[0]!.methods[0]!.http = { method: "POST", path: "/geo/upload_csv" };
+    const strong = enrichCatalog(estate([], [httpCaller("/geo/upload_csv"), declared])).catalog;
+    const resolution = serviceOf(strong, "shop.oms").consumes[0]!.destination!.resolution!;
+    expect(resolution.basis).toBe("exact-route");
+    expect(resolution.confidence).toBeUndefined();
+    expect(resolution.methodEvidence).toBeUndefined();
+
+    // The inferred verb is still a verb: a caller using another one does not link.
+    const wrongVerb = service("shop", "oms", {
+      consumes: [{ id: "http-client/GET /geo/upload_csv", peer: "http-peer", status: "unresolved", source: "client.go:10" }],
+    });
+    const unlinked = enrichCatalog(estate([], [wrongVerb, geo])).catalog;
+    expect(serviceOf(unlinked, "shop.oms").consumes[0]!.status).toBe("unresolved");
+  });
+
   it("joins HTTP integrations contributed by independently added projects", () => {
     const caller = service("aviacore", "aviacore", {
       consumes: [

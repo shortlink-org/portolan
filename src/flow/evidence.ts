@@ -18,6 +18,9 @@ export function stepRelationEvidence(index: CatalogIndex, step: Step): RelationE
   if (step.destination?.resolution) {
     const resolution = step.destination.resolution;
     items.push({ kind: "resolution", rule: resolution.basis, symbol: `${resolution.provider} ${resolution.route}` });
+    if (resolution.methodEvidence) {
+      items.push({ kind: "resolution", rule: "inferred-http-verb", source: resolution.methodEvidence.source, symbol: resolution.methodEvidence.rule });
+    }
   }
   if (step.continuesAt) items.push({ kind: "resolution", rule: "continuation-entrypoint", symbol: step.continuesAt });
   if (step.kind === "response" && step.replyTo) items.push({ kind: "resolution", rule: "response-to-request", symbol: step.replyTo });
