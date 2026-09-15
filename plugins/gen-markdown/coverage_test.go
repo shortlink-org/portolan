@@ -15,7 +15,7 @@ import (
 var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.Catalog{}):              "generatedAt commit contexts defs flows adrs rfcs stores modules terms repos deployments externals workItems workItemLinks annotations",
 	reflect.TypeOf(catalog.External{}):            "id slug name summary url provides",
-	reflect.TypeOf(catalog.RepoPin{}):             "repo commit",
+	reflect.TypeOf(catalog.RepoPin{}):             "repo commit path",
 	reflect.TypeOf(catalog.Deployment{}):          "id name project environment cluster namespace repo path chart targetRevision revision tool url service images basis drift",
 	reflect.TypeOf(catalog.DeploymentDrift{}):     "project cluster namespace path targetRevision images",
 	reflect.TypeOf(catalog.BoundedContext{}):      "id slug name summary kind classification viewId services",

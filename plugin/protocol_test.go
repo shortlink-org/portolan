@@ -60,7 +60,8 @@ func TestRootPathIsSpelledFromTheRepository(t *testing.T) {
 		{whole, ".", ""},
 		{whole, "internal/app.go", "internal/app.go"},
 		{monorepo, "internal/di/app.go:67", "examples/shop/pricing/internal/di/app.go:67"},
-		{monorepo, "", "examples/shop/pricing"},
+		{monorepo, "", ""},
+		{monorepo, ".", "examples/shop/pricing"},
 		{temporary, "internal/app.go:3", "internal/app.go:3"},
 		{plugin.Input{Root: "."}, "internal/app.go", "internal/app.go"},
 	} {

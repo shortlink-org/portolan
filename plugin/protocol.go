@@ -118,10 +118,11 @@ func (in Input) RepositorySource(where string) string {
 // `examples/shop/pricing/internal/di/app.go` in a monorepo and
 // `internal/di/app.go` in a fetched copy rooted there. An absolute Root - a
 // test's temporary directory, never the host's request - names no place in a
-// workspace, and the path stays spelled from Root.
+// workspace, and the path stays spelled from Root. An empty path is no path
+// and stays empty; Root itself is ".".
 func (in Input) RootPath(rel string) string {
 	rel = filepath.ToSlash(rel)
-	if in.Root == "" || filepath.IsAbs(in.Root) || path.IsAbs(rel) || filepath.IsAbs(rel) {
+	if rel == "" || in.Root == "" || filepath.IsAbs(in.Root) || path.IsAbs(rel) || filepath.IsAbs(rel) {
 		return rel
 	}
 	return in.RepositoryPath(path.Join(filepath.ToSlash(in.Root), rel))
