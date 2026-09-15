@@ -256,7 +256,7 @@ urlpatterns = [
         self.assertEqual(verbs["/api/v2/maintenance/fetch"], {""})
         self.assertEqual(
             [w.message.split(";")[0] for w in b.warnings if w.ref == "orders/urls.py:12"],
-            ["Maintenance.fetch is mounted as an HTTP view, but no HTTP verb is declared"],
+            ["Maintenance.fetch is mounted as an HTTP view, but no HTTP verb is declared and none can be inferred: the handler reads neither a request body (request.POST, request.FILES, request.body) nor request.GET"],
         )
         pairs = [(app, item) for item in endpoints]
         contracts = http_contracts(pairs, "shop.orders", "orders/portolan/openapi.inferred.yaml")

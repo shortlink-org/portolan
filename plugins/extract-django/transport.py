@@ -66,6 +66,11 @@ class Endpoint:
     # decorator, ``http_method_names``, a ``request.method`` branch or a
     # project wrapper, with the file:line. Empty when the verb is unknown.
     verb_source: str = ""
+    # True when no declaration spoke and the verb is inferred from what the
+    # handler reads off the request (``reads request.FILES at …``). Such a
+    # verb names an OpenAPI operation and a flow trigger, marked as inferred,
+    # but is not written into ``provides``: a merge matches calls there.
+    verb_inferred: bool = False
 
 
 def basenames(app: App) -> Dict[str, str]:
@@ -150,7 +155,7 @@ def action_path(route: Route, node: ast.AST, action: str) -> str:
     return base + ("/{id}" if detail else "") + ("/" + suffix if action not in ACTIONS else "") + "/"
 
 
-def endpoint(node: ast.AST, module: Module, view: str, action: str, verb: str, base: str, route: Optional[Route], description: str = "", suffix: str = "", verb_source: str = "") -> Endpoint:
+def endpoint(node: ast.AST, module: Module, view: str, action: str, verb: str, base: str, route: Optional[Route], description: str = "", suffix: str = "", verb_source: str = "", verb_inferred: bool = False) -> Endpoint:
     ident = base if base == action or base.endswith("_" + action) else "%s_%s" % (base, action)
     if suffix:
         ident = "%s_%s" % (ident, suffix)
@@ -166,23 +171,34 @@ def endpoint(node: ast.AST, module: Module, view: str, action: str, verb: str, b
         doc=description,
         path_parameters=dict(route.parameters) if route else {},
         verb_source=verb_source,
+        verb_inferred=verb_inferred and bool(verb),
     )
 
 
 def unknown_verb(b, route: Route) -> None:
     b.warn(
         route.source,
-        "%s is mounted as an HTTP view, but no HTTP verb is declared; the route is kept with its verb unknown and no operation is inferred for it. "
+        "%s is mounted as an HTTP view, but no HTTP verb is declared and none can be inferred: the handler reads neither a request body "
+        "(request.POST, request.FILES, request.body) nor request.GET; the route is kept with its verb unknown and no operation is inferred for it. "
         "Declare the verb with require_http_methods, @api_view, http_method_names or a branch on request.method" % route.view,
     )
 
 
-def expand(handler: ast.AST, module: Module, view: str, action: str, verb_list: Tuple[str, ...], base: str, route: Optional[Route], description: str, verb_source: str) -> List[Endpoint]:
+def read_verb(reader, module: Module, handler: ast.AST, owner: Optional[ast.ClassDef] = None) -> Tuple[Tuple[str, ...], str, bool]:
+    """(verbs, where they were read, inferred) off the handler; no verbs when
+    nothing declares one and nothing read off the request implies one."""
+    evidence = reader.for_handler(module, handler, owner)
+    if evidence is None:
+        return (), "", False
+    return evidence.verbs, "%s at %s" % (evidence.rule, evidence.source), evidence.inferred
+
+
+def expand(handler: ast.AST, module: Module, view: str, action: str, verb_list: Tuple[str, ...], base: str, route: Optional[Route], description: str, verb_source: str, verb_inferred: bool = False) -> List[Endpoint]:
     """One endpoint per verb. The first keeps the plain id; a second verb on
     the same handler is told apart by the verb, ``planet_fetch_post``."""
     out = []
     for index, verb in enumerate(verb_list):
-        out.append(endpoint(handler, module, view, action, verb, base, route, description, suffix=verb.lower() if index else "", verb_source=verb_source))
+        out.append(endpoint(handler, module, view, action, verb, base, route, description, suffix=verb.lower() if index else "", verb_source=verb_source, verb_inferred=verb_inferred))
     return out
 
 
@@ -206,67 +222,63 @@ def read_endpoints(app: App, b, routes: Optional[Routes] = None, project: Option
             for route in mounted:
                 if "." in route.view:
                     method_routes.setdefault(route.view.split(".", 1)[1], []).append(route)
-            # (action, verbs, handler, doc, where the verb was read)
-            declared: List[Tuple[str, Tuple[str, ...], ast.AST, str, str]] = []
+            # (action, verbs, handler, doc, where the verb was read, inferred)
+            declared: List[Tuple[str, Tuple[str, ...], ast.AST, str, str, bool]] = []
             for handler in handlers.values():
                 if handler.name.startswith("_"):
                     continue
                 verb_list = verbs_of(handler, handler.name)
-                verb_source = ""
+                verb_source, verb_inferred = "", False
                 if not verb_list and not is_action(handler) and handler.name not in method_routes:
                     continue
                 if not verb_list:
                     # A plain class may expose an arbitrarily named method
                     # directly in URLConf (`Planet.fetch`). The route proves
                     # the HTTP entrypoint; the verb is read off what the
-                    # handler, its class or a project wrapper declares, and
-                    # is left unknown - never guessed - when none of them does.
-                    evidence = reader.for_handler(module, handler, node)
-                    if evidence is not None:
-                        verb_list, verb_source = evidence.verbs, "%s at %s" % (evidence.rule, evidence.source)
-                    else:
-                        verb_list = ("",)
-                declared.append((handler.name, verb_list, handler, doc(handler), verb_source))
+                    # handler, its class or a project wrapper declares, then
+                    # inferred - and marked so - from what the handler reads
+                    # off the request, and left unknown when neither speaks.
+                    verb_list, verb_source, verb_inferred = read_verb(reader, module, handler, node)
+                    verb_list = verb_list or ("",)
+                declared.append((handler.name, verb_list, handler, doc(handler), verb_source, verb_inferred))
             inherited = []
             for inherited_base in bases:
                 inherited += GENERIC_ACTIONS.get(inherited_base, [])
             for action, verb in inherited:
                 same_direct_handler = mounted and all(not route.router for route in mounted) and any(verb in item[1] for item in declared)
                 if action not in handlers and not any(item[0] == action for item in declared) and not same_direct_handler:
-                    declared.append((action, (verb,), node, doc(node), ""))
+                    declared.append((action, (verb,), node, doc(node), "", False))
             class_routes = routes.for_view(module.dotted, node.name) if routes else []
             if not class_routes and not method_routes:
-                for action, verb_list, handler, description, verb_source in declared:
-                    out += expand(handler, module, node.name, action, verb_list, base or view_name(node.name), None, description, verb_source)
+                for action, verb_list, handler, description, verb_source, verb_inferred in declared:
+                    out += expand(handler, module, node.name, action, verb_list, base or view_name(node.name), None, description, verb_source, verb_inferred)
                 continue
-            for action, verb_list, handler, description, verb_source in declared:
+            for action, verb_list, handler, description, verb_source, verb_inferred in declared:
                 for route in class_routes or method_routes.get(action, []):
                     if "" in verb_list:
                         unknown_verb(b, route)
-                    out += expand(handler, module, node.name, action, verb_list, route_base(route, base or view_name(node.name)), route, description, verb_source)
+                    out += expand(handler, module, node.name, action, verb_list, route_base(route, base or view_name(node.name)), route, description, verb_source, verb_inferred)
         for node in module.functions():
             mounted = routes.for_view(module.dotted, node.name) if routes else []
             if not mounted and not is_api_view(node):
                 continue
             verb_list = verbs_of(node, node.name)
-            verb_source = ""
+            verb_source, verb_inferred = "", False
             if not verb_list:
-                evidence = reader.for_handler(module, node)
-                if evidence is not None:
-                    verb_list, verb_source = evidence.verbs, "%s at %s" % (evidence.rule, evidence.source)
-                elif mounted:
+                verb_list, verb_source, verb_inferred = read_verb(reader, module, node)
+                if not verb_list and mounted:
                     verb_list = ("",)
-                else:
+                elif not verb_list:
                     continue
             if not mounted:
                 for verb in verb_list:
-                    out.append(Endpoint(id=node.name, action=node.name, view="", verb=verb, node=node, module=module, doc=doc(node), verb_source=verb_source))
+                    out.append(Endpoint(id=node.name, action=node.name, view="", verb=verb, node=node, module=module, doc=doc(node), verb_source=verb_source, verb_inferred=verb_inferred))
                 continue
             for route in mounted:
                 if "" in verb_list:
                     unknown_verb(b, route)
                 for verb in verb_list:
-                    out.append(endpoint(node, module, "", verb.lower() or node.name, verb, route_base(route, node.name), route, doc(node), verb_source=verb_source))
+                    out.append(endpoint(node, module, "", verb.lower() or node.name, verb, route_base(route, node.name), route, doc(node), verb_source=verb_source, verb_inferred=verb_inferred))
     unique = {}
     for found in out:
         unique[(found.id, found.verb, found.path, found.module.rel)] = found

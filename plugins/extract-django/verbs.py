@@ -16,9 +16,16 @@ reviewer would trust them:
    to — whose own body does one of the above, followed a bounded number of
    levels deep.
 
-The first tier that speaks decides. Nothing here is guessed: a handler none
-of the tiers describes has no verb, and the caller says so rather than
-inventing one.
+The first tier that speaks decides, and what it reads is a declaration.
+
+When none of them speaks, one more reading is offered and labelled as the
+inference it is: what the handler takes out of the request. A handler that
+reads ``request.POST``, ``request.FILES``, ``request.body`` or
+``request.read()`` is written for a verb with a body, POST; one that reads
+``request.GET`` and nothing with a body is written for GET. Django still
+routes every verb to such a view, so the result carries ``inferred`` and the
+caller keeps it apart from a declared verb. A handler that reads nothing from
+the request has no verb, and the caller says so rather than inventing one.
 """
 
 from __future__ import annotations
@@ -45,11 +52,22 @@ LISTED = ("require_http_methods", "action", "api_view")
 DEPTH = 3
 
 
+# What a handler reads off the request, and the verb that reading implies.
+# Only attributes a plain Django ``HttpRequest`` has: a DRF view that reads
+# ``request.data`` is an ``APIView`` or ``@api_view``, and declares its verb.
+BODY_READS = ("POST", "FILES", "body", "read")
+QUERY_READS = ("GET",)
+
+
 @dataclass(frozen=True)
 class Evidence:
     verbs: Tuple[str, ...]
-    rule: str  # "decorator", "class decorator", "http_method_names", "request.method", "wrapper <name>"
+    # "decorator", "class decorator", "http_method_names", "request.method",
+    # "wrapper <name>"; for an inference, the reading it rests on:
+    # "reads request.FILES", "reads only request.GET".
+    rule: str
     source: str  # file:line of what was read
+    inferred: bool = False
 
 
 class Reader:
@@ -68,7 +86,27 @@ class Reader:
             found = self.branches(module, handler)
         if found is None:
             found = self.wrappers(module, handler, owner, DEPTH, set())
+        if found is None:
+            found = self.reads(module, handler)
         return found
+
+    def reads(self, module: Module, handler: ast.AST) -> Optional[Evidence]:
+        """The inference, after every declaration has been asked: a body read
+        means POST, a query read with no body read means GET."""
+        names = request_names(handler)
+        first = {}
+        for node in ast.walk(handler):
+            if isinstance(node, ast.Attribute) and node.attr in BODY_READS + QUERY_READS and dotted(node.value) in names:
+                where = module.where(node)
+                if node.attr not in first or line_of(where) < line_of(first[node.attr]):
+                    first[node.attr] = where
+        body = [attr for attr in BODY_READS if attr in first]
+        if body:
+            attr = min(body, key=lambda item: line_of(first[item]))
+            return Evidence(("POST",), "reads request.%s" % attr, first[attr], inferred=True)
+        if "GET" in first:
+            return Evidence(("GET",), "reads only request.GET", first["GET"], inferred=True)
+        return None
 
     def decorators(self, module: Module, node: ast.AST, handler_name: str = "", rule: str = "decorator") -> Optional[Evidence]:
         for dec in getattr(node, "decorator_list", []) or []:
@@ -234,6 +272,25 @@ def is_request_method(node: ast.AST) -> bool:
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("upper", "lower") and not node.args:
         node = node.func.value
     return dotted(node).endswith("request.method")
+
+
+def request_names(handler: ast.AST) -> Set[str]:
+    """How the handler spells the request: its first argument after
+    ``self``/``cls`` whatever it is called, and ``request``/``self.request``."""
+    names = {"request", "self.request"}
+    arguments = getattr(handler, "args", None)
+    if isinstance(arguments, ast.arguments):
+        positional = list(getattr(arguments, "posonlyargs", [])) + list(arguments.args)
+        if positional and positional[0].arg in ("self", "cls"):
+            positional = positional[1:]
+        if positional:
+            names.add(positional[0].arg)
+    return names
+
+
+def line_of(where: str) -> int:
+    tail = where.rsplit(":", 1)[-1]
+    return int(tail) if tail.isdigit() else 0
 
 
 def passes_request(call: ast.Call) -> bool:

@@ -196,7 +196,15 @@ tier that speaks decides. The same evidence becomes the flow's `http` trigger,
 labelled with the exact verb and resolved URL path; incomplete route evidence is
 retained at medium confidence rather than guessed. A declaration listing several verbs makes one
 endpoint per verb, `planet_status` and `planet_status_patch`. When none of
-them speaks, the verb is not guessed: the route stays in `provides` with an
+them speaks, the verb is inferred - and labelled so - from what the handler
+reads off the request: `request.POST`, `request.FILES`, `request.body` or
+`request.read()` make it POST, `request.GET` alone makes it GET. Django still
+routes every verb to such a view, so an inferred verb becomes an OpenAPI
+operation marked `x-portolan-verb: inferred` with `x-portolan-verb-evidence`
+naming the read (`reads request.FILES at geo/views.py:64`) and a flow trigger
+at medium confidence, while its route in `provides` keeps an empty
+`http.method`, since the merge would read a verb there as a declaration. When
+the handler reads nothing from the request either, the verb is not guessed: the route stays in `provides` with an
 empty `http.method`, the inferred OpenAPI document keeps the path as an item
 with no operations and `x-portolan-verb: unknown`, the flow is retained, and
 a diagnostic names the route. The merge never matches an outbound call

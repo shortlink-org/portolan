@@ -316,8 +316,10 @@ def http_contracts(endpoints, svc_id: str, source: str) -> List[Dict[str, Any]]:
             # A mounted route whose verb no declaration proves keeps its path
             # with the method empty: the route is a fact of the URLConf, the
             # verb is explicitly unknown, and the merge will not match an
-            # outbound call against it until somebody declares it.
-            method["http"] = {"method": endpoint.verb, "path": endpoint.path}
+            # outbound call against it until somebody declares it. A verb
+            # inferred from what the handler reads is not a declaration
+            # either, and stays out of the contract the merge matches on.
+            method["http"] = {"method": "" if endpoint.verb_inferred else endpoint.verb, "path": endpoint.path}
             methods.append(method)
         if not methods:
             continue
@@ -379,6 +381,11 @@ def openapi_document(endpoints, service_name: str, b: Builder, serializer_regist
             "x-portolan-inferred": True,
             "x-portolan-source": endpoint.route_source,
         }
+        if endpoint.verb_inferred:
+            # No declaration names this verb; what the handler reads off the
+            # request implies it, and the reading is kept beside it.
+            operation["x-portolan-verb"] = "inferred"
+            operation["x-portolan-verb-evidence"] = endpoint.verb_source
         if endpoint.doc.strip() and "\n" in endpoint.doc.strip():
             operation["description"] = endpoint.doc.strip()
         parameters = []

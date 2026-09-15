@@ -442,7 +442,9 @@ class FlowReader:
             trigger={
                 "kind": "http",
                 "label": trigger_label,
-                "confidence": "high" if trigger_verb and trigger_path else "medium",
+                # A verb inferred from what the handler reads is weaker
+                # evidence than one the code declares.
+                "confidence": "high" if trigger_verb and trigger_path and not getattr(endpoint, "verb_inferred", False) else "medium",
             },
         )
 
