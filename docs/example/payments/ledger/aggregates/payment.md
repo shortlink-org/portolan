@@ -74,7 +74,7 @@ Why the money was not held, as a closed set.
 | Value | Doc |
 | --- | --- |
 | `CARD_REFUSED` | The network would not hold the amount on this instrument. |
-| `ORDER_CANCELLED` | The order was already cancelled when the hold was asked for; nothing was asked of the network. |
+| `ORDER_CANCELLED` | The order was cancelled: before the hold was asked for, and nothing was asked of the network, or before the hold was recorded, and the hold was given back (ledger.0005). |
 
 ### PaymentStatus
 

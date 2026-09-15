@@ -10,7 +10,6 @@ import org.portolan.payments.ledger.domain.payment.Hold;
 import org.portolan.payments.ledger.domain.payment.Payment;
 import org.portolan.payments.ledger.domain.payment.PaymentGateway;
 import org.portolan.payments.ledger.domain.payment.PaymentRepository;
-import org.portolan.payments.ledger.domain.payment.PaymentStatus;
 import org.portolan.payments.ledger.domain.payment.PaymentPublisher;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
 
@@ -23,6 +22,12 @@ import org.portolan.payments.ledger.domain.payment.vo.Money;
  * without asking the network: there is nothing to hold money for. Only then
  * is the gateway asked, and only its answer is recorded; a gateway that did
  * not answer leaves no row and no event (ADR ledger.0001).
+ *
+ * A hold is recorded before the order is asked about again. A cancellation
+ * that arrived while the gateway was holding found no payment to give back;
+ * asked after the save, the order says so and the hold is given back here.
+ * A cancellation from the save on finds the payment and gives it back itself
+ * (ADR ledger.0005).
  */
 @Service
 public class AuthorizePayment {
@@ -68,15 +73,23 @@ public class AuthorizePayment {
         }
         var authorized = payment.authorize(hold.authCode(), now);
         payments.save(payment);
+        if (orders.standing(orderId) == Orders.Standing.CANCELLED) {
+            payment.voidAuthorization();
+            gateway.voidHold(hold.authCode());
+            payments.save(payment);
+            return AuthorizeOutput.refused(paymentId, DeclineReason.ORDER_CANCELLED);
+        }
         publisher.publish(authorized);
         return AuthorizeOutput.held(paymentId);
     }
 
     /** The answer a payment already on record gives, so a retry is a read. */
     private static AuthorizeOutput outcomeOf(Payment payment) {
-        if (payment.status() == PaymentStatus.DECLINED) {
-            return AuthorizeOutput.refused(payment.id(), DeclineReason.CARD_REFUSED);
-        }
-        return AuthorizeOutput.held(payment.id());
+        return switch (payment.status()) {
+            case DECLINED -> AuthorizeOutput.refused(payment.id(), DeclineReason.CARD_REFUSED);
+            // a hold is given back only for a cancelled order
+            case VOIDED -> AuthorizeOutput.refused(payment.id(), DeclineReason.ORDER_CANCELLED);
+            case PENDING, AUTHORIZED, CAPTURED -> AuthorizeOutput.held(payment.id());
+        };
     }
 }

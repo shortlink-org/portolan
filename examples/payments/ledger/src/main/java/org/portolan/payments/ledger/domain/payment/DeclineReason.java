@@ -11,6 +11,10 @@ package org.portolan.payments.ledger.domain.payment;
 public enum DeclineReason {
     /** The network would not hold the amount on this instrument. */
     CARD_REFUSED,
-    /** The order was already cancelled when the hold was asked for; nothing was asked of the network. */
+    /**
+     * The order was cancelled: before the hold was asked for, and nothing was
+     * asked of the network, or before the hold was recorded, and the hold was
+     * given back (ledger.0005).
+     */
     ORDER_CANCELLED
 }

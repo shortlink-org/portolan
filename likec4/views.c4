@@ -900,26 +900,26 @@ PaymentDeclined' }
     }
     payments.ledger -> ledger_pg 'byId' {
       color declared  line solid  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:45'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
     }
     payments.ledger -> ledger_pg 'byOrder' {
       color declared  line solid  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:55'
     }
     payments.ledger -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:54'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:59'
     }
     alt {
       when 'orders.standing(orderId) == Orders.Standing.CANCELLED' {
         break 'ends the flow' {
           payments.ledger -> ledger_pg 'save' {
             color declared  line solid  head none
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:56'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:61'
           }
           payments.ledger -> bus 'PaymentDeclined' {
             color declared  line solid  head onormal
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:57'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
           }
         }
       }
@@ -928,18 +928,18 @@ PaymentDeclined' }
     }
     payments.ledger -> stripe 'PostPaymentIntents → payment_intent' {
       color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:67'
     }
     alt {
       when '!hold.held()' {
         break 'ends the flow' {
           payments.ledger -> ledger_pg 'save' {
             color declared  line solid  head none
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:65'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:70'
           }
           payments.ledger -> bus 'PaymentDeclined' {
             color declared  line solid  head onormal
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:66'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:71'
           }
         }
       }
@@ -948,11 +948,31 @@ PaymentDeclined' }
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line solid  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:70'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:75'
+    }
+    payments.ledger -> shop.oms 'GetOrderRequest → GetOrderResponse' {
+      color declared  line solid  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:76'
+    }
+    alt {
+      when 'orders.standing(orderId) == Orders.Standing.CANCELLED' {
+        break 'ends the flow' {
+          payments.ledger -> stripe 'PostPaymentIntentsIntentCancel → payment_intent' {
+            color declared  line solid  head normal
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:78'
+          }
+          payments.ledger -> ledger_pg 'save' {
+            color declared  line solid  head none
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:79'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
     }
     payments.ledger -> bus 'PaymentAuthorized' {
       color declared  line solid  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:71'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:82'
     }
   }
 
@@ -960,7 +980,11 @@ PaymentDeclined' }
     title 'Authorize — crossings only'
     payments.ledger -> shop.oms 'GetOrderRequest → GetOrderResponse' {
       color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:54'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:59'
+    }
+    payments.ledger -> shop.oms 'GetOrderRequest → GetOrderResponse' {
+      color declared  line solid  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:76'
     }
   }
 

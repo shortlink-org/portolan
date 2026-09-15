@@ -103,6 +103,10 @@ Stripe's routes instead of at Stripe.
   — a capture of a payment already captured moves nothing and says
   `PaymentCaptured` again, so a capture whose event never left is announced
   when the caller asks again.
+- [ledger.0005](docs/adr/0005-a-hold-is-recorded-before-the-order-is-asked-again.md)
+  — a hold is recorded and then the order is asked about again, so a
+  cancellation that arrived while the gateway was holding has the hold given
+  back.
 
 ## Status
 
@@ -112,7 +116,7 @@ use cases with closed answers, a policy fed from the bus, and the records
 above. What it deliberately does not have yet, and the review skill will
 name: no version on the aggregates, so a stale copy is not refused; events
 published after the save rather than with it, so there is no outbox and a
-crash between the two loses the fact; only the checkout wire-contract test so far; no tracing. Each is a known
+crash between the two loses the fact; tests only for the checkout wire contract and the authorize and capture races the checkout model found; no tracing. Each is a known
 gap, not an oversight, and none of them changes what the catalog shows.
 
 The [checkout scenario](../../scenarios/README.md) runs the real cart and OMS

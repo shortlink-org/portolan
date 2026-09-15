@@ -34,6 +34,8 @@ inductive Rpc where
   | requested
   /-- Ledger found no payment on record and the order still standing; the gateway is next. -/
   | checked
+  /-- The hold is on record; ledger asks about the order again before it answers (ledger.0005). -/
+  | saved
   /-- Ledger's answer is on its way back to OMS: `true` is held, `false` refused. -/
   | answered (held : Bool)
   deriving Repr, DecidableEq
@@ -67,8 +69,11 @@ inductive Action where
   | request
   /-- `AuthorizePayment` up to the gateway: answer from the record, decline a cancelled order, or go on. -/
   | check (published : Bool)
-  /-- The gateway holds the money. -/
-  | hold (published : Bool)
+  /-- The gateway holds the money, and ledger records the hold. -/
+  | hold
+  /-- Ledger asks about the order again: a cancelled one has the hold given back, a standing
+  one hears `PaymentAuthorized` (ledger.0005). -/
+  | recheck (published : Bool)
   /-- The gateway refuses. -/
   | refuse (published : Bool)
   /-- OMS applies the RPC's answer. -/
@@ -129,7 +134,7 @@ def act (w : World) : Action → World
     if w.rpc = .requested then
       match w.payment with
       -- the same id asked again answers from the record
-      | some p => { w with rpc := .answered (p != .declined) }
+      | some p => { w with rpc := .answered (p == .authorized || p == .captured) }
       | none =>
         -- a cancelled order is declined without asking the gateway
         if w.order.status = .cancelled then
@@ -137,10 +142,16 @@ def act (w : World) : Action → World
                    declinedFacts := said w.declinedFacts published }
         else { w with rpc := .checked }
     else w
-  | .hold published =>
-    if w.rpc = .checked then
-      { w with payment := some .authorized, rpc := replied true published,
-               authorizedFacts := said w.authorizedFacts published }
+  | .hold =>
+    if w.rpc = .checked then { w with payment := some .authorized, rpc := .saved } else w
+  | .recheck published =>
+    if w.rpc = .saved then
+      if w.order.status = .cancelled then
+        { w with payment := if w.payment = some .authorized then some .voided else w.payment,
+                 rpc := .answered false }
+      else
+        { w with rpc := replied true published,
+                 authorizedFacts := said w.authorizedFacts published }
     else w
   | .refuse published =>
     if w.rpc = .checked then

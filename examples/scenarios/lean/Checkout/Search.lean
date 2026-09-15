@@ -37,7 +37,8 @@ def key (w : World) : Key :=
 shortest trace to a world is the one with the fewest mishaps in it. -/
 def actions : List Action :=
   [.request, .reply, .cancel] ++
-  ([true, false].flatMap fun published => [.check published, .hold published, .refuse published]) ++
+  [.hold] ++
+  ([true, false].flatMap fun published => [.check published, .recheck published, .refuse published]) ++
   ([false, true].flatMap fun keep =>
     [.deliverAuthorized keep, .deliverDeclined keep, .deliverCancelled keep, .deliverCaptured keep]) ++
   ([true, false].flatMap fun published => [false, true].map fun keep =>
@@ -46,7 +47,7 @@ def actions : List Action :=
 
 /-- Whether an action has ledger say what it did. -/
 def publishes : Action → Bool
-  | .check p | .hold p | .refuse p | .deliverConfirmed _ p => p
+  | .check p | .recheck p | .refuse p | .deliverConfirmed _ p => p
   | _ => true
 
 /-- The same actions, with every ledger publication leaving. -/
@@ -116,7 +117,8 @@ def paymentName : Option PayStatus → String
 def actionName : Action → String
   | .request => "OMS asks ledger to authorize"
   | .check p => s!"ledger checks the record and the order{lost p}"
-  | .hold p => s!"the gateway holds the money{lost p}"
+  | .hold => "the gateway holds the money and ledger records it"
+  | .recheck p => s!"ledger asks about the order again{lost p}"
   | .refuse p => s!"the gateway refuses{lost p}"
   | .reply => "OMS applies the RPC answer"
   | .lose => "the RPC answer is lost"
