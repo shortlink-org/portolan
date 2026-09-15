@@ -69,7 +69,8 @@ class Endpoint:
     # True when no declaration spoke and the verb is inferred from what the
     # handler reads off the request (``reads request.FILES at …``). Such a
     # verb names an OpenAPI operation and a flow trigger, marked as inferred,
-    # but is not written into ``provides``: a merge matches calls there.
+    # and goes into ``provides`` with ``methodBasis: inferred`` and the
+    # reading, so a merge links calls to it at medium confidence.
     verb_inferred: bool = False
 
 

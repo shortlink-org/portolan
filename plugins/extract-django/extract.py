@@ -317,13 +317,17 @@ def http_contracts(endpoints, svc_id: str, source: str) -> List[Dict[str, Any]]:
             method = {"name": name}
             if endpoint.doc:
                 method["doc"] = endpoint.doc
-            # A mounted route whose verb no declaration proves keeps its path
-            # with the method empty: the route is a fact of the URLConf, the
-            # verb is explicitly unknown, and the merge will not match an
-            # outbound call against it until somebody declares it. A verb
-            # inferred from what the handler reads is not a declaration
-            # either, and stays out of the contract the merge matches on.
-            method["http"] = {"method": "" if endpoint.verb_inferred else endpoint.verb, "path": endpoint.path}
+            # A mounted route whose verb nothing names keeps its path with the
+            # method empty: the route is a fact of the URLConf, the verb is
+            # explicitly unknown, and the merge will not match an outbound
+            # call against it. A verb inferred from what the handler reads is
+            # written with its basis and the reading, so the merge can link a
+            # call to it without taking the guess for a declaration.
+            method["http"] = {"method": endpoint.verb, "path": endpoint.path}
+            if endpoint.verb_inferred:
+                rule, _, where = endpoint.verb_source.rpartition(" at ")
+                method["http"]["methodBasis"] = "inferred"
+                method["http"]["methodEvidence"] = {"rule": rule or endpoint.verb_source, "source": where}
             methods.append(method)
         if not methods:
             continue

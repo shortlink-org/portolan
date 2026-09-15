@@ -202,8 +202,11 @@ reads off the request: `request.POST`, `request.FILES`, `request.body` or
 routes every verb to such a view, so an inferred verb becomes an OpenAPI
 operation marked `x-portolan-verb: inferred` with `x-portolan-verb-evidence`
 naming the read (`reads request.FILES at geo/views.py:64`) and a flow trigger
-at medium confidence, while its route in `provides` keeps an empty
-`http.method`, since the merge would read a verb there as a declaration. When
+at medium confidence, and its route in `provides` carries the verb with
+`methodBasis: inferred` and `methodEvidence` (`{rule: "reads request.FILES",
+source: "geo/views.py:64"}`). The merge links an outbound call to such a route
+with status `declared`, because the route is, and resolution confidence
+`medium`, because the verb it matched on is a reading (portolan.0021). When
 the handler reads nothing from the request either, the verb is not guessed: the route stays in `provides` with an
 empty `http.method`, the inferred OpenAPI document keeps the path as an item
 with no operations and `x-portolan-verb: unknown`, the flow is retained, and

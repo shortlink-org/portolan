@@ -159,7 +159,7 @@ class VerbsReadOffTheRequest(Fixture):
         warned = [w.ref for w in self.b.warnings if "no HTTP verb is declared and none can be inferred" in w.message]
         self.assertEqual(warned, ["proxy/urls.py:9"])
 
-    def test_an_inferred_verb_is_an_operation_marked_inferred_but_not_a_contract_route(self):
+    def test_an_inferred_verb_is_an_operation_and_a_contract_route_marked_inferred(self):
         pairs = [(self.app, item) for item in self.endpoints]
         spec = openapi_document(pairs, "Proxy", Builder())
         upload = spec["paths"]["/proxy/uploads/csv"]["post"]
@@ -169,13 +169,23 @@ class VerbsReadOffTheRequest(Fixture):
         self.assertEqual(spec["paths"]["/proxy/ping"]["x-portolan-verb"], "unknown")
 
         contracts = http_contracts(pairs, "shop.proxy", "proxy/portolan/openapi.inferred.yaml")
-        routes = {method["http"]["path"]: method["http"]["method"] for method in contracts[0]["methods"]}
+        routes = {method["http"]["path"]: method["http"] for method in contracts[0]["methods"]}
         # The merge links an outbound call to a provided route by verb and
-        # path; an inferred verb must not be what confirms that link.
-        self.assertEqual(routes["/proxy/uploads/csv"], "")
-        self.assertEqual(routes["/proxy/lookup"], "")
-        self.assertEqual(routes["/proxy/submit"], "POST")
-        self.assertEqual(routes["/proxy/export"], "GET")
+        # path; an inferred verb is written so the merge can tell it from a
+        # declared one and keep the link at medium confidence.
+        self.assertEqual(routes["/proxy/uploads/csv"], {
+            "method": "POST", "path": "/proxy/uploads/csv", "methodBasis": "inferred",
+            "methodEvidence": {"rule": "reads request.FILES", "source": "proxy/views.py:45"},
+        })
+        self.assertEqual(routes["/proxy/lookup"], {
+            "method": "GET", "path": "/proxy/lookup", "methodBasis": "inferred",
+            "methodEvidence": {"rule": "reads only request.GET", "source": "proxy/views.py:11"},
+        })
+        # Declared verbs are written exactly as before, and an unknown one
+        # keeps its empty method with no basis.
+        self.assertEqual(routes["/proxy/submit"], {"method": "POST", "path": "/proxy/submit"})
+        self.assertEqual(routes["/proxy/export"], {"method": "GET", "path": "/proxy/export"})
+        self.assertEqual(routes["/proxy/ping"], {"method": "", "path": "/proxy/ping"})
 
 
 class InferredVerbFlowTrigger(Fixture):
