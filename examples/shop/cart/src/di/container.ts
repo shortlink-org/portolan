@@ -56,9 +56,14 @@ export function buildContainer(settings: Settings): Container {
     container.bind<Sessions>(TOKENS.Sessions).to(PermissiveSessions);
   }
   // Pricing answers two ports - the quote and the coupon - over one client.
-  const pricing = settings.pricingAddr ? new PricingClient(createGrpcTransport({ baseUrl: settings.pricingAddr })) : new PermissivePricing();
-  container.bind<Pricing>(TOKENS.Pricing).toConstantValue(pricing);
-  container.bind<Coupons>(TOKENS.Coupons).toConstantValue(pricing);
+  if (settings.pricingAddr) {
+    const transport = createGrpcTransport({ baseUrl: settings.pricingAddr });
+    container.bind<Pricing>(TOKENS.Pricing).toConstantValue(new PricingClient(transport));
+    container.bind<Coupons>(TOKENS.Coupons).toConstantValue(new PricingClient(transport));
+  } else {
+    container.bind<Pricing>(TOKENS.Pricing).to(PermissivePricing);
+    container.bind<Coupons>(TOKENS.Coupons).to(PermissivePricing);
+  }
 
   container.bind(CreateBasket).toSelf();
   container.bind(GetBasket).toSelf();
