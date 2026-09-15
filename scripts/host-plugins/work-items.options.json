@@ -21,7 +21,7 @@
       }
     },
     "repository": { "type": "string", "description": "Web URL of this Git checkout. Defaults to origin; never a credential URL." },
-    "maxCommits": { "type": "integer", "minimum": 1, "maximum": 10000, "default": 500, "description": "Maximum reachable commits inspected from HEAD. Truncation is reported." },
+    "maxCommits": { "type": "integer", "minimum": 1, "maximum": 10000, "default": 500, "description": "Maximum reachable commits inspected from HEAD. Older commits are left unread without a warning; a full scan from the settings page reads them." },
     "out": { "type": "string", "default": "work-items.json" }
   }
 }

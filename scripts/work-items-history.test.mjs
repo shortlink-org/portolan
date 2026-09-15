@@ -101,7 +101,8 @@ describe("task links read from the history", { timeout: 30_000 }, () => {
     commit("feat(site): new (SHO-2)");
     const limited = await readWorkItems(root);
     expect(limited.sources[0].fragment.workItems.map((item) => item.key)).toEqual(["SHO-2"]);
-    expect(limited.warnings).toEqual([expect.stringMatching(/limited to the latest 1 reachable commits/)]);
+    // The configured bound is expected, not a problem: no build warning.
+    expect(limited.warnings).toEqual([]);
     requestWorkItemsFullScan(fullScanTarget({ input: { root, output: join(realpathSync(root), output) }, options: { out: "work-items.json" } }));
     const scanned = await readWorkItems(root);
     expect(scanned.sources[0].fragment.workItems.map((item) => item.key)).toEqual(["SHO-1", "SHO-2"]);

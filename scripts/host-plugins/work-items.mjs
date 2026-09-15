@@ -100,14 +100,17 @@ export function fullScanRequested(request, targets = []) {
 
 // Read fixed-size pages against one pinned commit. A full scan has no commit
 // cap, but does not accumulate the entire textual Git log in a single buffer.
-export function* historyRecords(git, head, limit, warnings, pageSize = 200) {
+// Reaching the cap is marked on `reading`, not warned about: the limit is one
+// the verifier configured, met on every build of any long history, and a
+// warning repeated that often hides the ones that are not expected.
+export function* historyRecords(git, head, limit, reading = {}, pageSize = 200) {
   let seen = 0;
   for (let skip = 0; ; skip += pageSize) {
     const count = limit === null ? pageSize : Math.min(pageSize, limit + 1 - skip);
     const records = git(["log", head, `--skip=${skip}`, `-n${count}`, "--format=%x1e%H%x00%s%x00%an%x00%cI%x00%B%x00", "--name-only", "-z", "--no-renames", "--diff-merges=first-parent"]).split("\x1e").filter(Boolean);
     for (const record of records) {
       if (limit !== null && seen === limit) {
-        warnings.push({ message: `work item history is limited to the latest ${limit} reachable commits` });
+        reading.truncated = true;
         return;
       }
       seen++;
@@ -131,7 +134,8 @@ export function run() {
 
 /**
  * The links the history holds for one verifier: a catalog fragment carrying
- * only `workItems` and `workItemLinks`, and what limited the reading.
+ * only `workItems` and `workItemLinks`, what made the reading incomplete, and
+ * whether it stopped at `maxCommits` with older commits left unread.
  *
  * @param {{ input: { root: string, output?: string }, catalog: object, options?: object }} request
  * @param {{ fullScan?: string[] }} [scan]  full-scan targets requested for this reading
@@ -140,7 +144,7 @@ export function scanWorkItems(request, { fullScan = [] } = {}) {
   const opts = request.options ?? {};
   const trackers = normalizeTrackers(opts.trackers);
   const empty = { contexts: [], defs: {}, flows: [], adrs: [], workItems: [], workItemLinks: [] };
-  if (!trackers.length) return { fragment: empty, warnings: [] };
+  if (!trackers.length) return { fragment: empty, warnings: [], truncated: false };
   const root = realpathSync(resolve(request.input?.root ?? "."));
   const git = (args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
   let top;
@@ -158,7 +162,8 @@ export function scanWorkItems(request, { fullScan = [] } = {}) {
   const warnings = [];
   if (git(["rev-parse", "--is-shallow-repository"]).trim() === "true") warnings.push({ message: "work item history is incomplete: this checkout is shallow" });
   const head = git(["rev-parse", "HEAD"]).trim();
-  const records = historyRecords(git, head, fullScanRequested(request, fullScan) ? null : max, warnings);
+  const reading = { truncated: false };
+  const records = historyRecords(git, head, fullScanRequested(request, fullScan) ? null : max, reading);
   const targets = targetsOf(request.catalog, repository);
   const items = new Map();
   const links = new Map();
@@ -182,5 +187,5 @@ export function scanWorkItems(request, { fullScan = [] } = {}) {
     }
   }
   const fragment = { ...empty, workItems: [...items.values()].sort((a, b) => a.id.localeCompare(b.id)), workItemLinks: [...links.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, link]) => link) };
-  return { fragment, warnings };
+  return { fragment, warnings, truncated: reading.truncated };
 }

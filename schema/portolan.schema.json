@@ -1675,7 +1675,7 @@
           "minimum": 1,
           "maximum": 10000,
           "default": 500,
-          "description": "Maximum reachable commits inspected from HEAD. Truncation is reported."
+          "description": "Maximum reachable commits inspected from HEAD. Older commits are left unread without a warning; a full scan from the settings page reads them."
         },
         "out": {
           "type": "string",

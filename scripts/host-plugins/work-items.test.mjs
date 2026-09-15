@@ -74,9 +74,12 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
     };
     expect([...historyRecords(git, "pinned-sha", null, [], 2)]).toEqual(["one", "two", "three", "four", "five"]);
     expect(calls.every((args) => args[1] === "pinned-sha")).toBe(true);
-    const warnings = [];
-    expect([...historyRecords(git, "pinned-sha", 2, warnings, 2)]).toEqual(["one", "two"]);
-    expect(warnings[0].message).toMatch(/latest 2/);
+    const reading = {};
+    expect([...historyRecords(git, "pinned-sha", 2, reading, 2)]).toEqual(["one", "two"]);
+    expect(reading).toEqual({ truncated: true });
+    const whole = {};
+    expect([...historyRecords(git, "pinned-sha", 5, whole, 2)]).toHaveLength(5);
+    expect(whole).toEqual({});
   });
   it("recognizes configured keys in a subject or body without substring matches", () => {
     expect(issueKeys("RT-101: toolbar\nFixes RT-102, RT-101; ART-1 xRT-2 RT-3x RT-4-more XX-4", ["RT"]))
@@ -148,11 +151,13 @@ describe("work item Git evidence", { timeout: 30_000 }, () => {
     expect(scanWorkItems(request).fragment.workItems).toEqual([]);
   });
 
-  it("reports a bounded history and rejects ambiguous trackers or inherited Git roots", () => {
+  it("marks a bounded history without warning and rejects ambiguous trackers or inherited Git roots", () => {
     const { request, root, commit } = checkout();
     commit("RT-101: first"); commit("RT-102: second");
     const result = scanWorkItems({ ...request, options: { trackers, maxCommits: 1 } });
-    expect(result.warnings[0].message).toMatch(/latest 1/);
+    expect(result.warnings).toEqual([]);
+    expect(result.truncated).toBe(true);
+    expect(scanWorkItems({ ...request, options: { trackers, maxCommits: 100 } }).truncated).toBe(false);
     expect(result.fragment.workItems.map((item) => item.key)).toEqual(["RT-102"]);
     expect(() => scanWorkItems({ ...request, options: { trackers: [...trackers, { ...trackers[0], id: "other" }] } })).toThrow(/more than one tracker/);
     expect(() => scanWorkItems({ ...request, input: { root: join(root, "src") } })).toThrow(/enclosing repository/);
