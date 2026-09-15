@@ -79,10 +79,14 @@ func TestExtractsConfiguredHandlerAndHelperPublications(t *testing.T) {
 	}
 }
 
+// AddConsumerHandler (watermill 1.4) takes the same arguments as
+// AddNoPublisherHandler and reads the same.
 func TestExtractsNamedNoPublisherHandler(t *testing.T) {
-	root := t.TempDir()
-	write(t, root, "go.mod", "module example.com/consumer\n")
-	write(t, root, "consumer.go", `package consumer
+	for _, method := range []string{"AddNoPublisherHandler", "AddConsumerHandler"} {
+		t.Run(method, func(t *testing.T) {
+			root := t.TempDir()
+			write(t, root, "go.mod", "module example.com/consumer\n")
+			write(t, root, "consumer.go", `package consumer
 import (
   "encoding/json"
   "github.com/ThreeDotsLabs/watermill/message"
@@ -93,23 +97,25 @@ func consume(msg *message.Message) error {
   return json.Unmarshal(msg.Payload, &notice)
 }
 func Register(r *message.Router, sub message.Subscriber) {
-  r.AddNoPublisherHandler("notice_handler", "notice.input", sub, consume)
+  r.`+method+`("notice_handler", "notice.input", sub, consume)
 }
 `)
 
-	out, _ := extracted(t, root)
-	service := out.Contexts[0].Services[0]
-	if len(service.Channels) != 1 || service.Channels[0].Messages[0].Name != "Notice" {
-		t.Fatalf("channels = %+v", service.Channels)
-	}
-	if len(out.Flows) != 1 || len(out.Flows[0].Steps) != 1 {
-		t.Fatalf("flows = %+v", out.Flows)
-	}
-	if got := out.Flows[0].Steps[0].(*catalog.Step).ContinuesAt; got != "consume" {
-		t.Fatalf("handler continuation = %q", got)
-	}
-	if got := out.Flows[0].Steps[0].(*catalog.Step).Handoff; got == nil || got.Kind != "message" || got.Channel != "notice.input" || got.Direction != "receive" {
-		t.Fatalf("handler handoff = %+v", got)
+			out, _ := extracted(t, root)
+			service := out.Contexts[0].Services[0]
+			if len(service.Channels) != 1 || service.Channels[0].Messages[0].Name != "Notice" {
+				t.Fatalf("channels = %+v", service.Channels)
+			}
+			if len(out.Flows) != 1 || len(out.Flows[0].Steps) != 1 {
+				t.Fatalf("flows = %+v", out.Flows)
+			}
+			if got := out.Flows[0].Steps[0].(*catalog.Step).ContinuesAt; got != "consume" {
+				t.Fatalf("handler continuation = %q", got)
+			}
+			if got := out.Flows[0].Steps[0].(*catalog.Step).Handoff; got == nil || got.Kind != "message" || got.Channel != "notice.input" || got.Direction != "receive" {
+				t.Fatalf("handler handoff = %+v", got)
+			}
+		})
 	}
 }
 

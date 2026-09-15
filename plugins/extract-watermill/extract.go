@@ -98,9 +98,9 @@ type pathState struct {
 	publications []int
 }
 
-// registration is one Router.AddHandler or AddNoPublisherHandler as read
-// at its call, before the parameters it was handed are filled in by the
-// callers. A wrapper that registers handlers for the whole service is one
+// registration is one Router.AddHandler, AddNoPublisherHandler or
+// AddConsumerHandler as read at its call, before the parameters it was handed
+// are filled in by the callers. A wrapper that registers handlers for the whole service is one
 // registration with parameters; each caller makes it a concrete one.
 type registration struct {
 	method     string
@@ -149,7 +149,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	serviceID := opts.Context + "." + opts.Service
 	channels, flows := s.catalog(serviceID, opts.Context)
 	if len(s.handlers) == 0 {
-		b.Warn(in.Root, "no Watermill Router.AddHandler, AddNoPublisherHandler, CQRS handler or Subscriber.Subscribe declaration was found")
+		b.Warn(in.Root, "no Watermill Router.AddHandler, AddNoPublisherHandler, AddConsumerHandler, CQRS handler or Subscriber.Subscribe declaration was found")
 	}
 
 	fragment := catalog.Catalog{
@@ -487,7 +487,8 @@ func usesImport(fn *goscan.Function, importPath string) bool {
 	return false
 }
 
-// indexHandlers reads every Router.AddHandler and AddNoPublisherHandler in
+// indexHandlers reads every Router.AddHandler, AddNoPublisherHandler and
+// AddConsumerHandler (the same arguments as AddNoPublisherHandler) in
 // a function. A registration inside a wrapper - a function handed the name,
 // the topic or the handler as parameters - is made concrete once per caller.
 func (s *scanner) indexHandlers(fn *goscan.Function, b *plugin.Builder) {
@@ -504,7 +505,7 @@ func (s *scanner) indexHandlers(fn *goscan.Function, b *plugin.Builder) {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || (sel.Sel.Name != "AddHandler" && sel.Sel.Name != "AddNoPublisherHandler") || len(call.Args) < 4 {
+		if !ok || (sel.Sel.Name != "AddHandler" && sel.Sel.Name != "AddNoPublisherHandler" && sel.Sel.Name != "AddConsumerHandler") || len(call.Args) < 4 {
 			return true
 		}
 		reg := registration{
