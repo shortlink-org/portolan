@@ -362,12 +362,7 @@ func adapterBindings(root string, layouts ...sourceLayout) map[string]adapterDec
 			}
 			imports := map[string]string{}
 			for _, spec := range file.Imports {
-				importPath := strings.Trim(spec.Path.Value, `"`)
-				name := importPath[strings.LastIndex(importPath, "/")+1:]
-				if spec.Name != nil {
-					name = spec.Name.Name
-				}
-				imports[name] = importPath
+				imports[goscan.ImportName(spec)] = strings.Trim(spec.Path.Value, `"`)
 			}
 
 			for _, decl := range file.Decls {

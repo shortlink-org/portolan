@@ -104,25 +104,12 @@ func findRedisConstruction(tree *goscan.Tree) *redisConstruction {
 	return nil
 }
 
-// Versioned Go module paths end in v8/v9, while the packages still call
-// themselves redis. goscan cannot infer an external package clause from the
-// import path, so fill in the stable package names of the clients understood
-// by this extractor. Explicit aliases are already present in file.Imports.
+// redisImportPath is the Redis client package a file calls packageName, or
+// empty when that name is something else. goscan already knows go-redis/v9
+// by the name redis and rueidis by rueidis, alias or not.
 func redisImportPath(file *goscan.File, packageName string) string {
-	for _, spec := range file.Node.Imports {
-		importPath, err := strconv.Unquote(spec.Path.Value)
-		if err != nil || !isRedisClientImport(importPath) {
-			continue
-		}
-		if spec.Name != nil {
-			if spec.Name.Name == packageName {
-				return importPath
-			}
-			continue
-		}
-		if packageName == defaultRedisPackage(importPath) {
-			return importPath
-		}
+	if importPath := file.Imports[packageName]; isRedisClientImport(importPath) {
+		return importPath
 	}
 	return ""
 }
@@ -162,13 +149,6 @@ func isGoRedisImport(importPath string) bool {
 		}
 	}
 	return false
-}
-
-func defaultRedisPackage(importPath string) string {
-	if importPath == "github.com/redis/rueidis" || strings.HasPrefix(importPath, "github.com/redis/rueidis/") {
-		return "rueidis"
-	}
-	return "redis"
 }
 
 func firstNonEmpty(values ...string) string {

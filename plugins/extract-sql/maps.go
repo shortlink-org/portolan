@@ -3,7 +3,6 @@ package extractsql
 import (
 	"go/ast"
 	"go/token"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -205,19 +204,14 @@ func (s scope) receiver(ident *ast.Ident) bool {
 }
 
 // importNames reads what the file calls each package it imports: the alias
-// when there is one, the last path element otherwise. The last element is a
-// guess only for a package whose directory is not its name, and a package like
-// that used as a receiver would have to be a variable of the same name to be
-// wrong.
+// when there is one, the package name its path suggests otherwise. That name
+// is a guess only for a package that is not called what its path says, and a
+// package like that used as a receiver would have to be a variable of the same
+// name to be wrong.
 func importNames(file *ast.File) map[string]bool {
 	names := map[string]bool{}
 	for _, spec := range file.Imports {
-		name := ""
-		if spec.Name != nil {
-			name = spec.Name.Name
-		} else {
-			name = path.Base(unquote(spec.Path.Value))
-		}
+		name := goscan.ImportName(spec)
 		if name == "" || name == "_" || name == "." {
 			continue
 		}

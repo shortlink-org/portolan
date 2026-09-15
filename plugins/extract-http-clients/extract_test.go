@@ -1751,3 +1751,52 @@ func (c *Client) notARequest() string { return cache{}.Get("/not/a/call") }
 		t.Fatalf("a Get outside an R() chain is not a request: %v", ids)
 	}
 }
+
+// A package at a major-version path - paths/v2 - is called paths, not v2, so a
+// path constant read from it resolves whether the import is aliased or not.
+func TestReadsAPathConstantFromAVersionedPackage(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/bridge\n")
+	writeHTTPFixture(t, root, "clients/paths/v2/paths.go", `package paths
+const Cancelled = "/callbacks/booking-cancelled"
+const Confirmed = "/callbacks/booking-confirmed"
+`)
+	writeHTTPFixture(t, root, "clients/callbacks/client.go", `package callbacks
+import (
+  "context"
+  "github.com/go-resty/resty/v2"
+  "example.com/bridge/clients/paths/v2"
+  p2 "example.com/bridge/clients/paths/v2"
+)
+type Client struct{ cli *resty.Client }
+func (c *Client) Cancelled(ctx context.Context, body any) error {
+  _, err := c.cli.R().SetContext(ctx).SetBody(body).Post(paths.Cancelled)
+  return err
+}
+func (c *Client) Confirmed(ctx context.Context, body any) error {
+  _, err := c.cli.R().SetContext(ctx).SetBody(body).Post(p2.Confirmed)
+  return err
+}
+`)
+	opts := Options{Context: "bridge", Service: "bridge", Adapters: map[string]Adapter{
+		"clients/callbacks": {External: "receiver"},
+	}}
+	resp, err := extract(plugin.Input{Root: root}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, call := range got.Contexts[0].Services[0].Consumes {
+		ids = append(ids, call.ID)
+	}
+	joined := strings.Join(ids, "\n")
+	for _, want := range []string{"receiver.http/POST /callbacks/booking-cancelled", "receiver.http/POST /callbacks/booking-confirmed"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %s: %v", want, ids)
+		}
+	}
+}

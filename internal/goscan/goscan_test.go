@@ -103,9 +103,7 @@ func TestADottedImportSegmentIsKnownByItsPackageName(t *testing.T) {
 	}
 	got := out.Files[0].Imports
 	want := map[string]string{
-		"nats.go":   "github.com/nats-io/nats.go",
 		"nats":      "github.com/nats-io/nats.go",
-		"yaml.v3":   "gopkg.in/yaml.v3",
 		"yaml":      "gopkg.in/yaml.v3",
 		"jetstream": "github.com/nats-io/nats.go/jetstream",
 	}

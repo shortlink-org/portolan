@@ -4,12 +4,12 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
@@ -1390,7 +1390,7 @@ func structFields(st *ast.StructType) map[string]string {
 }
 
 // importsOf maps the name a package's files refer to an import by - its alias,
-// or the last segment of its path - to the path itself.
+// or the package name its path suggests - to the path itself.
 func importsOf(pkg *pkg) map[string]string {
 	out := map[string]string{}
 
@@ -1398,11 +1398,7 @@ func importsOf(pkg *pkg) map[string]string {
 		for _, spec := range file.Imports {
 			importPath := strings.Trim(spec.Path.Value, `"`)
 
-			name := path.Base(importPath)
-			if spec.Name != nil {
-				name = spec.Name.Name
-			}
-			out[name] = importPath
+			out[goscan.ImportName(spec)] = importPath
 			// Several imports may share their final path segment while declaring
 			// distinct package names (billing_rpc, book_rpc, user_rpc all live in
 			// directories named rpc). Retain every path so clientOf can resolve

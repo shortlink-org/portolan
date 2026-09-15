@@ -23,7 +23,6 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -181,7 +180,9 @@ func ReadWithOptions(root string, options ReadOptions) (*Tree, error) {
 			}
 			imported, _ := strconv.Unquote(spec.Path.Value)
 			if name := namesByImport[imported]; name != "" {
-				delete(file.Imports, path.Base(imported))
+				if assumed := PackageName(imported); file.Imports[assumed] == imported {
+					delete(file.Imports, assumed)
+				}
 				file.Imports[name] = imported
 			}
 		}
@@ -223,32 +224,6 @@ func ModulePath(root string) string {
 		}
 	}
 	return filepath.ToSlash(filepath.Clean(root))
-}
-
-// ImportsOf is a file's imports by the name the file uses for them: the alias
-// when there is one, the last path segment when there is not. Blank and dot
-// imports keep the segment, since nothing in the file refers to them by name.
-//
-// A segment with a dot in it - `nats.go`, `yaml.v3` - is not a Go identifier,
-// and the package behind it is called by what comes before the dot; that name
-// is recorded too, since it is the one the file uses.
-func ImportsOf(node *ast.File) map[string]string {
-	out := map[string]string{}
-	for _, spec := range node.Imports {
-		value, err := strconv.Unquote(spec.Path.Value)
-		if err != nil {
-			continue
-		}
-		name := path.Base(value)
-		if spec.Name != nil && spec.Name.Name != "_" && spec.Name.Name != "." {
-			name = spec.Name.Name
-		}
-		out[name] = value
-		if short, _, dotted := strings.Cut(name, "."); dotted && short != "" {
-			out[short] = value
-		}
-	}
-	return out
 }
 
 func generatedName(name string) bool {

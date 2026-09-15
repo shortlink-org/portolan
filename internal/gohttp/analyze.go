@@ -1220,22 +1220,6 @@ func (s *scanner) read() error {
 
 func generatedFile(name string, node *ast.File) bool { return goscan.IsGenerated(name, node) }
 
-func importsOf(node *ast.File) map[string]string {
-	out := map[string]string{}
-	for _, spec := range node.Imports {
-		path, err := strconv.Unquote(spec.Path.Value)
-		if err != nil {
-			continue
-		}
-		name := filepath.Base(path)
-		if spec.Name != nil {
-			name = spec.Name.Name
-		}
-		out[name] = path
-	}
-	return out
-}
-
 func (s *scanner) indexConstants() {
 	for _, file := range s.files {
 		for _, decl := range file.node.Decls {
@@ -1924,7 +1908,7 @@ func (s *scanner) value(file *parsedFile, expr ast.Expr, locals map[string]strin
 		}
 		key := owner.Name + "." + x.Sel.Name
 		if imported := file.imports[owner.Name]; imported != "" {
-			key = filepath.Base(imported) + "." + x.Sel.Name
+			key = goscan.PackageName(imported) + "." + x.Sel.Name
 		}
 		if constant, ok := s.constants[key]; ok && !seen[key] {
 			seen[key] = true
