@@ -2,6 +2,8 @@ package extractasyncapi
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,6 +27,43 @@ func run3(t *testing.T, root string, opts Options) plugin.Response {
 	}
 
 	return resp
+}
+
+// A channel names its document from the repository it lives in: in a
+// monorepo the workspace, root and all, and in a fetched copy the copy.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	document, err := os.ReadFile("testdata/v3/asyncapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/shop/oms"}, "examples/shop/oms/api/asyncapi.yaml"},
+		{plugin.Input{Root: "vendor/repos/acme/oms", Repository: "vendor/repos/acme/oms"}, "api/asyncapi.yaml"},
+	} {
+		if err := os.MkdirAll(filepath.Join(c.in.Root, "api"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.in.Root, "api", "asyncapi.yaml"), document, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := extract(c.in, Options{Spec: "api/asyncapi.yaml"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		channels := channelsOf(t, resp)
+		if len(channels) == 0 {
+			t.Fatalf("root %s: no channels", c.in.Root)
+		}
+		for _, channel := range channels {
+			if channel.Source != c.want {
+				t.Errorf("root %s: %s source = %q, want %q", c.in.Root, channel.Address, channel.Source, c.want)
+			}
+		}
+	}
 }
 
 func channelsOf(t *testing.T, resp plugin.Response) []catalog.Channel {

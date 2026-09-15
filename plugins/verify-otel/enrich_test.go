@@ -189,6 +189,80 @@ func TestAConsumersWorkStaysOutOfTheRequestsFlow(t *testing.T) {
 	}
 }
 
+// Where a recording was read is spelled from the repository it lives in: in a
+// monorepo the workspace, root and all, and in a fetched copy the copy. That
+// holds for an example's recording, an observed flow's source, a call's
+// source and the notes that name the file; an example's id stays relative to
+// the step. What the declared flows already said, taken from the catalog, is
+// left as it was.
+func TestWhereARecordingWasReadIsSpelledFromTheRepository(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/auth"}, "examples/auth/telemetry/traces.jsonl"},
+		{plugin.Input{Root: "vendor/repos/acme/auth", Repository: "vendor/repos/acme/auth"}, "telemetry/traces.jsonl"},
+	} {
+		if err := os.MkdirAll(filepath.Join(c.in.Root, "telemetry"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.in.Root, "telemetry/traces.jsonl"), []byte(recording+"\n"+second), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := verify(plugin.Request{Catalog: estate(), Input: c.in}, Options{Traces: []string{"telemetry/*.jsonl"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+			t.Fatal(err)
+		}
+
+		login := flowNamed(t, out, "auth-login")
+		if len(login.Examples) == 0 {
+			t.Fatalf("root %s: the login kept no example", c.in.Root)
+		}
+		for _, ex := range login.Examples {
+			if ex.Recording != c.want || !strings.HasPrefix(ex.ID, "telemetry/traces.jsonl#") {
+				t.Errorf("root %s: example = %+v", c.in.Root, ex)
+			}
+		}
+		health := flowNamed(t, out, "observed-auth-get-v1-health")
+		if health.Source != c.want || !strings.Contains(health.Summary, " in "+c.want+".") {
+			t.Errorf("root %s: observed source = %q, summary = %q", c.in.Root, health.Source, health.Summary)
+		}
+		calls := 0
+		for _, ctx := range out.Contexts {
+			for _, svc := range ctx.Services {
+				for _, call := range svc.Consumes {
+					calls++
+					if call.Source != c.want {
+						t.Errorf("root %s: call %s source = %q", c.in.Root, call.ID, call.Source)
+					}
+				}
+			}
+		}
+		if calls == 0 {
+			t.Errorf("root %s: no call was proven", c.in.Root)
+		}
+		notes := 0
+		for _, flow := range out.Flows {
+			walkSteps(flow.Steps, func(s *catalog.Step) {
+				if strings.HasPrefix(s.Note, "Seen running in ") {
+					notes++
+					if !strings.HasPrefix(s.Note, "Seen running in "+c.want+" (") {
+						t.Errorf("root %s: note = %q", c.in.Root, s.Note)
+					}
+				}
+			})
+		}
+		if notes == 0 {
+			t.Errorf("root %s: no step was raised with a note", c.in.Root)
+		}
+	}
+}
+
 // A recording is kept as an example of the flow: which steps it showed, how
 // long each took, and the names the spans carried - never the query, never
 // the path, never a value that could be somebody's.

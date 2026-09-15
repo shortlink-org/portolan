@@ -51,10 +51,14 @@ func (h hop) key() string {
 	return "call|" + h.from.ID + "|" + h.to.ID + "|" + h.label
 }
 
+// verifier reads the recordings of one step. A recording is read from under
+// the input's root and spelled from the root; everything the fragment says
+// about where it was read - a call's source, a note, an example's recording -
+// is spelled from the repository the recording lives in instead.
 type verifier struct {
 	l        *lookup
 	b        *plugin.Builder
-	root     string // the step's input, relative to the repository: what a recording is named under
+	in       plugin.Input // the step's input
 	children map[string][]*span
 	byID     map[string]*span
 	warned   map[string]bool
@@ -108,7 +112,7 @@ func verify(req plugin.Request, opts Options) (plugin.Response, error) {
 	v := &verifier{
 		l:         newLookup(&req.Catalog, opts),
 		b:         b,
-		root:      root,
+		in:        req.Input,
 		children:  map[string][]*span{},
 		byID:      map[string]*span{},
 		warned:    map[string]bool{},
@@ -178,7 +182,7 @@ func (v *verifier) trace(root *span) {
 				v.consumers[h.eventID] = map[string]string{}
 			}
 			if _, seen := v.consumers[h.eventID][h.to.ID]; !seen {
-				v.consumers[h.eventID][h.to.ID] = "Seen consuming it in " + h.file + "."
+				v.consumers[h.eventID][h.to.ID] = "Seen consuming it in " + v.in.RootPath(h.file) + "."
 			}
 		}
 	}
@@ -256,7 +260,7 @@ func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 	o := v.overlays[flow.ID]
 	if o == nil {
 		o = &overlay{
-			flow: copyFlow(flow), svc: v.l.services[opening.to.ID], file: opening.file,
+			flow: copyFlow(flow), svc: v.l.services[opening.to.ID], file: v.in.RootPath(opening.file),
 			keys: declaredKeys(flow), seen: map[string]int{},
 			routes: map[string][]route{},
 		}
@@ -264,7 +268,7 @@ func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 	}
 	o.traces++
 
-	ex := newExample(v.root, root)
+	ex := newExample(v.in, root)
 	counted := map[string]bool{}
 	// What this recording showed after each declared step it matched: a
 	// route per anchor, empty when it showed nothing there, because "went
@@ -345,8 +349,8 @@ func (v *verifier) observe(hops []hop, root *span) {
 		v.observed[key] = o
 	}
 	o.traces++
-	o.files[first.file] = true
-	ex := newExample(v.root, root)
+	o.files[v.in.RootPath(first.file)] = true
+	ex := newExample(v.in, root)
 	r := make(route, 0, len(hops))
 	for _, h := range hops {
 		r = append(r, visit{h: h, ex: ex, at: ex.reserve(h.span)})
@@ -455,7 +459,7 @@ func (v *verifier) hop(s *span, parentDB bool, publishing string) (*hop, bool) {
 			h.ref = id
 			h.label = op
 			h.status = catalog.StatusVerified
-			h.call = &catalog.RpcCall{ID: id, Peer: peer.ID, Status: catalog.StatusVerified, Source: s.file}
+			h.call = &catalog.RpcCall{ID: id, Peer: peer.ID, Status: catalog.StatusVerified, Source: v.in.RootPath(s.file)}
 		} else {
 			host := firstNonEmpty(a["server.address"], a["net.peer.name"], "http")
 			h.to = catalog.Participant{ID: strings.ReplaceAll(host, ".", "-"), Kind: catalog.ParticipantUnknown, Label: host}
@@ -476,7 +480,7 @@ func (v *verifier) hop(s *span, parentDB bool, publishing string) (*hop, bool) {
 		if peer := v.l.providers[iface]; peer != nil {
 			h.to = v.l.serviceLane(peer)
 			h.status = catalog.StatusVerified
-			h.call = &catalog.RpcCall{ID: id, Peer: peer.ID, Status: catalog.StatusVerified, Source: s.file}
+			h.call = &catalog.RpcCall{ID: id, Peer: peer.ID, Status: catalog.StatusVerified, Source: v.in.RootPath(s.file)}
 		} else {
 			pkg := iface
 			if i := strings.LastIndex(iface, "."); i >= 0 {
@@ -484,7 +488,7 @@ func (v *verifier) hop(s *span, parentDB bool, publishing string) (*hop, bool) {
 			}
 			h.to = catalog.Participant{ID: strings.ReplaceAll(pkg, ".", "-"), Kind: catalog.ParticipantUnknown, Label: pkg}
 			h.status = catalog.StatusUnresolved
-			h.call = &catalog.RpcCall{ID: id, Peer: pkg, Status: catalog.StatusUnresolved, Source: s.file}
+			h.call = &catalog.RpcCall{ID: id, Peer: pkg, Status: catalog.StatusUnresolved, Source: v.in.RootPath(s.file)}
 		}
 
 		return h, false

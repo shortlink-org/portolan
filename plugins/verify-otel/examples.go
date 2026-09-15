@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/plugin"
 )
 
 // defaultExamples is how many recordings a flow keeps as examples when the
@@ -50,16 +51,18 @@ var exampleAttrs = map[string]bool{
 
 // example is one trace, being read into the steps it showed.
 type example struct {
-	root    string // the step's input root, relative to the repository
-	file    string // the recording, relative to the root
-	traceID string
-	start   uint64
-	end     uint64
-	steps   []catalog.ExampleStep
+	recording string // the recording, the root joined in, spelled from its repository
+	file      string // the recording, relative to the root
+	traceID   string
+	start     uint64
+	end       uint64
+	steps     []catalog.ExampleStep
 }
 
-func newExample(inputRoot string, root *span) *example {
-	return &example{root: inputRoot, file: root.file, traceID: root.traceID, start: root.start, end: root.end}
+func newExample(in plugin.Input, root *span) *example {
+	recording := in.RepositoryPath(path.Join(filepath.ToSlash(in.Root), root.file))
+
+	return &example{recording: recording, file: root.file, traceID: root.traceID, start: root.start, end: root.end}
 }
 
 // add records what a span said about the step it was read as.
@@ -94,7 +97,7 @@ func (e *example) id() string {
 func (e *example) finish() catalog.FlowExample {
 	out := catalog.FlowExample{
 		ID:         e.id(),
-		Recording:  path.Join(filepath.ToSlash(e.root), e.file),
+		Recording:  e.recording,
 		TraceID:    e.traceID,
 		DurationMs: millis(e.start, e.end),
 		Steps:      e.steps,

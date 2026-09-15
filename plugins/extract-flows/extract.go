@@ -63,6 +63,12 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			continue
 		}
 		slugs[flow.Slug] = rel
+		// A flow that names no source is its own, read from the workspace
+		// and written from the repository the file lives in. A `source:` or an
+		// `@file:line` the author typed is left as typed.
+		if flow.Source == rel {
+			flow.Source = in.RepositoryPath(rel)
+		}
 		flows = append(flows, flow)
 	}
 	if len(problems) > 0 {

@@ -41,12 +41,12 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 	apiIDs := wsdl.APIIDs(result.Contracts)
 	if opts.Mode == "external" || opts.External != "" {
-		fragment.Externals = externalContracts(result.Contracts, apiIDs, opts)
+		fragment.Externals = externalContracts(in, result.Contracts, apiIDs, opts)
 	} else {
 		var provides []catalog.RpcService
 		for _, contract := range result.Contracts {
 			api := apiOf(contract, apiIDs, opts, len(result.Contracts))
-			provides = append(provides, servicesOf(contract, api)...)
+			provides = append(provides, servicesOf(in, contract, api)...)
 		}
 		sort.Slice(provides, func(i, j int) bool { return provides[i].ID < provides[j].ID })
 		fragment.Contexts = []catalog.BoundedContext{{
@@ -68,7 +68,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	return b.Response(), nil
 }
 
-func externalContracts(contracts []wsdl.Contract, apiIDs map[string]string, opts Options) []catalog.External {
+func externalContracts(in plugin.Input, contracts []wsdl.Contract, apiIDs map[string]string, opts Options) []catalog.External {
 	byID := map[string]*catalog.External{}
 	for _, contract := range contracts {
 		api := apiOf(contract, apiIDs, opts, len(contracts))
@@ -91,7 +91,7 @@ func externalContracts(contracts []wsdl.Contract, apiIDs map[string]string, opts
 				}
 			}
 		}
-		external.Provides = append(external.Provides, servicesOf(contract, api)...)
+		external.Provides = append(external.Provides, servicesOf(in, contract, api)...)
 	}
 	var out []catalog.External
 	for _, external := range byID {
@@ -109,7 +109,7 @@ func apiOf(contract wsdl.Contract, apiIDs map[string]string, opts Options, count
 	return apiIDs[wsdl.ContractKey(contract)]
 }
 
-func servicesOf(contract wsdl.Contract, api string) []catalog.RpcService {
+func servicesOf(in plugin.Input, contract wsdl.Contract, api string) []catalog.RpcService {
 	var out []catalog.RpcService
 	for _, iface := range contract.Interfaces {
 		methods := make([]catalog.RpcMethod, 0, len(iface.Operations))
@@ -132,8 +132,11 @@ func servicesOf(contract wsdl.Contract, api string) []catalog.RpcService {
 			}
 			messages = append(messages, catalog.RpcMessage{Name: message.Name, Fields: fields})
 		}
+		// The reader spells a document from the root, which is also what its
+		// api id reads a version out of; the catalog spells it from the
+		// repository the document lives in.
 		out = append(out, catalog.RpcService{
-			ID: wsdl.InterfaceID(api, iface), Source: contract.Source,
+			ID: wsdl.InterfaceID(api, iface), Source: in.RootPath(contract.Source),
 			Methods: methods, Messages: messages,
 		})
 	}

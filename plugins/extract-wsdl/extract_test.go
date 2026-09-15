@@ -24,6 +24,49 @@ func TestWSDLBecomesStructuredExternalAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	resp, err := extract(plugin.Input{Root: root}, Options{Mode: "external", Spec: "payments.wsdl"})
+	checkSpec(t, resp, err)
+
+	// A contract names its document from the repository it lives in: in a
+	// monorepo the workspace, root and all, and in a fetched copy the copy.
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/pay/gateway"}, "examples/pay/gateway/payments.wsdl"},
+		{plugin.Input{Root: "vendor/repos/acme/gateway", Repository: "vendor/repos/acme/gateway"}, "payments.wsdl"},
+	} {
+		if err := os.MkdirAll(c.in.Root, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.in.Root, "payments.wsdl"), []byte(spec), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		for _, opts := range []Options{{Mode: "external", Spec: "payments.wsdl"}, {Context: "pay", Service: "gateway"}} {
+			resp, err := extract(c.in, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+				t.Fatal(err)
+			}
+			var provides []catalog.RpcService
+			for _, external := range got.Externals {
+				provides = append(provides, external.Provides...)
+			}
+			for _, context := range got.Contexts {
+				provides = append(provides, context.Services[0].Provides...)
+			}
+			if len(provides) != 1 || provides[0].Source != c.want {
+				t.Errorf("root %s, mode %q: provides = %+v, want source %q", c.in.Root, opts.Mode, provides, c.want)
+			}
+		}
+	}
+}
+
+func checkSpec(t *testing.T, resp plugin.Response, err error) {
+	t.Helper()
 	if err != nil {
 		t.Fatal(err)
 	}

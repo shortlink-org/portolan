@@ -371,6 +371,48 @@ func TestARecordWithoutADateUsesTheDayItWasFirstCommitted(t *testing.T) {
 	}
 }
 
+// A record names its file from the repository it lives in. In a monorepo that
+// is the workspace, root and all; in a fetched copy it is the copy, whose
+// directory here means nothing upstream. The history stays keyed by the
+// workspace spelling either way, because that is how the host sends it.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	t.Chdir(t.TempDir())
+	record := "# 1. First\n\nDate: 2026-01-01\n\n## Status\n\nAccepted\n\n## Context\n\nAs written.\n"
+	for _, root := range []string{"examples/shop/cart", "vendor/repos/acme/shop"} {
+		if err := os.MkdirAll(filepath.Join(root, "docs", "adr"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "docs", "adr", "0001-first.md"), []byte(record), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ada := plugin.Commit{Commit: strings.Repeat("a", 40), Author: "Ada Lovelace", Date: "2026-01-01T09:00:00Z"}
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/shop/cart"}, "examples/shop/cart/docs/adr/0001-first.md"},
+		{plugin.Input{Root: "vendor/repos/acme/shop", Repository: "vendor/repos/acme/shop"}, "docs/adr/0001-first.md"},
+	} {
+		c.in.History = map[string]plugin.FileHistory{c.in.Root + "/docs/adr/0001-first.md": {Created: ada}}
+		resp, err := extract(c.in, Options{Scope: "org"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cat catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &cat); err != nil {
+			t.Fatal(err)
+		}
+		if len(cat.Adrs) != 1 || cat.Adrs[0].Source != c.want {
+			t.Errorf("root %s: adrs = %+v, want source %s", c.in.Root, cat.Adrs, c.want)
+			continue
+		}
+		if cat.Adrs[0].Created == nil {
+			t.Errorf("root %s: the history was not found under the workspace spelling", c.in.Root)
+		}
+	}
+}
+
 // The descriptor is how the host learns to send the history at all.
 func TestTheDescriptorAsksForHistory(t *testing.T) {
 	if needs := descriptor().Needs; len(needs) != 1 || needs[0] != plugin.NeedHistory {

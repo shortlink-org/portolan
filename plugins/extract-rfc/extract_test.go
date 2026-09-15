@@ -61,6 +61,45 @@ Rotate both credentials during an overlap window.
 	}
 }
 
+// An RFC names its file from the repository it lives in: in a monorepo the
+// workspace, root and all, and in a fetched copy the copy. The history is
+// looked up by the workspace spelling, which is how the host keys it.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	t.Chdir(t.TempDir())
+	record := "---\nrfc: 1\ntitle: First\nstatus: draft\nscope: org\n---\n# RFC 1 — First\n\n## Proposal\n\nText.\n"
+	ada := plugin.Commit{Commit: "aaaa", Author: "Ada", Date: "2026-01-01T09:00:00Z"}
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/shop/cart"}, "examples/shop/cart/docs/rfc/0001-first.md"},
+		{plugin.Input{Root: "vendor/repos/acme/shop", Repository: "vendor/repos/acme/shop"}, "docs/rfc/0001-first.md"},
+	} {
+		if err := os.MkdirAll(filepath.Join(c.in.Root, "docs", "rfc"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.in.Root, "docs", "rfc", "0001-first.md"), []byte(record), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		c.in.History = map[string]plugin.FileHistory{c.in.Root + "/docs/rfc/0001-first.md": {Created: ada}}
+		resp, err := extract(c.in, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fragment catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &fragment); err != nil {
+			t.Fatal(err)
+		}
+		if len(fragment.Rfcs) != 1 || fragment.Rfcs[0].Source != c.want {
+			t.Errorf("root %s: rfcs = %+v, want source %s", c.in.Root, fragment.Rfcs, c.want)
+			continue
+		}
+		if fragment.Rfcs[0].Created == nil {
+			t.Errorf("root %s: the history was not found under the workspace spelling", c.in.Root)
+		}
+	}
+}
+
 func TestUnknownStatusIsPreserved(t *testing.T) {
 	rfc, problems := parseRFC("docs/rfc/idea.md", "---\nstatus: seeking-council\nscope: org\n---\n# RFC alpha — Try it\n\n## Proposal\n\nText.\n", Options{})
 	if len(problems) > 0 {

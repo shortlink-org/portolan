@@ -76,15 +76,15 @@ func (e *estate) flow(found connector, opts ConnectorOptions, connectorID, table
 	}
 	steps := catalog.FlowNodes{&catalog.Step{
 		Type: "step", ID: "capture", From: storeLane, To: connectorID, Kind: catalog.StepCall,
-		Label: "capture " + table, Status: catalog.StatusDeclared, Note: note, Line: found.source,
-		Evidence: []catalog.RelationEvidence{{Kind: "configuration", Rule: "debezium-table-include", Source: found.source, Symbol: table}},
+		Label: "capture " + table, Status: catalog.StatusDeclared, Note: note, Line: found.where,
+		Evidence: []catalog.RelationEvidence{{Kind: "configuration", Rule: "debezium-table-include", Source: found.where, Symbol: table}},
 	}}
 	if topic != "" {
 		steps = append(steps, &catalog.Step{
 			Type: "step", ID: "publish", From: connectorID, To: brokerLane, Kind: catalog.StepEvent,
-			Label: "publish " + goscan.FirstNonEmpty(message, topic), Status: catalog.StatusDeclared, Line: found.source,
+			Label: "publish " + goscan.FirstNonEmpty(message, topic), Status: catalog.StatusDeclared, Line: found.where,
 			Handoff:  &catalog.FlowHandoff{Kind: "message", Transport: e.broker, Channel: topic, Message: message, Direction: "send"},
-			Evidence: []catalog.RelationEvidence{{Kind: "configuration", Rule: routingRule(outbox), Source: found.source, Symbol: topic}},
+			Evidence: []catalog.RelationEvidence{{Kind: "configuration", Rule: routingRule(outbox), Source: found.where, Symbol: topic}},
 		})
 	}
 
@@ -103,7 +103,7 @@ func (e *estate) flow(found connector, opts ConnectorOptions, connectorID, table
 		Slug:         slug,
 		Name:         name,
 		Summary:      fmt.Sprintf("Debezium captures %s and relays it to Kafka from the connector configuration.", table),
-		Source:       found.source,
+		Source:       found.where,
 		Trigger:      &catalog.FlowTrigger{Kind: "startup", Label: "Kafka Connect task", Confidence: "high"},
 		Owner:        connectorContext,
 		Participants: participants,

@@ -65,7 +65,10 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			continue
 		}
 		ids[rfc.ID], slugs[rfc.Slug] = rel, rel
-		rfc.Created, rfc.Revised = history.of(rel)
+		// The host keys the history by the workspace spelling (portolan.0007),
+		// the root joined in; the record names the file from its repository.
+		rfc.Created, rfc.Revised = history.of(file)
+		rfc.Source = in.RootPath(rel)
 		if rfc.CreatedAt == "" && rfc.Created != nil {
 			rfc.CreatedAt = rfc.Created.Date
 		}

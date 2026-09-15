@@ -53,6 +53,13 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	// and the ref goes.
 	drop(defs, b, service)
 
+	// Schemas are read from the workspace and named from the repository they
+	// were vendored into.
+	all := channels.all()
+	for i := range all {
+		all[i].Source = in.RepositoryPath(all[i].Source)
+	}
+
 	fragment := catalog.Catalog{
 		Contexts: []catalog.BoundedContext{{
 			ID:   opts.Context,
@@ -66,7 +73,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 				Provides:   []catalog.RpcService{},
 				Consumes:   []catalog.RpcCall{},
 				Aggregates: []catalog.Aggregate{},
-				Channels:   channels.all(),
+				Channels:   all,
 			}},
 		}},
 		Defs:  defs,

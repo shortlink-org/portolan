@@ -2,6 +2,8 @@ package extractgraphql
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -29,6 +31,39 @@ func fragment(t *testing.T) catalog.Catalog {
 	}
 
 	return out
+}
+
+// An interface names its schema from the repository it lives in: in a
+// monorepo the workspace, root and all, and in a fetched copy the copy.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	schema := []byte("type Query {\n  basket(id: ID!): String\n}\n")
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/storefront/bff"}, "examples/storefront/bff/graph/basket.graphql"},
+		{plugin.Input{Root: "vendor/repos/acme/bff", Repository: "vendor/repos/acme/bff"}, "graph/basket.graphql"},
+	} {
+		if err := os.MkdirAll(filepath.Join(c.in.Root, "graph"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.in.Root, "graph", "basket.graphql"), schema, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := extract(c.in, Options{Context: "storefront", Service: "bff"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+			t.Fatal(err)
+		}
+		provides := out.Contexts[0].Services[0].Provides
+		if len(provides) != 1 || provides[0].Source != c.want {
+			t.Errorf("root %s: provides = %+v, want source %q", c.in.Root, provides, c.want)
+		}
+	}
 }
 
 func provided(t *testing.T) []catalog.RpcService {

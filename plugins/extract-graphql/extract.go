@@ -66,6 +66,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	if len(provides) == 0 {
 		b.Warn(opts.Context+"."+opts.Service, strings.Join(relAll(files), ", ")+" declares no root fields; nothing answers over this schema")
 	}
+	// Schemas are found from the workspace and named from the repository
+	// they live in.
+	for i := range provides {
+		provides[i].Source = in.RepositoryPath(provides[i].Source)
+	}
 
 	fragment := catalog.Catalog{
 		Contexts: []catalog.BoundedContext{{

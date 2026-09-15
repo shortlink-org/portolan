@@ -2,6 +2,8 @@ package extractdebezium
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -122,6 +124,64 @@ func TestDynamicOutboxAndUnboundedCaptureAreReported(t *testing.T) {
 	}
 	if len(fragment.Flows) != 1 || len(fragment.Flows[0].Steps) != 1 {
 		t.Fatalf("the known store-to-connector half should remain visible: %+v", fragment.Flows)
+	}
+}
+
+// Everything the fragment says about where a connector is declared is spelled
+// from the repository the file lives in: in a monorepo the workspace, root and
+// all, and in a fetched copy the copy. Warnings keep naming the file from the
+// root.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	config, err := os.ReadFile("testdata/postgres.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/platform/connect"}, "examples/platform/connect/connectors/postgres.json"},
+		{plugin.Input{Root: "vendor/repos/acme/connect", Repository: "vendor/repos/acme/connect"}, "connectors/postgres.json"},
+	} {
+		if err := os.MkdirAll(filepath.Join(c.in.Root, "connectors"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.in.Root, "connectors", "postgres.json"), config, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := extract(c.in, Options{Context: "platform", Broker: "kafka", Out: "debezium.json"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fragment catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &fragment); err != nil {
+			t.Fatal(err)
+		}
+		service := serviceNamed(t, fragment, "platform.orders-cdc")
+		if service.Path != c.want {
+			t.Errorf("root %s: path = %q, want %q", c.in.Root, service.Path, c.want)
+		}
+		at := c.want + ":1"
+		for _, channel := range service.Channels {
+			if channel.Source != at {
+				t.Errorf("root %s: channel %s source = %q, want %q", c.in.Root, channel.Address, channel.Source, at)
+			}
+		}
+		if len(fragment.Flows) == 0 {
+			t.Fatalf("root %s: no flows", c.in.Root)
+		}
+		for _, flow := range fragment.Flows {
+			if flow.Source != at {
+				t.Errorf("root %s: flow %s source = %q", c.in.Root, flow.ID, flow.Source)
+			}
+			for _, node := range flow.Steps {
+				step := node.(*catalog.Step)
+				if step.Line != at || len(step.Evidence) != 1 || step.Evidence[0].Source != at {
+					t.Errorf("root %s: step %s line = %q, evidence = %+v", c.in.Root, step.ID, step.Line, step.Evidence)
+				}
+			}
+		}
 	}
 }
 

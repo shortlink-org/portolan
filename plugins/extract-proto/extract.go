@@ -102,6 +102,23 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	sort.Slice(modules, func(i, j int) bool { return modules[i].ID < modules[j].ID })
 
+	// Protos are read from the workspace and named from the repository they
+	// live in: a fetched copy's `proto/shop/v1/orders.proto:17` is that
+	// upstream, whatever directory holds the copy here. A module's files stay
+	// spelled from the module's own directory.
+	for i := range provides {
+		provides[i].Source = in.RepositorySource(provides[i].Source)
+	}
+	for i := range copies {
+		copies[i].Source = in.RepositorySource(copies[i].Source)
+	}
+	for i := range consumes {
+		consumes[i].Source = in.RepositorySource(consumes[i].Source)
+	}
+	for i := range modules {
+		modules[i].Source = in.RepositoryPath(modules[i].Source)
+	}
+
 	service := catalog.Service{
 		ID:   serviceID,
 		Slug: opts.Service,

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -89,6 +90,66 @@ func TestProtoServiceBecomesAnInterface(t *testing.T) {
 	}
 	if orders.Module != "buf.build/acme/shop" {
 		t.Errorf("the interface does not name the module it came from: %q", orders.Module)
+	}
+}
+
+// Every source names its file from the repository it lives in: in a monorepo
+// the workspace, root and all, and in a fetched copy the copy.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	estate, err := filepath.Abs("testdata/estate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in     plugin.Input
+		prefix string
+	}{
+		{plugin.Input{Root: "examples/shop/oms"}, "examples/shop/oms/"},
+		{plugin.Input{Root: "vendor/repos/acme/oms", Repository: "vendor/repos/acme/oms"}, ""},
+	} {
+		err := filepath.WalkDir(estate, func(p string, entry os.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			rel, _ := filepath.Rel(estate, p)
+			src, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(c.in.Root, rel)), 0o755); err != nil {
+				return err
+			}
+			return os.WriteFile(filepath.Join(c.in.Root, rel), src, 0o644)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := extract(c.in, options())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+			t.Fatal(err)
+		}
+		svc := out.Contexts[0].Services[0]
+		if len(svc.Provides) == 0 || svc.Provides[0].Source != c.prefix+"proto/shop/v1/orders.proto:17" {
+			t.Errorf("root %s: provides = %+v", c.in.Root, svc.Provides)
+		}
+		if len(svc.Consumes) == 0 || !strings.HasPrefix(svc.Consumes[0].Source, c.prefix+"internal/infrastructure/pricing/pricing.proto:") {
+			t.Errorf("root %s: consumes = %+v", c.in.Root, svc.Consumes)
+		}
+		if len(svc.Copies) == 0 || !strings.HasPrefix(svc.Copies[0].Source, c.prefix+"internal/infrastructure/pricing/pricing.proto:") {
+			t.Errorf("root %s: copies = %+v", c.in.Root, svc.Copies)
+		}
+		sources := map[string]bool{}
+		for _, module := range out.Modules {
+			sources[module.Source] = true
+		}
+		if !sources[c.prefix+"proto"] || !sources[c.prefix+"internal/infrastructure/pricing"] {
+			t.Errorf("root %s: module sources = %v", c.in.Root, sources)
+		}
 	}
 }
 

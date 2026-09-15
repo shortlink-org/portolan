@@ -70,6 +70,17 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			b.Warn(owner, source+" declares no operations")
 		}
 	}
+	// Documents are found from the workspace and named from the repository
+	// they live in: a fetched copy's `api/openapi.yaml` is that upstream,
+	// whatever directory holds the copy here.
+	for i := range provides {
+		provides[i].Source = in.RepositoryPath(provides[i].Source)
+	}
+	for i := range externals {
+		for j := range externals[i].Provides {
+			externals[i].Provides[j].Source = in.RepositoryPath(externals[i].Provides[j].Source)
+		}
+	}
 	if provides == nil {
 		provides = []catalog.RpcService{}
 	}

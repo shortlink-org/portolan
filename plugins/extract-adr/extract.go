@@ -83,6 +83,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		ids[adr.ID] = rel
 		slugs[adr.Slug] = rel
 		adr.Created, adr.Revised = created, revised
+		// The history is keyed by the workspace spelling, and so are the
+		// warnings; the record itself names the file from its repository.
+		adr.Source = in.RepositoryPath(rel)
 		adrs = append(adrs, adr)
 	}
 	if problems := supersessions(adrs, ids); len(problems) > 0 {

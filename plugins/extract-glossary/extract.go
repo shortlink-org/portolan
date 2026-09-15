@@ -85,6 +85,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 				continue
 			}
 			ids[term.ID] = term.Source
+			// Read from the workspace, written from the repository the
+			// glossary lives in.
+			term.Source = in.RepositorySource(term.Source)
 			terms = append(terms, term)
 		}
 	}

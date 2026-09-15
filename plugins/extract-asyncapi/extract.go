@@ -40,6 +40,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	if len(channels) == 0 {
 		b.Warn(service, source+" declares no channels")
 	}
+	// Found from the workspace, named from the repository the document lives
+	// in.
+	for i := range channels {
+		channels[i].Source = in.RepositoryPath(channels[i].Source)
+	}
 
 	fragment := catalog.Catalog{
 		Contexts: []catalog.BoundedContext{{

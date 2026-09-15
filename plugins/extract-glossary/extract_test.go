@@ -211,3 +211,44 @@ func firstDifference(want, got string) string {
 
 	return "want " + strconv.Itoa(len(a)) + " lines, got " + strconv.Itoa(len(b))
 }
+
+// A term names the line it is defined on from the repository the glossary
+// lives in: in a monorepo the workspace, root and all, and in a fetched copy
+// the copy.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	glossary, err := os.ReadFile("testdata/estate/GLOSSARY.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/shop/auth"}, "examples/shop/auth/GLOSSARY.md:"},
+		{plugin.Input{Root: "vendor/repos/acme/auth", Repository: "vendor/repos/acme/auth"}, "GLOSSARY.md:"},
+	} {
+		if err := os.MkdirAll(c.in.Root, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(c.in.Root+"/GLOSSARY.md", glossary, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := extract(c.in, Options{Context: "auth"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cat catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &cat); err != nil {
+			t.Fatal(err)
+		}
+		if len(cat.Terms) == 0 {
+			t.Fatalf("root %s: no terms", c.in.Root)
+		}
+		for _, term := range cat.Terms {
+			if !strings.HasPrefix(term.Source, c.want) || strings.Trim(strings.TrimPrefix(term.Source, c.want), "0123456789") != "" {
+				t.Errorf("root %s: %s source = %q, want %sN", c.in.Root, term.ID, term.Source, c.want)
+			}
+		}
+	}
+}

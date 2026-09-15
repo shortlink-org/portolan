@@ -51,6 +51,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	e := &estate{groups: map[string]*groupState{}, flowIDs: map[string]bool{}, pipelines: map[string]string{}, warnings: b, context: opts.Context, broker: opts.Broker}
 	seenOptions := map[string]bool{}
 	for _, found := range connectors {
+		found.where = in.RootSource(found.source)
 		cfg := opts.Connectors[found.name]
 		if _, configured := opts.Connectors[found.name]; configured {
 			seenOptions[found.name] = true
@@ -91,7 +92,7 @@ func (e *estate) add(found connector, opts ConnectorOptions) {
 	e.pipelines[serviceID] = found.name
 	service := e.service(serviceID)
 	service.service.Name = found.name
-	service.service.Path = strings.Split(found.source, ":")[0]
+	service.service.Path = strings.Split(found.where, ":")[0]
 	service.service.Kind = catalog.ComponentKindDataPipeline
 	service.service.Technologies = []string{"Debezium", "Kafka Connect", "PostgreSQL"}
 	if opts.Store != "" {
@@ -137,7 +138,7 @@ func (e *estate) add(found connector, opts ConnectorOptions) {
 		if message == "" {
 			e.warnings.Warn(found.source, topic+" is an exact topic, but its generated schema name cannot be derived safely; the channel is kept without a message")
 		}
-		channel := service.channel(topic, catalog.ChannelKindMessage, found.source, "Debezium change-data-capture topic.")
+		channel := service.channel(topic, catalog.ChannelKindMessage, found.where, "Debezium change-data-capture topic.")
 		if message != "" {
 			channel.add(catalog.ChannelMessage{Name: message, Title: goscan.Title(strings.TrimSuffix(message, "."+shape)), Doc: "Row changes captured from `" + table + "`.", Direction: catalog.ChannelSend, Encoding: encoding})
 		}
@@ -205,7 +206,7 @@ func (e *estate) addOutbox(found connector, opts ConnectorOptions, connectorID s
 
 		if opts.SourceService != "" {
 			publisher := e.service(opts.SourceService)
-			channel := publisher.channel(topic, catalog.ChannelKindEvent, found.source, "Delivered through Debezium Outbox Event Router `"+found.name+"`.")
+			channel := publisher.channel(topic, catalog.ChannelKindEvent, found.where, "Delivered through Debezium Outbox Event Router `"+found.name+"`.")
 			channel.add(catalog.ChannelMessage{Name: route.Message, Title: goscan.Title(route.Message), Doc: "Routed when `" + route.Value + "` is read from the outbox route column.", Direction: catalog.ChannelSend, Encoding: encoding})
 		}
 		e.addFlow(e.flow(found, opts, connectorID, table, topic, route.Message, true))

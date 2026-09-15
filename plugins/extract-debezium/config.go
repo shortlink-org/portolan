@@ -18,7 +18,11 @@ type connector struct {
 	name   string
 	class  string
 	config map[string]string
+	// source is the declaration spelled from the input root, with its line;
+	// warnings name it that way. where is the same place spelled from the
+	// repository the file lives in, which is what the catalog writes.
 	source string
+	where  string
 }
 
 func discover(root string, paths []string, b *plugin.Builder) ([]connector, error) {

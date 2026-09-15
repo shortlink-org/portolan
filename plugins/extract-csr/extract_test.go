@@ -2,6 +2,8 @@ package extractcsr
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -122,6 +124,58 @@ func TestTopicsComeFromSubjects(t *testing.T) {
 	}
 	if orders.Source != "testdata/estate/vendor/schemas/shop.oms.order-value/v3.avsc" {
 		t.Errorf("source %q", orders.Source)
+	}
+}
+
+// A channel names its schema from the repository it was vendored into: in a
+// monorepo the workspace, root and all, and in a fetched copy the copy.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	from, err := filepath.Abs(estate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in     plugin.Input
+		prefix string
+	}{
+		{plugin.Input{Root: "examples/shop/oms"}, "examples/shop/oms/"},
+		{plugin.Input{Root: "vendor/repos/acme/oms", Repository: "vendor/repos/acme/oms"}, ""},
+	} {
+		err := filepath.WalkDir(from, func(p string, entry os.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			rel, _ := filepath.Rel(from, p)
+			src, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(c.in.Root, rel)), 0o755); err != nil {
+				return err
+			}
+			return os.WriteFile(filepath.Join(c.in.Root, rel), src, 0o644)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := extract(c.in, defaults())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fragment catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &fragment); err != nil {
+			t.Fatal(err)
+		}
+		channels := channelsOf(t, fragment)
+		if len(channels) == 0 {
+			t.Fatalf("root %s: no channels", c.in.Root)
+		}
+		for _, channel := range channels {
+			if !strings.HasPrefix(channel.Source, c.prefix+"vendor/schemas/shop.oms.") {
+				t.Errorf("root %s: %s source = %q", c.in.Root, channel.Address, channel.Source)
+			}
+		}
 	}
 }
 

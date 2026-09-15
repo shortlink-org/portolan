@@ -636,3 +636,44 @@ components:
 		t.Errorf("required: currency=%v note=%v", fields["currency"].Required, fields["note"].Required)
 	}
 }
+
+// A contract names its document from the repository it lives in: in a
+// monorepo the workspace, root and all, and in a fetched copy the copy.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	document, err := os.ReadFile("testdata/openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	for _, c := range []struct {
+		in   plugin.Input
+		want string
+	}{
+		{plugin.Input{Root: "examples/billing/invoices"}, "examples/billing/invoices/api/openapi.yaml"},
+		{plugin.Input{Root: "vendor/repos/acme/billing", Repository: "vendor/repos/acme/billing"}, "api/openapi.yaml"},
+	} {
+		if err := os.MkdirAll(filepath.Join(c.in.Root, "api"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.in.Root, "api", "openapi.yaml"), document, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := extract(c.in, Options{Context: "billing", Service: "invoices", Spec: "api/openapi.yaml"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+			t.Fatal(err)
+		}
+		provides := out.Contexts[0].Services[0].Provides
+		if len(provides) == 0 {
+			t.Fatalf("root %s: provides nothing", c.in.Root)
+		}
+		for _, p := range provides {
+			if p.Source != c.want {
+				t.Errorf("root %s: %s source = %q, want %q", c.in.Root, p.ID, p.Source, c.want)
+			}
+		}
+	}
+}
