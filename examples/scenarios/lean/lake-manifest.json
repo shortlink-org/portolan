@@ -1,0 +1,13 @@
+{"version": "1.2.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"type": "path",
+   "scope": "",
+   "name": "oms",
+   "manifestFile": "lake-manifest.json",
+   "inherited": false,
+   "dir": "../../shop/oms/lean",
+   "configFile": "lakefile.toml"}],
+ "name": "checkout",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

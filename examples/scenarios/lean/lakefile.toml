@@ -1,0 +1,16 @@
+name = "checkout"
+version = "0.1.0"
+defaultTargets = ["Checkout"]
+
+# The order is OMS's model, taken as it is proved there.
+[[require]]
+name = "oms"
+path = "../../shop/oms/lean"
+
+[[lean_lib]]
+name = "Checkout"
+
+# Every interleaving up to a depth, and the first one that breaks each property.
+[[lean_exe]]
+name = "search"
+root = "Search"

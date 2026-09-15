@@ -48,3 +48,7 @@ packing, dispatch or a delivery relay: delivery's outbox is asserted, not sent.
 Ledger still lacks an outbox and gateway idempotency; a lost gateway result
 before ledger persistence, cancellation racing authorization, and cancellation
 after capture (a refund, not a void) are not solved by this scenario.
+
+[lean/](lean/README.md) models the same checkout and checks every interleaving:
+it proves that a confirmed order always has its money held or captured, and
+gives the shortest trace for each of the last two gaps.
