@@ -6,7 +6,7 @@ import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runPlugin } from "../plugin-host.mjs";
-import { LOCK_NAME, OFFLINE_ENV, encodeLock, pin, run, splitRepo, wantedPaths, webRepo } from "./fetch-git.mjs";
+import { LOCK_NAME, OFFLINE_ENV, PIN_NAME, encodeLock, pin, repositoryRoot, run, splitRepo, wantedPaths, webRepo } from "./fetch-git.mjs";
 
 const created = [];
 afterEach(() => {
@@ -308,5 +308,21 @@ describe("names", () => {
 describe("wantedPaths", () => {
   it("keeps dot-prefixed paths and strips only a leading ./", () => {
     expect(wantedPaths({ paths: [".gitlab", ".air.toml", "./cmd", "docs/", "."] })).toEqual([".air.toml", ".gitlab", "cmd", "docs"]);
+  });
+});
+
+describe("repositoryRoot", () => {
+  it("finds the copy a root lies in by its pin, and the workspace when there is none", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "portolan-fetch-git-workspace-"));
+    created.push(workspace);
+    mkdirSync(join(workspace, "vendor/repos/acme/shop/services/oms"), { recursive: true });
+    mkdirSync(join(workspace, "examples/shop/oms"), { recursive: true });
+    writeFileSync(join(workspace, "vendor/repos/acme/shop", PIN_NAME), pin("github.com/acme/shop", "c1d2e3f"));
+
+    expect(repositoryRoot(workspace, "vendor/repos/acme/shop")).toBe("vendor/repos/acme/shop");
+    expect(repositoryRoot(workspace, "vendor/repos/acme/shop/services/oms")).toBe("vendor/repos/acme/shop");
+    expect(repositoryRoot(workspace, "examples/shop/oms")).toBe("");
+    expect(repositoryRoot(workspace, ".")).toBe("");
+    expect(repositoryRoot(workspace, "..")).toBe("");
   });
 });

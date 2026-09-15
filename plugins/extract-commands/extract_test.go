@@ -85,6 +85,21 @@ func TestNothingDeclaredWarns(t *testing.T) {
 	}
 }
 
+// Inside a fetched copy a runner file is named from the copy's repository.
+func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
+	t.Chdir(t.TempDir())
+	mustWrite(t, filepath.Join("vendor", "repos", "acme", "shop", "services", "cart", "Makefile"), "test: ## Run the tests\n\tgo test ./...\n")
+
+	resp, err := extract(plugin.Input{Root: "vendor/repos/acme/shop/services/cart", Repository: "vendor/repos/acme/shop"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmds := fragment(t, resp).Contexts[0].Services[0].Commands
+	if len(cmds) != 1 || cmds[0].Source != "services/cart/Makefile:1" {
+		t.Errorf("commands = %+v", cmds)
+	}
+}
+
 func TestRefusesANonSlug(t *testing.T) {
 	if _, err := extract(plugin.Input{Root: t.TempDir()}, Options{Context: "Shop Front", Service: "oms"}); err == nil {
 		t.Error("a context with a space in it is not an id")

@@ -137,6 +137,41 @@ require (
 	}
 }
 
+// A snapshot fetched into the workspace is its own repository: the service is
+// the whole of it and its runner files are where the forge has them, not
+// under the directory the copy was written to. A monorepo service keeps the
+// workspace's spelling, which is its repository's.
+func TestPathsAreSpelledFromTheRepository(t *testing.T) {
+	t.Chdir(t.TempDir())
+	mustWrite(t, filepath.Join("vendor", "repos", "acme", "shop", "Makefile"), "build: ## Compile\n\tgo build ./...\n")
+	mustWrite(t, filepath.Join("examples", "shop", "oms", "Makefile"), "build: ## Compile\n\tcargo build\n")
+
+	for _, tc := range []struct {
+		in       plugin.Input
+		wantPath string
+		wantCmd  string
+	}{
+		{plugin.Input{Root: "vendor/repos/acme/shop", Repository: "vendor/repos/acme/shop"}, "", "Makefile:1"},
+		{plugin.Input{Root: "examples/shop/oms"}, "examples/shop/oms", "examples/shop/oms/Makefile:1"},
+	} {
+		response, err := extract(tc.in, Options{Group: "shop", Component: "shop"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got catalog.Catalog
+		if err := json.Unmarshal([]byte(response.Files[0].Contents), &got); err != nil {
+			t.Fatal(err)
+		}
+		service := got.Contexts[0].Services[0]
+		if service.Path != tc.wantPath {
+			t.Errorf("%s: path = %q, want %q", tc.in.Root, service.Path, tc.wantPath)
+		}
+		if len(service.Commands) != 1 || service.Commands[0].Source != tc.wantCmd {
+			t.Errorf("%s: commands = %+v, want source %q", tc.in.Root, service.Commands, tc.wantCmd)
+		}
+	}
+}
+
 func mustWrite(t *testing.T, path, contents string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

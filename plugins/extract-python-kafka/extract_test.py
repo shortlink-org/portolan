@@ -33,6 +33,19 @@ class PythonKafka(unittest.TestCase):
         self.fragment = json.loads(self.contents)
         self.service = self.fragment["contexts"][0]["services"][0]
 
+    def test_a_fetched_copy_is_spelled_from_its_own_repository(self):
+        fixture = os.path.relpath(os.path.join(HERE, "testdata", "service"), ROOT)
+        builder = Builder()
+        extract(
+            Input(root=fixture, repository=fixture),
+            Options.of({"context": "shop", "service": "orders", "settings": "config.settings"}),
+            builder,
+            cwd=ROOT,
+        )
+        fetched = builder.files[0].contents
+        self.assertNotIn(fixture, fetched)
+        self.assertEqual(json.loads(fetched), json.loads(self.contents.replace(fixture + "/", "").replace('"%s"' % fixture, '""')))
+
     def test_three_standard_clients_form_message_channels(self):
         channels = {item["address"]: item for item in self.service["channels"]}
         self.assertEqual(sorted(channels), ["audit.records", "inventory.snapshots", "orders.created", "payments.accepted"])

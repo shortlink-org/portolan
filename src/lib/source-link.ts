@@ -73,7 +73,15 @@ export function bare(repo: string): string {
     .toLowerCase();
 }
 
-/** Translate a path in the committed vendor copy back to the remote tree. */
+/**
+ * Translate a path in the committed vendor copy back to the remote tree.
+ *
+ * Extractors now spell a fetched service's paths from its own repository: the
+ * host tells them where the copy begins (`input.repository`). This is for
+ * catalogs written before that, which still carry the
+ * `vendor/repos/<owner>/<name>/` prefix of the directory the copy sat in; a
+ * path already spelled from the repository passes through unchanged.
+ */
 function repositoryPath(path: string, repo: string, info: BuildInfo): string {
   if (!repo || sameRepo(repo, info)) return path;
   const segments = bare(repo).split("/").filter(Boolean);

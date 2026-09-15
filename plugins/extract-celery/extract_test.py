@@ -55,6 +55,16 @@ class Billing(unittest.TestCase):
     def test_the_fragment_it_reads(self):
         golden(self, "billing", self.files["celery.json"])
 
+    def test_a_fetched_copy_is_spelled_from_its_own_repository(self):
+        # The fixture read as if it were a copy fetched into the workspace: the
+        # same fragment, with the directory holding the copy taken off every path.
+        fixture = os.path.relpath(os.path.join(HERE, "testdata", "billing"), ROOT)
+        b = Builder()
+        extract(Input(root=fixture, repository=fixture), Options.of({"context": "shop", "service": "billing"}), b, cwd=ROOT)
+        fetched = b.files[0].contents
+        self.assertNotIn(fixture, fetched)
+        self.assertEqual(json.loads(fetched), json.loads(self.files["celery.json"].replace(fixture + "/", "").replace('"%s"' % fixture, '""')))
+
     def test_a_tree_where_everything_joins_reports_nothing(self):
         self.assertEqual(self.warnings, [])
 

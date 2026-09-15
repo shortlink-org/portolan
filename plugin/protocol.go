@@ -11,6 +11,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
 )
@@ -50,6 +53,18 @@ type Input struct {
 	// catalog entry needs to point at a generated companion document.
 	Output string `json:"output,omitempty"`
 
+	// Repository is where the repository Root belongs to begins, relative to
+	// the workspace like Root: the directory a fetched copy was written to,
+	// when Root lies inside one. Empty when the workspace is the repository,
+	// which is every monorepo service and every host that does not say.
+	//
+	// The catalog spells a path from the repository the file lives in, since
+	// that is what a source link opens on the forge. Root alone cannot tell a
+	// plugin that: `vendor/repos/acme/shop` is a directory of this checkout
+	// and nothing upstream, while `examples/shop/oms` is a directory of both.
+	// RepositoryPath turns one into the other.
+	Repository string `json:"repository,omitempty"`
+
 	// Provenance is not part of the request (portolan.0010). A fragment used
 	// to carry a commit and a date that the host worked out from the last
 	// commit touching Root and every plugin copied to the top of its output.
@@ -66,6 +81,36 @@ type Input struct {
 	// reads it (portolan.0007) so that no plugin has to run git, which a wasm
 	// module cannot.
 	History map[string]FileHistory `json:"history,omitempty"`
+}
+
+// RepositoryPath spells a path of the workspace, written the way Root is, from
+// the repository it lies in: with Repository `vendor/repos/acme/shop`, the
+// path `vendor/repos/acme/shop/services/oms` is `services/oms`, and the
+// repository's own directory is "" - the whole of it. With no Repository, or
+// for a path outside it, the path comes back as given, slashes forward.
+func (in Input) RepositoryPath(p string) string {
+	p = filepath.ToSlash(p)
+	repo := strings.Trim(path.Clean(filepath.ToSlash(in.Repository)), "/")
+	if repo == "" || repo == "." {
+		return p
+	}
+	clean := path.Clean(p)
+	if clean == repo {
+		return ""
+	}
+	if rest, ok := strings.CutPrefix(clean, repo+"/"); ok {
+		return rest
+	}
+	return p
+}
+
+// RepositorySource is RepositoryPath for a source as the catalog writes one,
+// a path with or without a `:line` after it.
+func (in Input) RepositorySource(where string) string {
+	if at := strings.LastIndexByte(where, ':'); at > 0 && at < len(where)-1 && strings.Trim(where[at+1:], "0123456789") == "" {
+		return in.RepositoryPath(where[:at]) + where[at:]
+	}
+	return in.RepositoryPath(where)
 }
 
 // FileHistory is one file's first and last commit. Revised is nil when the

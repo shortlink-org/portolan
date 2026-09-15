@@ -9,6 +9,7 @@ deliberate change, and read the diff.
 import ast
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -155,6 +156,54 @@ class Fragment(unittest.TestCase):
 
     def test_the_host_output_directory_is_part_of_the_plugin_input(self):
         self.assertEqual(Input.of({"root": "service", "output": "generated/api"}).output, "generated/api")
+
+    def test_a_fetched_copy_is_spelled_from_its_own_repository(self):
+        # The same service, fetched into a workspace under vendor/repos: every
+        # path is the golden's with the directory holding the copy taken off,
+        # except the inferred document, which the host writes into the workspace.
+        copy = "vendor/repos/acme/billing"
+        with tempfile.TemporaryDirectory() as workspace:
+            shutil.copytree(os.path.join(ROOT, FIXTURE), os.path.join(workspace, copy))
+            b = Builder()
+            extract(
+                Input(root=copy, output=copy + "/portolan", repository=copy),
+                Options.of(OPTIONS),
+                b,
+                cwd=workspace,
+            )
+            files = {f.name: f.contents for f in b.files}
+
+        def respell(value):
+            if isinstance(value, dict):
+                # A store read from the whole of the copy has no source to name.
+                out = {key: respell(item) for key, item in value.items()}
+                return {key: item for key, item in out.items() if not (key == "source" and item == "")}
+            if isinstance(value, list):
+                return [respell(item) for item in value]
+            if isinstance(value, str):
+                if value.startswith(FIXTURE + "/portolan/"):
+                    return copy + value[len(FIXTURE) :]
+                if value == FIXTURE:
+                    return ""
+                if value.startswith(FIXTURE + "/"):
+                    return value[len(FIXTURE) + 1 :]
+            return value
+
+        for fragment, golden in (("domain.json", "expected.json"), ("stores.json", "expected-stores.json")):
+            with open(os.path.join(HERE, "testdata", "billing", golden), "r", encoding="utf-8") as handle:
+                want = respell(json.load(handle))
+            got = json.loads(files[fragment])
+            self.assertEqual(got, want)
+            self.assertNotIn("vendor/repos/acme/billing/invoices", files[fragment])
+        service = json.loads(files["domain.json"])["contexts"][0]["services"][0]
+        self.assertEqual(service["path"], "")
+
+    def test_a_path_outside_the_fetched_copy_keeps_the_workspace_spelling(self):
+        fetched = Input(root="vendor/repos/acme/shop", repository="vendor/repos/acme/shop")
+        self.assertEqual(fetched.repository_path("/w/vendor/repos/acme/shop/geo/views.py", "/w"), "geo/views.py")
+        self.assertEqual(fetched.repository_path("/w/vendor/repos/acme/shop", "/w"), "")
+        self.assertEqual(fetched.repository_path("/w/vendor/repos/acme/shopfront/x.py", "/w"), "vendor/repos/acme/shopfront/x.py")
+        self.assertEqual(Input(root="examples/shop/billing").repository_path("/w/examples/shop/billing/a.py", "/w"), "examples/shop/billing/a.py")
 
     def test_response_statuses_are_read_from_keyword_and_positional_drf_responses(self):
         node = ast.parse(

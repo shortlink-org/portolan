@@ -23,13 +23,18 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	readme := read(filepath.Join(root, "README.md"))
 	b := &plugin.Builder{}
 	cmds, warnings := commands.Read(root)
+	// Read from the workspace, written from the repository: a vendored copy's
+	// Makefile is `Makefile` upstream, whatever directory holds it here.
+	for i := range cmds {
+		cmds[i].Source = in.RepositorySource(cmds[i].Source)
+	}
 	for _, warning := range warnings {
 		b.Warn(root, warning)
 	}
 
 	services := []catalog.Service{}
 	if len(opts.Components) == 0 {
-		services = append(services, projectService(root, group, component, firstNonEmpty(opts.ComponentName, markdownTitle(readme), title(component)), firstNonEmpty(opts.ComponentKind, inferredKind(root)), firstNonEmpty(opts.Repo, repository(root)), readme, opts.Technologies, cmds))
+		services = append(services, projectService(root, in.RepositoryPath(root), group, component, firstNonEmpty(opts.ComponentName, markdownTitle(readme), title(component)), firstNonEmpty(opts.ComponentKind, inferredKind(root)), firstNonEmpty(opts.Repo, repository(root)), readme, opts.Technologies, cmds))
 	} else {
 		seen := map[string]bool{}
 		componentTechnologies := opts.Technologies
@@ -42,7 +47,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 				continue
 			}
 			seen[componentSlug] = true
-			services = append(services, projectService(root, group, componentSlug, firstNonEmpty(candidate.Name, title(componentSlug)), firstNonEmpty(candidate.Kind, string(catalog.ComponentKindService)), firstNonEmpty(opts.Repo, repository(root)), readme, componentTechnologies, cmds))
+			services = append(services, projectService(root, in.RepositoryPath(root), group, componentSlug, firstNonEmpty(candidate.Name, title(componentSlug)), firstNonEmpty(candidate.Kind, string(catalog.ComponentKindService)), firstNonEmpty(opts.Repo, repository(root)), readme, componentTechnologies, cmds))
 		}
 	}
 
@@ -80,13 +85,13 @@ func sharedTechnologies(root string) []string {
 	return out
 }
 
-func projectService(root, group, component, name, kind, repo, readme string, statedTechnologies []string, cmds []catalog.Command) catalog.Service {
+func projectService(root, path, group, component, name, kind, repo, readme string, statedTechnologies []string, cmds []catalog.Command) catalog.Service {
 	return catalog.Service{
 		ID:           group + "." + component,
 		Slug:         component,
 		Name:         name,
 		Repo:         repo,
-		Path:         filepath.ToSlash(root),
+		Path:         path,
 		Readme:       readme,
 		Kind:         catalog.ComponentKind(kind),
 		Technologies: stated(statedTechnologies, technologies(root)),

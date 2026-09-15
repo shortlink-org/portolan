@@ -33,10 +33,12 @@ function steps(nodes) {
 }
 
 /**
- * A path as the repository spells it. A catalog built from a fetch-git
- * snapshot may spell a service's files from the workspace, under
- * `vendor/repos/<owner>/<name>/`; source links read them back the same way
- * (src/lib/source-link.ts), and so does the history of the checkout itself.
+ * A path as the repository spells it. Extractors spell a fetched service's
+ * files from its own repository now (`input.repository`); a catalog written
+ * before that spells them from the workspace, under
+ * `vendor/repos/<owner>/<name>/`, and this reads those back the way source
+ * links do (src/lib/source-link.ts). A path already spelled from the
+ * repository passes through unchanged.
  */
 function repositoryPath(path, repository) {
   const segments = bare(repository).split("/").filter(Boolean);

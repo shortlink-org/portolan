@@ -38,6 +38,10 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	cmds, warnings := commands.Read(in.Root)
+	// Read from the workspace, written from the repository the runner file is in.
+	for i := range cmds {
+		cmds[i].Source = in.RepositorySource(cmds[i].Source)
+	}
 	for _, warning := range warnings {
 		b.Warn(in.Root, warning)
 	}

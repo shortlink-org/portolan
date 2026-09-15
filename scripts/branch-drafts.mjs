@@ -162,13 +162,14 @@ export function projectSteps(manifest, projectId, phase = "extract") {
  * same on both sides of a draft unless the branch changed them too.
  */
 async function catalogHere(projectId, out) {
-  const [{ loadManifest, stepKeys }, { describePlugin, runPlugin }, { builtinPlugin }, { historyFor }, { writeOutputFile }, { loadCatalog }] = await Promise.all([
+  const [{ loadManifest, stepKeys }, { describePlugin, runPlugin }, { builtinPlugin }, { historyFor }, { writeOutputFile }, { loadCatalog }, { repositoryRoot }] = await Promise.all([
     import("./manifest.mjs"),
     import("./plugin-host.mjs"),
     import("./builtin-plugins.mjs"),
     import("./history.mjs"),
     import("./output-path.mjs"),
     import("./catalog-sources.mjs"),
+    import("./host-plugins/fetch-git.mjs"),
   ]);
   const loaded = loadManifest("portolan.json");
   if (loaded.problems.length > 0) throw new Error(`portolan.json at this commit does not match the schema:\n  ${loaded.problems.join("\n  ")}`);
@@ -219,7 +220,9 @@ async function catalogHere(projectId, out) {
     const plugin = pluginNamed(step.plugin);
     const needsHistory = plugin && ((await describePlugin(plugin).catch(() => null))?.needs ?? []).includes("history");
     const history = needsHistory ? historyFor(process.cwd(), step.in) : undefined;
-    await run("extract", step, { input: { root: step.in, output: step.out, ...(history ? { history } : {}) } });
+    // The same repository gen hands over, so a draft spells paths as main does.
+    const repository = repositoryRoot(process.cwd(), step.in);
+    await run("extract", step, { input: { root: step.in, output: step.out, ...(repository ? { repository } : {}), ...(history ? { history } : {}) } });
   }
 
   // Verifiers read what was observed against the catalog the extractors just

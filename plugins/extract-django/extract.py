@@ -37,8 +37,10 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     cwd = cwd or os.getcwd()
     root = os.path.abspath(os.path.join(cwd, input_.root))
 
+    # Every path the fragment names is spelled from the repository the file is
+    # in: a fetched copy's `geo/views.py`, not the directory holding the copy.
     def rel(path: str) -> str:
-        return os.path.relpath(path, cwd).replace(os.sep, "/")
+        return input_.repository_path(path, cwd)
 
     source = os.path.normpath(os.path.join(root, opts.source or "."))
     context = opts.context or os.path.basename(root)
@@ -156,7 +158,9 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     display_name = opts.service_name or service_name_from_schema(schema_name) or readme_title(readme) or title(service)
 
     openapi_name = opts.openapi_out or "openapi.inferred.yaml"
-    openapi_source = generated_source(input_, root, rel, openapi_name)
+    # The inferred document is written into this workspace, not the service's
+    # repository, so it keeps the workspace's spelling.
+    openapi_source = generated_source(input_, root, lambda path: os.path.relpath(path, cwd).replace(os.sep, "/"), openapi_name)
     service_obj = {
         "id": svc_id,
         "slug": service,

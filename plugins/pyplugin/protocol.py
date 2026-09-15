@@ -11,16 +11,25 @@ fragment on any machine.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
 
 @dataclass
 class Input:
-    """Where the source is."""
+    """Where the source is.
+
+    `repository` is where the repository `root` belongs to begins, relative to
+    the working directory like `root`: the directory a fetched copy was written
+    to, when the root lies inside one, and empty when the workspace is the
+    repository. The catalog spells a path from the repository the file lives
+    in, because that is what a source link opens on the forge.
+    """
 
     root: str = ""
     output: str = ""
+    repository: str = ""
 
     @staticmethod
     def of(raw: Any) -> "Input":
@@ -28,7 +37,23 @@ class Input:
         return Input(
             root=raw.get("root", ""),
             output=raw.get("output", ""),
+            repository=raw.get("repository", ""),
         )
+
+    def repository_path(self, path: str, cwd: str) -> str:
+        """An absolute path as the catalog writes it: from the working
+        directory, forward slashes, and from the fetched copy's repository when
+        it lies inside one - `vendor/repos/acme/shop/geo/views.py` is
+        `geo/views.py`, and the copy's own directory is ""."""
+        workspace = os.path.relpath(path, cwd).replace(os.sep, "/")
+        repository = self.repository.strip("/")
+        if not repository or repository == ".":
+            return workspace
+        if workspace == repository:
+            return ""
+        if workspace.startswith(repository + "/"):
+            return workspace[len(repository) + 1 :]
+        return workspace
 
 
 def read_options(opts: Any, keys: Dict[str, str], raw: Any) -> Any:

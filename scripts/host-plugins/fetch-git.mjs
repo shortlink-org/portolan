@@ -34,9 +34,9 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, posix } from "node:path";
+import { dirname, isAbsolute, join, posix, relative, resolve as resolvePath, sep } from "node:path";
 
 import optionsSchema from "./fetch-git.options.json" with { type: "json" };
 
@@ -128,6 +128,34 @@ export function run(request, { env = process.env } = {}) {
 export function offline(env = process.env) {
   if (String(env[OFFLINE_ENV] ?? "").trim()) return true;
   return !["", "0", "false"].includes(String(env.CI ?? "").trim().toLowerCase());
+}
+
+/**
+ * The repository a directory of the workspace belongs to, as a path from the
+ * workspace: the nearest directory at or above `root` holding a pin this step
+ * wrote, which is where a fetched copy begins, or "" when there is none and
+ * the workspace is the repository itself.
+ *
+ * The host asks before it runs an extractor, and hands the answer over as
+ * `input.repository`. The catalog spells a path from the repository the file
+ * lives in - that is what a source link opens on the forge - and an extractor
+ * reading a vendored service is otherwise told only where the copy sits in
+ * this checkout, which is a prefix no forge has ever heard of.
+ *
+ * @param {string} workspace
+ * @param {string} root
+ * @returns {string}
+ */
+export function repositoryRoot(workspace, root) {
+  const top = resolvePath(workspace);
+  let at = resolvePath(top, root);
+  const inside = relative(top, at);
+  if (inside.startsWith("..") || isAbsolute(inside)) return "";
+  for (;;) {
+    if (existsSync(join(at, PIN_NAME))) return relative(top, at).split(sep).join("/");
+    if (at === top) return "";
+    at = dirname(at);
+  }
 }
 
 /**

@@ -21,8 +21,9 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     cwd = cwd or os.getcwd()
     root = os.path.abspath(os.path.join(cwd, input_.root))
 
+    # Spelled from the repository the file is in, as every source path is.
     def rel(path: str) -> str:
-        return os.path.relpath(path, cwd).replace(os.sep, "/")
+        return input_.repository_path(path, cwd)
 
     source = os.path.normpath(os.path.join(root, opts.source or "."))
     context = opts.context or os.path.basename(root)
