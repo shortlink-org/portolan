@@ -1776,7 +1776,7 @@
           "kind": "call",
           "label": "byOrder",
           "status": "declared",
-          "line": "examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:15"
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:21"
         },
         {
           "type": "step",
@@ -1786,7 +1786,7 @@
           "kind": "call",
           "label": "save",
           "status": "declared",
-          "line": "examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17"
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:24"
         },
         {
           "type": "step",
@@ -1797,7 +1797,7 @@
           "label": "ShipmentReleased",
           "status": "declared",
           "ref": "delivery.core.shipment.ShipmentReleased",
-          "line": "examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17"
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:24"
         }
       ]
     }

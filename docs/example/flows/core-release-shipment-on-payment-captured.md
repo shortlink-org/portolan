@@ -43,10 +43,10 @@ sequenceDiagram
    status: declared · [`examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts#L18)
 <a id="step-s3"></a>
 3. **delivery.core** → **core-pg** — byOrder
-   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:15`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts#L15)
+   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts#L21)
 <a id="step-s4"></a>
 4. **delivery.core** → **core-pg** — save
-   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts#L17)
+   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts#L24)
 <a id="step-s5"></a>
 5. **delivery.core** → **bus** — ShipmentReleased
-   [`delivery.core.shipment.ShipmentReleased`](../delivery/core/aggregates/shipment.md#event-delivery-core-shipment-shipmentreleased) · status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts#L17)
+   [`delivery.core.shipment.ShipmentReleased`](../delivery/core/aggregates/shipment.md#event-delivery-core-shipment-shipmentreleased) · status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts#L24)

@@ -50,7 +50,8 @@ before ledger persistence, cancellation racing authorization, and cancellation
 after capture (a refund, not a void) are not solved by this scenario.
 
 [lean/](lean/README.md) models the same checkout and checks every interleaving:
-it proves that a confirmed order always has its money held or captured, gives
-the shortest trace for each of the last two gaps, and shows a third: a lost
-`PaymentCaptured` leaves the shipment waiting for good, because a repeated
-capture answers without publishing again.
+it proves that a confirmed order always has its money held or captured and that
+captured money always releases its shipment, even when ledger's events are
+lost, and gives the shortest trace for each of the last two gaps. The shipment
+held only after ledger.0004: a repeated capture now says `PaymentCaptured`
+again, where it used to answer without a word.

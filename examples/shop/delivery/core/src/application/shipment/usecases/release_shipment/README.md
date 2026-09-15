@@ -14,9 +14,11 @@ Lets a shipment out of the waiting room once the money for its order moved.
 policy that hears `PaymentCaptured` does. Nothing outside the service can
 say the money moved, so nothing outside can release a shipment.
 
-**A second `PaymentCaptured` for the same order is refused by the table.**
-The shipment is already `planned`, and `planned` does not become `planned`.
-The policy lets that refusal stand; the fact was already acted on.
+**A second `PaymentCaptured` for the same order changes nothing.** The bus
+delivers a fact at least once, and the ledger says `PaymentCaptured` again for
+a repeated capture (ledger.0004), so a shipment already out of the waiting room
+is left as it is and nothing is refused: a refusal would only have the same
+fact delivered again, and again.
 
 ## Answers
 
@@ -24,7 +26,7 @@ The policy lets that refusal stand; the fact was already acted on.
 |---|---|
 | released | nothing; `ShipmentReleased` is on the bus |
 | no shipment for the order | refused, plainly |
-| already released | refused by the lifecycle table |
+| already out of the waiting room | nothing; the fact was acted on before |
 
 ## Sequence
 

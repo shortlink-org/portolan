@@ -107,6 +107,10 @@ Stripe's routes instead of at Stripe.
 - [ledger.0003](../../adr/ledger.0003.md)
   — the gateway is Stripe, kept outside the estate with a narrow copy of its
   contract beside the adapter, so the calls resolve and nothing is invented.
+- [ledger.0004](../../adr/ledger.0004.md)
+  — a capture of a payment already captured moves nothing and says
+  `PaymentCaptured` again, so a capture whose event never left is announced
+  when the caller asks again.
 
 ## Status
 
@@ -317,3 +321,4 @@ consumer/provider protobuf subsets and the authorization event payload.
 | [ledger.0001](../../adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](../../adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
 | [ledger.0003](../../adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
+| [ledger.0004](../../adr/ledger.0004.md) | A repeated capture says PaymentCaptured again | accepted | 2026-09-15 |

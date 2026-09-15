@@ -16,8 +16,11 @@ import org.portolan.payments.ledger.domain.payment.PaymentPublisher;
  * and says so on the bus.
  *
  * The aggregate is asked first, so a capture the lifecycle refuses never
- * reaches the network; a second capture of the same payment answers with the
- * first and moves nothing.
+ * reaches the network. A second capture of the same payment moves nothing and
+ * answers with the first, and says {@code PaymentCaptured} again: the save and
+ * the publish are not one transaction, so the first capture may be on record
+ * while its event never left, and asking again is the only way a caller can
+ * tell the ledger so (ledger.0004).
  */
 @Service
 public class CapturePayment {
@@ -37,7 +40,9 @@ public class CapturePayment {
     public CaptureOutput handle(String paymentId) {
         var payment = payments.byId(paymentId).orElseThrow(() -> new NoSuchPayment(paymentId));
         if (payment.status() == PaymentStatus.CAPTURED) {
-            return new CaptureOutput(paymentId, payment.capturedAt().orElseThrow());
+            var again = payment.capturedAgain();
+            publisher.publish(again);                        // not left: the caller is told to try again
+            return new CaptureOutput(paymentId, again.occurredAt());
         }
         var captured = payment.capture(Instant.now(clock)); // IllegalMove before any money moves
         gateway.capture(payment.authCode());                 // unavailable: nothing is saved

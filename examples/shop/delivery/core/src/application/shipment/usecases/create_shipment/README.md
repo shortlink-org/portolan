@@ -28,8 +28,9 @@ the ledger agreed, not that the shipment was released.
 
 **Once per order.** A repeated confirmation finds the shipment it made. It
 asks for the capture again while that shipment still waits, because the run
-that stored it may have died before the ledger answered; the ledger answers a
-second capture with the first.
+that stored it may have died before the ledger answered, or the ledger's
+`PaymentCaptured` may never have left; the ledger answers a second capture with
+the first and says `PaymentCaptured` again (ledger.0004).
 
 **A refusal leaves the shipment waiting.** The ledger has never seen the
 payment, or it is no longer one that can be captured - voided after a

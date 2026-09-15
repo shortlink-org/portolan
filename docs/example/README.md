@@ -142,6 +142,7 @@
 | [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
 | [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
+| [ledger.0004](adr/ledger.0004.md) | A repeated capture says PaymentCaptured again | accepted | 2026-09-15 |
 | [oms.0001](adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
 | [oms.0002](adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |

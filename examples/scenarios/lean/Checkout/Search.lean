@@ -3,10 +3,11 @@ import Oms.Scenarios
 
 /-!
 Breadth-first search over every interleaving from a freshly placed order. Two
-worlds that agree on the order's status, the payment, the RPC and the counts
-on the bus are one world here, so the search ends: the facts are bounded (each
-is emitted at most once, which OMS's model proves for its own), and a kept
-delivery leads back to a world already seen.
+worlds that agree on the order's status, the payment, the shipment, the RPC and
+the counts on the bus are one world here. Most facts are said at most once, but
+a capture asked again says `PaymentCaptured` again (ledger.0004), so the worlds
+do not run out and the search stops at a depth; the report says so. What must
+hold everywhere is proved in `Checkout.Invariants`, not searched.
 
 For each property the search reports the shortest trace that breaks it, or how
 many worlds it holds in.
@@ -91,15 +92,16 @@ def expand (acts : List Action) (seen : List Key) (level : List Node) : List Key
       let k := key w'
       if seen.contains k then (seen, next) else (k :: seen, next ++ [(w', a :: path)])
 
-/-- Every world reachable in at most `depth` actions, each with a shortest trace to it. -/
-def reach (acts : List Action) : Nat → List Key → List Node → List Node → List Node
-  | 0, _, _, all => all
+/-- Every world reachable in at most `depth` actions, each with a shortest trace to it, and
+whether that is every reachable world: `false` when the search stopped at the depth. -/
+def reach (acts : List Action) : Nat → List Key → List Node → List Node → List Node × Bool
+  | 0, _, _, all => (all, false)
   | depth + 1, seen, level, all =>
     match expand acts seen level with
-    | (_, []) => all
+    | (_, []) => (all, true)
     | (seen, next) => reach acts depth seen next (all ++ next)
 
-def worlds (acts : List Action) (start : World) (depth : Nat) : List Node :=
+def worlds (acts : List Action) (start : World) (depth : Nat) : List Node × Bool :=
   let first : Node := (start, [])
   reach acts depth [key start] [first] [first]
 
@@ -145,8 +147,10 @@ def traceLines (start : World) (path : List Action) : List String :=
 ledger's events all leave if there is such a trace, since a loss is then not the cause. -/
 def report (depth : Nat) : String :=
   let start := World.fresh Oms.Scenarios.start
-  let ordinary := worlds reliable start depth
-  let all := worlds actions start depth
+  let (ordinary, _) := worlds reliable start depth
+  let (all, complete) := worlds actions start depth
+  let scope := if complete then s!"in all {all.length} worlds"
+    else s!"in the {all.length} worlds within {depth} steps"
   let lines := properties.map fun p =>
     let broken (nodes : List Node) := nodes.find? fun (w, _) => !p.holds w
     match broken ordinary, broken all with
@@ -155,7 +159,7 @@ def report (depth : Nat) : String :=
     | none, some (_, path) =>
       "\n".intercalate (s!"BROKEN {p.name}, only when ledger's event is lost:" ::
         traceLines start path)
-    | none, none => s!"holds  {p.name} — in all {all.length} worlds"
+    | none, none => s!"holds  {p.name} — {scope}"
   "\n".intercalate lines ++ "\n"
 
 end Checkout.Search

@@ -89,6 +89,19 @@ public final class Payment {
         return new PaymentCaptured(id, orderId, amount, at);
     }
 
+    /**
+     * Says again what capturing said, for a payment already captured. Nothing
+     * moves and nothing is written: it is the same fact with the same time,
+     * announced again because the first announcement may not have left
+     * (ledger.0004).
+     */
+    public PaymentCaptured capturedAgain() {
+        if (status != PaymentStatus.CAPTURED) {
+            throw new IllegalMove(status.name(), PaymentStatus.CAPTURED.name());
+        }
+        return new PaymentCaptured(id, orderId, amount, capturedAt().orElseThrow());
+    }
+
     /** Ends the payment before any money moved. */
     public PaymentDeclined decline(DeclineReason reason, Instant at) {
         allow(PaymentStatus.DECLINED);

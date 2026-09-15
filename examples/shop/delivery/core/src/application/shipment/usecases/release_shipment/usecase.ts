@@ -11,8 +11,15 @@ export class UseCase {
     private readonly now: () => Date,
   ) {}
 
+  /**
+   * A shipment already out of the waiting room answers nothing. `PaymentCaptured`
+   * arrives at least once, and the ledger says it again for a repeated capture
+   * (ledger.0004); the first one was acted on, and a refusal here would only
+   * have the bus deliver the same fact again, and again.
+   */
   async handle(orderId: string): Promise<void> {
     const shipment = await this.shipments.byOrder(orderId);
+    if (shipment.status !== "awaiting-payment") return;
     const released = shipment.release(this.now());
     await this.shipments.save(shipment, released);
   }

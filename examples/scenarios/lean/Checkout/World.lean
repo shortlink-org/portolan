@@ -14,6 +14,9 @@ it. An action that is not enabled leaves the world as it is.
 Ledger saves and then publishes, with no outbox between (`NatsBus.publish`
 throws after the row is written), so every fact ledger says carries a
 `published` flag: `false` is the save that stayed and the fact that never left.
+The throw reaches the caller: an Authorize whose event did not leave answers
+with an error, and a Capture whose event did not leave leaves `OrderConfirmed`
+to be delivered again.
 
 What is not here: two Authorize calls for the same id running at once, a
 gateway result lost before ledger saves it, refunds, and what delivery does
@@ -110,6 +113,11 @@ def answer (w : World) (held : Bool) : Msg :=
 def said (n : Nat) (published : Bool) : Nat :=
   if published then n + 1 else n
 
+/-- What Authorize answers once the payment is saved: the outcome, or an error when
+the event did not leave, which OMS meets as a lost answer and asks again. -/
+def replied (held published : Bool) : Rpc :=
+  if published then .answered held else .idle
+
 /-- One fact taken off the bus, unless it is kept to arrive again. -/
 def taken (n : Nat) (keep : Bool) : Nat :=
   if keep then n else n - 1
@@ -125,18 +133,18 @@ def act (w : World) : Action → World
       | none =>
         -- a cancelled order is declined without asking the gateway
         if w.order.status = .cancelled then
-          { w with payment := some .declined, rpc := .answered false,
+          { w with payment := some .declined, rpc := replied false published,
                    declinedFacts := said w.declinedFacts published }
         else { w with rpc := .checked }
     else w
   | .hold published =>
     if w.rpc = .checked then
-      { w with payment := some .authorized, rpc := .answered true,
+      { w with payment := some .authorized, rpc := replied true published,
                authorizedFacts := said w.authorizedFacts published }
     else w
   | .refuse published =>
     if w.rpc = .checked then
-      { w with payment := some .declined, rpc := .answered false,
+      { w with payment := some .declined, rpc := replied false published,
                declinedFacts := said w.declinedFacts published }
     else w
   | .reply =>
@@ -168,12 +176,18 @@ def act (w : World) : Action → World
         -- a shipment already released is not asked about again
         { w with confirmedFacts := taken w.confirmedFacts keep }
       else if w.payment = some .authorized then
-        -- CapturePayment moves the money and says so, if the saying leaves
+        -- CapturePayment moves the money and says so; if the saying fails, the call fails
+        -- and OrderConfirmed stays to be delivered again
         { w with shipment := some .awaitingPayment, payment := some .captured,
                  capturedFacts := said w.capturedFacts published,
-                 confirmedFacts := taken w.confirmedFacts keep }
+                 confirmedFacts := if published then taken w.confirmedFacts keep else w.confirmedFacts }
+      else if w.payment = some .captured then
+        -- already captured: nothing moves, and PaymentCaptured is said again (ledger.0004)
+        { w with shipment := some .awaitingPayment,
+                 capturedFacts := said w.capturedFacts published,
+                 confirmedFacts := if published then taken w.confirmedFacts keep else w.confirmedFacts }
       else
-        -- already captured answers with the first capture and says nothing; anything else is refused
+        -- no payment, or one that cannot be captured: refused, and the shipment waits
         { w with shipment := some .awaitingPayment,
                  confirmedFacts := taken w.confirmedFacts keep }
     else w

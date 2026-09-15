@@ -106,8 +106,8 @@ stateDiagram-v2
 | --- | --- | --- | --- | --- |
 | `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:75`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L75) |
 | `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:86`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L86) |
-| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:95`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L95) |
-| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:102`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L102) |
+| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:108`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L108) |
+| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:115`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L115) |
 
 ## Operations
 

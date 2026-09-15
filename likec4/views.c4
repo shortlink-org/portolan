@@ -973,19 +973,31 @@ PaymentDeclined' }
     }
     payments.ledger -> ledger_pg 'byId' {
       color declared  line solid  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:41'
+    }
+    alt {
+      when 'payment.status() == PaymentStatus.CAPTURED' {
+        break 'ends the flow' {
+          payments.ledger -> bus 'PaymentCaptured' {
+            color declared  line solid  head onormal
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:44'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
     }
     payments.ledger -> stripe 'PostPaymentIntentsIntentCapture → payment_intent' {
       color declared  line solid  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:48'
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line solid  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:44'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:49'
     }
     payments.ledger -> bus 'PaymentCaptured' {
       color declared  line solid  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:45'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:50'
     }
   }
 
@@ -1777,15 +1789,15 @@ PaymentDeclined' }
     }
     delivery.core -> core_pg 'byOrder' {
       color declared  line solid  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:15'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:21'
     }
     delivery.core -> core_pg 'save' {
       color declared  line solid  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:24'
     }
     delivery.core -> bus 'ShipmentReleased' {
       color declared  line solid  head onormal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:24'
     }
   }
 

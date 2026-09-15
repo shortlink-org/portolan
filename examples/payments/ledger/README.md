@@ -99,6 +99,10 @@ Stripe's routes instead of at Stripe.
 - [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
   — the gateway is Stripe, kept outside the estate with a narrow copy of its
   contract beside the adapter, so the calls resolve and nothing is invented.
+- [ledger.0004](docs/adr/0004-a-repeated-capture-says-payment-captured-again.md)
+  — a capture of a payment already captured moves nothing and says
+  `PaymentCaptured` again, so a capture whose event never left is announced
+  when the caller asks again.
 
 ## Status
 
