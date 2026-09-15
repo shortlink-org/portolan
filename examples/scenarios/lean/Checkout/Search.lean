@@ -24,17 +24,37 @@ structure Key where
   declinedFacts : Nat
   cancelledFacts : Nat
   confirmedFacts : Nat
+  shipment : Option Ship
+  capturedFacts : Nat
   deriving DecidableEq
 
 def key (w : World) : Key :=
   ⟨w.order.status, w.payment, w.rpc, w.authorizedFacts, w.declinedFacts, w.cancelledFacts,
-   w.confirmedFacts⟩
+   w.confirmedFacts, w.shipment, w.capturedFacts⟩
 
+/-- Every action, the ordinary ones first — delivered once, published — so that the
+shortest trace to a world is the one with the fewest mishaps in it. -/
 def actions : List Action :=
-  [.request, .check, .hold, .refuse, .reply, .lose, .cancel] ++
+  [.request, .reply, .cancel] ++
+  ([true, false].flatMap fun published => [.check published, .hold published, .refuse published]) ++
   ([false, true].flatMap fun keep =>
-    [.deliverAuthorized keep, .deliverDeclined keep, .deliverCancelled keep,
-     .deliverConfirmed keep])
+    [.deliverAuthorized keep, .deliverDeclined keep, .deliverCancelled keep, .deliverCaptured keep]) ++
+  ([true, false].flatMap fun published => [false, true].map fun keep =>
+    .deliverConfirmed keep published) ++
+  [.lose]
+
+/-- Whether an action has ledger say what it did. -/
+def publishes : Action → Bool
+  | .check p | .hold p | .refuse p | .deliverConfirmed _ p => p
+  | _ => true
+
+/-- The same actions, with every ledger publication leaving. -/
+def reliable : List Action :=
+  actions.filter publishes
+
+/-- Nothing any action does changes the world any more. -/
+def settled (w : World) : Bool :=
+  actions.all fun a => key (w.act a) == key w
 
 structure Property where
   name : String
@@ -51,30 +71,37 @@ def properties : List Property :=
         w.payment == some .authorized)⟩,
     ⟨"once all is delivered, a cancelled order has not been charged",
       fun w => !(decide w.quiet && w.order.status == .cancelled &&
-        w.payment == some .captured)⟩ ]
+        w.payment == some .captured)⟩,
+    ⟨"a cancelled order's shipment is never released",
+      fun w => !(w.order.status == .cancelled && w.shipment == some .planned)⟩,
+    ⟨"once nothing more can happen, the order is not left placed",
+      fun w => !(settled w && w.order.status == .placed)⟩,
+    ⟨"once all is delivered, money captured has released its shipment",
+      fun w => !(decide w.quiet && w.payment == some .captured &&
+        w.shipment != some .planned)⟩ ]
 
 /-- A world met by the search, with the actions that led to it, latest first. -/
 abbrev Node := World × List Action
 
 /-- The next level: every enabled action from every node, minus the worlds already seen. -/
-def expand (seen : List Key) (level : List Node) : List Key × List Node :=
+def expand (acts : List Action) (seen : List Key) (level : List Node) : List Key × List Node :=
   level.foldl (init := (seen, [])) fun (seen, next) (w, path) =>
-    actions.foldl (init := (seen, next)) fun (seen, next) a =>
+    acts.foldl (init := (seen, next)) fun (seen, next) a =>
       let w' := w.act a
       let k := key w'
       if seen.contains k then (seen, next) else (k :: seen, next ++ [(w', a :: path)])
 
 /-- Every world reachable in at most `depth` actions, each with a shortest trace to it. -/
-def reach (start : World) : Nat → List Key → List Node → List Node → List Node
+def reach (acts : List Action) : Nat → List Key → List Node → List Node → List Node
   | 0, _, _, all => all
   | depth + 1, seen, level, all =>
-    match expand seen level with
+    match expand acts seen level with
     | (_, []) => all
-    | (seen, next) => reach start depth seen next (all ++ next)
+    | (seen, next) => reach acts depth seen next (all ++ next)
 
-def worlds (start : World) (depth : Nat) : List Node :=
+def worlds (acts : List Action) (start : World) (depth : Nat) : List Node :=
   let first : Node := (start, [])
-  reach start depth [key start] [first] [first]
+  reach acts depth [key start] [first] [first]
 
 def statusName : Status → String
   | .placed => "placed" | .confirmed => "confirmed" | .cancelled => "cancelled"
@@ -86,21 +113,26 @@ def paymentName : Option PayStatus → String
 
 def actionName : Action → String
   | .request => "OMS asks ledger to authorize"
-  | .check => "ledger checks the record and the order"
-  | .hold => "the gateway holds the money"
-  | .refuse => "the gateway refuses"
+  | .check p => s!"ledger checks the record and the order{lost p}"
+  | .hold p => s!"the gateway holds the money{lost p}"
+  | .refuse p => s!"the gateway refuses{lost p}"
   | .reply => "OMS applies the RPC answer"
   | .lose => "the RPC answer is lost"
   | .deliverAuthorized keep => s!"OMS hears PaymentAuthorized{again keep}"
   | .deliverDeclined keep => s!"OMS hears PaymentDeclined{again keep}"
   | .cancel => "the customer cancels"
   | .deliverCancelled keep => s!"ledger hears OrderCancelled{again keep}"
-  | .deliverConfirmed keep => s!"delivery hears OrderConfirmed and captures{again keep}"
+  | .deliverConfirmed keep p => s!"delivery hears OrderConfirmed and asks to capture{lost p}{again keep}"
+  | .deliverCaptured keep => s!"delivery hears PaymentCaptured{again keep}"
 where
   again (keep : Bool) : String := if keep then " (kept for redelivery)" else ""
+  lost (published : Bool) : String := if published then "" else " (ledger's event is lost)"
+
+def shipmentName : Option Ship → String
+  | none => "none" | some .awaitingPayment => "awaiting-payment" | some .planned => "planned"
 
 def describe (w : World) : String :=
-  s!"order {statusName w.order.status}, payment {paymentName w.payment}"
+  s!"order {statusName w.order.status}, payment {paymentName w.payment}, shipment {shipmentName w.shipment}"
 
 def traceLines (start : World) (path : List Action) : List String :=
   let steps := path.reverse
@@ -109,14 +141,21 @@ def traceLines (start : World) (path : List Action) : List String :=
     (w', lines ++ [s!"    {actionName a} → {describe w'}"])
   lines
 
+/-- For each property: where it holds, or the shortest trace that breaks it — one where
+ledger's events all leave if there is such a trace, since a loss is then not the cause. -/
 def report (depth : Nat) : String :=
   let start := World.fresh Oms.Scenarios.start
-  let all := worlds start depth
+  let ordinary := worlds reliable start depth
+  let all := worlds actions start depth
   let lines := properties.map fun p =>
-    match all.find? (fun (w, _) => !p.holds w) with
-    | none => s!"holds  {p.name} — in all {all.length} worlds"
-    | some (_, path) =>
+    let broken (nodes : List Node) := nodes.find? fun (w, _) => !p.holds w
+    match broken ordinary, broken all with
+    | some (_, path), _ =>
       "\n".intercalate (s!"BROKEN {p.name}:" :: traceLines start path)
+    | none, some (_, path) =>
+      "\n".intercalate (s!"BROKEN {p.name}, only when ledger's event is lost:" ::
+        traceLines start path)
+    | none, none => s!"holds  {p.name} — in all {all.length} worlds"
   "\n".intercalate lines ++ "\n"
 
 end Checkout.Search

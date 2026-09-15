@@ -112,7 +112,7 @@ theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
         answeredHeld := by simp
         checked := by simp }
     · exact hw
-  | check =>
+  | check published =>
     simp only [World.act]
     split
     · rename_i hr
@@ -142,7 +142,7 @@ theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
             answeredHeld := by simp
             checked := fun _ => hp }
     · exact hw
-  | hold =>
+  | hold published =>
     simp only [World.act]
     split
     · rename_i hr
@@ -158,7 +158,7 @@ theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
         voided := by simp
         notPending := by simp }
     · exact hw
-  | refuse =>
+  | refuse published =>
     simp only [World.act]
     split
     · rename_i hr
@@ -231,19 +231,26 @@ theorem inv_act {w : World} (hw : Inv w) (a : Action) : Inv (w.act a) := by
           notPending := by simp }
       · exact { hw with cancelledFacts := fun _ => hc }
     · exact hw
-  | deliverConfirmed keep =>
+  | deliverConfirmed keep published =>
     simp only [World.act]
     split
     · split
-      · rename_i hA
-        exact { hw with
-          confirmed := by intro _; simp
-          authorizedFacts := by intro _; simp [grantedOpt, PayStatus.granted]
-          answeredHeld := by intro _; simp [grantedOpt, PayStatus.granted]
-          checked := by intro h; have := hw.checked h; simp_all
-          voided := by simp
-          notPending := by simp }
       · exact ⟨hw.1, hw.2, hw.3, hw.4, hw.5, hw.6, hw.7⟩
+      · split
+        · rename_i hA
+          exact { hw with
+            confirmed := by intro _; simp
+            authorizedFacts := by intro _; simp [grantedOpt, PayStatus.granted]
+            answeredHeld := by intro _; simp [grantedOpt, PayStatus.granted]
+            checked := by intro h; have := hw.checked h; simp_all
+            voided := by simp
+            notPending := by simp }
+        · exact ⟨hw.1, hw.2, hw.3, hw.4, hw.5, hw.6, hw.7⟩
+    · exact hw
+  | deliverCaptured keep =>
+    simp only [World.act]
+    split
+    · exact ⟨hw.1, hw.2, hw.3, hw.4, hw.5, hw.6, hw.7⟩
     · exact hw
 
 theorem inv_reachable {w : World} (h : Reachable w) : Inv w := by
@@ -267,7 +274,7 @@ theorem declined_is_not_confirmed {w : World} (h : Reachable w) (hd : w.payment 
 
 /-! ## What does not hold -/
 
-/-- The checkout both findings start from: the one order OMS's scenarios place. -/
+/-- The checkout every finding starts from: the one order OMS's scenarios place. -/
 def start : World := World.fresh Oms.Scenarios.start
 
 theorem start_reachable : Reachable start := .fresh _ rfl
@@ -281,7 +288,8 @@ theorem run_reachable {w : World} (h : Reachable w) (as : List Action) : Reachab
 cancels, `OrderCancelled` reaches ledger while there is nothing to void, and then the
 gateway holds. Everything is delivered, and the money stays held for a cancelled order. -/
 def holdOnCancelled : List Action :=
-  [.request, .check, .cancel, .deliverCancelled false, .hold, .reply, .deliverAuthorized false]
+  [.request, .check true, .cancel, .deliverCancelled false, .hold true, .reply,
+   .deliverAuthorized false]
 
 theorem hold_left_on_cancelled_order :
     Reachable (start.run holdOnCancelled) ∧ (start.run holdOnCancelled).quiet ∧
@@ -290,16 +298,34 @@ theorem hold_left_on_cancelled_order :
   ⟨run_reachable start_reachable _, by decide, by decide, by decide⟩
 
 /-- Cancellation after capture: the order is confirmed, the customer cancels, delivery
-captures on the `OrderConfirmed` it already had, and the void that follows finds nothing
-held. Everything is delivered, and a cancelled order has been charged. -/
+captures on the `OrderConfirmed` it already had, the void that follows finds nothing held,
+and `PaymentCaptured` releases the shipment. Everything is delivered: a cancelled order has
+been charged, and its goods are on their way. -/
 def chargeOnCancelled : List Action :=
-  [.request, .check, .hold, .reply, .cancel, .deliverAuthorized false,
-   .deliverConfirmed false, .deliverCancelled false]
+  [.request, .check true, .hold true, .reply, .cancel, .deliverAuthorized false,
+   .deliverConfirmed false true, .deliverCancelled false, .deliverCaptured false]
 
 theorem charge_left_on_cancelled_order :
     Reachable (start.run chargeOnCancelled) ∧ (start.run chargeOnCancelled).quiet ∧
       (start.run chargeOnCancelled).order.status = .cancelled ∧
-      (start.run chargeOnCancelled).payment = some .captured :=
-  ⟨run_reachable start_reachable _, by decide, by decide, by decide⟩
+      (start.run chargeOnCancelled).payment = some .captured ∧
+      (start.run chargeOnCancelled).shipment = some .planned :=
+  ⟨run_reachable start_reachable _, by decide, by decide, by decide, by decide⟩
+
+/-- A lost `PaymentCaptured`: ledger captures and saves, and the event does not leave, so
+the capture call fails and `OrderConfirmed` stays to be delivered again. The second capture
+finds the payment captured and answers with the first without saying anything, and delivery
+takes that answer as done. Everything is delivered: the money has moved, and the shipment
+waits for a fact that will never come. -/
+def shipmentStuck : List Action :=
+  [.request, .check true, .hold true, .reply, .deliverAuthorized false,
+   .deliverConfirmed true false, .deliverConfirmed false true]
+
+theorem shipment_waits_for_a_lost_capture :
+    Reachable (start.run shipmentStuck) ∧ (start.run shipmentStuck).quiet ∧
+      (start.run shipmentStuck).order.status = .confirmed ∧
+      (start.run shipmentStuck).payment = some .captured ∧
+      (start.run shipmentStuck).shipment = some .awaitingPayment :=
+  ⟨run_reachable start_reachable _, by decide, by decide, by decide, by decide⟩
 
 end Checkout
