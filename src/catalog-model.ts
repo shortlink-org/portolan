@@ -298,7 +298,7 @@ export interface GatewayExposure {
   backendNamespace: string;
   backendName: string;
   basis: GatewayExposureBasis;
-  /** Route manifest, relative to the service extractor's root. */
+  /** Route manifest, spelled from the service's repository. */
   source?: string;
   /** The manifest values where the live cluster reports something else. */
   drift?: GatewayExposureDrift;
@@ -607,6 +607,13 @@ export interface RepoPin {
   repo: string;
   /** The commit the copy was made of. Full sha: it is not resolved locally, so there is nothing to expand it against. */
   commit: string;
+  /**
+   * Where the fetched copy is in the workspace the catalog was generated in,
+   * `vendor/repos/acme/shop`. A service of this repository spells its paths
+   * from the repository; a reader on this machine - a README's images, a
+   * local source preview, an editor link - finds the file under this.
+   */
+  path?: string;
 }
 
 /**

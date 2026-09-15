@@ -184,6 +184,12 @@ type RepoPin struct {
 	// Commit is the full sha. Nothing resolves it locally, so there is
 	// nothing a short one could be expanded against.
 	Commit string `json:"commit"`
+
+	// Path is where the fetched copy is in the workspace the catalog was
+	// generated in, "vendor/repos/acme/shop". The services of this repository
+	// spell their paths from the repository; a reader on this machine finds
+	// the file under Path.
+	Path string `json:"path,omitempty"`
 }
 
 type Classification string
@@ -319,7 +325,7 @@ type GatewayExposure struct {
 	BackendNamespace string               `json:"backendNamespace"`
 	BackendName      string               `json:"backendName"`
 	Basis            GatewayExposureBasis `json:"basis"`
-	// Source is the Route manifest, relative to the service extractor's root.
+	// Source is the Route manifest, spelled from the service's repository.
 	// It is absent for a row read from the cluster API.
 	Source string `json:"source,omitempty"`
 	// Drift is the manifest's word when the cluster reports different listener

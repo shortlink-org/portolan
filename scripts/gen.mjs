@@ -26,7 +26,7 @@ import {
 } from "./build-report.mjs";
 import { loadCatalog } from "./catalog-sources.mjs";
 import { changedSince, fileAt, historyFor, lastCommitTouching } from "./history.mjs";
-import { repositoryRoot } from "./host-plugins/fetch-git.mjs";
+import { repositoryInput } from "./host-plugins/fetch-git.mjs";
 import { loadManifest, stepKeys } from "./manifest.mjs";
 import { describePlugin, runPlugin } from "./plugin-host.mjs";
 import { explainChange } from "./output-diff.mjs";
@@ -141,14 +141,13 @@ async function generate() {
     // A root inside a fetched copy is read against that copy's repository,
     // so the paths the plugin writes are the ones its forge opens; left out
     // when the workspace is the repository.
-    const repository = repositoryRoot(process.cwd(), step.in);
     await executeStep("extract", step, `${step.plugin} ← ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
         input: {
           root: step.in,
           output: step.out,
-          ...(repository ? { repository } : {}),
+          ...repositoryInput(process.cwd(), step.in),
           ...(history ? { history } : {}),
         },
         options: step.options ?? {},
@@ -169,7 +168,7 @@ async function generate() {
     await executeStep("verify", step, `${step.plugin} ⇐ ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
-        input: { root: step.in, output: step.out },
+        input: { root: step.in, output: step.out, ...repositoryInput(process.cwd(), step.in) },
         catalog,
         options: step.options ?? {},
       }, {}, { workspace: process.cwd() }),

@@ -6,7 +6,7 @@ import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runPlugin } from "../plugin-host.mjs";
-import { LOCK_NAME, OFFLINE_ENV, PIN_NAME, encodeLock, pin, repositoryRoot, run, splitRepo, wantedPaths, webRepo } from "./fetch-git.mjs";
+import { LOCK_NAME, OFFLINE_ENV, PIN_NAME, copyPath, encodeLock, pin, repositoryRoot, run, splitRepo, wantedPaths, webRepo } from "./fetch-git.mjs";
 
 const created = [];
 afterEach(() => {
@@ -308,6 +308,19 @@ describe("names", () => {
 describe("wantedPaths", () => {
   it("keeps dot-prefixed paths and strips only a leading ./", () => {
     expect(wantedPaths({ paths: [".gitlab", ".air.toml", "./cmd", "docs/", "."] })).toEqual([".air.toml", ".gitlab", "cmd", "docs"]);
+  });
+});
+
+describe("the pin names where the copy is", () => {
+  it("carries the copy's directory in the workspace, and nothing for a cache outside it", () => {
+    expect(JSON.parse(pin("git@gitlab.srv.team:avia/aviacore.git", "abc", "", "vendor/repos/avia/aviacore")).repos).toEqual([
+      { repo: "gitlab.srv.team/avia/aviacore", commit: "abc", path: "vendor/repos/avia/aviacore" },
+    ]);
+    expect(copyPath("vendor/repos", "avia/aviacore")).toBe("vendor/repos/avia/aviacore");
+    expect(copyPath("./vendor/repos/", "avia/aviacore")).toBe("vendor/repos/avia/aviacore");
+    expect(copyPath(".", "avia/aviacore")).toBe("avia/aviacore");
+    expect(copyPath("/tmp/cache", "avia/aviacore")).toBe("");
+    expect(copyPath("../elsewhere", "avia/aviacore")).toBe("");
   });
 });
 

@@ -100,7 +100,7 @@ export function run(request, { env = process.env } = {}) {
     const at = join(options.cache, ...dir.split("/"));
 
     if (skip) {
-      emitCached(out, dir, at, want, "offline", generatedAt);
+      emitCached(out, dir, at, want, "offline", generatedAt, copyPath(options.cache, dir));
       continue;
     }
 
@@ -111,14 +111,14 @@ export function run(request, { env = process.env } = {}) {
       // Rule 2: the tree still holds a good copy, so the output is unchanged
       // and `--check` stays clean.
       try {
-        emitCached(out, dir, at, want, cause.message, generatedAt);
+        emitCached(out, dir, at, want, cause.message, generatedAt, copyPath(options.cache, dir));
       } catch (cacheCause) {
         // Rule 3: nothing to fall back to.
         throw new Error(`${want.repo} could not be fetched (${cause.message}) and there is no usable copy in the tree (${cacheCause.message})`);
       }
       continue;
     }
-    emitFetched(out, dir, want, fetched.commit, fetched.files, fetched.skipped, generatedAt);
+    emitFetched(out, dir, want, fetched.commit, fetched.files, fetched.skipped, generatedAt, copyPath(options.cache, dir));
   }
 
   return out.response();
@@ -156,6 +156,19 @@ export function repositoryRoot(workspace, root) {
     if (at === top) return "";
     at = dirname(at);
   }
+}
+
+/**
+ * The part of a plugin's `input` that says which repository its root is in:
+ * `{ repository }` inside a fetched copy, nothing when the workspace is it.
+ *
+ * @param {string} workspace
+ * @param {string} root
+ * @returns {{repository?: string}}
+ */
+export function repositoryInput(workspace, root) {
+  const repository = repositoryRoot(workspace, root);
+  return repository ? { repository } : {};
 }
 
 /**
@@ -206,8 +219,19 @@ export function webRepo(name) {
 }
 
 /** The fragment for one repository at one commit: a catalog with one pin. */
-export function pin(repo, commit, generatedAt = "") {
-  return `${JSON.stringify({ ...(generatedAt ? { generatedAt } : {}), contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: webRepo(repo), commit }] }, null, 2)}\n`;
+export function pin(repo, commit, generatedAt = "", path = "") {
+  return `${JSON.stringify({ ...(generatedAt ? { generatedAt } : {}), contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: webRepo(repo), commit, ...(path ? { path } : {}) }] }, null, 2)}\n`;
+}
+
+/**
+ * Where a copy is in the workspace, as the pin names it: the cache and the
+ * copy's owner/name, forward slashes. Left out for a cache that is not a
+ * path from the workspace, which the manifest never has but a test may.
+ */
+export function copyPath(cache, dir) {
+  const clean = posix.normalize(String(cache).replaceAll("\\", "/")).replace(/^\.\//, "").replace(/\/+$/, "");
+  if (!clean || isAbsolute(cache) || clean.startsWith("..")) return "";
+  return clean === "." ? dir : posix.join(clean, dir);
 }
 
 /** The lock, written the way every generated file here is written. */
@@ -259,7 +283,7 @@ function underPaths(path, paths) {
   return paths.length === 0 || paths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
-function emitFetched(out, dir, want, commit, files, skipped, generatedAt) {
+function emitFetched(out, dir, want, commit, files, skipped, generatedAt, copy = "") {
   const paths = wantedPaths(want);
   const entry = { repo: want.repo, commit, ...(paths.length ? { paths } : {}), files: [], skipped };
   for (const path of [...files.keys()].sort()) {
@@ -268,7 +292,7 @@ function emitFetched(out, dir, want, commit, files, skipped, generatedAt) {
     entry.files.push({ path, sha256: digestOf(contents), size: contents.length });
   }
   out.file(posix.join(dir, LOCK_NAME), encodeLock(entry));
-  out.file(posix.join(dir, PIN_NAME), pin(want.repo, commit, generatedAt));
+  out.file(posix.join(dir, PIN_NAME), pin(want.repo, commit, generatedAt, copy));
   warnSkipped(out, want.repo, skipped);
 }
 
@@ -277,7 +301,7 @@ function emitFetched(out, dir, want, commit, files, skipped, generatedAt) {
  * online run wrote, so `gen:check` sees no drift and CI can verify an estate
  * whose services live in repositories it never clones.
  */
-function emitCached(out, dir, at, want, why, generatedAt = "") {
+function emitCached(out, dir, at, want, why, generatedAt = "", copy = "") {
   if (!want.commit) throw new Error(`${want.repo} is not pinned to a commit, so there is nothing to replay`);
   const held = replay(at);
   if (held.lock.commit !== want.commit) {
@@ -293,7 +317,7 @@ function emitCached(out, dir, at, want, why, generatedAt = "") {
   // From the LOCK's commit, not the manifest's. They are equal by the check
   // above, and taking it from the copy is what keeps the fragment describing
   // what is actually on disk rather than what was asked for.
-  out.file(posix.join(dir, PIN_NAME), pin(want.repo, held.lock.commit, generatedAt));
+  out.file(posix.join(dir, PIN_NAME), pin(want.repo, held.lock.commit, generatedAt, copy));
   out.warn(want.repo, `not fetched (${why}); the copy committed in this repository is used unchanged`);
   warnSkipped(out, want.repo, held.lock.skipped);
 }

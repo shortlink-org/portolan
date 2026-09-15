@@ -162,7 +162,7 @@ export function projectSteps(manifest, projectId, phase = "extract") {
  * same on both sides of a draft unless the branch changed them too.
  */
 async function catalogHere(projectId, out) {
-  const [{ loadManifest, stepKeys }, { describePlugin, runPlugin }, { builtinPlugin }, { historyFor }, { writeOutputFile }, { loadCatalog }, { repositoryRoot }] = await Promise.all([
+  const [{ loadManifest, stepKeys }, { describePlugin, runPlugin }, { builtinPlugin }, { historyFor }, { writeOutputFile }, { loadCatalog }, { repositoryInput }] = await Promise.all([
     import("./manifest.mjs"),
     import("./plugin-host.mjs"),
     import("./builtin-plugins.mjs"),
@@ -221,8 +221,7 @@ async function catalogHere(projectId, out) {
     const needsHistory = plugin && ((await describePlugin(plugin).catch(() => null))?.needs ?? []).includes("history");
     const history = needsHistory ? historyFor(process.cwd(), step.in) : undefined;
     // The same repository gen hands over, so a draft spells paths as main does.
-    const repository = repositoryRoot(process.cwd(), step.in);
-    await run("extract", step, { input: { root: step.in, output: step.out, ...(repository ? { repository } : {}), ...(history ? { history } : {}) } });
+    await run("extract", step, { input: { root: step.in, output: step.out, ...repositoryInput(process.cwd(), step.in), ...(history ? { history } : {}) } });
   }
 
   // Verifiers read what was observed against the catalog the extractors just
@@ -231,7 +230,7 @@ async function catalogHere(projectId, out) {
   for (const step of projectSteps(manifest, projectId, "verify")) {
     const own = committed(step).map((name) => join(step.out, name));
     const { catalog } = await loadCatalog("portolan.json", { exclude: own });
-    await run("verify", step, { input: { root: step.in, output: step.out }, catalog });
+    await run("verify", step, { input: { root: step.in, output: step.out, ...repositoryInput(process.cwd(), step.in) }, catalog });
   }
 
   progress("merge the catalog");
