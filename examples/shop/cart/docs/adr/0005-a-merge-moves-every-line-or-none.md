@@ -1,6 +1,7 @@
 # cart.0005 — A merge moves every line or none
 
-- **Status:** superseded by cart.0009
+- **Status:** superseded
+- **Superseded by:** cart.0009
 - **Date:** 2026-09-04
 - **Scope:** shop.cart
 
