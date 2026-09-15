@@ -43,6 +43,45 @@ func TestRepositoryPathIsSpelledFromTheRepository(t *testing.T) {
 	}
 }
 
+// A function key is spelled from the repository the way a source is.
+func TestFunctionKeysAreSpelledFromTheRepository(t *testing.T) {
+	vendored := plugin.Input{Root: "vendor/repos/acme/shop/services/oms", Repository: "vendor/repos/acme/shop"}
+	whole := plugin.Input{Root: "vendor/repos/acme/shop", Repository: "vendor/repos/acme/shop"}
+	monorepo := plugin.Input{Root: "examples/shop/oms"}
+	temporary := plugin.Input{Root: "/tmp/fixture"}
+
+	for _, tc := range []struct {
+		in   plugin.Input
+		key  string
+		want string
+	}{
+		{monorepo, "internal/app:Service.Run", "examples/shop/oms/internal/app:Service.Run"},
+		{monorepo, "main", "examples/shop/oms:main"},
+		{monorepo, "", ""},
+		{vendored, "internal/jobs:Worker.Work", "services/oms/internal/jobs:Worker.Work"},
+		{whole, "internal/jobs:Worker.Work", "internal/jobs:Worker.Work"},
+		{whole, "main", "main"},
+		{temporary, "internal/app:Service.Run", "internal/app:Service.Run"},
+		{temporary, "main", "main"},
+		{plugin.Input{Root: "."}, "internal/app:Run", "internal/app:Run"},
+	} {
+		if got := tc.in.RootFunction(tc.key); got != tc.want {
+			t.Errorf("Root %q: RootFunction(%q) = %q, want %q", tc.in.Root, tc.key, got, tc.want)
+		}
+	}
+
+	for key, want := range map[string]string{
+		"vendor/repos/acme/shop/internal/app:Service.Run": "internal/app:Service.Run",
+		"vendor/repos/acme/shop:main":                     "main",
+		"examples/shop/oms/internal/app:Service.Run":      "examples/shop/oms/internal/app:Service.Run",
+		"Service.Run": "Service.Run",
+	} {
+		if got := whole.RepositoryFunction(key); got != want {
+			t.Errorf("RepositoryFunction(%q) = %q, want %q", key, got, want)
+		}
+	}
+}
+
 // A path spelled from Root is spelled from the repository the same way.
 func TestRootPathIsSpelledFromTheRepository(t *testing.T) {
 	vendored := plugin.Input{Root: "vendor/repos/acme/shop/services/oms", Repository: "vendor/repos/acme/shop"}

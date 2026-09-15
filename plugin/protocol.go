@@ -136,6 +136,49 @@ func (in Input) RootSource(where string) string {
 	return in.RootPath(where)
 }
 
+// A function key names a Go function by the package directory that declares
+// it and its receiver-qualified name, `internal/app:Service.Run`; a key with
+// no directory is a function of the package at the directory the key is
+// spelled from. The key is what a flow's entrypoint and a step's continuesAt
+// and reaches carry, and what the merge joins them on, so every plugin spells
+// the directory the way a source is spelled: from the service's repository.
+// Two readers of one service then agree whatever `in` each was given, and two
+// services of one monorepo never share a key.
+
+// RootFunction is a function key whose directory is spelled from Root, as a
+// reader over a tree rooted there names a package, respelled from the
+// repository: `internal/app:Service.Run` under `examples/shop/oms` is
+// `examples/shop/oms/internal/app:Service.Run`, and `main` in Root's own
+// package is `examples/shop/oms:main` - or `main` again when Root is the
+// repository. An absolute Root leaves the key as given, as RootPath does.
+func (in Input) RootFunction(key string) string {
+	if key == "" {
+		return ""
+	}
+	dir, name, qualified := strings.Cut(key, ":")
+	if !qualified {
+		dir, name = ".", key
+	}
+	return functionKey(in.RootPath(dir), name)
+}
+
+// RepositoryFunction is RootFunction for a key whose directory is spelled from
+// the workspace, the way Root is.
+func (in Input) RepositoryFunction(key string) string {
+	dir, name, qualified := strings.Cut(key, ":")
+	if !qualified {
+		return key
+	}
+	return functionKey(in.RepositoryPath(dir), name)
+}
+
+func functionKey(dir, name string) string {
+	if dir == "" || dir == "." {
+		return name
+	}
+	return dir + ":" + name
+}
+
 // FileHistory is one file's first and last commit. Revised is nil when the
 // file has one commit.
 type FileHistory struct {
