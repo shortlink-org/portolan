@@ -39,6 +39,9 @@ src/
   infrastructure/transport/http/
     gen/openapi.yaml      the document; operationIds name the handlers
     <pkg>/*.ts            handlers: `async <operationId>(...)` methods on a class holding use cases
+  infrastructure/transport/job/
+    *.ts                  jobs: a class with `readonly name = "<job>"`, `readonly everyMs = <number>`
+                          and a `run()` holding use cases; the scheduler beside them is not read
   schema/<module>/
     schema.graphql        the contract, read by extract-graphql rather than here
     resolvers/<Root>/<field>.ts
@@ -192,6 +195,19 @@ on the page, never written down.
 <operationId>`, then the steps of every use case the handler runs, in the order
 it runs them. Its `http` trigger keeps the exact OpenAPI verb and path; gRPC and
 GraphQL roots use a `callback` trigger with the RPC or resolver identity.
+**Flow, from a job.** Each exported class in a file directly under
+`transport/job/` with all three of a `name` string literal, an `everyMs` and a
+`run` method opens a flow on the clock: `scheduler → service : call <name>`,
+then the steps of every use case `run` runs, in order, found as a handler's
+are - `this.<field>.handle(...)` on a constructor parameter typed with a
+`UseCase` import. The flow is `<service>-<name>`; its trigger is
+`scheduled`, labelled with the interval in the largest unit that divides it
+(`60_000` is "every minute"). `everyMs` is a number literal or a product of
+them, `24 * 60 * 60 * 1000`; anything else - a setting, a constant from
+another file - is reported and the job opens no flow, because the reader will
+not guess a schedule. A cron expression, a queue or a CronJob manifest is not
+this shape and is not read here. The interface the jobs share and the
+function that starts them have none of the three and are passed by.
 **Flow, from a policy.** Each class in `application/policy/` with
 a `handle` opens a flow on the bus: `bus → service : event <ref>`, where the
 `event` trigger and first step name what the body tests for - `event instanceof BasketCheckedOut`, `event
@@ -261,6 +277,7 @@ These cases do not become facts in the fragment:
 - a port whose type is neither a domain port, a use case, nor a client, whose
   calls are therefore left out;
 - a handler named by no `operationId`, and an `operationId` with no handler;
+- a job whose `everyMs` is not a number literal or a product of them;
 - a policy whose `handle` tests for no event;
 - a peer package with no document beside it, or a route the document does not
   declare;
@@ -304,5 +321,6 @@ keeps the same shape one directory over, `<aggregate>/migrations` under it.
 
 The reader is held to fixtures under `testdata/`: a small service in the
 layout above, each shape it claims to read present once, and a golden
-fragment. `examples/shop/cart/portolan/domain.json` is the second golden, held
+fragment; `testdata/jobs` is the job shape on its own, beside the scheduler
+that starts it. `examples/shop/cart/portolan/domain.json` is the second golden, held
 by `gen:check` like every other fragment.

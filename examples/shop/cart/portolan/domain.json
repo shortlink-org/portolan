@@ -206,7 +206,7 @@
                 {
                   "id": "ExpireIdleBaskets",
                   "kind": "command",
-                  "doc": "The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the service runs it once a minute."
+                  "doc": "The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute."
                 },
                 {
                   "id": "GetBasket",
@@ -987,6 +987,88 @@
           "status": "declared",
           "ref": "shop.cart.basket.BasketItemRemoved",
           "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-expire-idle-baskets",
+      "slug": "cart-expire-idle-baskets",
+      "name": "Expire idle baskets",
+      "summary": "Abandons every open basket nobody touched for a day, and says so for each.",
+      "source": "examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts",
+      "trigger": {
+        "kind": "scheduled",
+        "label": "every minute",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "scheduler",
+          "kind": "actor",
+          "context": null,
+          "label": "Scheduler"
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "scheduler",
+          "to": "shop.cart",
+          "kind": "call",
+          "label": "expire-idle-baskets",
+          "status": "declared",
+          "note": "Fires every minute.",
+          "line": "examples/shop/cart/src/infrastructure/transport/job/expire_idle_baskets.ts:18"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "idleSince",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:21"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "note": "inside a loop over `idle`.",
+          "line": "examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:25"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketAbandoned",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketAbandoned",
+          "note": "inside a loop over `idle`.",
+          "line": "examples/shop/cart/src/application/basket/usecases/expire_idle_baskets/usecase.ts:25"
         }
       ]
     }

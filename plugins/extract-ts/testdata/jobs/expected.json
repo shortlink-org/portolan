@@ -1,0 +1,165 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "Cart sweeps",
+          "repo": "github.com/acme/shop",
+          "path": "plugins/extract-ts/testdata/jobs",
+          "readme": "# Cart sweeps\n\nService `cart` — bounded context **shop**. A fixture: a use case nobody calls in to, run by a job on a clock.",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "shop.cart.basket",
+              "slug": "basket",
+              "name": "Basket",
+              "readme": "",
+              "root": "Basket",
+              "entities": [
+                {
+                  "id": "shop.cart.basket.basket",
+                  "slug": "basket",
+                  "name": "Basket",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "ExpireIdleBaskets",
+                  "kind": "command",
+                  "doc": "Abandons every basket nobody has touched for a day."
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.cart.basket.BasketAbandoned",
+                  "slug": "basket-abandoned",
+                  "name": "BasketAbandoned",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Nobody touched the basket for a day.",
+                      "source": "plugins/extract-ts/testdata/jobs/src/domain/basket/events/basket-abandoned.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "cart.BasketAbandoned"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.cart-expire-idle-baskets",
+      "slug": "cart-expire-idle-baskets",
+      "name": "Expire idle baskets",
+      "summary": "The sweep, on the hour.",
+      "source": "plugins/extract-ts/testdata/jobs/src/infrastructure/transport/job/expire_idle_baskets.ts",
+      "trigger": {
+        "kind": "scheduled",
+        "label": "every hour",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "scheduler",
+          "kind": "actor",
+          "context": null,
+          "label": "Scheduler"
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "scheduler",
+          "to": "shop.cart",
+          "kind": "call",
+          "label": "expire-idle-baskets",
+          "status": "declared",
+          "note": "Fires every hour.",
+          "line": "plugins/extract-ts/testdata/jobs/src/infrastructure/transport/job/expire_idle_baskets.ts:10"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "idleSince",
+          "status": "declared",
+          "line": "plugins/extract-ts/testdata/jobs/src/application/basket/usecases/expire_idle_baskets/usecase.ts:11"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "note": "inside a loop over `idle`.",
+          "line": "plugins/extract-ts/testdata/jobs/src/application/basket/usecases/expire_idle_baskets/usecase.ts:14"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketAbandoned",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketAbandoned",
+          "note": "inside a loop over `idle`.",
+          "line": "plugins/extract-ts/testdata/jobs/src/application/basket/usecases/expire_idle_baskets/usecase.ts:14"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

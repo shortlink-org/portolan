@@ -25,5 +25,7 @@ what is unusual is only that nothing calls it from outside.
   react to it.
 - Bad: a sweep is a second process inside the service, alongside the relay,
   and has to be shut down with it.
-- Note: the catalog reads no flow for the sweep, because no endpoint or
-  event opens it; the operation is in the model, the sequence is not.
+- Note: the sweep's way in is a named job,
+  `infrastructure/transport/job/expire_idle_baskets.ts`, with its schedule
+  on it, so the catalog reads a flow for it the way it reads one for an
+  endpoint.

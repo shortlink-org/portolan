@@ -3,14 +3,16 @@
 // Over HTTP the document's operationIds name the handlers; over gRPC the
 // contract vendored beside the handler does, and an rpc is named the same on
 // both sides - `planRoute` answers `PlanRoute`. Either way a handler's body
-// names the use cases it runs, in order, and that is what opens a flow.
+// names the use cases it runs, in order, and that is what opens a flow. A job
+// is the same edge with a clock on the other side: nobody calls in, and the
+// class says its own name and how often it fires.
 
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readSpec, type Spec } from "./openapi.ts";
 import { readProtos } from "./clients.ts";
 import { readSource, type ClassInfo, type Source, at } from "./source.ts";
-import { isCall, isMember, isSourceFile, memberName, thisMember, walk, type Node } from "./ast.ts";
+import { isBinary, isCall, isMember, isNumber, isPropertyDef, isSourceFile, keyName, memberName, thisMember, walk, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
 import type { WarningSink } from "./domain.ts";
 
@@ -27,6 +29,24 @@ export interface Endpoint {
     confidence: "high";
   };
   /** Use case keys, in the order the handler runs them. */
+  useCases: string[];
+}
+
+/** A job under transport/job: an edge a clock opens rather than a caller. */
+export interface Job {
+  /** The class's `name`, which the flow is called by. */
+  id: string;
+  /** file:line of `run`. */
+  line: string;
+  source: string;
+  /** The first paragraph of the class's doc comment. */
+  doc: string;
+  trigger: {
+    kind: "scheduled";
+    label: string;
+    confidence: "high";
+  };
+  /** Use case keys, in the order `run` runs them. */
   useCases: string[];
 }
 
@@ -132,6 +152,79 @@ export function readTransport(httpDir: string, rel: (abs: string) => string, b: 
   }
   endpoints.sort((a, c) => a.id.localeCompare(c.id));
   return { spec, endpoints };
+}
+
+/**
+ * The jobs: every exported class in a file under `transport/job` with a
+ * `name` string, an `everyMs` number and a `run` method. Anything else in the
+ * directory - the scheduler that starts them, the interface they share - has
+ * none of the three and is not read. A class with a name and a run but no
+ * interval the syntax can say is reported rather than guessed at.
+ */
+export function readJobs(jobDir: string, rel: (abs: string) => string, b: WarningSink): Job[] {
+  if (!existsSync(jobDir)) return [];
+  const jobs: Job[] = [];
+  for (const name of readdirSync(jobDir).sort()) {
+    if (!isSourceFile(name) || /\.test\.[cm]?[jt]sx?$/.test(name)) continue;
+    const src = readSource(join(jobDir, name));
+    if (!src) continue;
+    for (const cls of src.classes) {
+      const run = cls.methods.get("run");
+      if (!cls.exported || !cls.nameLiteral || !run) continue;
+      const every = everyMsOf(cls);
+      if (every === undefined) {
+        b.warn(cls.nameLiteral, `${rel(src.path)}: ${cls.name} is named and runs, but has no \`everyMs\` a number literal says; the job opens no flow`);
+        continue;
+      }
+      const useCases = useCasesRun(run.node, useCasePorts(src, cls));
+      if (useCases.length === 0) b.warn(cls.nameLiteral, `${rel(src.path)}: ${cls.name}.run runs no use case; the job's flow is the clock and nothing after it`);
+      jobs.push({
+        id: cls.nameLiteral,
+        line: at(src, run.node, rel),
+        source: rel(src.path),
+        doc: cls.doc.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "",
+        trigger: { kind: "scheduled", label: every, confidence: "high" },
+        useCases,
+      });
+    }
+  }
+  return jobs.sort((a, c) => a.id.localeCompare(c.id));
+}
+
+/** `readonly everyMs = 60_000`, or a product of literals, `24 * 60 * 60 * 1000`, as "every minute". */
+function everyMsOf(cls: ClassInfo): string | undefined {
+  for (const member of cls.node.body.body) {
+    if (!isPropertyDef(member) || member.static || keyName(member.key) !== "everyMs" || !member.value) continue;
+    const ms = product(member.value);
+    return ms === undefined || ms <= 0 ? undefined : every(ms);
+  }
+  return undefined;
+}
+
+function product(n: Node): number | undefined {
+  if (isNumber(n)) return n.value;
+  if (isBinary(n) && n.operator === "*") {
+    const l = product(n.left);
+    const r = product(n.right);
+    return l === undefined || r === undefined ? undefined : l * r;
+  }
+  return undefined;
+}
+
+/** 60000 → "every minute", 7200000 → "every 2 hours", 1500 → "every 1500 ms". */
+export function every(ms: number): string {
+  const units: [number, string][] = [
+    [86_400_000, "day"],
+    [3_600_000, "hour"],
+    [60_000, "minute"],
+    [1_000, "second"],
+  ];
+  for (const [size, unit] of units) {
+    if (ms % size !== 0) continue;
+    const n = ms / size;
+    return n === 1 ? `every ${unit}` : `every ${n} ${unit}s`;
+  }
+  return `every ${ms} ms`;
 }
 
 /** Constructor parameters whose type is a UseCase import: field name → use case key. */

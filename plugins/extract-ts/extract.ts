@@ -11,7 +11,7 @@ type Fragment = Omit<Catalog, "generatedAt" | "commit">;
 import { readAggregates, type WarningSink } from "./domain.ts";
 import { operationOf, readUseCases } from "./operations.ts";
 import { readBindings } from "./wiring.ts";
-import { readGrpcTransport, readTransport } from "./transport.ts";
+import { readGrpcTransport, readJobs, readTransport } from "./transport.ts";
 import { readResolvers } from "./graphql.ts";
 import { FlowReader } from "./flows.ts";
 import { serviceID, title } from "./ids.ts";
@@ -86,6 +86,7 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
   // A service may answer over both, and a service that answers over neither is
   // read the same way with nothing to show for it.
   transport.endpoints.push(...readGrpcTransport(join(src, "infrastructure", "transport", "grpc"), rel, b));
+  const jobs = readJobs(join(src, "infrastructure", "transport", "job"), rel, b);
 
   // Operations belong to the aggregate their use case sits under.
   const exposedBy = new Map<string, string[]>();
@@ -118,6 +119,7 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     const flow = reader.endpointFlow(endpoint);
     if (flow) flows.push(flow);
   }
+  for (const job of jobs) flows.push(reader.jobFlow(job));
   for (const resolver of resolvers) {
     const flow = reader.resolverFlow(resolver);
     if (flow) flows.push(flow);

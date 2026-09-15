@@ -7,7 +7,7 @@
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md)
 - **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
-- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
+- **Revised:** Victor Login, 2026-09-15 (`7f75d1f`)
 
 ### Context and Problem Statement
 
@@ -30,5 +30,7 @@ what is unusual is only that nothing calls it from outside.
   react to it.
 - Bad: a sweep is a second process inside the service, alongside the relay,
   and has to be shut down with it.
-- Note: the catalog reads no flow for the sweep, because no endpoint or
-  event opens it; the operation is in the model, the sequence is not.
+- Note: the sweep's way in is a named job,
+  `infrastructure/transport/job/expire_idle_baskets.ts`, with its schedule
+  on it, so the catalog reads a flow for it the way it reads one for an
+  endpoint.

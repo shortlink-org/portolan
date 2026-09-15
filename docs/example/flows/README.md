@@ -35,6 +35,7 @@
 | [Add item](cart-add-item.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Checkout](cart-checkout.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Create basket](cart-create-basket.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
+| [Expire idle baskets](cart-expire-idle-baskets.md) | [shop](../shop/README.md) | Abandons every open basket nobody touched for a day, and says so for each. |
 | [Get basket](cart-get-basket.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Merge baskets](cart-merge-baskets.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |
 | [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | Source-backed cross-protocol continuations are included. |

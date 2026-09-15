@@ -92,6 +92,7 @@
     "flows/cart-add-item.md",
     "flows/cart-checkout.md",
     "flows/cart-create-basket.md",
+    "flows/cart-expire-idle-baskets.md",
     "flows/cart-get-basket.md",
     "flows/cart-merge-baskets.md",
     "flows/cart-remove-item.md",

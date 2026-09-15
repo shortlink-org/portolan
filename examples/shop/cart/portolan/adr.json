@@ -139,7 +139,7 @@
         "kind": "service",
         "service": "shop.cart"
       },
-      "body": "## Context and Problem Statement\n\nA basket untouched for a day is abandoned. `auth` lets a session expire with\nnothing running and no event, on the grounds that nobody decided anything.\nIs a basket the same?\n\n## Decision Outcome\n\nNo. An abandoned basket is a question somebody asks - what do customers leave\nbehind, and why - so abandonment is decided, recorded and published. A sweep\nruns inside the service once a minute, marks every open basket untouched for\n24 hours as `abandoned`, and publishes `BasketAbandoned` for each, through\nthe outbox like any other event. The sweep is a use case, `ExpireIdleBaskets`;\nwhat is unusual is only that nothing calls it from outside.\n\n### Consequences\n\n- Good: abandonment has one author and one timestamp, and a consumer can\n  react to it.\n- Bad: a sweep is a second process inside the service, alongside the relay,\n  and has to be shut down with it.\n- Note: the catalog reads no flow for the sweep, because no endpoint or\n  event opens it; the operation is in the model, the sequence is not.\n",
+      "body": "## Context and Problem Statement\n\nA basket untouched for a day is abandoned. `auth` lets a session expire with\nnothing running and no event, on the grounds that nobody decided anything.\nIs a basket the same?\n\n## Decision Outcome\n\nNo. An abandoned basket is a question somebody asks - what do customers leave\nbehind, and why - so abandonment is decided, recorded and published. A sweep\nruns inside the service once a minute, marks every open basket untouched for\n24 hours as `abandoned`, and publishes `BasketAbandoned` for each, through\nthe outbox like any other event. The sweep is a use case, `ExpireIdleBaskets`;\nwhat is unusual is only that nothing calls it from outside.\n\n### Consequences\n\n- Good: abandonment has one author and one timestamp, and a consumer can\n  react to it.\n- Bad: a sweep is a second process inside the service, alongside the relay,\n  and has to be shut down with it.\n- Note: the sweep's way in is a named job,\n  `infrastructure/transport/job/expire_idle_baskets.ts`, with its schedule\n  on it, so the catalog reads a flow for it the way it reads one for an\n  endpoint.\n",
       "relates": {},
       "source": "examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md",
       "created": {
@@ -148,9 +148,9 @@
         "date": "2026-09-04T22:32:49+07:00"
       },
       "revised": {
-        "commit": "7576ca72b348d8642180d3e79a8b85a740905dd6",
+        "commit": "7f75d1fe80170018ca1c4b8c23b165d857ec1c97",
         "author": "Victor Login",
-        "date": "2026-09-04T22:39:26+07:00"
+        "date": "2026-09-15T16:53:02+07:00"
       }
     },
     {

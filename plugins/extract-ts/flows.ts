@@ -1,9 +1,10 @@
 // Flows, read out of the same layout as everything else here, and the layout
 // is again the claim.
 //
-// Two things start one. An endpoint is somebody calling in, and the handler
-// says which use cases it runs and in what order. A policy is an event
-// arriving, and the type or the name it tests for says which. Everything
+// Three things start one. An endpoint is somebody calling in, and the handler
+// says which use cases it runs and in what order. A job is the same with a
+// clock for the caller. A policy is an event arriving, and the type or the
+// name it tests for says which. Everything
 // after that is the use case's own body: a constructor parameter is a port, a
 // call on that port is a hop, and a value that a domain method handed back as
 // an event is what puts the event on the bus when a port is given it.
@@ -23,11 +24,12 @@ import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunction
 import type { UseCase } from "./operations.ts";
 import { PORTS, type Binding } from "./wiring.ts";
 import type { AggregateRead, WarningSink } from "./domain.ts";
-import type { Endpoint } from "./transport.ts";
+import type { Endpoint, Job } from "./transport.ts";
 import type { Resolver } from "./graphql.ts";
 
 export const LANE_CLIENT = "client";
 export const LANE_BUS = "bus";
+export const LANE_SCHEDULER = "scheduler";
 const MAX_INLINE = 2;
 
 export interface FlowOptions {
@@ -188,6 +190,34 @@ export class FlowReader {
       summary: last ? this.useCaseSummary(last) : "",
       source: endpoint.source,
       trigger: endpoint.trigger,
+      owner: this.opts.context,
+      participants: d.lanes,
+      steps: d.steps,
+    };
+  }
+
+  /**
+   * A job, opened by the clock it runs on.
+   *
+   * The counterpart of endpointFlow with nobody calling in: the first step is
+   * the scheduler firing the job by its name, the trigger says how often, and
+   * everything after it is the use cases `run` runs.
+   */
+  jobFlow(job: Job): Flow {
+    const d = new Draft();
+    d.lane({ id: LANE_SCHEDULER, kind: "actor", context: null, label: "Scheduler" });
+    d.lane(this.serviceLane());
+    d.add({ from: LANE_SCHEDULER, to: this.opts.svcID, kind: "call", label: job.id, note: `Fires ${job.trigger.label}.`, line: job.line });
+    for (const key of job.useCases) this.walkUseCase(d, key, 0);
+    const last = job.useCases[job.useCases.length - 1];
+    const id = `${this.opts.service}-${slug(job.id)}`;
+    return {
+      id: `flow.${id}`,
+      slug: id,
+      name: sentence(slug(job.id)),
+      summary: job.doc || (last ? this.useCaseSummary(last) : ""),
+      source: job.source,
+      trigger: job.trigger,
       owner: this.opts.context,
       participants: d.lanes,
       steps: d.steps,
