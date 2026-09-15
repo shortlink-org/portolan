@@ -689,6 +689,10 @@ func (m *Manager) Settings() { m.client.POST("/get-admin-settings") }
 				if !strings.HasPrefix(flow.Source, file+":") {
 					t.Errorf("flow %s source = %q", flow.Slug, flow.Source)
 				}
+				// A function key is spelled like a source.
+				if flow.EntryPoint != "" && !strings.HasPrefix(flow.EntryPoint, tc.prefix+"client:") {
+					t.Errorf("flow %s entrypoint = %q", flow.Slug, flow.EntryPoint)
+				}
 				for _, node := range flow.Steps {
 					if found, ok := node.(*catalog.Step); ok && found.Ref == id {
 						step = found

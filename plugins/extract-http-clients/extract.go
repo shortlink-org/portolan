@@ -871,8 +871,10 @@ func httpCallEvidence(call gohttp.Call) []catalog.RelationEvidence {
 // service's repository. The analyzer spells a source from the input root, and
 // everything above it - the adapter directories the manifest names, the
 // identities of calls, the dedup of evidence - matches on that spelling, so
-// the respelling happens once, on the finished fragment. Function keys
-// (entrypoint, reaches, evidence symbols) are names, not places, and stay.
+// the respelling happens once, on the finished fragment. A flow's entrypoint
+// and a step's reaches are function keys the merge joins on, and are spelled
+// from the repository the same way (plugin.RootFunction); the call path in
+// evidence names functions for a reader, without their directory, and stays.
 //
 // A destination is shared by a consumer entry and every step that carries the
 // call, so it is copied, never respelled in place: one respelling each.
@@ -895,6 +897,7 @@ func spellFromRepository(in plugin.Input, fragment *catalog.Catalog) {
 	}
 	for f := range fragment.Flows {
 		fragment.Flows[f].Source = rootSource(in, fragment.Flows[f].Source)
+		fragment.Flows[f].EntryPoint = in.RootFunction(fragment.Flows[f].EntryPoint)
 		spellNodes(in, fragment.Flows[f].Steps)
 	}
 }
@@ -915,6 +918,13 @@ func spellNodes(in plugin.Input, nodes catalog.FlowNodes) {
 			node.Line = rootSource(in, node.Line)
 			node.Evidence = spelledEvidence(in, node.Evidence)
 			node.Destination = spelledDestination(in, node.Destination)
+			if node.Reaches != nil {
+				reaches := make([]string, len(node.Reaches))
+				for r, key := range node.Reaches {
+					reaches[r] = in.RootFunction(key)
+				}
+				node.Reaches = reaches
+			}
 		case *catalog.Alt:
 			for branch := range node.Branches {
 				spellNodes(in, node.Branches[branch].Steps)
