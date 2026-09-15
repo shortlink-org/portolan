@@ -32,7 +32,16 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     let mut b = Builder::default();
     let root = cwd.join(&input.root);
     let cwd_owned = cwd.to_path_buf();
-    let rel = move |abs: &Path| -> String { abs.strip_prefix(&cwd_owned).unwrap_or(abs).to_string_lossy().replace('\\', "/") };
+    // Every path is spelled from the repository the file is in: a fetched
+    // copy's own paths, not the directory holding the copy.
+    let repository = cwd.join(&input.repository);
+    let rel = move |abs: &Path| -> String {
+        abs.strip_prefix(&repository)
+            .or_else(|_| abs.strip_prefix(&cwd_owned))
+            .unwrap_or(abs)
+            .to_string_lossy()
+            .replace('\\', "/")
+    };
 
     let base = root.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
     let context = if opts.context.is_empty() { slug(&base) } else { opts.context.clone() };
@@ -212,7 +221,9 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     let openapi_source = {
         let output = input.output.trim_matches('/');
         if output.is_empty() {
-            rel(&root.join("portolan").join(&openapi_name))
+            // Written by the host into this workspace, so spelled from it.
+            let at = root.join("portolan").join(&openapi_name);
+            at.strip_prefix(cwd).unwrap_or(&at).to_string_lossy().replace('\\', "/")
         } else {
             format!("{output}/{openapi_name}")
         }

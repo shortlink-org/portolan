@@ -61,7 +61,16 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     let mut b = Builder::default();
     let root = cwd.join(&input.root);
     let cwd_owned = cwd.to_path_buf();
-    let rel = move |abs: &Path| -> String { abs.strip_prefix(&cwd_owned).unwrap_or(abs).to_string_lossy().replace('\\', "/") };
+    // Every path is spelled from the repository the file is in: a fetched
+    // copy's own paths, not the directory holding the copy.
+    let repository = cwd.join(&input.repository);
+    let rel = move |abs: &Path| -> String {
+        abs.strip_prefix(&repository)
+            .or_else(|_| abs.strip_prefix(&cwd_owned))
+            .unwrap_or(abs)
+            .to_string_lossy()
+            .replace('\\', "/")
+    };
     let exchange = if opts.exchange.is_empty() { "domain_events".to_string() } else { opts.exchange.clone() };
     let store_kind = if opts.store_kind.is_empty() { "mysql".to_string() } else { opts.store_kind.clone() };
     let repo = if opts.repo.is_empty() { composer_repo(&root) } else { opts.repo.clone() };
@@ -865,7 +874,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                                 source: {
                                     let (name, _) = &openapi_docs[&si];
                                     let output = input.output.trim_matches('/');
-                                    if output.is_empty() { rel(&svc.path.join("portolan").join(name)) } else { format!("{output}/{name}") }
+                                    if output.is_empty() {
+                                        // Written by the host into this workspace, so spelled from it.
+                                        let at = svc.path.join("portolan").join(name);
+                                        at.strip_prefix(cwd).unwrap_or(&at).to_string_lossy().replace('\\', "/")
+                                    } else { format!("{output}/{name}") }
                                 },
                             }
                         })

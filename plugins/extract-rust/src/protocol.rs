@@ -24,6 +24,11 @@ pub struct Input {
     pub root: String,
     #[serde(default)]
     pub output: String,
+    /// Where the repository `root` belongs to begins, relative to the working
+    /// directory: the directory a fetched copy was written to, or empty when
+    /// the workspace is the repository. Paths are spelled from it.
+    #[serde(default)]
+    pub repository: String,
 }
 
 #[derive(Debug, Default, Serialize)]
