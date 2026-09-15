@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { deleteDraft, discardDraft, draftPath, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, validBranch } from "./branch-drafts.mjs";
+import { deleteDraft, discardDraft, draftPath, generateDraft, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, validBranch } from "./branch-drafts.mjs";
 
 const created = [];
 afterEach(() => {
@@ -129,6 +129,29 @@ describe("branches and saved drafts", { timeout: 30_000 }, () => {
     // A deletion keeps the draft aside until it is undone.
     restoreDraft(root, { project: "auth", branch: "demo/passkeys" });
     expect(listDrafts(root).map((draft) => draft.branch)).toEqual(["demo/passkeys"]);
+  });
+
+  it("reports a saved draft failed when its branch cannot be regenerated, until it is regenerated or deleted", async () => {
+    const { root, git, commit } = repository();
+    commit("examples/auth/a.go", "package a\n");
+    git("switch", "-q", "-c", "demo/mfa");
+    const tip = commit("examples/auth/b.go", "package a\n");
+    git("switch", "-q", "main");
+    const file = join(root, draftPath("auth", "demo/mfa"));
+    mkdirSync(join(file, ".."), { recursive: true });
+    writeFileSync(file, JSON.stringify({ project: "auth", branch: "demo/mfa", tip, base: "b", generatedAt: "2026-09-15T00:00:00Z", entities: [] }));
+    git("merge", "-q", "--ff-only", "demo/mfa");
+
+    await expect(generateDraft(root, { project: "auth", branch: "demo/mfa", pending: true })).rejects.toThrowError(/already contains demo\/mfa/);
+    const [failed] = listDrafts(root);
+    expect(failed).toMatchObject({ branch: "demo/mfa", status: "failed", failure: { message: "main already contains demo/mfa; there is nothing to draft" } });
+    expect(failed.failure.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+    // The draft on disk is untouched: a failed run writes nothing but the failure.
+    expect(readDrafts(root).map((draft) => draft.tip)).toEqual([tip]);
+    deleteDraft(root, { project: "auth", branch: "demo/mfa" });
+    restoreDraft(root, { project: "auth", branch: "demo/mfa" });
+    expect(listDrafts(root)[0].status).toBe("fresh");
   });
 
   it("keeps a generated draft pending until it is saved over the old one or discarded", () => {

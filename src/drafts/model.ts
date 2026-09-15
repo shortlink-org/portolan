@@ -10,6 +10,7 @@ import type { Aggregate, Event, Field, Flow, Service, Step } from "../catalog";
 import { walkSteps } from "../catalog";
 import { alignSteps, comparable, sameEntity, stateAgainstMain } from "../lib/branch-draft";
 import type { BranchDraft, DraftEntity as SavedEntity } from "../lib/branch-draft";
+import type { SavedDraftStatus } from "../lib/local-api";
 
 export type DraftState = "added" | "changed" | "conflict" | "removed";
 export type DraftEntityKind = "flow" | "service" | "aggregate" | "event";
@@ -46,6 +47,17 @@ export type DraftHealth =
   | { kind: "failed"; at: string; step: string; log: string[] }
   /** The branch is no longer in the repository. */
   | { kind: "gone" };
+
+/** What `portolan dev` says about a saved draft's branch, as the pages read it. */
+export function healthFrom(status: SavedDraftStatus | undefined): DraftHealth {
+  if (!status) return { kind: "fresh" };
+  if (status.status === "failed" && status.failure) {
+    return { kind: "failed", at: status.failure.at, step: status.failure.step ?? "", log: status.failure.message.split("\n") };
+  }
+  if (status.status === "gone") return { kind: "gone" };
+  if (status.status === "moved" && status.currentTip) return { kind: "stale", tip: short(status.currentTip), ahead: status.ahead ?? 0 };
+  return { kind: "fresh" };
+}
 
 export interface Draft {
   project: string;

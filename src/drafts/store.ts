@@ -27,8 +27,8 @@ import {
 import type { DraftBranches, SavedDraftStatus } from "../lib/local-api";
 import { setupInfo } from "../lib/setup-info";
 import { paths } from "../routes";
-import { draftKey, presentDraft } from "./model";
-import type { BranchChoice, Draft, DraftEntity, DraftEntityKind, DraftHealth } from "./model";
+import { draftKey, healthFrom, presentDraft } from "./model";
+import type { BranchChoice, Draft, DraftEntity, DraftEntityKind } from "./model";
 import { versionFrom } from "./version-param";
 
 const ENABLED_KEY = "portolan:drafts-enabled";
@@ -94,16 +94,6 @@ function hrefOf(kind: DraftEntityKind, id: string): string | undefined {
   return event && owner && context ? paths.event(context.id, owner.service.slug, owner.aggregate.slug, event.slug) : undefined;
 }
 
-function healthOf(status: SavedDraftStatus | undefined): DraftHealth {
-  if (!status) return { kind: "fresh" };
-  if (status.status === "failed" && status.failure) {
-    return { kind: "failed", at: status.failure.at, step: status.failure.step ?? "", log: status.failure.message.split("\n") };
-  }
-  if (status.status === "gone") return { kind: "gone" };
-  if (status.status === "moved" && status.currentTip) return { kind: "stale", tip: status.currentTip.slice(0, 7), ahead: status.ahead ?? 0 };
-  return { kind: "fresh" };
-}
-
 let projectNames = new Map(setupInfo.projects.map((project) => [project.id, project.name]));
 
 /**
@@ -125,7 +115,7 @@ export function present(file: BranchDraft, status?: SavedDraftStatus): Draft {
     contextOf: (serviceId) => index.serviceContext.get(serviceId)?.id,
     knownParticipants: KNOWN_LANES,
     projectName: projectNames.get(file.project) ?? file.project,
-    health: healthOf(status),
+    health: healthFrom(status),
   });
 }
 
