@@ -27,7 +27,7 @@ import { djangoAggregateCandidates } from "../src/lib/django-aggregates.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import { formatLike } from "./json-format.mjs";
 import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
-import { requestWorkItemsFullScan } from "./work-items-history.mjs";
+import { requestWorkItemsFullScan } from "./work-items-scans.mjs";
 import { gitFetchState, saveGitFetchSettings, checkGitAccess } from "./git-fetch-settings.mjs";
 import { listGitRefs } from "./git-refs.mjs";
 import { deleteDraft, discardDraft, draftPath, listBranches, listDrafts, readDrafts, readPending, restoreDraft, saveDraft } from "./branch-drafts.mjs";

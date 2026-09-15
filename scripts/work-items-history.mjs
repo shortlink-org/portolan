@@ -14,27 +14,14 @@ import { join, matchesGlob, resolve } from "node:path";
 import { loadCatalog } from "./catalog-sources.mjs";
 import { fullScanTarget, scanWorkItems } from "./host-plugins/work-items.mjs";
 import { readManifest } from "./manifest.mjs";
+import { onWorkItemsFullScan, requestWorkItemsFullScan, workItemsFullScans } from "./work-items-scans.mjs";
 
 export const WORK_ITEMS_MODULE = "virtual:portolan-work-items";
 const RESOLVED = `\0${WORK_ITEMS_MODULE}`;
 
-/** Full scans requested from the settings page, kept for this process. */
-const fullScans = new Set();
-const listeners = new Set();
 let cached;
-
-/**
- * Asks for the verifier `target` names to be read without its commit limit,
- * from now until the process ends. Readers of the virtual module are told to
- * read again.
- *
- * @param {string} target  as `fullScanTarget` spells it
- */
-export function requestWorkItemsFullScan(target) {
-  fullScans.add(target);
-  forgetWorkItems();
-  for (const listener of listeners) listener();
-}
+// A full scan changes what a reading answers.
+onWorkItemsFullScan(() => forgetWorkItems());
 
 export function forgetWorkItems() {
   cached = undefined;
@@ -76,7 +63,7 @@ export async function readWorkItems(workspace) {
     // Spelled the way the settings page names a full-scan target.
     const request = { input: { root: resolve(workspace, step.in), output: resolve(realpathSync(workspace), step.out) }, catalog, options };
     try {
-      const scanned = scanWorkItems(request, { fullScan: [...fullScans] });
+      const scanned = scanWorkItems(request, { fullScan: workItemsFullScans() });
       sources.push({ path, catalogs, fragment: scanned.fragment });
       warnings.push(...scanned.warnings.map((warning) => `work-items ⇐ ${step.in}: ${warning.message}`));
     } catch (cause) {
@@ -86,7 +73,7 @@ export async function readWorkItems(workspace) {
   return { sources, warnings };
 }
 
-export { fullScanTarget };
+export { fullScanTarget, requestWorkItemsFullScan };
 
 /**
  * @param {string} workspace
@@ -112,8 +99,8 @@ export function workItemsPlugin(workspace, { disabled = false } = {}) {
         if (mod) server.moduleGraph.invalidateModule(mod);
         server.ws.send({ type: "full-reload" });
       };
-      listeners.add(reload);
-      server.httpServer?.once("close", () => listeners.delete(reload));
+      const stop = onWorkItemsFullScan(reload);
+      server.httpServer?.once("close", stop);
     },
     handleHotUpdate({ file, server }) {
       if (!file.endsWith(".json") || file.includes("/node_modules/")) return;
