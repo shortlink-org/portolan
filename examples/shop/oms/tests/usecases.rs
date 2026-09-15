@@ -3,12 +3,14 @@
 //! faked here and real in postgres.rs; the domain's rules are tested where
 //! they live.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+mod common;
 
-use chrono::{DateTime, TimeZone, Utc};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use common::{Memory, fixed, now};
 use oms::application::order::usecases::request_payment::{Authorization, DeclineReason, Payments};
-use oms::application::order::usecases::{Clock, cancel_order, confirm_order, get_order, place_order, request_payment};
+use oms::application::order::usecases::{cancel_order, confirm_order, get_order, place_order, request_payment};
 use oms::application::policy::cancel_order_on_payment_declined::CancelOrderOnPaymentDeclined;
 use oms::application::policy::confirm_order_on_payment_authorized::ConfirmOrderOnPaymentAuthorized;
 use oms::application::policy::place_order_on_basket_checked_out::PlaceOrderOnBasketCheckedOut;
@@ -16,63 +18,15 @@ use oms::application::policy::request_payment_on_order_placed::RequestPaymentOnO
 use oms::domain::order::event::{Event, OrderPlaced};
 use oms::domain::order::port::Orders;
 use oms::domain::order::vo::Money;
-use oms::domain::order::{Error, Line, Order, Status};
+use oms::domain::order::{Error, Line, Status};
 use oms::infrastructure::cart::BasketCheckedOut;
 use oms::infrastructure::ledger::{PaymentAuthorized, PaymentDeclined};
-
-#[derive(Default)]
-struct Memory {
-    orders: Mutex<Vec<Order>>,
-    published: Mutex<Vec<String>>,
-    payloads: Mutex<Vec<serde_json::Value>>,
-}
-
-impl Orders for Memory {
-    async fn by_id(&self, id: &str) -> Result<Order, Error> {
-        self.orders
-            .lock()
-            .unwrap()
-            .iter()
-            .find(|o| o.id == id)
-            .cloned()
-            .ok_or_else(|| Error::NotFound(id.into()))
-    }
-    async fn by_basket(&self, basket_id: &str) -> Result<Option<Order>, Error> {
-        Ok(self.orders.lock().unwrap().iter().find(|o| o.basket_id == basket_id).cloned())
-    }
-    async fn save(&self, order: &Order, events: &[&dyn Event]) -> Result<(), Error> {
-        let mut orders = self.orders.lock().unwrap();
-        if let Some(current) = orders.iter().find(|o| o.id == order.id) {
-            if current.version != order.version {
-                return Err(Error::Conflict);
-            }
-        } else if order.version != 0 {
-            return Err(Error::Conflict);
-        }
-        orders.retain(|o| o.id != order.id);
-        orders.push(Order {
-            version: order.version + 1,
-            ..order.clone()
-        });
-        self.published.lock().unwrap().extend(events.iter().map(|e| e.name().to_string()));
-        self.payloads.lock().unwrap().extend(events.iter().map(|e| e.payload()));
-        Ok(())
-    }
-}
 
 struct Permissive;
 impl Payments for Permissive {
     async fn authorize(&self, payment_id: &str, _order_id: &str, _total: &Money) -> Result<Authorization, Error> {
         Ok(Authorization::Authorized { payment_id: payment_id.into() })
     }
-}
-
-fn fixed() -> Clock {
-    Box::new(|| Utc.with_ymd_and_hms(2026, 9, 5, 12, 0, 0).unwrap())
-}
-
-fn now() -> DateTime<Utc> {
-    fixed()()
 }
 
 fn input(basket: &str) -> place_order::Input {

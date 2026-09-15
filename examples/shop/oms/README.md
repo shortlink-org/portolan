@@ -55,3 +55,7 @@ skipped.
 
 For the real cart → OMS → ledger scenario and contract checks, see
 [checkout scenario](../../scenarios/README.md).
+
+The order's rules are also proved in Lean for every input, and
+`tests/lean_scenarios.rs` holds the use cases to that model: see
+[lean/](lean/README.md).

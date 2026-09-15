@@ -1,0 +1,11 @@
+name = "oms"
+version = "0.1.0"
+defaultTargets = ["Oms"]
+
+[[lean_lib]]
+name = "Oms"
+
+# The fixture for the Rust tests: lake exe scenarios > ../tests/fixtures/order_scenarios.json
+[[lean_exe]]
+name = "scenarios"
+root = "Scenarios"
