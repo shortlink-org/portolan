@@ -65,7 +65,7 @@ export function DraftCompare() {
 
   return (
     <div className="h-full overflow-y-auto p-gutter">
-      <div className="max-w-table">
+      <div>
         <div className="flex flex-wrap items-start gap-3">
           <div>
             <div className="label">
