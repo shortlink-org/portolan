@@ -16,6 +16,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { createServer as createNetServer } from "node:net";
 import { basename, dirname, join, posix, relative, resolve, sep } from "node:path";
 
@@ -28,6 +29,7 @@ import { formatLike } from "./json-format.mjs";
 import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } from "./task-tracker-settings.mjs";
 import { gitFetchState, saveGitFetchSettings, checkGitAccess } from "./git-fetch-settings.mjs";
 import { listGitRefs } from "./git-refs.mjs";
+import { deleteDraft, draftPath, listBranches, listDrafts } from "./branch-drafts.mjs";
 import { eventBridgeState, saveEventBridgeSettings } from "./eventbridge-settings.mjs";
 import { annotationState, saveAnnotation } from "./annotations.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
@@ -1596,6 +1598,43 @@ function startJob(workspace, mode, approvedPreview, preparedTrial, workItemsFull
   return job;
 }
 
+// Generating a draft (portolan.0019) is a run like gen's: one at a time,
+// streamed to the page, cancellable. It writes one file under portolan-drafts/
+// and nothing else in the workspace; the worktrees it reads live in a
+// temporary directory.
+const BRANCH_DRAFTS = join(dirname(fileURLToPath(import.meta.url)), "branch-drafts.mjs");
+
+function startDraftJob(workspace, { project, branch }) {
+  const path = draftPath(project, branch);
+  const id = randomUUID();
+  const job = { id, mode: "draft", status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, runRoot: workspace, snapshotHolder: null, draft: { project, branch, path } };
+  jobs.set(id, job);
+  let child;
+  try {
+    child = spawn(process.execPath, [BRANCH_DRAFTS, "generate", "--project", project, "--branch", branch], {
+      cwd: workspace,
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
+    });
+  } catch (cause) {
+    jobs.delete(id);
+    throw cause;
+  }
+  job.child = child;
+  emit(job, { type: "run-started", runId: id, mode: job.mode, project, branch });
+  child.stdout.on("data", (chunk) => feed(job, "stdout", chunk));
+  child.stderr.on("data", (chunk) => feed(job, "stderr", chunk));
+  child.on("error", (error) => emit(job, { type: "run-finished", status: "failed", message: error.message }));
+  child.on("close", (code, signal) => {
+    for (const stream of ["stdout", "stderr"]) if (job.buffers[stream]) emit(job, { type: "log", stream, message: job.buffers[stream] });
+    job.status = signal ? "cancelled" : code === 0 ? "ok" : "failed";
+    emit(job, { type: "process-finished", status: job.status, code, signal });
+    for (const response of job.subscribers) response.end();
+    job.subscribers.clear();
+  });
+  return job;
+}
+
 function startProjectTrial(workspace, request) {
   const prepared = prepareProjectTrial(workspace, request);
   prepared.request = request;
@@ -1623,6 +1662,12 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/django-aggregates`) {
             return send(res, 200, djangoAggregateProposals(workspace));
+          }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/drafts`) {
+            return send(res, 200, { drafts: listDrafts(workspace) });
+          }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/drafts/branches`) {
+            return send(res, 200, listBranches(workspace, readManifest(join(workspace, "portolan.json")).projects ?? []));
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/rules`) {
             return send(res, 200, problemRulesState(workspace));
@@ -1682,6 +1727,19 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             } catch (cause) {
               return send(res, 200, { ...saved, run: null, generationError: cause instanceof Error ? cause.message : String(cause) });
             }
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/drafts/generate`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "Wait for the current run to finish before generating a draft." });
+            const job = startDraftJob(workspace, { project: String(input.project ?? ""), branch: String(input.branch ?? "") });
+            return send(res, 202, { runId: job.id, mode: job.mode, path: job.draft.path });
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/drafts/delete`) {
+            if ([...jobs.values()].some((job) => job.status === "running" && job.mode === "draft" && job.draft.project === input.project && job.draft.branch === input.branch)) {
+              return send(res, 409, { error: "That draft is being generated; cancel the run first." });
+            }
+            const project = String(input.project ?? "");
+            const branch = String(input.branch ?? "");
+            return send(res, 200, { deleted: deleteDraft(workspace, { project, branch }), path: draftPath(project, branch) });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/git-fetch/refs`) {
             return send(res, 200, await listGitRefs(input.repository));
