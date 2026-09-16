@@ -298,6 +298,15 @@ docker run --rm \
 Use immutable versions in CI. `latest` is intended for trying the CLI, not for
 a reproducible build.
 
+That tag carries what `generate`, `check`, `diff`, and `comment` read. The
+browsable site is built by a second toolchain - vite, React, and LikeC4 -
+which `build` and `dev` need and nothing else does, so it is published beside
+it as `ghcr.io/shortlink-org/portolan:<version>-site`. Asked for a site, the
+smaller tag says which one to reach for rather than failing on a missing
+module. An `npm install` of the package still brings both: the site toolchain
+is an optional dependency, and only an installation that opts out of optional
+dependencies skips it.
+
 ### One repository or an estate repository
 
 For one application or a monorepo, keep `portolan.json` at its root and write

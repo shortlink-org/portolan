@@ -1,5 +1,6 @@
 .git
 .claude
+.github
 .portolan
 dist
 docs
@@ -11,3 +12,44 @@ plugins/**/target
 plugins/extract-java/build
 *.local
 .DS_Store
+
+# Not in the package's `files`, so the image has no use for it either. The
+# wasm and rust stages copy what they build from, and that stays above.
+adr
+data
+flows
+proxy
+vendor
+portolan-drafts
+portolan-work-items
+AGENTS.md
+GLOSSARY.md
+ROADMAP.md
+design.md
+
+# Tests ship to npm inside `scripts` and `src`; nothing runs them here.
+**/*.test.mjs
+**/*.test.ts
+**/*.test.tsx
+**/*_test.go
+**/*_test.py
+
+# Build output .gitignore keeps out of the repository but a build context
+# would still pick up from a developer's checkout. The wasm and the native
+# extractors are copied in from their own stages, already built.
+plugins/*.wasm
+plugins/*/extract-*
+plugins/*/verify-*
+plugins/*/fetch-*
+plugins/gen-markdown/gen-markdown
+plugins/extract-csharp-ddd/bin
+plugins/extract-csharp-ddd/obj
+plugins/extract-csharp-ddd/test
+/extract-*
+/fetch-*
+/verify-*
+/gen-markdown
+
+# Fixtures the plugins' own tests read.
+plugins/*/testdata
+plugins/*/tests

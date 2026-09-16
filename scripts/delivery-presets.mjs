@@ -278,12 +278,14 @@ function gitlabDiff({ pages }) {
 }
 
 function gitlabPages() {
+  // The `-site` tag: building a browsable site needs vite, React, and LikeC4,
+  // which the default tag leaves out because nothing else asks for them.
   return `pages:
   stage: deploy
   tags:
     - runner-type:docker
   image:
-    name: ghcr.io/shortlink-org/portolan:${VERSION}
+    name: ghcr.io/shortlink-org/portolan:${VERSION}-site
     entrypoint: [""]
   variables:
     GIT_DEPTH: "0"

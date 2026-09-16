@@ -86,10 +86,25 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest
 
+      # The site toolchain rides in its own tag: only `build` and `dev` load
+      # it, and every other command would carry it for nothing.
+      - id: meta-site
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: |
+            suffix=-site,onlatest=true
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+
       - id: build
         uses: docker/build-push-action@v7
         with:
           context: .
+          target: runtime
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -97,8 +112,26 @@ jobs:
           provenance: true
           sbom: true
 
+      - id: build-site
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: site
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-site.outputs.tags }}
+          labels: ${{ steps.meta-site.outputs.labels }}
+          provenance: true
+          sbom: true
+
       - uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.build-site.outputs.digest }}
           push-to-registry: true

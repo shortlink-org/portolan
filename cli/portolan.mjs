@@ -161,6 +161,13 @@ function doctor(workspace) {
       manifestProblems.length > 0 ? manifestProblems.join("; ") : "required",
     ],
     ["Git", commandWorks("git", ["--version"]), "used for deterministic source stamps"],
+    // Optional like a language toolchain: absent is not a failure, it only
+    // means this installation generates a catalog without browsing it.
+    [
+      "Site toolchain",
+      true,
+      siteInstalled() ? "present" : "absent; build and dev need `npm install --include=optional`",
+    ],
   ];
 
   // A toolchain is required only when a step in this manifest names a plugin
@@ -184,6 +191,7 @@ function doctor(workspace) {
 }
 
 async function build(workspace, options) {
+  requireSite("build");
   const stage = await prepareSite(workspace);
   await generateLikeC4(stage);
   const output = safeOutput(workspace, options.output ?? "dist");
@@ -202,6 +210,7 @@ async function build(workspace, options) {
 }
 
 async function dev(workspace, options) {
+  requireSite("dev");
   const latestVersion = await checkForUpdate(VERSION);
   const stage = await prepareSite(workspace);
   await generateLikeC4(stage);
@@ -412,7 +421,9 @@ function dependencyRoot() {
   let current = installRoot;
   while (dirname(current) !== current) {
     const candidate = resolve(current, "node_modules");
-    if (existsSync(resolve(candidate, ".bin")) && existsSync(resolve(candidate, "vite"))) return candidate;
+    // `ajv` rather than a site package: the container image installs only the
+    // required dependencies, and `generate` has to find this directory there.
+    if (existsSync(resolve(candidate, ".bin")) && existsSync(resolve(candidate, "ajv"))) return candidate;
     if (basename(current) === "node_modules") return current;
     current = dirname(current);
   }
@@ -424,6 +435,27 @@ function packageBin(name, path) {
   const direct = resolve(modules, name, path);
   if (existsSync(direct)) return direct;
   fail(`the installed package is missing ${name}`);
+}
+
+// The browsable site is built from optional dependencies (vite, React, LikeC4
+// and what they draw with). An installation that skipped them - the container
+// image does - still generates, checks and diffs a catalog; only `build` and
+// `dev` need them, and they say so rather than failing on a missing module.
+const SITE_PACKAGES = ["vite", "react", "likec4"];
+
+function siteInstalled() {
+  const modules = dependencyRoot();
+  return SITE_PACKAGES.every((name) => existsSync(resolve(modules, name)));
+}
+
+function requireSite(command) {
+  if (siteInstalled()) return;
+  fail(
+    `portolan ${command} needs the site toolchain, which this installation skipped.\n` +
+      "Install it with `npm install @shortlink-org/portolan`, or reach for the\n" +
+      "container image published as ghcr.io/shortlink-org/portolan:<version>-site.\n" +
+      "generate, check, diff, and comment work without it.",
+  );
 }
 
 function runScript(path, args, cwd) {
