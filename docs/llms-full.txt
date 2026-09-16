@@ -4662,6 +4662,7 @@ rule.
 - **Date:** 2026-09-16
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0027-the-picture-of-one-opened-door-is-fetched-not-bundled.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0027-the-picture-of-one-opened-door-is-fetched-not-bundled.md)
+- **Committed:** Victor Login, 2026-09-16 (`767cac3`)
 
 ### Context and Problem Statement
 
