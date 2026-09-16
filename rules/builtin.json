@@ -280,5 +280,17 @@
     "when": "deployment.drifted",
     "message": "deployment.drift + '. ' + deployment.url",
     "peer": "deployment.environment"
+  },
+  {
+    "id": "rules-drift",
+    "over": "operation",
+    "severity": "warning",
+    "title": "The code checks what the contract does not say",
+    "note": "the handler and the document disagree about what a field must satisfy",
+    "description": "The rules a handler checks a request against and the rules the document promises for the same field are not the same: a bound only one side has, or two bounds that differ. A caller writing to the document is refused by the service, or is allowed something the service then rejects.",
+    "action": "Put the rule the code enforces into the document, or drop the check the document does not promise.",
+    "when": "size(operation.ruleDifferences) > 0",
+    "message": "operation.ruleDifferences.join('; ') + '. The caller reads ' + operation.contract + '/' + operation.method + '.'",
+    "peer": "operation.contract"
   }
 ]

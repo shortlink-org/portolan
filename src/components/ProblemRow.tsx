@@ -49,6 +49,7 @@ export const ICON_OF: Record<RuleSubject, Kind> = {
   deployment: "service",
   flow: "flow",
   aggregate: "aggregate",
+  operation: "command",
 };
 
 /** A table or a view, whichever the id turns out to name. */
@@ -79,6 +80,10 @@ export function nearPath(over: RuleSubject, problem: Problem): string | null {
       return flowPath(problem.id);
     case "aggregate":
       return aggregatePath(problem.id);
+    // `<aggregate>#<operation>`: an operation has no page of its own and is
+    // read on the aggregate that handles it.
+    case "operation":
+      return aggregatePath(problem.id.split("#")[0]!);
     case "service":
     case "call":
     case "copy":

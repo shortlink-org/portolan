@@ -10,7 +10,8 @@ export type RuleSubject =
   | "column"
   | "deployment"
   | "flow"
-  | "aggregate";
+  | "aggregate"
+  | "operation";
 
 export type RuleSeverity = "error" | "warning";
 

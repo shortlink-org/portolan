@@ -45,3 +45,4 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0020](../adr/portolan.0020.md) | Task links are read from the history, never written into a fragment | accepted | 2026-09-15 |
 | [portolan.0021](../adr/portolan.0021.md) | An inferred HTTP verb links a call, at medium confidence | accepted | 2026-09-15 |
 | [portolan.0022](../adr/portolan.0022.md) | The site toolchain is optional, and the image that needs it ships as its own tag | accepted | 2026-09-16 |
+| [portolan.0023](../adr/portolan.0023.md) | The rules the code checks are held against the rules the document promises | accepted | 2026-09-16 |

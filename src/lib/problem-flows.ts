@@ -73,6 +73,7 @@ export function flowsOfProblem(catalog: Catalog, index: CatalogIndex, over: Rule
     case "copy":
     case "subscription":
     case "deployment":
+    case "operation":
       return flowsOn(catalog, problem.service);
   }
 }

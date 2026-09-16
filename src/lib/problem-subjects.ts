@@ -21,7 +21,9 @@ import type {
   Column,
   Deployment,
   Event,
+  Field,
   Flow,
+  Operation,
   RpcEnum,
   RpcMessage,
   RpcMethod,
@@ -94,6 +96,8 @@ export function subjectsOf(catalog: Catalog, index: CatalogIndex, over: RuleSubj
       return catalog.flows.map((flow) => flowSubject(catalog, flow));
     case "aggregate":
       return servicesOf(catalog).flatMap(({ service }) => service.aggregates.map((aggregate) => aggregateSubject(catalog, index, aggregate)));
+    case "operation":
+      return operationSubjects(catalog);
     case "call":
       return callSubjects(catalog, index);
     case "copy":
@@ -756,4 +760,111 @@ function aggregateSubject(catalog: Catalog, index: CatalogIndex, aggregate: Aggr
       tables,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Operations, and the contract they answer under.
+
+/**
+ * One row per use case of an aggregate, carrying both words about what the
+ * caller hands in: the shape the handler itself checks (`Operation.fields`,
+ * which an extractor reads off the validation in the code) and the shape the
+ * interface it is exposed by promises. Comparing them is the rule's business;
+ * the row only says where they differ.
+ */
+function operationSubjects(catalog: Catalog): Subject[] {
+  return servicesOf(catalog).flatMap(({ context, service }) =>
+    service.aggregates.flatMap((aggregate) =>
+      aggregate.operations.map((operation) => {
+        const promised = promisedRequest(service, operation);
+        const differences = operation.fields && promised ? compareFieldRules(operation.fields, promised.fields) : [];
+        return {
+          id: `${aggregate.id}#${operation.id}`,
+          context,
+          service: service.id,
+          source: operation.source,
+          row: {
+            id: `${aggregate.id}#${operation.id}`,
+            name: operation.id,
+            kind: operation.kind,
+            aggregate: aggregate.id,
+            service: service.id,
+            context,
+            deprecated: operation.deprecated === true,
+            exposedBy: operation.exposedBy ?? [],
+            checked: operation.fields !== undefined,
+            fields: (operation.fields ?? []).map((field) => field.name),
+            contract: promised?.contract ?? "",
+            method: promised?.method ?? "",
+            compared: int(promised ? promised.fields.filter((field) => (operation.fields ?? []).some((own) => own.name === field.name)).length : 0),
+            ruleDifferences: differences,
+            source: operation.source ?? "",
+          },
+        };
+      }),
+    ),
+  );
+}
+
+/**
+ * What the document promises the caller sends: the request message of the
+ * first interface method that exposes this operation and names one. An
+ * operation nothing exposes, or one whose method declares no request shape,
+ * has nothing to be held against.
+ */
+function promisedRequest(service: Service, operation: Operation): { contract: string; method: string; fields: Field[] } | undefined {
+  for (const name of operation.exposedBy ?? []) {
+    for (const provided of service.provides) {
+      const method = provided.methods.find((candidate) => candidate.name === name);
+      const message = method?.request ? (provided.messages ?? []).find((candidate) => candidate.name === method.request) : undefined;
+      if (method && message) return { contract: provided.id, method: method.name, fields: message.fields };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Where the rules the code checks and the rules the document states disagree,
+ * over the fields both of them name.
+ *
+ * Only those fields: a field the document has and the handler never parses is
+ * usually the route's own - a path parameter is not in the body message - and
+ * a field the handler parses and the document does not name is the document's
+ * shape being narrower than the route, which is a different question from a
+ * bound that does not match. What is compared is what both sides said about
+ * the same field, in the one vocabulary they both arrive in (portolan.0015).
+ */
+export function compareFieldRules(checked: Field[], promised: Field[]): string[] {
+  const out: string[] = [];
+  const documented = new Map(promised.map((field) => [field.name, field]));
+  for (const field of checked) {
+    const other = documented.get(field.name);
+    if (!other) continue;
+    if (field.required === true && other.required !== true) out.push(`${field.name}: the handler requires it, the document does not`);
+    if (other.required === true && field.required !== true) out.push(`${field.name}: the document requires it, the handler does not`);
+    const code = ruleMap(field);
+    const document = ruleMap(other);
+    for (const [name, value] of code) {
+      const said = document.get(name);
+      if (said === undefined) out.push(`${field.name}: the handler checks ${spellRule(name, value)}, the document says nothing`);
+      else if (said !== value) out.push(`${field.name}: the handler checks ${spellRule(name, value)}, the document says ${spellRule(name, said)}`);
+    }
+    for (const [name, value] of document) {
+      if (!code.has(name)) out.push(`${field.name}: the document says ${spellRule(name, value)}, the handler does not check it`);
+    }
+  }
+  return out;
+}
+
+/** A field's rules by name, the first word about a name being the one kept. */
+function ruleMap(field: Field): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const rule of field.rules ?? []) {
+    if (!out.has(rule.name)) out.set(rule.name, rule.value ?? "");
+  }
+  return out;
+}
+
+function spellRule(name: string, value: string): string {
+  return value === "" ? name : `${name} = ${value}`;
 }

@@ -271,6 +271,26 @@ export const SUBJECTS = {
       tables: "list<string>",
     },
   },
+  operation: {
+    description: "One use case of an aggregate, with what its handler checks held against what its contract promises.",
+    schema: {
+      id: "string",
+      name: "string",
+      kind: "string",
+      aggregate: "string",
+      service: "string",
+      context: "string",
+      deprecated: "bool",
+      exposedBy: "list<string>",
+      checked: "bool",
+      fields: "list<string>",
+      contract: "string",
+      method: "string",
+      compared: "int",
+      ruleDifferences: "list<string>",
+      source: "string",
+    },
+  },
 };
 
 /** What every rule sees beside its subject: the estate's names, for `in`. */

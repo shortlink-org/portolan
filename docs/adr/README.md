@@ -26,3 +26,4 @@
 | [portolan.0020](portolan.0020.md) | Task links are read from the history, never written into a fragment | accepted | 2026-09-15 | [portolan](../portolan/README.md) |
 | [portolan.0021](portolan.0021.md) | An inferred HTTP verb links a call, at medium confidence | accepted | 2026-09-15 | [portolan](../portolan/README.md) |
 | [portolan.0022](portolan.0022.md) | The site toolchain is optional, and the image that needs it ships as its own tag | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
+| [portolan.0023](portolan.0023.md) | The rules the code checks are held against the rules the document promises | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
