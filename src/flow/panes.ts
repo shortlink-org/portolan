@@ -33,12 +33,6 @@ export function paneSlug(key: string): string {
   return last;
 }
 
-/** The door itself, without the documents it was opened through. */
-export function paneDoor(key: string): string {
-  const cut = key.lastIndexOf("/");
-  return cut < 0 ? key : key.slice(cut + 1);
-}
-
 /** The pane a door was opened from, or null when it was opened from the page. */
 export function paneParent(key: string): string | null {
   const cut = key.lastIndexOf("/");
@@ -91,6 +85,20 @@ export function panesOf(keys: readonly string[], flows: readonly Flow[]): Pane[]
     out.push({ key, flow, parent });
   }
   return out;
+}
+
+/**
+ * The document a rail row belongs to. A row's key is the chain of doors it was
+ * read through, so its document is the open key the chain starts with - the
+ * longest one, because a document opened from a document carries the shorter
+ * key as its own prefix. Null for a row of the flow on the page.
+ */
+export function paneOfRow(keys: readonly string[], rowKey: string): string | null {
+  let found: string | null = null;
+  for (const key of keys) {
+    if (rowKey.startsWith(`${key}/`) && (found === null || key.length > found.length)) found = key;
+  }
+  return found;
 }
 
 /** Whether this door is open, for the row that offers it. */

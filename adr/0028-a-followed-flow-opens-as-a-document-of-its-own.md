@@ -70,8 +70,12 @@ the document. Their rails come folded — a document opened to see where a call
 lands is looked at before it is read, and a list of steps under every window
 would leave no room for the pictures that are the point of opening them.
 
-The rail's doors no longer unfold anything. They say `open` and `close`, and
-the toolbar counts documents rather than steps of an assembled path.
+One door does both. It unfolds the other flow's steps into this rail, where
+portolan.0024 put them, and it opens that flow as a document: the rail is
+where a path is read, the document is where it is drawn, and neither has to
+pretend to be the other. Pointing at a row of a followed flow lights that
+flow's own step on its own picture and says which window is being read, so
+the two readings stay one reading.
 
 #### Consequences
 
@@ -80,9 +84,9 @@ none per door, so the build has no second language service in it, the bundle
 grows by nothing, and the class of problems that took the release down is
 gone with the code that made it.
 
-What portolan.0024 decided stands, and more plainly than before: a path across
-services is a reading, and the catalog holds flows. What it decided about the
-*shape* of that reading does not — the path is not unfolded into one rail.
+What portolan.0024 decided stands whole: a path across services is a reading,
+the catalog holds flows, and the rail is where that reading is followed. What
+it could not do was draw it, and that is the part the documents answer.
 portolan.0026 is superseded: the whole-path views it generated are what the
 documents replace, and they are removed. portolan.0027 was reverted before
 this was written.

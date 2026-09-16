@@ -41,9 +41,9 @@ import { FlowToolbar } from "../flow/FlowToolbar";
 import { buildChapters, groupRows } from "../flow/chapters";
 import { continuationIndex } from "../flow/continues";
 import { useFlowPrefs } from "../flow/prefs";
-import { flowService, journeyFlow, journeyGroups, journeySteps, journeyReach } from "../flow/journey";
+import { journeyFlow, journeyGroups, journeySteps, journeyReach } from "../flow/journey";
 import { FlowPane } from "../flow/FlowPane";
-import { closePane, openPane, paneDoor, panesOf, readPanes, writePanes } from "../flow/panes";
+import { closePane, openPane, paneOfRow, panesOf, readPanes, writePanes } from "../flow/panes";
 import { buildOutline } from "../flow/outline";
 import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
@@ -318,14 +318,15 @@ export function FlowDetail({
   );
 
   /**
-   * The rail: this flow's steps, with a door under each step that continues
-   * somewhere. A door says whether its document is open; it never unfolds the
-   * other flow into this list (portolan.0028).
+   * The rail: this flow's steps, and under a step whose door the reader
+   * opened, the steps of the flow it continues in. The same door opens that
+   * flow as a document beside this one (portolan.0028) - the rail is where
+   * the path is read, the document is where it is drawn.
    */
   const journey = useMemo(
     () =>
       flow
-        ? journeyGroups(groups, { flow, flows: catalog.flows, continuations, opened, expand: false })
+        ? journeyGroups(groups, { flow, flows: catalog.flows, continuations, opened })
         : [],
     [flow, groups, continuations, opened],
   );
@@ -336,15 +337,11 @@ export function FlowDetail({
     [walkable],
   );
   /**
-   * What the control says: how many doors this flow has, and how many
-   * documents stand open beside it with what they add.
+   * What the control says: how many doors this flow has, how many stand open,
+   * and what the open ones put on the rail. The rail and the documents are
+   * two readings of one opening, so one count answers for both.
    */
-  const reach = useMemo(() => {
-    const counted = journeyReach(journey);
-    const services = new Set(panes.map((pane) => flowService(pane.flow)));
-    const steps = panes.reduce((total, pane) => total + walkSteps(pane.flow.steps).length, 0);
-    return { doors: counted.doors, open: panes.length, steps, services: services.size };
-  }, [journey, panes]);
+  const reach = useMemo(() => journeyReach(journey), [journey]);
   /** Every door of this flow at once: one document per continuation. */
   const openAll = useCallback(() => {
     const doors = journey.flatMap((group) =>
@@ -485,6 +482,18 @@ export function FlowDetail({
     );
   }, [activeId, selection, walkable]);
 
+  /**
+   * Which document the reader is pointing at. A row's key is the chain of
+   * doors it was read through, so the window it belongs to is the open pane
+   * whose key that chain starts with - the longest one, since a document
+   * opened from a document has the shorter key as its own prefix. The window
+   * says so, and the step lights on its picture (portolan.0028).
+   */
+  const activePane = useMemo(
+    () => (activeKey ? paneOfRow(panes.map((pane) => pane.key), activeKey) : null),
+    [activeKey, panes],
+  );
+
   // Arrow keys walk the rail. Stepping the picture itself is LikeC4's
   // walkthrough, in the canvas, so there is only ever one animator.
   const move = useCallback(
@@ -555,14 +564,7 @@ export function FlowDetail({
     // (portolan.0028) - and a diagram that stopped at this service's edge
     // would not be what the reader has on screen.
     const drawn =
-      panes.length > 0
-        ? journeyFlow({
-            flow,
-            flows: catalog.flows,
-            continuations,
-            opened: new Set(panes.map((pane) => paneDoor(pane.key))),
-          })
-        : flow;
+      opened.size > 0 ? journeyFlow({ flow, flows: catalog.flows, continuations, opened }) : flow;
     void toClipboard(flowMermaid(drawn, answers)).then((ok) => {
       say(
         ok
@@ -809,6 +811,7 @@ export function FlowDetail({
                     flow={pane.flow}
                     variant={prefs.variant}
                     openKeys={opened}
+                    active={pane.key === activePane}
                     onOpenDoor={(key) => setOpen(openPane(openKeys, key))}
                     onClose={() => setOpen(closePane(openKeys, pane.key))}
                   />

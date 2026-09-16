@@ -13,6 +13,12 @@
 // reading of them, one the address can carry (`?open=`) so a path opened is a
 // path that can be sent to somebody.
 //
+// The same opening also draws the other flow, in a document of its own beside
+// this one (portolan.0028). The rail reads and the document draws: the reader
+// follows the sequence here, sees the picture there, and pointing at a row of
+// a followed flow lights that flow's own step in its own window - which is
+// why a row says whose flow it came from.
+//
 // Two guards, both of which say so on the row rather than silently stopping:
 // a flow already on the path is not opened again - a service that calls back
 // into its caller is a cycle, not an infinite story - and the path stops at
@@ -74,15 +80,12 @@ export interface JourneyOptions {
   flows: readonly Flow[];
   /** The flow on screen, by step id; computed once by the page. */
   continuations: ReadonlyMap<string, Continuation[]>;
-  /** The entry keys the reader has opened. */
-  opened: ReadonlySet<string>;
   /**
-   * Whether an opened continuation is unfolded into this rail. False when the
-   * reader opens it as a document of its own (portolan.0028): the door still
-   * says what is behind it and that it is open, and the flow is read in its
-   * own window rather than inside this one's list.
+   * The entry keys the reader has opened. A key is the chain of doors it was
+   * opened through, which is what the address carries and what names the
+   * document the flow is drawn in (portolan.0028).
    */
-  expand?: boolean;
+  opened: ReadonlySet<string>;
   maxDepth?: number;
 }
 
@@ -300,7 +303,6 @@ export function flowService(flow: Flow): string {
 class Reader {
   private readonly flows: readonly Flow[];
   private readonly opened: ReadonlySet<string>;
-  private readonly expand: boolean;
   private readonly maxDepth: number;
   private readonly bySlug: Map<string, Flow>;
   private readonly indexes = new Map<string, ReadonlyMap<string, Continuation[]>>();
@@ -309,7 +311,6 @@ class Reader {
   constructor(options: JourneyOptions) {
     this.flows = options.flows;
     this.opened = options.opened;
-    this.expand = options.expand ?? true;
     this.maxDepth = options.maxDepth ?? MAX_DEPTH;
     this.bySlug = new Map(options.flows.map((flow) => [flow.slug, flow]));
   }
@@ -361,7 +362,7 @@ class Reader {
       ...(repeats ? { repeats: true } : {}),
       ...(deepest ? { deepest: true } : {}),
     };
-    if (!open || !flow || !this.expand) return [entry];
+    if (!open || !flow) return [entry];
     const origin: JourneyOrigin = {
       slug: flow.slug,
       name: flow.name,

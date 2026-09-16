@@ -35,6 +35,7 @@ export function FlowPane({
   flow,
   variant,
   openKeys,
+  active,
   onOpenDoor,
   onClose,
 }: {
@@ -44,6 +45,8 @@ export function FlowPane({
   variant: Variant;
   /** Every door the reader has open, so this one's rows know their own. */
   openKeys: ReadonlySet<string>;
+  /** The step being pointed at is this flow's: the window says so. */
+  active: boolean;
   onOpenDoor: (key: string) => void;
   onClose: () => void;
 }) {
@@ -64,7 +67,6 @@ export function FlowPane({
       // The doors of this document are named from it, so what a reader opens
       // here is closed with it.
       opened: new Set([...openKeys].flatMap((key) => (key.startsWith(`${paneKey}/`) ? [key.slice(paneKey.length + 1)] : []))),
-      expand: false,
     });
   }, [flow, continuations, openKeys, paneKey]);
 
@@ -88,10 +90,27 @@ export function FlowPane({
     return () => window.clearTimeout(at);
   }, [flow.slug]);
 
+  // Pointing at a step of this flow — on the rail of the document that opened
+  // it, or anywhere else — brings its window into view. Several documents can
+  // stand open, and the one being talked about should not be the one scrolled
+  // past.
+  const frame = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (active) frame.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [active]);
+
   const Chevron = railOpen ? ChevronDown : ChevronRight;
   return (
-    <section className="flex min-h-0 flex-1 flex-col border-b border-line last:border-b-0">
-      <header className="mono flex shrink-0 items-center gap-2 border-b px-2 py-1 border-line bg-surface">
+    <section
+      ref={frame}
+      className={`flex min-h-0 flex-1 flex-col border-b last:border-b-0 ${active ? "border-accent/40" : "border-line"}`}
+      aria-current={active ? "true" : undefined}
+    >
+      <header
+        className={`mono flex shrink-0 items-center gap-2 border-b px-2 py-1 ${
+          active ? "border-accent/40 bg-accent/5" : "border-line bg-surface"
+        }`}
+      >
         <button
           type="button"
           onClick={() => setRailOpen(!railOpen)}

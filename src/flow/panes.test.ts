@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Flow } from "../catalog";
-import { closePane, doorKey, openPane, paneParent, paneSlug, panesOf, readPanes, writePanes } from "./panes";
+import { closePane, doorKey, openPane, paneOfRow, paneParent, paneSlug, panesOf, readPanes, writePanes } from "./panes";
 import type { Continuation } from "./continues";
 
 const flow = (slug: string): Flow => ({
@@ -62,5 +62,21 @@ describe("the documents themselves", () => {
   it("drop a key the catalog has no flow for, and one read through it", () => {
     const keys = ["s2>gone", "s2>gone/t1>ledger-authorize", "s3>auth-validate-session"];
     expect(panesOf(keys, flows).map((pane) => pane.flow.slug)).toEqual(["auth-validate-session"]);
+  });
+});
+
+describe("which document a row is read in", () => {
+  const keys = ["s2>auth-validate-session", "s2>auth-validate-session/t4>ledger-authorize"];
+
+  it("is the deepest open document its key runs through", () => {
+    expect(paneOfRow(keys, "s2>auth-validate-session/t4")).toBe("s2>auth-validate-session");
+    expect(paneOfRow(keys, "s2>auth-validate-session/t4>ledger-authorize/u1")).toBe(
+      "s2>auth-validate-session/t4>ledger-authorize",
+    );
+  });
+
+  it("is nothing for a step of the flow on the page", () => {
+    expect(paneOfRow(keys, "s2")).toBeNull();
+    expect(paneOfRow(keys, "s2>auth-validate-session")).toBeNull();
   });
 });
