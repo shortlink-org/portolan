@@ -2,11 +2,12 @@
 
 *Generated from the portolan catalog. Do not edit by hand.*
 
-- **Status:** accepted
+- **Status:** superseded
 - **Date:** 2026-09-16
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0026-the-whole-path-is-drawn-a-partly-opened-one-is-not.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0026-the-whole-path-is-drawn-a-partly-opened-one-is-not.md)
 - **Committed:** Victor Login, 2026-09-16 (`388a085`)
+- **Superseded by:** [portolan.0028](portolan.0028.md)
 
 ### Context and Problem Statement
 

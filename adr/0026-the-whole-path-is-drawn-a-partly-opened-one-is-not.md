@@ -1,6 +1,7 @@
 # portolan.0026 — The whole path is drawn; a partly opened one is not
 
-- **Status:** accepted
+- **Status:** superseded
+- **Superseded by:** portolan.0028
 - **Date:** 2026-09-16
 - **Scope:** portolan
 

@@ -12,7 +12,6 @@ import type {
 import { allDeployments, deploys, environmentOf } from "../catalog";
 import reserved from "./reserved.json";
 import { hasCrossContextSteps } from "../flow/cross-context";
-import { hasJourney } from "../flow/journey";
 
 /**
  * Words the LikeC4 grammar has taken. An aggregate called `order` is an
@@ -107,25 +106,14 @@ export const flowCrossViewId = (flow: Flow | string): string =>
   `${flowViewId(flow)}_cross`;
 
 /**
- * The whole path this flow opens onto, drawn: the flow's own steps and, under
- * the step that calls the next service, that service's, as far as the guards
- * allow (portolan.0024). Exists only for a flow that continues somewhere.
+ * Which of a flow's pictures is on the canvas. A flow followed from another is
+ * drawn by its own view, in a document of its own (portolan.0028), so there is
+ * no picture of an assembled path to choose here.
  */
-export const flowJourneyViewId = (flow: Flow | string): string =>
-  `${flowViewId(flow)}_journey`;
-
-/** Which of a flow's pictures is on the canvas. */
-export type FlowPicture = "flow" | "cross" | "journey";
+export type FlowPicture = "flow" | "cross";
 
 export function flowPictureViewId(flow: Flow | string, picture: FlowPicture): string {
-  switch (picture) {
-    case "cross":
-      return flowCrossViewId(flow);
-    case "journey":
-      return flowJourneyViewId(flow);
-    default:
-      return flowViewId(flow);
-  }
+  return picture === "cross" ? flowCrossViewId(flow) : flowViewId(flow);
 }
 
 /**
@@ -177,7 +165,6 @@ export function allViewIds(catalog: Catalog): string[] {
   for (const flow of catalog.flows) {
     out.push(flowViewId(flow));
     if (hasCrossContextSteps(flow)) out.push(flowCrossViewId(flow));
-    if (hasJourney(flow, catalog.flows)) out.push(flowJourneyViewId(flow));
   }
   for (const environment of environmentsOf(catalog)) {
     out.push(deploymentViewId(environment));

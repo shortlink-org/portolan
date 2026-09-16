@@ -43,7 +43,7 @@ import { continuationIndex } from "../flow/continues";
 import { useFlowPrefs } from "../flow/prefs";
 import { flowService, journeyFlow, journeyGroups, journeySteps, journeyReach } from "../flow/journey";
 import { FlowPane } from "../flow/FlowPane";
-import { closePane, openPane, panesOf, readPanes, writePanes } from "../flow/panes";
+import { closePane, openPane, paneDoor, panesOf, readPanes, writePanes } from "../flow/panes";
 import { buildOutline } from "../flow/outline";
 import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
@@ -549,12 +549,19 @@ export function FlowDetail({
     : null;
 
   const copyMermaid = () => {
-    // What is copied is what is on the rail: a path followed into the next
-    // service is the sequence the reader is reading, and a diagram that
-    // stopped at this service's edge would not be it.
+    // What is copied is every document that is open, as one sequence. A
+    // Mermaid diagram is laid out where it is read, by whoever renders it, so
+    // the path can be composed here even though a picture of it cannot
+    // (portolan.0028) - and a diagram that stopped at this service's edge
+    // would not be what the reader has on screen.
     const drawn =
-      opened.size > 0
-        ? journeyFlow({ flow, flows: catalog.flows, continuations, opened })
+      panes.length > 0
+        ? journeyFlow({
+            flow,
+            flows: catalog.flows,
+            continuations,
+            opened: new Set(panes.map((pane) => paneDoor(pane.key))),
+          })
         : flow;
     void toClipboard(flowMermaid(drawn, answers)).then((ok) => {
       say(

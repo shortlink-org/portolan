@@ -33,6 +33,12 @@ export function paneSlug(key: string): string {
   return last;
 }
 
+/** The door itself, without the documents it was opened through. */
+export function paneDoor(key: string): string {
+  const cut = key.lastIndexOf("/");
+  return cut < 0 ? key : key.slice(cut + 1);
+}
+
 /** The pane a door was opened from, or null when it was opened from the page. */
 export function paneParent(key: string): string | null {
   const cut = key.lastIndexOf("/");

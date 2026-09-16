@@ -21,7 +21,7 @@
 
 import type { Alt, Flow, FlowNode, Parallel, Participant, Step } from "../catalog.ts";
 import type { Chapter, ChapterGroup } from "./chapters.ts";
-import { buildChapters, groupRows, railRows } from "./chapters.ts";
+import { railRows } from "./chapters.ts";
 import { continuationIndex, openingStep } from "./continues.ts";
 import type { Continuation } from "./continues.ts";
 import { buildOutline } from "./outline.ts";
@@ -404,37 +404,4 @@ class Reader {
 /** The rows of a group as the rail draws them, doors included. */
 export function journeyRailRows(group: JourneyGroup): JourneyRow[] {
   return railRows(group);
-}
-
-/** The rail's groups for a flow, unfiltered: what a path is built on. */
-function groupsOf(flow: Flow): ChapterGroup[] {
-  const rows = buildOutline(flow, { hidden: new Set<string>(), crossOnly: false, path: null, statuses: null });
-  return groupRows(rows, buildChapters(flow));
-}
-
-/** Whether this flow continues anywhere at all: what makes a path worth drawing. */
-export function hasJourney(flow: Flow, flows: readonly Flow[]): boolean {
-  for (const list of continuationIndex(flow, flows).values()) {
-    if (list.length > 0) return true;
-  }
-  return false;
-}
-
-/**
- * The whole path as one flow: every continuation the guards allow, followed.
- *
- * Deterministic, which is what lets a picture be generated for it: the
- * generator and the page compose the same thing from the same catalog, so
- * the view on the canvas and the rows on the rail are the same reading.
- */
-export function fullJourney(flow: Flow, flows: readonly Flow[], maxDepth?: number): Flow {
-  const continuations = continuationIndex(flow, flows);
-  const options: JourneyOptions = {
-    flow,
-    flows,
-    continuations,
-    opened: new Set<string>(),
-    ...(maxDepth === undefined ? {} : { maxDepth }),
-  };
-  return journeyFlow({ ...options, opened: openEverything(groupsOf(flow), options) });
 }

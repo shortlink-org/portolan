@@ -16,7 +16,6 @@ import reserved from "../src/likec4/reserved.json" with { type: "json" };
 import { catalogProfiles } from "../src/catalog-profile.ts";
 import { allDeployments, deploys, environmentOf } from "../src/catalog-model.ts";
 import { isCrossContext } from "../src/flow/cross-context.ts";
-import { fullJourney, hasJourney } from "../src/flow/journey.ts";
 
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
@@ -48,7 +47,6 @@ const storeRefs = new Map((catalog.stores ?? []).map((store) => [
 const fqn = (id) => storeRefs.get(id) ?? id.split(".").map(safeId).join(".");
 const flowViewId = (flow) => `flow_${safeId(flow.slug)}`;
 const flowCrossViewId = (flow) => `${flowViewId(flow)}_cross`;
-const flowJourneyViewId = (flow) => `${flowViewId(flow)}_journey`;
 const contextViewId = (c) => `ctx_${safeId(c.id)}`;
 const serviceViewId = (s) => `svc_${safeId(s.id)}`;
 const serviceInsideViewId = (s) => `${serviceViewId(s)}_inside`;
@@ -1100,27 +1098,6 @@ for (const flow of catalog.flows) {
   views.push(...body);
   views.push("  }");
   views.push("");
-
-  // The whole path this flow opens onto, when it opens onto one: its own
-  // steps and, under the step that calls the next service, that service's
-  // (portolan.0024). Generated because the fully opened path is one answer,
-  // the same one the page composes, and a picture can only be laid out for
-  // something decided beforehand.
-  if (hasJourney(flow, catalog.flows)) {
-    const path = fullJourney(flow, catalog.flows);
-    const pathReplied = new Set();
-    walkFlowSteps(path.steps, (step) => {
-      if (step.kind === "response" && step.replyTo) pathReplied.add(step.replyTo);
-    });
-    views.push(`  dynamic view ${flowJourneyViewId(flow)} {`);
-    views.push(`    title ${q(`${flow.name} — the whole path`)}`);
-    views.push(`    description ${q(flow.summary)}`);
-    const pathBody = [];
-    emitSteps(path.steps, pathBody, "    ", pathReplied);
-    views.push(...pathBody);
-    views.push("  }");
-    views.push("");
-  }
 
   const cross = crossContextOnly(flow.steps, contextOf);
   if (cross.length === 0) continue;

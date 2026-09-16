@@ -44,4 +44,5 @@
 | [portolan.0023](adr/portolan.0023.md) | The rules the code checks are held against the rules the document promises | accepted | 2026-09-16 |
 | [portolan.0024](adr/portolan.0024.md) | A path across services is composed in the reading, not in the catalog | accepted | 2026-09-16 |
 | [portolan.0025](adr/portolan.0025.md) | An endpoint flow names the method it answers, and that is what pairs a call with its handler | accepted | 2026-09-16 |
-| [portolan.0026](adr/portolan.0026.md) | The whole path is drawn; a partly opened one is not | accepted | 2026-09-16 |
+| [portolan.0026](adr/portolan.0026.md) | The whole path is drawn; a partly opened one is not | superseded | 2026-09-16 |
+| [portolan.0028](adr/portolan.0028.md) | A followed flow opens as a document of its own | accepted | 2026-09-16 |
