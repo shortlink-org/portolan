@@ -26,6 +26,12 @@ paths:
       description: "Puts a product in the cart.\n\nThe quantity comes from the request and is clamped to what is in stock."
       tags:
         - checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreCartItemRequest"
       parameters:
         - name: id
           in: path
@@ -74,6 +80,12 @@ paths:
       summary: Places the order for the cart.
       tags:
         - checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnepageStoreOrderRequest"
       responses:
         default:
           description: Response schema and status are not available from static Laravel route analysis.
@@ -144,5 +156,50 @@ paths:
       x-portolan-inferred: true
       x-portolan-source: "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:10"
       x-portolan-route: shop.customer.session.destroy
+components:
+  schemas:
+    StoreCartItemRequest:
+      type: object
+      required:
+        - sku
+        - quantity
+        - currency
+      properties:
+        sku:
+          type: string
+          maxLength: 64
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          enum:
+            - USD
+            - EUR
+        gift_message:
+          type: string
+          maxLength: 255
+        options:
+          type: array
+          items:
+            type: string
+            maxLength: 32
+    OnepageStoreOrderRequest:
+      type: object
+      required:
+        - payment_method
+        - email
+      properties:
+        payment_method:
+          enum:
+            - card
+            - cash
+        email:
+          type: string
+          format: email
+          maxLength: 120
 x-portolan-inferred: true
 x-portolan-generator: extract-laravel

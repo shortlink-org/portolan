@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use crate::catalog::{
     Aggregate, Catalog, Channel, ChannelMessage, Column, Context, Event, EventConsumer, EventVersion, Flow, FlowNode, FlowTrigger, ForeignKey, Handoff,
-    HttpRoute, Participant, Persists, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
+    HttpRoute, Participant, Persists, RpcMessage, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
 };
 use crate::events::{self, Events, Kind, Listener};
 use crate::ids::{aggregate_id, block_id, event_id, sentence, service_id, short, slug, title};
@@ -23,6 +23,7 @@ use crate::layout::{self, Module};
 use crate::models;
 use crate::openapi::{self, Op};
 use crate::protocol::{Builder, File, Input, Options, Response};
+use crate::requests;
 use crate::routes::{self, Action, Endpoint};
 use crate::source::{Base, ClassInfo, MethodInfo, Tree, summary};
 use crate::stores;
@@ -232,6 +233,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     let mut ops: Vec<Op> = Vec::new();
     let mut missing_controllers: BTreeSet<String> = BTreeSet::new();
     let mut provides: BTreeMap<usize, Vec<RpcMethod>> = BTreeMap::new();
+    // What each route's action checks its request against, one shape per
+    // module however many routes share it: a form request used by three
+    // methods is one message the three of them name.
+    let mut shapes: BTreeMap<usize, Vec<RpcMessage>> = BTreeMap::new();
+    let mut unread_form_requests: BTreeSet<String> = BTreeSet::new();
     let mut flows: Vec<Flow> = Vec::new();
     let mut flow_slugs: BTreeSet<String> = BTreeSet::new();
     let mut ordered: Vec<&Endpoint> = endpoints.iter().collect();
@@ -277,6 +283,23 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             let s = summary(&doc);
             if s.is_empty() { sentence(&slug(&base_name)) } else { s }
         };
+        // What the caller has to send, as the action itself checks it.
+        let request = controller.as_ref().and_then(|(class, method)| {
+            let handler = tree.class(class).and_then(|c| find_method(&tree, c, method))?;
+            let shape = requests::of_action(&tree, class, method, handler.1);
+            if shape.is_none()
+                && let Some(form) = requests::form_request_of(&tree, handler.1)
+                && unread_form_requests.insert(form.to_string())
+            {
+                b.warn(
+                    &rel(&ep.file),
+                    format!(
+                        "{form} is the request of {class}::{method}, and its rules() states no array this can read; the operation carries no request shape"
+                    ),
+                );
+            }
+            shape
+        });
         ops.push(Op {
             operation_id: op_id.clone(),
             verb: ep.verb.to_ascii_lowercase(),
@@ -285,6 +308,8 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             description: if doc.lines().count() > 1 { doc.clone() } else { String::new() },
             tag: m.slug.clone(),
             route_name: ep.name.clone(),
+            // A route answering every verb has no operation to hang a shape on.
+            request: if ep.verb == "ANY" { None } else { request.clone() },
             source: format!("{}:{}", rel(&ep.file), ep.line),
         });
         if ep.verb == "ANY" {
@@ -292,9 +317,20 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             // and no flow, because there is no one call to draw.
             continue;
         }
+        let request_name = request.as_ref().map(|r| r.name.clone());
+        if let Some(shape) = request {
+            let messages = shapes.entry(ep.module).or_default();
+            if !messages.iter().any(|m| m.name == shape.name) {
+                messages.push(RpcMessage {
+                    name: shape.name,
+                    fields: shape.fields,
+                });
+            }
+        }
         provides.entry(ep.module).or_default().push(RpcMethod {
             name: op_id.clone(),
             doc: summary_.clone(),
+            request: request_name.clone(),
             http: HttpRoute {
                 method: ep.verb.clone(),
                 path: ep.path.clone(),
@@ -351,9 +387,12 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         .into_iter()
         .map(|(i, mut methods)| {
             methods.sort_by(|a, c| a.name.cmp(&c.name));
+            let mut messages = shapes.remove(&i).unwrap_or_default();
+            messages.sort_by(|a, c| a.name.cmp(&c.name));
             RpcService {
                 id: format!("{svc_id}.{}", modules[i].slug),
                 methods,
+                messages,
                 source: openapi_source.clone(),
             }
         })

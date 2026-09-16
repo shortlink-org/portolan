@@ -112,11 +112,54 @@ operation per route named after the route name (`shop.checkout.cart.index` →
 name, or the verb and path when there is neither; the doc is the controller
 method's docblock. They also make an `openapi.inferred.yaml` OpenAPI 3.1
 document, partial on purpose and marked `x-portolan-inferred` on every
-operation: the route file proves the verb, the path, its parameters and which
-method answers, while request and response schemas are not in what this
-reads and stay absent. A route answering every verb is a path item with no
-operation. A checked-in document remains `extract-openapi`'s richer source of
-truth. A controller the routes name that is not in the tree is reported.
+operation: the route file proves the verb, the path, its parameters, which
+method answers and what that method validates its request against, while the
+response schema is not in what this reads and stays absent. A route answering
+every verb is a path item with no operation. A checked-in document remains
+`extract-openapi`'s richer source of truth. A controller the routes name that
+is not in the tree is reported.
+
+**What a request must satisfy.** An action says it in one of the ways Laravel
+takes: a form request in its signature, whose `rules()` is the shape; or the
+rules it validates with in the body - `$request->validate([...])`,
+`request()->validate([...])`, `Validator::make($data, [...])`,
+`$this->validate($request, [...])`, `validator($data, [...])`. Either way the
+fields become the operation's request message on the interface, named after
+the form request or, for rules in a body, after the controller and method
+(`CartController::store` → `CartStoreRequest`); one message however many
+routes share it. A method that validates nothing claims no shape, which is not
+the same as taking nothing, and a form request whose `rules()` states no array
+this can read is reported.
+
+The rules arrive in the catalog's one vocabulary (portolan.0015):
+`required` is the field's flag and `nullable` and `sometimes` leave it off,
+`present` is `required`; `regex` is `pattern` without its delimiters; `in`,
+`not_in` and `Rule::in([...])` are one closed set; `email`, `url`, `uuid`,
+`ip` and `json` are a `format`, in the spelling a document uses (`url` → `uri`);
+`starts_with` and `ends_with` are `prefix` and `suffix`; `distinct` is
+`unique`. What `min`, `max`, `size` and `between` mean is decided the way
+Laravel decides it, by the type the rules state: on a `string` they are
+`min_len`, `max_len` and `len`, on an `integer` or `numeric` they are `gte`,
+`lte` and `const`, on an `array` they are `min_items` and `max_items` - and a
+rule set that states no type keeps Laravel's own word, `max = 255`, rather
+than being given a meaning the source did not state. A rule the vocabulary has
+no word for is kept as Laravel wrote it: `confirmed`, `required_if = status,
+paid`, `unique = users, email`.
+
+A key ending in `.*` is about what the list holds: its rules land on the list
+under the `items.` prefix, and what the items say gives the list its type
+(`options.* => string` makes `options` a `string[]`). A deeper key,
+`lines.*.sku`, is a field of its own, named as the rules array names it.
+
+The same shape is written into `openapi.inferred.yaml`, in JSON Schema's
+words, which is the other half of that one vocabulary: a body for the verbs
+that have one, query parameters for the verbs that do not, and one
+`components.schemas` entry per message. `max_len` is `maxLength` there, `in`
+is `enum`, `gte` is `minimum`, and reading the document back with
+`extract-openapi` gives the rules it started as - a closed set excepted, which
+OpenAPI keeps in the type where the catalog has always kept an enum. A rule
+JSON Schema has no keyword for is kept beside the property under
+`x-portolan-rules` rather than dropped.
 
 **Flow.** One per endpoint: the call in, then every event the handler
 publishes - itself, or through the classes it holds, `$this->orders->create()`
@@ -170,8 +213,10 @@ its own from the queue in through what `handle()` does. That worker flow has a
 
 ## What it does not read
 
-Lifecycles; form requests and API resources as schemas; `$hidden`,
-accessors, scopes; broadcasting (`ShouldBroadcast`), mail and notifications,
+Lifecycles; API resources as response schemas; rules a form request builds
+rather than states - a `rules()` that returns a variable, or one whose array
+is assembled in a loop; `$hidden`, accessors, scopes; broadcasting
+(`ShouldBroadcast`), mail and notifications,
 which go through the queue but are not jobs; `Cache::` and `Redis::`, which
 are a keyspace and not a table; middleware and authorization. Each is a next
 step, not an oversight.

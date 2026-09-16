@@ -77,7 +77,7 @@ pub fn fields_of(class: &ClassInfo) -> Vec<Field> {
             out.push(Field {
                 name,
                 type_,
-                doc: String::new(),
+                ..Field::default()
             });
         }
     };

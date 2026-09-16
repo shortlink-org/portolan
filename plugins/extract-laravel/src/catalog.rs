@@ -140,6 +140,10 @@ pub struct ForeignKey {
 pub struct RpcService {
     pub id: String,
     pub methods: Vec<RpcMethod>,
+    /// The shapes the methods name: what each route's action validates its
+    /// request against, when it validates it somewhere this can read.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub messages: Vec<RpcMessage>,
     pub source: String,
 }
 
@@ -147,7 +151,18 @@ pub struct RpcService {
 pub struct RpcMethod {
     pub name: String,
     pub doc: String,
+    /// The request shape, by the name it carries in `RpcService.messages`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request: Option<String>,
     pub http: HttpRoute,
+}
+
+/// One named shape of an interface: here, a form request or the rules a
+/// controller method validates with.
+#[derive(Debug, Serialize)]
+pub struct RpcMessage {
+    pub name: String,
+    pub fields: Vec<Field>,
 }
 
 #[derive(Debug, Serialize)]
@@ -205,12 +220,28 @@ pub struct Block {
     pub fields: Vec<Field>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct Field {
     pub name: String,
     #[serde(rename = "type")]
     pub type_: String,
     pub doc: String,
+    /// The source says the value must be sent: a `required` in the rules.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub required: bool,
+    /// What the source says the value must satisfy, in the order it said it.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub rules: Vec<Rule>,
+}
+
+/// One constraint on a field's value, in the catalog's own vocabulary
+/// (portolan.0015), so a Laravel `max` on a string and a JSON Schema
+/// `maxLength` are one rule.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Rule {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

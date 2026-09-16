@@ -20,6 +20,11 @@ fn reads_the_fixture_into_the_golden_fragment() {
 #[test]
 fn reads_the_migrations_into_the_golden_store_fragment() {
     let got = common::stores();
+    if std::env::var_os("UPDATE_GOLDEN").is_some() {
+        let path = format!("{}/testdata/shop/expected-stores.json", env!("CARGO_MANIFEST_DIR"));
+        std::fs::write(path, format!("{}\n", serde_json::to_string_pretty(&got).unwrap())).unwrap();
+        return;
+    }
     let want: serde_json::Value = serde_json::from_str(include_str!("../testdata/shop/expected-stores.json")).expect("the golden is JSON");
     assert_eq!(got, want, "the store fragment differs from testdata/shop/expected-stores.json");
 }
@@ -27,6 +32,11 @@ fn reads_the_migrations_into_the_golden_store_fragment() {
 #[test]
 fn writes_the_inferred_openapi_document_it_promised() {
     let got = common::openapi();
+    if std::env::var_os("UPDATE_GOLDEN").is_some() {
+        let path = format!("{}/testdata/shop/openapi.inferred.yaml", env!("CARGO_MANIFEST_DIR"));
+        std::fs::write(path, &got).unwrap();
+        return;
+    }
     let want = include_str!("../testdata/shop/openapi.inferred.yaml");
     assert_eq!(got, want, "the document differs from testdata/shop/openapi.inferred.yaml");
 }

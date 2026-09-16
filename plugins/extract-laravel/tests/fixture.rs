@@ -130,6 +130,59 @@ fn infers_the_http_contract_from_the_route_files() {
 }
 
 #[test]
+fn reads_what_a_route_validates_its_request_against() {
+    let fragment = common::fragment();
+    let checkout = &fragment["contexts"][0]["services"][0]["provides"][0];
+    // A form request in the action's signature, and the rules a body
+    // validates with: one request message either way, named after the form
+    // request when there is one and after the action when there is not.
+    assert_eq!(checkout["methods"][2]["request"], "StoreCartItemRequest");
+    assert_eq!(checkout["methods"][4]["request"], "OnepageStoreOrderRequest");
+    assert!(
+        checkout["methods"][0].get("request").is_none(),
+        "a route that validates nothing claims no shape"
+    );
+
+    let names: Vec<&str> = checkout["messages"].as_array().unwrap().iter().map(|m| m["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["OnepageStoreOrderRequest", "StoreCartItemRequest"]);
+
+    let fields = checkout["messages"][1]["fields"].as_array().unwrap();
+    let spelled: Vec<String> = fields
+        .iter()
+        .map(|f| {
+            let rules: Vec<String> = f["rules"]
+                .as_array()
+                .map(|rs| {
+                    rs.iter()
+                        .map(|r| match r["value"].as_str() {
+                            Some(value) => format!("{}={value}", r["name"].as_str().unwrap()),
+                            None => r["name"].as_str().unwrap().to_string(),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            format!(
+                "{}: {}{} {}",
+                f["name"].as_str().unwrap(),
+                f["type"].as_str().unwrap(),
+                if f["required"] == true { " required" } else { "" },
+                rules.join(" ")
+            )
+        })
+        .collect();
+    assert_eq!(
+        spelled,
+        [
+            "sku: string required max_len=64",
+            "quantity: integer required gte=1 lte=99",
+            "currency: string required len=3 in=USD, EUR",
+            "gift_message: string max_len=255",
+            "options: string[] items.max_len=32",
+        ]
+    );
+}
+
+#[test]
 fn follows_a_request_into_what_it_publishes_and_a_listener_out_of_what_it_reacts_to() {
     let fragment = common::fragment();
     let flows = fragment["flows"].as_array().unwrap();

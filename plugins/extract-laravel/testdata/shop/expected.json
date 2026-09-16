@@ -36,6 +36,7 @@
                 {
                   "name": "shop_checkout_cart_store",
                   "doc": "Puts a product in the cart.",
+                  "request": "StoreCartItemRequest",
                   "http": {
                     "method": "POST",
                     "path": "/checkout/cart/add/{id}"
@@ -52,6 +53,7 @@
                 {
                   "name": "shop_checkout_onepage_orders_store",
                   "doc": "Places the order for the cart.",
+                  "request": "OnepageStoreOrderRequest",
                   "http": {
                     "method": "POST",
                     "path": "/checkout/onepage/orders"
@@ -64,6 +66,112 @@
                     "method": "GET",
                     "path": "/checkout/onepage/success"
                   }
+                }
+              ],
+              "messages": [
+                {
+                  "name": "OnepageStoreOrderRequest",
+                  "fields": [
+                    {
+                      "name": "payment_method",
+                      "type": "mixed",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "in",
+                          "value": "card, cash"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "email",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "email"
+                        },
+                        {
+                          "name": "max_len",
+                          "value": "120"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "StoreCartItemRequest",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "64"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "integer",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "1"
+                        },
+                        {
+                          "name": "lte",
+                          "value": "99"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "len",
+                          "value": "3"
+                        },
+                        {
+                          "name": "in",
+                          "value": "USD, EUR"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "gift_message",
+                      "type": "string",
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "max_len",
+                          "value": "255"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "options",
+                      "type": "string[]",
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "items.max_len",
+                          "value": "32"
+                        }
+                      ]
+                    }
+                  ]
                 }
               ],
               "source": "testdata/shop/portolan/openapi.inferred.yaml"

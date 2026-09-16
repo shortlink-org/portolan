@@ -677,3 +677,48 @@ func TestSourcesAreSpelledFromTheRepository(t *testing.T) {
 		}
 	}
 }
+
+// The document extract-laravel infers from a Laravel application is read back
+// into the rules it was written from: `max:64` in a rules array became
+// `maxLength: 64` there and is `max_len 64` again here. One vocabulary
+// (portolan.0015) means the two extractors say the same thing about the same
+// request, whichever of them read it.
+func TestLaravelInferredDocumentRoundTrips(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("..", "extract-laravel", "testdata", "shop", "openapi.inferred.yaml"))
+	if err != nil {
+		t.Skipf("the laravel fixture is not in this tree: %v", err)
+	}
+	doc := testDocument(t, string(source))
+	message := child(doc.root, "components", "schemas", "StoreCartItemRequest")
+	if message == nil {
+		t.Fatal("the inferred document carries no StoreCartItemRequest schema")
+	}
+	fields := map[string]catalog.Field{}
+	for _, field := range schemaFields(doc, message) {
+		fields[field.Name] = field
+	}
+
+	want := map[string][]catalog.FieldRule{
+		"sku":          {{Name: "max_len", Value: "64"}},
+		"quantity":     {{Name: "gte", Value: "1"}, {Name: "lte", Value: "99"}},
+		"currency":     {{Name: "min_len", Value: "3"}, {Name: "max_len", Value: "3"}},
+		"gift_message": {{Name: "max_len", Value: "255"}},
+		"options":      {{Name: "items.max_len", Value: "32"}},
+	}
+	for name, rules := range want {
+		if got := fields[name].Rules; !reflect.DeepEqual(got, rules) {
+			t.Errorf("%s rules:\n got %+v\nwant %+v", name, got, rules)
+		}
+	}
+	if !fields["sku"].Required || fields["gift_message"].Required {
+		t.Errorf("required: sku=%v gift_message=%v", fields["sku"].Required, fields["gift_message"].Required)
+	}
+	// The one rule that does not come back as a rule: a closed set stays in
+	// the type on this side, where the catalog has always kept an enum.
+	if got := fields["currency"].Type; got != "string enum(USD | EUR)" {
+		t.Errorf("currency type: got %q, want the enum in the type", got)
+	}
+	if got := fields["options"].Type; got != "[]string" {
+		t.Errorf("options type: got %q, want a list of what the items say", got)
+	}
+}

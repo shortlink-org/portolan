@@ -25,6 +25,11 @@ class OnepageController extends Controller
      */
     public function storeOrder()
     {
+        request()->validate([
+            'payment_method' => 'required|in:card,cash',
+            'email' => 'required|email|max:120',
+        ]);
+
         $data = (new OrderResource(Cart::getCart()))->jsonSerialize();
 
         $order = $this->orderRepository->create($data);

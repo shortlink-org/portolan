@@ -3,8 +3,8 @@
 namespace Acme\Checkout\Http\Controllers;
 
 use Acme\Checkout\Facades\Cart;
+use Acme\Checkout\Http\Requests\StoreCartItemRequest;
 use Acme\Checkout\Jobs\SendCartReminder;
-use Illuminate\Http\Request;
 
 class CartController extends Controller
 {
@@ -21,7 +21,7 @@ class CartController extends Controller
      *
      * The quantity comes from the request and is clamped to what is in stock.
      */
-    public function store(Request $request, int $id)
+    public function store(StoreCartItemRequest $request, int $id)
     {
         $cart = Cart::addProduct($id, $request->all());
 

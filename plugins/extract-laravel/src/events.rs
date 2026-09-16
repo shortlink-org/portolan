@@ -166,7 +166,7 @@ fn payload_of(class: &ClassInfo) -> Vec<Field> {
             out.push(Field {
                 name: p.name.clone(),
                 type_: if p.hint.is_empty() { "mixed".into() } else { p.hint.clone() },
-                doc: String::new(),
+                ..Field::default()
             });
         }
     }
@@ -176,6 +176,7 @@ fn payload_of(class: &ClassInfo) -> Vec<Field> {
                 name: p.name.clone(),
                 type_: if p.hint.is_empty() { "mixed".into() } else { p.hint.clone() },
                 doc: summary(&p.doc),
+                ..Field::default()
             });
         }
     }
