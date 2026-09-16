@@ -1,4 +1,4 @@
-import type { Step } from "../catalog";
+import type { Step } from "../catalog.ts";
 
 /** The message a reader sees everywhere a flow step is listed or drawn. */
 export function stepLabel(step: Step): string {

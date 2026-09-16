@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { catalog } from "../testing/estate";
 import { hasCrossContextSteps } from "../flow/cross-context";
+import { hasJourney } from "../flow/journey";
 // The generated sources are generated from the estate the app ships, so the
 // block that reads them off disk is held against that one and not against the
 // frozen fixture the id rules are checked with.
@@ -103,14 +104,17 @@ describe("view ids", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("covers every full flow view and only meaningful crossing views, alongside the C4 and deployment views", () => {
+  it("covers every full flow view, and only the crossing and path views that mean something, alongside the C4 and deployment views", () => {
     const ids = allViewIds(catalog);
     const services = catalog.contexts.flatMap((c) => c.services);
     expect(ids).toHaveLength(
       2 +
         catalog.contexts.length +
         services.length * 2 +
-        catalog.flows.length + catalog.flows.filter(hasCrossContextSteps).length +
+        catalog.flows.length +
+        catalog.flows.filter(hasCrossContextSteps).length +
+        // A flow that continues somewhere has its whole path drawn too.
+        catalog.flows.filter((flow) => hasJourney(flow, catalog.flows)).length +
         environmentsOf(catalog).length +
         deployedServices(catalog).length,
     );

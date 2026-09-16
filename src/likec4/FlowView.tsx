@@ -6,7 +6,8 @@ import { walkSteps } from "../catalog";
 import { InteractiveView } from "./InteractiveView";
 import { CanvasBridge } from "./CanvasBridge";
 import type { CanvasHandle } from "./CanvasBridge";
-import { flowCrossViewId, flowViewId, fqn, participantFqn } from "./ids";
+import { flowPictureViewId, fqn, participantFqn } from "./ids";
+import type { FlowPicture } from "./ids";
 import { catalogIdOf } from "./mapping";
 import {
   flowPairing,
@@ -40,7 +41,8 @@ const NOTHING: readonly string[] = [];
  */
 export function FlowView({
   flow,
-  crossOnly,
+  picture,
+  drawn,
   variant,
   litSteps = [],
   pathSteps = null,
@@ -56,7 +58,13 @@ export function FlowView({
    * edges (portolan.0019). Everything else on the canvas is unchanged.
    */
   draft?: { model: LikeC4Model.Layouted; pairing: EdgeStepPairing } | undefined;
-  crossOnly: boolean;
+  /** Which of the flow's pictures is on the canvas. */
+  picture: FlowPicture;
+  /**
+   * The flow the picture was generated from: the flow itself, or the composed
+   * path when the reader has the whole of it open (portolan.0024).
+   */
+  drawn?: Flow | undefined;
   variant: "diagram" | "sequence";
   /** Catalog step ids to mark; the rest of the sequence is dimmed. */
   litSteps?: readonly string[];
@@ -71,8 +79,8 @@ export function FlowView({
   /** The step playback is on, in catalog terms, or null when it is stopped. */
   onWalkthroughStep: (stepId: string | null) => void;
 }) {
-  const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
-  const pairing = draft?.pairing ?? flowPairing(flow, crossOnly);
+  const viewId = flowPictureViewId(flow, picture);
+  const pairing = draft?.pairing ?? flowPairing(flow, picture, drawn ?? flow);
 
   const selection = useSelectionStore((s) => s.selection);
   const source = useSelectionStore((s) => s.source);

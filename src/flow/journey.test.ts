@@ -213,3 +213,51 @@ describe("the path as one flow", () => {
     expect([flow.slug, flow.name, flow.owner]).toEqual([cart.slug, cart.name, cart.owner]);
   });
 });
+
+// A flow that answers a call opens with that call seen from the other side.
+describe("a flow that answers the call", () => {
+  const served = flow("pricing-quote", "shop.pricing", [
+    step("q1", "shop.pricing", { from: "client", ref: "pricing.v1/Quote" }),
+    step("q2", "pricing-pg", { from: "shop.pricing" }),
+    // What it answers its caller with: the lane that has to be renamed.
+    step("q3", "client", { from: "shop.pricing", kind: "response" }),
+  ]);
+  const caller = flow("cart-price", "shop.cart", [
+    step("p1", "shop.cart"),
+    step("p2", "shop.pricing", { from: "shop.cart", ref: "pricing.v1/Quote" }),
+  ]);
+  const two = [caller, { ...served, participants: [
+    { id: "client", kind: "actor" as const, context: "" },
+    { id: "shop.pricing", kind: "service" as const, context: "shop" },
+    { id: "pricing-pg", kind: "store" as const, context: "shop" },
+  ] }];
+  const door = "p2>pricing-quote";
+
+  const open = () =>
+    journeyGroups(
+      groupRows(buildOutline(caller, { hidden: new Set(), crossOnly: false, path: null, statuses: null }), buildChapters(caller)),
+      { flow: caller, flows: two, continuations: continuationIndex(caller, two), opened: new Set([door]) },
+    );
+
+  it("does not read the call twice: the door is that hop, and what follows is what the callee did", () => {
+    expect(lines(open())).toEqual(["p1", "p2", "  [open pricing-quote]", "  q2 (pricing-quote)", "  q3 (pricing-quote)"]);
+  });
+
+  it("counts what is behind the door the same way", () => {
+    const entry = open().flatMap((group) => group.rows).find((row) => row.type === "entered")!;
+    expect(entry).toMatchObject({ steps: 2, service: "shop.pricing" });
+  });
+
+  it("names the callee's caller lane after who is actually calling", () => {
+    const composed = journeyFlow({ flow: caller, flows: two, continuations: continuationIndex(caller, two), opened: new Set([door]) });
+    const answered = composed.steps.find((node) => node.id === `${door}/q3`);
+    expect(answered && answered.type === "step" && answered.to).toBe("shop.cart");
+    // The end user's lane is not borrowed for a service's call.
+    expect(composed.participants.map((p) => p.id)).toEqual(["client", "shop.cart", "shop.pricing", "pricing-pg"]);
+  });
+
+  it("composes the same path into the flow a picture is drawn from", () => {
+    const composed = journeyFlow({ flow: caller, flows: two, continuations: continuationIndex(caller, two), opened: new Set([door]) });
+    expect(composed.steps.map((node) => node.id)).toEqual(["p1", "p2", `${door}/q2`, `${door}/q3`]);
+  });
+});

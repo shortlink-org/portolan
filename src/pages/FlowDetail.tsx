@@ -41,12 +41,13 @@ import { FlowToolbar } from "../flow/FlowToolbar";
 import { buildChapters, groupRows } from "../flow/chapters";
 import { continuationIndex } from "../flow/continues";
 import { useFlowPrefs } from "../flow/prefs";
-import { journeyFlow, journeyGroups, journeySteps, openEverything, journeyReach } from "../flow/journey";
+import { fullJourney, hasJourney, journeyFlow, journeyGroups, journeySteps, openEverything, journeyReach } from "../flow/journey";
 import { buildOutline } from "../flow/outline";
 import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
 import type { CanvasHandle } from "../likec4/CanvasBridge";
-import { flowCrossViewId, flowViewId } from "../likec4/ids";
+import { flowPictureViewId } from "../likec4/ids";
+import type { FlowPicture } from "../likec4/ids";
 import { flowPairing } from "../likec4/view-index";
 import { flowStepId, parseFlowStepId } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
@@ -329,6 +330,16 @@ export function FlowDetail({
     [opened, setOpened],
   );
 
+  /**
+   * The reader has the whole path open, which is the one shape of it a picture
+   * can be generated for: `?open=*` is the same answer `openEverything` gives,
+   * and the view was laid out from it.
+   */
+  const wholePath = useMemo(
+    () => openParam === "*" && flow !== undefined && hasJourney(flow, catalog.flows),
+    [openParam, flow],
+  );
+
   /** The rail, with every opened continuation followed into it. */
   const journey = useMemo(
     () =>
@@ -538,7 +549,15 @@ export function FlowDetail({
   if (!flow) return <NotFound kind="Flow" id={slug} />;
 
   const contexts = flowContexts(flow);
-  const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
+  /**
+   * Which picture the canvas draws. The whole path has a view of its own,
+   * generated for the one answer "follow everything" gives (portolan.0024);
+   * a path the reader opened part of has no picture, and the canvas keeps
+   * drawing the flow the page is about rather than pretending otherwise.
+   */
+  const picture: FlowPicture = crossOnly ? "cross" : wholePath ? "journey" : "flow";
+  const drawn = picture === "journey" ? fullJourney(flow, catalog.flows) : flow;
+  const viewId = flowPictureViewId(flow, picture);
   const hiddenCount = crossOnly ? hidden.size : 0;
   const flowSource = flow.source
     ? sourceLocation(flow.source, flowRepoService(catalog, flow), allRepos(catalog))
@@ -593,7 +612,7 @@ export function FlowDetail({
    */
   const pairingBroken =
     allSteps.length - hiddenCount > 0 &&
-    (branchCanvas ? branchCanvas.pairing : flowPairing(flow, crossOnly)).edgeOf.size === 0;
+    (branchCanvas ? branchCanvas.pairing : flowPairing(flow, crossOnly ? "cross" : "flow")).edgeOf.size === 0;
 
   const cycle = (delta: number): void => {
     if (matches.length === 0) return;
@@ -742,7 +761,8 @@ export function FlowDetail({
               <FlowView
                 draft={branchCanvas ? { model: branchCanvas.model, pairing: branchCanvas.pairing } : undefined}
                 flow={flow}
-                crossOnly={crossOnly}
+                picture={picture}
+                drawn={drawn}
                 variant={prefs.variant}
                 litSteps={
                   litSteps.length > 0

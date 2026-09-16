@@ -19,13 +19,13 @@
 // `MAX_DEPTH` flows deep, because a reader who has gone four services down is
 // reading a different question from the one they opened.
 
-import type { Alt, Flow, FlowNode, Parallel, Participant, Step } from "../catalog";
-import type { Chapter, ChapterGroup } from "./chapters";
-import { railRows } from "./chapters";
-import { continuationIndex, openingStep } from "./continues";
-import type { Continuation } from "./continues";
-import { buildOutline } from "./outline";
-import type { OutlineFrame, OutlineRow, OutlineStep } from "./outline";
+import type { Alt, Flow, FlowNode, Parallel, Participant, Step } from "../catalog.ts";
+import type { Chapter, ChapterGroup } from "./chapters.ts";
+import { buildChapters, groupRows, railRows } from "./chapters.ts";
+import { continuationIndex, openingStep } from "./continues.ts";
+import type { Continuation } from "./continues.ts";
+import { buildOutline } from "./outline.ts";
+import type { OutlineFrame, OutlineRow, OutlineStep } from "./outline.ts";
 
 /** How many flows deep a path is followed before it says "far enough". */
 export const MAX_DEPTH = 4;
@@ -217,9 +217,10 @@ export function journeyFlow(options: JourneyOptions): Flow {
       const key = `${stepKey}>${via.slug}`;
       const flow = bySlug.get(via.slug);
       if (!flow || !opened.has(key) || path.includes(via.slug) || path.length > maxDepth) continue;
-      join(flow.participants);
+      const renamed = callerLane(flow);
+      join(flow.participants.filter((participant) => !(answersTheCall(via) && participant.id === renamed)));
       indexes.set(flow.slug, continuationIndex(flow, options.flows));
-      out.push(compose(flow.steps, key, [...path, flow.slug]));
+      out.push(compose(followedSteps(flow, via, step.from), key, [...path, flow.slug]));
     }
     return out;
   };
@@ -231,6 +232,53 @@ export function journeyFlow(options: JourneyOptions): Flow {
 /** Every step row of the journey, in rail order: what the keyboard walks. */
 export function journeySteps(groups: readonly JourneyGroup[]): JourneyStep[] {
   return groups.flatMap((group) => group.rows.filter((row): row is JourneyStep => row.type === "step"));
+}
+
+/**
+ * Whether the continuation is the call being answered, rather than a message
+ * arriving: a flow that answers a call opens with that same call, seen from
+ * the other side, and drawing it again would say the hop happened twice.
+ * A published event is not that - the send and the receive are two hops -
+ * and neither is a job handed to a queue.
+ */
+function answersTheCall(via: Continuation): boolean {
+  return via.kind === "contract";
+}
+
+/**
+ * The steps of a followed flow as they read on this path: less the call this
+ * step already is, and with the callee's own caller lane named after who is
+ * actually calling. A flow read on its own says `client`, because from where
+ * it was read that is who calls; inside a path the caller is the service one
+ * hop up, and a picture that still said `client` would put the reader's
+ * browser where a service stands.
+ */
+function followedSteps(flow: Flow, via: Continuation, caller: string): FlowNode[] {
+  const steps = answersTheCall(via) && flow.steps[0]?.type === "step" ? flow.steps.slice(1) : flow.steps;
+  const actor = callerLane(flow);
+  return answersTheCall(via) && actor && actor !== caller ? rename(steps, actor, caller) : steps;
+}
+
+/** The lane a flow's own caller stands in, when it has one. */
+function callerLane(flow: Flow): string | undefined {
+  const opening = flow.steps[0];
+  const from = opening?.type === "step" ? opening.from : undefined;
+  return flow.participants.find((participant) => participant.id === from && participant.kind === "actor")?.id;
+}
+
+function rename(nodes: readonly FlowNode[], from: string, to: string): FlowNode[] {
+  return nodes.map((node) => {
+    switch (node.type) {
+      case "step":
+        return { ...node, from: node.from === from ? to : node.from, to: node.to === from ? to : node.to };
+      case "parallel":
+        return { ...node, branches: node.branches.map((branch) => rename(branch, from, to)) };
+      case "alt":
+        return { ...node, branches: node.branches.map((branch) => ({ ...branch, steps: rename(branch.steps, from, to) })) };
+      case "loop":
+        return { ...node, steps: rename(node.steps, from, to) };
+    }
+  });
 }
 
 /** The service a flow belongs to: where its opening step lands. */
@@ -277,14 +325,14 @@ class Reader {
       out.push({ ...row, key, depth: row.depth + indent, ...(origin ? { origin } : {}) } as JourneyRow);
       if (row.type !== "step") continue;
       for (const via of continuations.get(row.step.id) ?? []) {
-        out.push(...this.door(via, key, row.depth + indent, path));
+        out.push(...this.door(via, key, row.depth + indent, path, row.step.from));
       }
     }
     return out;
   }
 
   /** A continuation as a row, and what is behind it when the reader opened it. */
-  private door(via: Continuation, stepKey: string, indent: number, path: readonly string[]): JourneyRow[] {
+  private door(via: Continuation, stepKey: string, indent: number, path: readonly string[], caller: string): JourneyRow[] {
     const key = `${stepKey}>${via.slug}`;
     const flow = this.bySlug.get(via.slug);
     // The flow on screen is the first entry on the path and is not a hop.
@@ -299,7 +347,7 @@ class Reader {
       depth: indent + 1,
       via,
       service: flow ? flowService(flow) : "",
-      steps: flow ? this.outline(flow).filter((row) => row.type === "step").length : 0,
+      steps: flow ? this.outline(flow, via, caller).filter((row) => row.type === "step").length : 0,
       open,
       ...(repeats ? { repeats: true } : {}),
       ...(deepest ? { deepest: true } : {}),
@@ -312,7 +360,7 @@ class Reader {
       depth,
     };
     // The door heads what it opens: both sit one indent under the step.
-    return [entry, ...this.rows(this.outline(flow), this.index(flow), [...path, flow.slug], indent + 1, key, origin)];
+    return [entry, ...this.rows(this.outline(flow, via, caller), this.index(flow), [...path, flow.slug], indent + 1, key, origin)];
   }
 
   /**
@@ -321,11 +369,17 @@ class Reader {
    * about the flow the reader opened, and applying them to another service's
    * flow would hide steps for a reason that flow never heard.
    */
-  private outline(flow: Flow): OutlineRow[] {
-    const hit = this.outlines.get(flow.slug);
+  private outline(flow: Flow, via: Continuation, caller: string): OutlineRow[] {
+    const key = `${flow.slug}|${answersTheCall(via)}|${caller}`;
+    const hit = this.outlines.get(key);
     if (hit) return hit;
-    const rows = buildOutline(flow, { hidden: new Set<string>(), crossOnly: false, path: null, statuses: null });
-    this.outlines.set(flow.slug, rows);
+    const rows = buildOutline({ ...flow, steps: followedSteps(flow, via, caller) }, {
+      hidden: new Set<string>(),
+      crossOnly: false,
+      path: null,
+      statuses: null,
+    });
+    this.outlines.set(key, rows);
     return rows;
   }
 
@@ -341,4 +395,37 @@ class Reader {
 /** The rows of a group as the rail draws them, doors included. */
 export function journeyRailRows(group: JourneyGroup): JourneyRow[] {
   return railRows(group);
+}
+
+/** The rail's groups for a flow, unfiltered: what a path is built on. */
+function groupsOf(flow: Flow): ChapterGroup[] {
+  const rows = buildOutline(flow, { hidden: new Set<string>(), crossOnly: false, path: null, statuses: null });
+  return groupRows(rows, buildChapters(flow));
+}
+
+/** Whether this flow continues anywhere at all: what makes a path worth drawing. */
+export function hasJourney(flow: Flow, flows: readonly Flow[]): boolean {
+  for (const list of continuationIndex(flow, flows).values()) {
+    if (list.length > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * The whole path as one flow: every continuation the guards allow, followed.
+ *
+ * Deterministic, which is what lets a picture be generated for it: the
+ * generator and the page compose the same thing from the same catalog, so
+ * the view on the canvas and the rows on the rail are the same reading.
+ */
+export function fullJourney(flow: Flow, flows: readonly Flow[], maxDepth?: number): Flow {
+  const continuations = continuationIndex(flow, flows);
+  const options: JourneyOptions = {
+    flow,
+    flows,
+    continuations,
+    opened: new Set<string>(),
+    ...(maxDepth === undefined ? {} : { maxDepth }),
+  };
+  return journeyFlow({ ...options, opened: openEverything(groupsOf(flow), options) });
 }

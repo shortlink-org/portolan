@@ -7,7 +7,7 @@
 // in the sequence-diagram convention — alt / else, par / and, loop — and the
 // steps inside it are indented under that row.
 
-import type { Flow, FlowNode, Status, Step } from "../catalog";
+import type { Flow, FlowNode, Status, Step } from "../catalog.ts";
 
 export type FrameKeyword = "alt" | "else" | "par" | "and" | "loop";
 

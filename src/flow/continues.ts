@@ -11,8 +11,8 @@
 // is not continuing this one, it is another reader of the same event, and the
 // event page already says so.
 
-import type { Flow, Step } from "../catalog";
-import { walkSteps } from "../catalog";
+import type { Flow, Step } from "../catalog.ts";
+import { walkSteps } from "../catalog.ts";
 
 export interface Continuation {
   slug: string;

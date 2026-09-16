@@ -18,11 +18,11 @@
 // changes is which chapters have any rows left to show, and that is decided
 // where the rows are grouped rather than here.
 
-import type { Flow, FlowNode, Status, Step } from "../catalog";
-import { walkSteps } from "../catalog";
-import { contextResolver } from "./cross-context";
-import { stepLabel } from "./labels";
-import type { OutlineRow } from "./outline";
+import type { Flow, FlowNode, Status, Step } from "../catalog.ts";
+import { walkSteps } from "../catalog.ts";
+import { contextResolver } from "./cross-context.ts";
+import { stepLabel } from "./labels.ts";
+import type { OutlineRow } from "./outline.ts";
 
 export type ChapterKind = "alt" | "par" | "loop" | "steps";
 

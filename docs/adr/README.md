@@ -29,3 +29,4 @@
 | [portolan.0023](portolan.0023.md) | The rules the code checks are held against the rules the document promises | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
 | [portolan.0024](portolan.0024.md) | A path across services is composed in the reading, not in the catalog | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
 | [portolan.0025](portolan.0025.md) | An endpoint flow names the method it answers, and that is what pairs a call with its handler | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
+| [portolan.0026](portolan.0026.md) | The whole path is drawn; a partly opened one is not | accepted | 2026-09-16 | [portolan](../portolan/README.md) |

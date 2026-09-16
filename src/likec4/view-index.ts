@@ -11,7 +11,8 @@ import type { Flow } from "../catalog";
 import { drawnStepIds, pairEdgesToSteps } from "./flow-edges";
 import type { EdgeStepPairing } from "./flow-edges";
 import { EMPTY_PAIRING } from "./flow-edges";
-import { flowCrossViewId, flowViewId } from "./ids";
+import { flowPictureViewId } from "./ids";
+import type { FlowPicture } from "./ids";
 import type { BBox } from "./canvas-viewport";
 import { neighborhood } from "./neighborhood";
 
@@ -71,15 +72,20 @@ export function viewBounds(
 
 const pairings = new Map<string, EdgeStepPairing>();
 
-/** Edge-to-step pairing for one of a flow's two views. */
-export function flowPairing(flow: Flow, crossOnly: boolean): EdgeStepPairing {
-  const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
+/**
+ * Edge-to-step pairing for one of a flow's pictures. `drawn` is the flow the
+ * picture was generated from, which for the whole path is the composed one -
+ * the generator and this compose it the same way, so the edges and the steps
+ * line up in the same order.
+ */
+export function flowPairing(flow: Flow, picture: FlowPicture, drawn: Flow = flow): EdgeStepPairing {
+  const viewId = flowPictureViewId(flow, picture);
   const cached = pairings.get(viewId);
   if (cached) return cached;
   const pairing = shapeOf(viewId).edgeIds.length
     ? pairEdgesToSteps(
         shapeOf(viewId).edgeIds,
-        drawnStepIds(flow, crossOnly),
+        drawnStepIds(drawn, picture === "cross"),
       )
     : EMPTY_PAIRING;
   pairings.set(viewId, pairing);
