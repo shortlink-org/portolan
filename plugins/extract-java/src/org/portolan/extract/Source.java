@@ -241,6 +241,33 @@ final class Source {
         return "";
     }
 
+    /**
+     * An annotation's argument as it was written, quotes taken off a string:
+     * a bound is a number as often as it is text, and `@Size(max = 64)` says
+     * nothing through {@link #argument}, which reads string literals alone.
+     */
+    static String rawArgument(AnnotationTree annotation, String name) {
+        for (ExpressionTree argument : annotation.getArguments()) {
+            String text = argument.toString().strip();
+            int eq = text.indexOf('=');
+            if (eq < 0) {
+                if (name.equals("value")) {
+                    return unquote(text);
+                }
+                continue;
+            }
+            if (text.substring(0, eq).strip().equals(name)) {
+                return unquote(text.substring(eq + 1).strip());
+            }
+        }
+        return "";
+    }
+
+    static String unquote(String text) {
+        String trimmed = text.strip();
+        return trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"") ? trimmed.substring(1, trimmed.length() - 1) : trimmed;
+    }
+
     /** The string a literal expression holds, or "" for anything else. */
     static String literal(String text) {
         String trimmed = text.strip();

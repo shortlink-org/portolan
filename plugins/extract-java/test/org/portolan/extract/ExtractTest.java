@@ -102,10 +102,26 @@ public final class ExtractTest {
         is("the aggregate is the one the annotation declares", "payments.ledger.payment", aggregate.get("id"));
         is("the root is the annotated class", "Payment", aggregate.get("root"));
         is("an @Entity beside it is an entity", "[Payment, Posting]", names(aggregate.get("entities")));
-        is("a @ValueObject is a value object", "[Money]", names(aggregate.get("valueObjects")));
+        is("a @ValueObject is a value object", "[Money, Reference]", names(aggregate.get("valueObjects")));
         is("an enum in the package is a closed set, its constants in declaration order",
                 "[DeclineReason=[CARD_REFUSED, ORDER_CANCELLED, GATEWAY_TIMEOUT], PaymentStatus=[PENDING, AUTHORIZED, CAPTURED, DECLINED, VOIDED]]",
                 enumValues(aggregate.get("enums")));
+
+        // What a value must satisfy, in the catalog's one vocabulary: a size
+        // bound means what the declared type says it means, and a constraint
+        // written inside the type is about what the container holds.
+        Map<String, Object> money = Json.object(Json.array(aggregate.get("valueObjects")).get(0));
+        is("a constraint on a record component is a rule on the field",
+                "[amountMinor: long gt=0, currency: String min_len=3 max_len=3 pattern=^[A-Z]{3}$]",
+                rules(money.get("fields")));
+        Map<String, Object> reference = Json.object(Json.array(aggregate.get("valueObjects")).get(1));
+        is("what must be given is the field's flag, and a size bound is read by the type it is on",
+                "[statementText: String required min_len=1 max_len=64, "
+                        + "payerEmail: String format=email, "
+                        + "takenAt: Instant required lt_now, "
+                        + "tags: List<String> max_items=4 items.required items.min_len=1 items.max_len=16, "
+                        + "metadata: Map<String, String> max_pairs=8 keys.required keys.min_len=1 values.max_len=32]",
+                rules(reference.get("fields")));
 
         is("a use case is a @Service, and a write makes it a command",
                 "[AuthorizePayment=command, CapturePayment=command, GetPayment=query]",
@@ -156,6 +172,27 @@ public final class ExtractTest {
         is("the lane says the far end is outside the estate", "external", kindOf(authorize.get("participants"), "stripe"));
 
         is("what it reports beside the fragment", 2, warnings.size());
+    }
+
+    /** "[name: type required rule=bound …]": each field with what it must satisfy. */
+    private static String rules(Object fields) {
+        List<String> out = new ArrayList<>();
+        for (Object item : Json.array(fields)) {
+            Map<String, Object> field = Json.object(item);
+            StringBuilder line = new StringBuilder(Json.string(field.get("name")) + ": " + Json.string(field.get("type")));
+            if (Boolean.TRUE.equals(field.get("required"))) {
+                line.append(" required");
+            }
+            for (Object rule : Json.array(field.get("rules"))) {
+                Map<String, Object> as = Json.object(rule);
+                line.append(" ").append(as.get("name"));
+                if (as.get("value") != null) {
+                    line.append("=").append(Json.string(as.get("value")));
+                }
+            }
+            out.add(line.toString());
+        }
+        return out.toString();
     }
 
     /** "[Name=[A, B], …]": each enum with the names of its values, in order. */

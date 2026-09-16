@@ -60,6 +60,37 @@ A class that extends an exception is a sentinel - what a command refuses with
 neither holds anything of the aggregate, so neither is a block of it. The doc
 of anything is its javadoc, first paragraph.
 
+**What a value must satisfy.** Java writes its constraints down, and a field
+or a record component that carries them says what a caller has to send:
+`@NotNull` is the field's `required`, and the rest are rules in the catalog's
+one vocabulary (portolan.0015). `@Size` is `min_len`/`max_len` on a string,
+`min_items`/`max_items` on a collection or an array, `min_pairs`/`max_pairs`
+on a map — the bound means what the declared type says it means, as Bean
+Validation means it. `@Min` and `@Max` are `gte` and `lte`, `@DecimalMin`
+and `@DecimalMax` the same unless `inclusive = false` makes them `gt` and
+`lt`; `@Positive` is `gt 0` and `@PositiveOrZero` `gte 0`; `@Pattern` is
+`pattern`, `@Email` a `format`, `@Past` and `@Future` are `lt_now` and
+`gt_now`; `@AssertTrue` is `const true`. `@NotBlank` and `@NotEmpty` are
+`required` and the one character, or the one element, they also demand.
+Hibernate's `@Length`, `@Range`, `@URL` and `@UUID` read the same way, and a
+constraint the vocabulary has no word for keeps Java's: `digits`, `isbn`.
+
+A constraint written inside the type is about what the container holds:
+`List<@NotBlank String> tags` is a `List<String>` with `items.required` and
+`items.min_len 1`, and a map's two arguments are its `keys.` and `values.`.
+The type the field is shown with is the declaration's, with the annotations
+taken back out of it.
+
+Nothing is resolved (no classpath, as everywhere here), so a constraint is
+known by its simple name: `jakarta.validation`, `javax.validation` and a
+static import read the same. The other side of that is what is **not** read:
+only the constraints above are, never every unknown annotation. A Java field
+carries `@Column`, `@JsonProperty` and `@Id` as readily as a constraint, and
+keeping those as rules - the way a proto's custom options are kept, since
+there an unknown option is still a claim about the value - would bury what a
+caller must satisfy under what the table and the wire want. A project's own
+`@ValidSku` is not read either: nothing in the syntax says it is a constraint.
+
 **Enum.** Every top-level enum in an aggregate's package is a closed set of
 values, id `<aggregate>.<slug>`: its constants in declaration order, each
 with its javadoc, `@Deprecated` carried on a constant and on the type. A
@@ -140,7 +171,14 @@ most. Every step is `declared`.
 ## What it does not read
 
 Named here rather than left to be discovered: **JPA mappings** (the schema is
-`extract-sql`'s to read, off the migrations), **Spring configuration**,
+`extract-sql`'s to read, off the migrations — `@Column(nullable = false)` is
+the table's word about a column, not the domain's about a field), **custom
+constraint annotations** (a `@Constraint` meta-annotation is on the
+annotation's own declaration, which is usually not in the tree being read),
+**constraints on a use case's parameters** (`handle(@Valid Command cmd)` —
+the command carries them where it is declared), **class-level constraints**
+(`@ScriptAssert` and friends, which are about no one field), **Spring
+configuration**,
 **`@RestController` routes** (the class is read, the route is the OpenAPI
 document's business), **Axon's** event sourcing annotations, and **records of
 what ran** — every step here is a claim about behaviour, not a recording.

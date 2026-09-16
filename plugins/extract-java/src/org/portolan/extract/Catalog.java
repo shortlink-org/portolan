@@ -32,6 +32,18 @@ final class Catalog {
         return map("name", name, "type", type, "doc", doc);
     }
 
+    /** A field with what the source says its value must satisfy (portolan.0015). */
+    static Map<String, Object> field(String name, String type, String doc, boolean required, List<Object> rules) {
+        Map<String, Object> out = field(name, type, doc);
+        if (required) {
+            out.put("required", true);
+        }
+        if (!rules.isEmpty()) {
+            out.put("rules", rules);
+        }
+        return out;
+    }
+
     static Map<String, Object> block(String id, String slug, String name, String doc, List<Object> fields) {
         return map("id", id, "slug", slug, "name", name, "doc", doc, "fields", fields);
     }

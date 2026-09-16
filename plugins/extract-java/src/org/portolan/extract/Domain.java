@@ -228,13 +228,19 @@ final class Domain {
                 fields(unit, type));
     }
 
-    /** The fields of a class, or the components of a record, with the type as written. */
+    /**
+     * The fields of a class, or the components of a record, with the type as
+     * written and what the constraints on them say (see {@link Rules}). A
+     * constraint written inside the type - {@code List<@NotBlank String>} - is
+     * read as a rule and taken off the type, which is the declaration's and
+     * not the annotation's.
+     */
     static List<Object> fields(Source.Unit unit, ClassTree type) {
         List<Object> out = new ArrayList<>();
         if (Source.isRecord(type)) {
             for (var component : type.getMembers()) {
                 if (component instanceof VariableTree field && field.getModifiers().getFlags().isEmpty()) {
-                    out.add(Catalog.field(field.getName().toString(), field.getType().toString(), unit.doc(field)));
+                    out.add(field(unit, field));
                 }
             }
             if (!out.isEmpty()) {
@@ -242,8 +248,18 @@ final class Domain {
             }
         }
         for (VariableTree field : Source.fields(type)) {
-            out.add(Catalog.field(field.getName().toString(), field.getType().toString(), unit.doc(field)));
+            out.add(field(unit, field));
         }
         return out;
+    }
+
+    private static Map<String, Object> field(Source.Unit unit, VariableTree field) {
+        Rules.Read rules = Rules.of(field);
+        return Catalog.field(
+                field.getName().toString(),
+                Rules.bareType(field.getType().toString()),
+                unit.doc(field),
+                rules.required(),
+                rules.rules());
     }
 }

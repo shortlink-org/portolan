@@ -120,12 +120,122 @@
                     {
                       "name": "amountMinor",
                       "type": "long",
-                      "doc": ""
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "gt",
+                          "value": "0"
+                        }
+                      ]
                     },
                     {
                       "name": "currency",
                       "type": "String",
-                      "doc": ""
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "3"
+                        },
+                        {
+                          "name": "max_len",
+                          "value": "3"
+                        },
+                        {
+                          "name": "pattern",
+                          "value": "^[A-Z]{3}$"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.ledger.payment.reference",
+                  "slug": "reference",
+                  "name": "Reference",
+                  "doc": "What the payer told us about themselves when the payment was made.",
+                  "fields": [
+                    {
+                      "name": "statementText",
+                      "type": "String",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        },
+                        {
+                          "name": "max_len",
+                          "value": "64"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "payerEmail",
+                      "type": "String",
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "email"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "takenAt",
+                      "type": "Instant",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "lt_now"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "tags",
+                      "type": "List<String>",
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "max_items",
+                          "value": "4"
+                        },
+                        {
+                          "name": "items.required"
+                        },
+                        {
+                          "name": "items.min_len",
+                          "value": "1"
+                        },
+                        {
+                          "name": "items.max_len",
+                          "value": "16"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "metadata",
+                      "type": "Map<String, String>",
+                      "doc": "",
+                      "rules": [
+                        {
+                          "name": "max_pairs",
+                          "value": "8"
+                        },
+                        {
+                          "name": "keys.required"
+                        },
+                        {
+                          "name": "keys.min_len",
+                          "value": "1"
+                        },
+                        {
+                          "name": "values.max_len",
+                          "value": "32"
+                        }
+                      ]
                     }
                   ]
                 }
