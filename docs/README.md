@@ -45,3 +45,4 @@
 | [portolan.0024](adr/portolan.0024.md) | A path across services is composed in the reading, not in the catalog | accepted | 2026-09-16 |
 | [portolan.0025](adr/portolan.0025.md) | An endpoint flow names the method it answers, and that is what pairs a call with its handler | accepted | 2026-09-16 |
 | [portolan.0026](adr/portolan.0026.md) | The whole path is drawn; a partly opened one is not | accepted | 2026-09-16 |
+| [portolan.0027](adr/portolan.0027.md) | The picture of one opened door is fetched, not bundled | accepted | 2026-09-16 |

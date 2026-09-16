@@ -578,3 +578,61 @@ describe("the LikeC4 generator", () => {
     expect(views).not.toContain("deployment view");
   });
 });
+
+// One picture per door, kept out of the bundle's sources: the file they are
+// asked for by name, so nothing writes them into likec4/ by accident.
+describe("the views of one opened door", () => {
+  const lanes = (service) => [
+    { id: "client", kind: "actor", context: null },
+    { id: service, kind: "service", context: "shop" },
+  ];
+  const step = (id, from, to, extra = {}) => ({ type: "step", id, from, to, kind: "rpc", status: "declared", ...extra });
+  const service = (slug) => ({
+    id: `shop.${slug}`, slug, name: slug, repo: "", path: "", readme: "",
+    provides: [], consumes: [], aggregates: [],
+  });
+  const catalog = {
+    generatedAt: "2026-09-06T00:00:00Z", commit: "0", adrs: [], defs: {},
+    contexts: [{ id: "shop", slug: "shop", name: "shop", summary: "", services: [service("cart"), service("pricing")] }],
+    flows: [
+      {
+        id: "flow.cart-checkout", slug: "cart-checkout", name: "Checkout", summary: "", owner: "shop",
+        participants: [...lanes("shop.cart"), { id: "shop.pricing", kind: "service", context: "shop" }],
+        steps: [step("s1", "client", "shop.cart"), step("s2", "shop.cart", "shop.pricing", { ref: "pricing.v1/Quote" })],
+      },
+      {
+        id: "flow.pricing-quote", slug: "pricing-quote", name: "Quote", summary: "", owner: "shop",
+        participants: [...lanes("shop.pricing"), { id: "pricing-pg", kind: "store", context: "shop" }],
+        trigger: { kind: "callback", label: "gRPC · Quote", confidence: "high" },
+        steps: [
+          step("t1", "client", "shop.pricing", { ref: "pricing.v1/Quote" }),
+          step("t2", "shop.pricing", "pricing-pg", { kind: "call" }),
+        ],
+      },
+    ],
+  };
+
+  it("are returned only when asked for, and in a file of their own", async () => {
+    const manifest = { sources: ["data/*.json"] };
+    const plain = await likec4Sources({ catalog, manifest });
+    expect(plain.map((file) => file.name)).toEqual(["deployment.c4", "spec.c4", "model.c4", "views.c4"]);
+
+    const withDoors = await likec4Sources({ catalog, manifest }, { doors: true });
+    const journeys = withDoors.find((file) => file.name === "journeys.c4");
+    expect(journeys).toBeDefined();
+    const ids = [...journeys.contents.matchAll(/dynamic view (\S+) \{/g)].map((match) => match[1]);
+    // The door is spelled as the rail and the address spell it.
+    expect(ids).toEqual(["flow_cart_checkout_door_s2_pricing_quote"]);
+  });
+
+  it("draw the flow and what is behind that one door, and nothing else", async () => {
+    const withDoors = await likec4Sources({ catalog, manifest: { sources: ["data/*.json"] } }, { doors: true });
+    const body = withDoors.find((file) => file.name === "journeys.c4").contents;
+    expect(body).toContain("client -> shop.cart");
+    expect(body).toContain("shop.cart -> shop.pricing");
+    // The callee's own steps, and not its inbound call again: that hop is the
+    // caller's step, drawn once.
+    expect(body).toContain("shop.pricing -> pricing_pg");
+    expect(body.match(/shop\.cart -> shop\.pricing/g)).toHaveLength(1);
+  });
+});
