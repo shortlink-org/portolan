@@ -2,6 +2,10 @@ package org.portolan.payments.ledger.domain.payment.event;
 
 import java.time.Instant;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
+
 import org.jmolecules.event.annotation.DomainEvent;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
 
@@ -13,7 +17,11 @@ import org.portolan.payments.ledger.domain.payment.vo.Money;
  * aggregate, inside this service.
  */
 @DomainEvent
-public record PaymentAuthorized(String paymentId, String orderId, Money amount, Instant occurredAt) {
+public record PaymentAuthorized(
+        @NotBlank String paymentId,
+        @NotBlank String orderId,
+        @NotNull Money amount,
+        @NotNull @PastOrPresent Instant occurredAt) {
 
     public static final String NAME = "ledger.PaymentAuthorized";
     public static final String CHANNEL = "payments.ledger.payment";

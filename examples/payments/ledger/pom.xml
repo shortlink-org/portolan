@@ -63,6 +63,14 @@
       <artifactId>spring-modulith-events-api</artifactId>
       <version>2.1.1</version>
     </dependency>
+    <!-- The rules the domain states about its own values, in the words the
+         catalog reads them by (portolan.0015). The annotations declare what
+         the constructors here enforce; the engine that would check them at a
+         boundary is not needed for that. -->
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+    </dependency>
 
     <!-- grpc-java's generated stubs are annotated @javax.annotation.Generated,
          which left the JDK in 11 and lives in its own artifact now. -->

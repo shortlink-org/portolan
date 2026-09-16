@@ -112,17 +112,31 @@
                     {
                       "name": "account",
                       "type": "String",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
                     },
                     {
                       "name": "amount",
                       "type": "Money",
-                      "doc": ""
+                      "doc": "",
+                      "required": true
                     },
                     {
                       "name": "writtenAt",
                       "type": "Instant",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "lt_now"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -183,7 +197,18 @@
                     {
                       "name": "currency",
                       "type": "String",
-                      "doc": ""
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "3"
+                        },
+                        {
+                          "name": "max_len",
+                          "value": "3"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -233,22 +258,43 @@
                         {
                           "name": "paymentId",
                           "type": "String",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "min_len",
+                              "value": "1"
+                            }
+                          ]
                         },
                         {
                           "name": "orderId",
                           "type": "String",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "min_len",
+                              "value": "1"
+                            }
+                          ]
                         },
                         {
                           "name": "amount",
                           "type": "Money",
-                          "doc": ""
+                          "doc": "",
+                          "required": true
                         },
                         {
                           "name": "occurredAt",
                           "type": "Instant",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "lt_now"
+                            }
+                          ]
                         }
                       ]
                     }
@@ -272,22 +318,43 @@
                         {
                           "name": "paymentId",
                           "type": "String",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "min_len",
+                              "value": "1"
+                            }
+                          ]
                         },
                         {
                           "name": "orderId",
                           "type": "String",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "min_len",
+                              "value": "1"
+                            }
+                          ]
                         },
                         {
                           "name": "amount",
                           "type": "Money",
-                          "doc": ""
+                          "doc": "",
+                          "required": true
                         },
                         {
                           "name": "occurredAt",
                           "type": "Instant",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "lt_now"
+                            }
+                          ]
                         }
                       ]
                     }
@@ -311,22 +378,43 @@
                         {
                           "name": "paymentId",
                           "type": "String",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "min_len",
+                              "value": "1"
+                            }
+                          ]
                         },
                         {
                           "name": "orderId",
                           "type": "String",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "min_len",
+                              "value": "1"
+                            }
+                          ]
                         },
                         {
                           "name": "reason",
                           "type": "DeclineReason",
-                          "doc": ""
+                          "doc": "",
+                          "required": true
                         },
                         {
                           "name": "occurredAt",
                           "type": "Instant",
-                          "doc": ""
+                          "doc": "",
+                          "required": true,
+                          "rules": [
+                            {
+                              "name": "lt_now"
+                            }
+                          ]
                         }
                       ]
                     }

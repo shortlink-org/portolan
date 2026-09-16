@@ -36,7 +36,7 @@
               "name": "spring-boot:run",
               "run": "mvn spring-boot:run",
               "doc": "Run the application",
-              "source": "examples/payments/ledger/pom.xml:146"
+              "source": "examples/payments/ledger/pom.xml:154"
             }
           ]
         }

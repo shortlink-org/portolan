@@ -70,7 +70,8 @@ Validation means it. `@Min` and `@Max` are `gte` and `lte`, `@DecimalMin`
 and `@DecimalMax` the same unless `inclusive = false` makes them `gt` and
 `lt`; `@Positive` is `gt 0` and `@PositiveOrZero` `gte 0`; `@Pattern` is
 `pattern`, `@Email` a `format`, `@Past` and `@Future` are `lt_now` and
-`gt_now`; `@AssertTrue` is `const true`. `@NotBlank` and `@NotEmpty` are
+`gt_now` - and so are `@PastOrPresent` and `@FutureOrPresent`, since the
+vocabulary has one word for each side of now; `@AssertTrue` is `const true`. `@NotBlank` and `@NotEmpty` are
 `required` and the one character, or the one element, they also demand.
 Hibernate's `@Length`, `@Range`, `@URL` and `@UUID` read the same way, and a
 constraint the vocabulary has no word for keeps Java's: `digits`, `isbn`.

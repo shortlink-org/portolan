@@ -1,5 +1,8 @@
 package org.portolan.payments.ledger.domain.payment.vo;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import org.jmolecules.ddd.annotation.ValueObject;
 
 /**
@@ -9,7 +12,7 @@ import org.jmolecules.ddd.annotation.ValueObject;
  * and a currency is compared before amounts are added at all.
  */
 @ValueObject
-public record Money(long amountMinor, String currency) {
+public record Money(long amountMinor, @NotNull @Size(min = 3, max = 3) String currency) {
 
     public Money {
         if (currency == null || currency.length() != 3) {

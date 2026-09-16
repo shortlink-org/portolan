@@ -320,7 +320,7 @@ consumer/provider protobuf subsets and the authorization event payload.
 | --- | --- | --- |
 | `mvn test` | Run the tests (lifecycle phase) | [`examples/payments/ledger/pom.xml:1`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L1) |
 | `mvn package` | Build the artifact (lifecycle phase) | [`examples/payments/ledger/pom.xml:1`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L1) |
-| `mvn spring-boot:run` | Run the application | [`examples/payments/ledger/pom.xml:146`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L146) |
+| `mvn spring-boot:run` | Run the application | [`examples/payments/ledger/pom.xml:154`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L154) |
 
 ## Decisions
 

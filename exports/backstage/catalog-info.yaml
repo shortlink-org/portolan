@@ -1071,7 +1071,7 @@ metadata:
         - url: https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L1
           title: mvn package — Build the artifact (lifecycle phase)
           type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L146
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L154
           title: mvn spring-boot:run — Run the application
           type: command
 spec:

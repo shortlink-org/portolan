@@ -29,11 +29,11 @@ What one order owes, and everything that has happened to that money.
 
 One side of one movement of money.
 
-| Field | Type |
-| --- | --- |
-| `account` | `String` |
-| `amount` | `Money` |
-| `writtenAt` | `Instant` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `account` | `String` | `required`, `min_len 1` |
+| `amount` | `Money` | `required` |
+| `writtenAt` | `Instant` | `required`, `lt_now` |
 
 ## Value objects
 
@@ -60,10 +60,10 @@ What the gateway answers when asked to hold money: it did, with the code that na
 
 An amount in the minor unit of a currency: 1250 GBP is £12.50.
 
-| Field | Type |
-| --- | --- |
-| `amountMinor` | `long` |
-| `currency` | `String` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `amountMinor` | `long` | — |
+| `currency` | `String` | `required`, `min_len 3`, `max_len 3` |
 
 ## Enums
 
@@ -137,12 +137,12 @@ The gateway agreed to hold the money. Nothing has moved yet.
 
 Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java)
 
-| Field | Type |
-| --- | --- |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `amount` | `Money` |
-| `occurredAt` | `Instant` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `paymentId` | `String` | `required`, `min_len 1` |
+| `orderId` | `String` | `required`, `min_len 1` |
+| `amount` | `Money` | `required` |
+| `occurredAt` | `Instant` | `required`, `lt_now` |
 
 <a id="event-payments-ledger-payment-paymentcaptured"></a>
 ### PaymentCaptured
@@ -162,12 +162,12 @@ The money moved. Whoever is owed something for this order - the invoice, the war
 
 Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java)
 
-| Field | Type |
-| --- | --- |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `amount` | `Money` |
-| `occurredAt` | `Instant` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `paymentId` | `String` | `required`, `min_len 1` |
+| `orderId` | `String` | `required`, `min_len 1` |
+| `amount` | `Money` | `required` |
+| `occurredAt` | `Instant` | `required`, `lt_now` |
 
 <a id="event-payments-ledger-payment-paymentdeclined"></a>
 ### PaymentDeclined
@@ -186,9 +186,9 @@ The money was not held, and the reason is one of a closed set a consumer can swi
 
 Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java)
 
-| Field | Type |
-| --- | --- |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `reason` | `DeclineReason` |
-| `occurredAt` | `Instant` |
+| Field | Type | Rules |
+| --- | --- | --- |
+| `paymentId` | `String` | `required`, `min_len 1` |
+| `orderId` | `String` | `required`, `min_len 1` |
+| `reason` | `DeclineReason` | `required` |
+| `occurredAt` | `Instant` | `required`, `lt_now` |
