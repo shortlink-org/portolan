@@ -14,10 +14,11 @@ import { STATUSES } from "../catalog";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { paths } from "../routes";
 import { statusVar } from "../components/primitives";
-import { railRows, stepTitle } from "./chapters";
-import type { Chapter, ChapterGroup } from "./chapters";
-import type { Continuation } from "./continues";
-import type { OutlineFrame, OutlineStep } from "./outline";
+import { stepTitle } from "./chapters";
+import type { Chapter } from "./chapters";
+import { journeyRailRows } from "./journey";
+import type { JourneyEntry, JourneyGroup, JourneyStep } from "./journey";
+import type { OutlineFrame } from "./outline";
 
 /**
  * A chapter header. The one row on the rail that is a control rather than a
@@ -225,40 +226,39 @@ function StepRow({
   onSelect,
   onHover,
   crossContext,
-  continuations,
   full,
   mark,
 }: {
-  row: OutlineStep;
+  row: JourneyStep;
   /** What the callee hands back, when a contract says. */
   answer?: string | undefined;
   active: boolean;
   dimmed: boolean;
-  onSelect: (id: string) => void;
-  onHover: (id: string | null) => void;
+  /** The row's key, not the step's id: a followed flow numbers its steps from one too. */
+  onSelect: (key: string) => void;
+  onHover: (key: string | null) => void;
   /** The context this step crosses into, or undefined when it stays home. */
   crossContext?: string | null | undefined;
-  continuations: readonly Continuation[];
   full?: boolean;
   mark?: RailMark | undefined;
 }) {
-  const { step, number, depth, hidden, offPath, offStatus } = row;
+  const { step, number, depth, hidden, offPath, offStatus, key } = row;
   const self = step.from === step.to;
   const crosses = crossContext !== undefined;
   const errorResponse = step.http?.outcome === "error";
   return (
     <div
-      onMouseEnter={() => onHover(step.id)}
+      onMouseEnter={() => onHover(key)}
       onMouseLeave={() => onHover(null)}
       style={{ opacity: dimmed || offPath || offStatus ? 0.3 : 1 }}
     >
       <button
         type="button"
         data-nav-item
-        onClick={() => onSelect(step.id)}
+        onClick={() => onSelect(key)}
         /* Focus lights the canvas arrow the way hover does: j and k walk the
            rail, and the reader walking it should see where each step goes. */
-        onFocus={() => onHover(step.id)}
+        onFocus={() => onHover(key)}
         onBlur={() => onHover(null)}
         /* Playback dims and undims at the narrative tier - the reader is meant to
            watch the sequence recede, not to be blinked at. The edge is always
@@ -383,21 +383,62 @@ function StepRow({
           title={step.status}
         />
       </button>
-      {/* Where this step hands the story over. Outside the button because it is
-          a different destination from the step's own selection, and nesting a
-          link inside a button is not a thing the DOM allows. */}
-      {continuations.map((next) => (
-        <Link
-          key={next.slug}
-          to={paths.flow(next.slug)}
-          className="mono flex items-center gap-1 py-0.5 pr-2 text-accent hover:underline"
-          style={{ paddingLeft: 8 + depth * 10 + 28 }}
-          title={`${next.confidence}-confidence ${next.kind} continuation: ${next.basis}`}
+    </div>
+  );
+}
+
+/**
+ * Where this flow hands the story over, as a door rather than a link.
+ *
+ * The link is still there - a reader who wants that flow on its own page is
+ * one click away - but the control beside it opens the other flow's steps
+ * here, under the step that calls it, which is the question "and then what?"
+ * answered without leaving the page.
+ */
+function EntryRow({
+  row,
+  onToggle,
+}: {
+  row: JourneyEntry;
+  onToggle: (key: string) => void;
+}) {
+  const { via, open, steps, service, repeats, deepest } = row;
+  const Chevron = open ? ChevronDown : ChevronRight;
+  const stopped = repeats ? "already on this path" : deepest ? "as deep as this goes" : null;
+  const what = via.kind === "event" ? "related event flow" : "continues";
+  return (
+    <div
+      className="mono flex items-center gap-1 py-0.5 pr-2 text-muted"
+      style={{ paddingLeft: 8 + row.depth * 10 }}
+      title={`${via.confidence}-confidence ${via.kind} continuation: ${via.basis}`}
+    >
+      {stopped ? (
+        <CornerDownRight size={9} aria-hidden className="shrink-0" />
+      ) : (
+        <button
+          type="button"
+          onClick={() => onToggle(row.key)}
+          aria-expanded={open}
+          className="flex shrink-0 items-center gap-1 text-accent hover:underline"
         >
-          <CornerDownRight size={9} aria-hidden className="shrink-0" />
-          {next.kind === "event" ? "related event flow" : "continues"} in {next.name}
+          <Chevron size={11} aria-hidden className="shrink-0" />
+          {open ? "hide" : "follow"}
+        </button>
+      )}
+      <span className="min-w-0 truncate">
+        {what} in{" "}
+        <Link to={paths.flow(via.slug)} className="text-accent hover:underline">
+          {via.name}
         </Link>
-      ))}
+      </span>
+      {service ? (
+        <span className="shrink-0 truncate" title={service}>
+          · {service}
+        </span>
+      ) : null}
+      <span className="ml-auto shrink-0 pl-2">
+        {stopped ?? `${steps} ${steps === 1 ? "step" : "steps"}`}
+      </span>
     </div>
   );
 }
@@ -411,15 +452,15 @@ export function StepRail({
   onToggleChapter,
   onSelect,
   onHover,
+  onToggleEntry,
   crossContextOf,
-  continuations,
   full,
   marks,
 }: {
   /** What a branch did to each step, by step id. */
   marks?: ReadonlyMap<string, RailMark> | undefined;
-  /** The rail's rows, already cut into chapters. */
-  groups: readonly ChapterGroup[];
+  /** The rail's rows, already cut into chapters, with the path opened into them. */
+  groups: readonly JourneyGroup[];
   /** What each step's callee hands back, by step id; see flow/answers.ts. */
   answers: ReadonlyMap<string, string>;
   /** The step the rail marks and scrolls to. */
@@ -432,12 +473,13 @@ export function StepRail({
   matchIds?: ReadonlySet<string> | null;
   collapsed: ReadonlySet<string>;
   onToggleChapter: (chapterId: string) => void;
-  onSelect: (id: string) => void;
+  onSelect: (key: string) => void;
   /** Hovering a step lights its arrow on the canvas, and nothing else. */
-  onHover: (id: string | null) => void;
+  onHover: (key: string | null) => void;
+  /** Opens or closes one continuation, by the key the address carries. */
+  onToggleEntry: (key: string) => void;
   /** The context a step crosses into; undefined for a step that crosses none. */
   crossContextOf: (step: Step) => string | null | undefined;
-  continuations: ReadonlyMap<string, Continuation[]>;
   full?: boolean;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -462,7 +504,7 @@ export function StepRail({
       <LayoutGroup id={railId}>
         {groups.map((group) => {
           const { chapter } = group;
-          const rows = railRows(group);
+          const rows = journeyRailRows(group);
           const folded = collapsed.has(chapter.id);
           return (
             <section key={chapter.id}>
@@ -478,19 +520,24 @@ export function StepRail({
                       <li key={row.key}>
                         <FrameRow frame={row} />
                       </li>
+                    ) : row.type === "entered" ? (
+                      <li key={row.key}>
+                        <EntryRow row={row} onToggle={onToggleEntry} />
+                      </li>
                     ) : (
-                      <li key={row.key} data-step={row.step.id}>
+                      <li key={row.key} data-step={row.key}>
                         <StepRow
                           row={row}
-                          answer={answers.get(row.step.id)}
-                          active={activeId === row.step.id}
-                          dimmed={matchIds ? !matchIds.has(row.step.id) : false}
+                          answer={answers.get(row.key)}
+                          active={activeId === row.key}
+                          /* A followed flow's steps are another story's, and
+                             an event selected in this one does not dim them. */
+                          dimmed={matchIds && !row.origin ? !matchIds.has(row.key) : false}
                           onSelect={onSelect}
                           onHover={onHover}
                           crossContext={crossContextOf(row.step)}
-                          continuations={continuations.get(row.step.id) ?? []}
                           full={full}
-                          mark={marks?.get(row.step.id)}
+                          mark={marks?.get(row.key)}
                         />
                       </li>
                     ),

@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import { saveCanvasImage } from "../lib/export-canvas";
 import { allRepos, flowContexts, walkSteps } from "../catalog";
@@ -41,7 +41,8 @@ import { FlowToolbar } from "../flow/FlowToolbar";
 import { buildChapters, groupRows } from "../flow/chapters";
 import { continuationIndex } from "../flow/continues";
 import { useFlowPrefs } from "../flow/prefs";
-import { buildOutline, outlineSteps } from "../flow/outline";
+import { journeyFlow, journeyGroups, journeySteps, openEverything, journeyReach } from "../flow/journey";
+import { buildOutline } from "../flow/outline";
 import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
 import type { CanvasHandle } from "../likec4/CanvasBridge";
@@ -171,6 +172,7 @@ export function FlowDetail({
     return () => setActiveFlow(registeredSlug, null);
   }, [registeredSlug, setActiveFlow]);
 
+  const [params, setParams] = useSearchParams();
   const [crossRequested, setCrossOnly] = useState(false);
   const [compact, setCompact] = useState(false);
   /** The one status the rail is reading, or null for all of them. */
@@ -264,7 +266,6 @@ export function FlowDetail({
       flow ? statusCounts(flow) : { verified: 0, declared: 0, unresolved: 0 },
     [flow],
   );
-  const walkable = useMemo(() => outlineSteps(rows), [rows]);
 
   // Chapters come from the flow rather than from the filtered rail, so the
   // cross-context switch cannot rename or renumber them.
@@ -282,6 +283,77 @@ export function FlowDetail({
     () => (flow ? continuationIndex(flow, catalog.flows) : new Map()),
     [flow],
   );
+
+  /**
+   * The path the reader has opened, in the address: a flow followed into the
+   * next service is a reading worth sending to somebody, and a reading the
+   * back button can undo.
+   */
+  const openParam = params.get("open") ?? "";
+  const opened = useMemo(() => {
+    // `*` is "follow all", kept as a word rather than as the list it stands
+    // for: the list of a deep estate is a kilobyte of address, and what the
+    // reader asked for was one thing.
+    if (openParam === "*") {
+      return flow ? openEverything(groups, { flow, flows: catalog.flows, continuations }) : new Set<string>();
+    }
+    return new Set(openParam.split(",").filter(Boolean));
+  }, [openParam, flow, groups, continuations]);
+  const setOpened = useCallback(
+    (next: ReadonlySet<string>) => {
+      setParams(
+        (current) => {
+          const out = new URLSearchParams(current);
+          if (next.size === 0) out.delete("open");
+          else out.set("open", [...next].join(","));
+          return out;
+        },
+        { replace: true },
+      );
+    },
+    [setParams],
+  );
+  const toggleEntry = useCallback(
+    (key: string) => {
+      const next = new Set(opened);
+      if (next.has(key)) {
+        // Closing a door closes what was opened behind it: those keys are
+        // spelled from this one, and leaving them in the address would open
+        // them again the moment the reader reopens this one.
+        for (const open of opened) {
+          if (open === key || open.startsWith(`${key}/`)) next.delete(open);
+        }
+      } else next.add(key);
+      setOpened(next);
+    },
+    [opened, setOpened],
+  );
+
+  /** The rail, with every opened continuation followed into it. */
+  const journey = useMemo(
+    () =>
+      flow
+        ? journeyGroups(groups, { flow, flows: catalog.flows, continuations, opened })
+        : [],
+    [flow, groups, continuations, opened],
+  );
+  /** Every step of the path in rail order: what j and k walk. */
+  const walkable = useMemo(() => journeySteps(journey), [journey]);
+  const rowByKey = useMemo(
+    () => new Map(walkable.map((row) => [row.key, row])),
+    [walkable],
+  );
+  const reach = useMemo(() => journeyReach(journey), [journey]);
+  const openAll = useCallback(() => {
+    setParams(
+      (current) => {
+        const out = new URLSearchParams(current);
+        out.set("open", "*");
+        return out;
+      },
+      { replace: true },
+    );
+  }, [setParams]);
 
   // What each step's callee hands back, read out of the contract rather than
   // out of the flow: the rail says it beside the step, and the Mermaid copy
@@ -346,11 +418,11 @@ export function FlowDetail({
         : selectedStepId
           ? [selectedStepId]
           : hoverStep
-            ? [hoverStep]
+            ? (rowByKey.get(hoverStep)?.origin ? [] : [hoverStep])
             : matches.length > 0
               ? matches
               : exampleSteps,
-    [walkStep, selectedStepId, hoverStep, matches, exampleSteps],
+    [walkStep, selectedStepId, hoverStep, rowByKey, matches, exampleSteps],
   );
 
   useEffect(() => {
@@ -386,19 +458,41 @@ export function FlowDetail({
     });
   }, []);
 
-  const selectStep = useCallback(
-    (stepId: string) => {
-      if (flow) select(flowStepId(flow.slug, stepId), "rail");
+  /**
+   * Selecting a row of the path selects the step in the flow it belongs to:
+   * a followed flow's step is that flow's, and the panel that opens is the
+   * one that flow's page would open.
+   */
+  const selectRow = useCallback(
+    (key: string) => {
+      const row = rowByKey.get(key);
+      const slug = row?.origin?.slug ?? flow?.slug;
+      if (row && slug) select(flowStepId(slug, row.step.id), "rail");
     },
-    [flow, select],
+    [rowByKey, flow, select],
   );
+
+  /**
+   * The row the rail marks. A step of this flow is its own key; a step of a
+   * followed flow is found by whose it is, so a selection made anywhere still
+   * lands on the row that shows it.
+   */
+  const activeKey = useMemo(() => {
+    if (activeId) return activeId;
+    if (selection?.kind !== "flow-step") return null;
+    const parsed = parseFlowStepId(selection.id);
+    if (!parsed) return null;
+    return (
+      walkable.find((row) => row.origin?.slug === parsed.flowSlug && row.step.id === parsed.stepId)?.key ?? null
+    );
+  }, [activeId, selection, walkable]);
 
   // Arrow keys walk the rail. Stepping the picture itself is LikeC4's
   // walkthrough, in the canvas, so there is only ever one animator.
   const move = useCallback(
     (delta: number) => {
       if (walkable.length === 0) return;
-      const at = walkable.findIndex((item) => item.step.id === activeId);
+      const at = walkable.findIndex((item) => item.key === activeKey);
       const nextIndex =
         at < 0
           ? delta > 0
@@ -406,9 +500,9 @@ export function FlowDetail({
             : walkable.length - 1
           : Math.min(walkable.length - 1, Math.max(0, at + delta));
       const next = walkable[nextIndex];
-      if (next) selectStep(next.step.id);
+      if (next) selectRow(next.key);
     },
-    [walkable, activeId, selectStep],
+    [walkable, activeKey, selectRow],
   );
 
   useEffect(() => {
@@ -451,8 +545,21 @@ export function FlowDetail({
     : null;
 
   const copyMermaid = () => {
-    void toClipboard(flowMermaid(flow, answers)).then((ok) => {
-      say(ok ? "Mermaid sequence copied" : "could not reach the clipboard");
+    // What is copied is what is on the rail: a path followed into the next
+    // service is the sequence the reader is reading, and a diagram that
+    // stopped at this service's edge would not be it.
+    const drawn =
+      opened.size > 0
+        ? journeyFlow({ flow, flows: catalog.flows, continuations, opened })
+        : flow;
+    void toClipboard(flowMermaid(drawn, answers)).then((ok) => {
+      say(
+        ok
+          ? reach.open > 0
+            ? `Mermaid sequence copied, ${reach.services} ${reach.services === 1 ? "service" : "services"} deep`
+            : "Mermaid sequence copied"
+          : "could not reach the clipboard",
+      );
     });
   };
 
@@ -503,16 +610,16 @@ export function FlowDetail({
       />
       <StepRail
         marks={shown?.marks}
-        groups={groups}
+        groups={journey}
         answers={answers}
-        activeId={activeId}
+        activeId={activeKey}
         matchIds={matchIds}
         collapsed={collapsed}
         onToggleChapter={toggleChapter}
-        onSelect={selectStep}
+        onSelect={selectRow}
         onHover={setHoverStep}
+        onToggleEntry={toggleEntry}
         crossContextOf={crossContextOf}
-        continuations={continuations}
       />
     </>
   );
@@ -562,6 +669,9 @@ export function FlowDetail({
         <FlowEvidence catalog={catalog} flow={flow} source={flowSource} exampleId={exampleId} onExample={setExampleId} />
 
         <FlowToolbar
+          journey={reach}
+          onFollowAll={openAll}
+          onFollowNone={() => setOpened(new Set())}
           variant={prefs.variant}
           onVariant={(variant) => setPrefs({ variant })}
           playing={walkStep !== null}

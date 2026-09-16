@@ -239,7 +239,10 @@ export function groupRows(
  * opening branch can vanish and the NEXT one is promoted to head the frame, and
  * then the row carries a condition the header does not have and has to stay.
  */
-export function railRows(group: ChapterGroup): OutlineRow[] {
+export function railRows<Row extends { type: string; title?: string }>(group: {
+  chapter: Chapter;
+  rows: readonly Row[];
+}): Row[] {
   const [first, ...rest] = group.rows;
   if (
     group.chapter.kind !== "steps" &&
@@ -248,5 +251,5 @@ export function railRows(group: ChapterGroup): OutlineRow[] {
   ) {
     return rest;
   }
-  return group.rows;
+  return [...group.rows];
 }

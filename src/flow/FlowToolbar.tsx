@@ -21,6 +21,7 @@ import {
   Network,
   Pause,
   Play,
+  Route,
   Rows3,
   SkipBack,
   SkipForward,
@@ -83,6 +84,9 @@ export function FlowToolbar({
   crossOnly,
   hasCrossings,
   onCrossOnly,
+  journey,
+  onFollowAll,
+  onFollowNone,
   compact,
   onCompact,
   viewId,
@@ -112,6 +116,15 @@ export function FlowToolbar({
   crossOnly: boolean;
   hasCrossings: boolean;
   onCrossOnly: (value: boolean) => void;
+  /**
+   * The path as it stands: how many doors it has, how many are open, and what
+   * the open ones added. A flow that continues nowhere has none, and the
+   * control says so by not being there.
+   */
+  journey: { doors: number; open: number; steps: number; services: number };
+  /** Follow every continuation the guards allow, and undo it. */
+  onFollowAll: () => void;
+  onFollowNone: () => void;
   compact: boolean;
   onCompact: (value: boolean) => void;
   /** The LikeC4 view currently on the canvas. Changes with variant and filter. */
@@ -319,6 +332,28 @@ export function FlowToolbar({
             compact
           </Toggle>
         </div>
+
+        {/* The path past this service. It is a rail control and not a canvas
+            one - the picture stays this flow's - so it says what following
+            adds rather than pretending to draw it. */}
+        {journey.doors > 0 ? (
+          <div className="seg">
+            <Toggle
+              on={journey.open > 0}
+              onClick={() => (journey.open > 0 ? onFollowNone() : onFollowAll())}
+              icon={Route}
+              title={
+                journey.open > 0
+                  ? "Close every flow this one continues in"
+                  : `Follow every flow this one continues in (${journey.doors} ${journey.doors === 1 ? "continuation" : "continuations"})`
+              }
+            >
+              {journey.open > 0
+                ? `+${journey.steps} steps · ${journey.services} ${journey.services === 1 ? "service" : "services"}`
+                : `follow ${journey.doors}`}
+            </Toggle>
+          </div>
+        ) : null}
 
         {/* Fit is a button rather than the opening state: the canvas opens at
             a size the labels can be read at, and this is the way back out to
