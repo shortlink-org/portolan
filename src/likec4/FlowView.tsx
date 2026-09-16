@@ -80,9 +80,7 @@ export function FlowView({
   onWalkthroughStep: (stepId: string | null) => void;
 }) {
   const viewId = flowPictureViewId(flow, picture);
-  /** The flow the picture was drawn from: the path when one is on screen. */
-  const shown = drawn ?? flow;
-  const pairing = draft?.pairing ?? flowPairing(flow, picture, shown);
+  const pairing = draft?.pairing ?? flowPairing(flow, picture, drawn ?? flow);
 
   const selection = useSelectionStore((s) => s.selection);
   const source = useSelectionStore((s) => s.source);
@@ -147,13 +145,13 @@ export function FlowView({
       pathSteps.filter((stepId) => pairing.edgeOf.has(stepId)),
     );
     const participantsById = new Map(
-      shown.participants.map((participant) => [
+      flow.participants.map((participant) => [
         participant.id,
         participantFqn(participant),
       ]),
     );
     const onPathNodes = new Set(
-      walkSteps(shown.steps)
+      walkSteps(flow.steps)
         .filter((step) => pathStepIds.has(step.id))
         .flatMap((step) => [step.from, step.to])
         .map((id) => participantsById.get(id) ?? fqn(id)),
@@ -166,7 +164,7 @@ export function FlowView({
     ]
       .filter(Boolean)
       .join("\n");
-  }, [shown, pathSteps, focusedPathEdges, pairing, viewId]);
+  }, [flow, pathSteps, focusedPathEdges, pairing, viewId]);
 
   // Lanes are marked only for a selection made somewhere else, and only when
   // this variant of the view actually has that lane.

@@ -335,12 +335,10 @@ export function FlowDetail({
    * can be generated for: `?open=*` is the same answer `openEverything` gives,
    * and the view was laid out from it.
    */
-  const pathDrawn = useMemo(
-    () => flow !== undefined && hasJourney(flow, catalog.flows),
-    [flow],
+  const wholePath = useMemo(
+    () => openParam === "*" && flow !== undefined && hasJourney(flow, catalog.flows),
+    [openParam, flow],
   );
-  /** Everything is open, so the picture needs no narrowing. */
-  const wholePath = openParam === "*" && pathDrawn;
 
   /** The rail, with every opened continuation followed into it. */
   const journey = useMemo(
@@ -557,21 +555,8 @@ export function FlowDetail({
    * a path the reader opened part of has no picture, and the canvas keeps
    * drawing the flow the page is about rather than pretending otherwise.
    */
-  /**
-   * The path's picture is the whole path, and a path opened part-way is that
-   * picture narrowed to what the reader opened - the same narrowing a chosen
-   * branch does. So any open door puts the path on the canvas; nothing open
-   * leaves the flow's own view, which is the cheaper picture and the true one.
-   */
-  const picture: FlowPicture = crossOnly ? "cross" : opened.size > 0 && pathDrawn ? "journey" : "flow";
+  const picture: FlowPicture = crossOnly ? "cross" : wholePath ? "journey" : "flow";
   const drawn = picture === "journey" ? fullJourney(flow, catalog.flows) : flow;
-  /** The steps on the rail, when they are fewer than the whole path. */
-  const openedSteps =
-    picture === "journey" && !wholePath ? walkable.map((row) => row.key) : null;
-  const canvasPath =
-    openedSteps && path
-      ? openedSteps.filter((key) => path.stepIds.has(key))
-      : (openedSteps ?? (path ? [...path.stepIds] : null));
   const viewId = flowPictureViewId(flow, picture);
   const hiddenCount = crossOnly ? hidden.size : 0;
   const flowSource = flow.source
@@ -786,7 +771,7 @@ export function FlowDetail({
                       ? (liftedSteps ?? [])
                       : []
                 }
-                pathSteps={canvasPath}
+                pathSteps={path ? [...path.stepIds] : null}
                 /* What the READER is pointing at, which is not the same thing
                    as what the rail is marking: during playback the rail marks
                    the step being played, and feeding that back to the canvas
