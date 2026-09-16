@@ -109,6 +109,24 @@ describe("the service", () => {
     expect(ops.map((o: { deprecated?: boolean }) => o.deprecated ?? false)).toEqual([false, false, false, true]);
   });
 
+  it("takes what the handler parses as what the caller hands in, with the rules the schema states", () => {
+    const ops = svc.aggregates[0].operations as { id: string; fields?: { name: string; type: string; doc: string; required?: boolean; rules?: { name: string; value?: string }[] }[] }[];
+    const addItem = ops.find((o) => o.id === "AddItem")!;
+    // The route's parameters and the body are one request: the handler parses
+    // both before it runs anything, and the schema is where a TypeScript
+    // service says what must be sent.
+    expect(addItem.fields!.map((f) => `${f.name}:${f.type}`)).toEqual(["basketId:string", "sku:string", "quantity:integer", "unitPrice:money"]);
+    expect(addItem.fields!.find((f) => f.name === "quantity")!.rules).toEqual([
+      { name: "gte", value: "1" },
+      { name: "lte", value: "99" },
+    ]);
+    expect(addItem.fields!.every((f) => f.required)).toBe(true);
+    expect(ops.find((o) => o.id === "Merge")!.fields!.find((f) => f.name === "fromToken")!.doc).toBe("the token the basket being merged in is held by");
+    // A handler that parses nothing a schema says claims nothing about the
+    // shape, which is not the same as a use case that takes nothing.
+    expect(ops.find((o) => o.id === "Checkout")!.fields).toBeUndefined();
+  });
+
   it("follows a value through a helper, a loop, a list and a port declared elsewhere", () => {
     const flows = fragment().flows as { slug: string; steps: (Step | Alt)[] }[];
     const line = (s: Step | Alt) => (s.type === "step" ? `${s.from}->${s.to} ${s.kind} ${s.label}` : `alt ${s.id}`);

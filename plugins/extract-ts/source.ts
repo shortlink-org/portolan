@@ -36,6 +36,7 @@ import {
   isParamProperty,
   isPropertyDef,
   isString,
+  isVarDecl,
   keyName,
   lineOf,
   paramIdent,
@@ -116,6 +117,13 @@ export interface Source {
   interfaces: Map<string, Iface>;
   /** Exported functions, by name. */
   functions: Map<string, FunctionNode>;
+  /**
+   * Module-level `const x = <expression>`, by name, exported or not: what a
+   * file names once and uses under that name - a zod schema a handler parses
+   * with, a table of literals - so a reader that meets the name can follow it
+   * to what it was given.
+   */
+  consts: Map<string, Node>;
   /** `import("./x.js")` with a literal request: what the file loads lazily, resolved the same way. */
   dynamicImports: { specifier: string; file: string | undefined }[];
   /** Syntax errors, `file:line` and message. The tree past the first is partial, and so is what was read from it. */
@@ -150,6 +158,7 @@ export function readSource(path: string): Source | null {
     imports: importsOf(parsed, key),
     interfaces: new Map(),
     functions: new Map(),
+    consts: new Map(),
     dynamicImports: dynamicImportsOf(parsed, key),
     errors: parsed.errors.map((e) => ({ at: `${key}:${lineOf(parsed, e.labels?.[0]?.start ?? 0)}`, message: e.message })),
   };
@@ -159,6 +168,11 @@ export function readSource(path: string): Source | null {
     if (!decl) continue;
     if (isInterface(decl)) source.interfaces.set(decl.id.name, { p: parsed, node: decl });
     else if (isFunctionDecl(decl) && decl.id) source.functions.set(decl.id.name, decl);
+    else if (isVarDecl(decl)) {
+      for (const d of decl.declarations) {
+        if (isIdent(d.id) && d.init) source.consts.set(d.id.name, d.init);
+      }
+    }
   }
   // Typedefs before classes: a class's `@param {Port}` may name a typedef,
   // and the typedef's `import(...)` is what says where the port came from.

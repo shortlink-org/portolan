@@ -13,6 +13,8 @@ import { readSpec, type Spec } from "./openapi.ts";
 import { readProtos } from "./clients.ts";
 import { readSource, type ClassInfo, type Source, at } from "./source.ts";
 import { isBinary, isCall, isMember, isNumber, isPropertyDef, isSourceFile, keyName, memberName, thisMember, walk, type Node } from "./ast.ts";
+import { zodFields } from "./rules.ts";
+import type { Field } from "../../src/catalog.ts";
 import { useCaseKeyOf } from "./operations.ts";
 import type { WarningSink } from "./domain.ts";
 
@@ -30,6 +32,8 @@ export interface Endpoint {
   };
   /** Use case keys, in the order the handler runs them. */
   useCases: string[];
+  /** What the handler parses out of the request before it runs anything, when it says so in a schema. */
+  request?: Field[];
 }
 
 /** A job under transport/job: an edge a clock opens rather than a caller. */
@@ -132,6 +136,7 @@ export function readTransport(httpDir: string, rel: (abs: string) => string, b: 
           if (!wanted.has(method) || found.has(method)) continue;
           const operation = wanted.get(method)!;
           found.add(method);
+          const request = requestShape(src, m.node);
           endpoints.push({
             id: method,
             line: at(src, m.node, rel),
@@ -142,6 +147,7 @@ export function readTransport(httpDir: string, rel: (abs: string) => string, b: 
               confidence: "high",
             },
             useCases: useCasesRun(m.node, ports),
+            ...(request ? { request } : {}),
           });
         }
       }
@@ -238,6 +244,33 @@ export function useCasePorts(src: Source, cls: ClassInfo): Map<string, string> {
     if (key) out.set(p.name, key);
   }
   return out;
+}
+
+/**
+ * What the caller hands in, as the handler itself checks it: every schema it
+ * parses the request with, in the order it parses them, as one shape. A
+ * handler that parses the route's parameters and then the body has stated one
+ * request in two halves, and the first word about a name is the one kept.
+ *
+ * Undefined is a handler that parses nothing a schema says - a body read
+ * straight off the request, a service that validates somewhere else - which
+ * is not the same claim as a request with no fields.
+ */
+function requestShape(src: Source, node: Node): Field[] | undefined {
+  const out: Field[] = [];
+  let parsed = false;
+  walk(node, (n) => {
+    if (!isCall(n) || !isMember(n.callee)) return;
+    const called = memberName(n.callee);
+    if (called !== "parse" && called !== "safeParse") return;
+    const fields = zodFields(src, n.callee.object);
+    if (!fields) return;
+    parsed = true;
+    for (const field of fields) {
+      if (!out.some((f) => f.name === field.name)) out.push(field);
+    }
+  });
+  return parsed ? out : undefined;
 }
 
 /** `this.<port>.handle(...)` calls, in source order, as use case keys. */

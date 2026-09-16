@@ -185,6 +185,54 @@
                   "doc": "Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002).",
                   "exposedBy": [
                     "addItem"
+                  ],
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "integer",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "1"
+                        },
+                        {
+                          "name": "lte",
+                          "value": "99"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "money",
+                      "doc": "",
+                      "required": true
+                    }
                   ]
                 },
                 {
@@ -193,6 +241,20 @@
                   "doc": "Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004).",
                   "exposedBy": [
                     "checkout"
+                  ],
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    }
                   ]
                 },
                 {
@@ -214,6 +276,20 @@
                   "doc": "The basket as it stands, for whoever holds its token.",
                   "exposedBy": [
                     "getBasket"
+                  ],
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    }
                   ]
                 },
                 {
@@ -222,6 +298,44 @@
                   "doc": "Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged.",
                   "exposedBy": [
                     "mergeBaskets"
+                  ],
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "fromBasketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "fromToken",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
+                    }
                   ]
                 },
                 {
@@ -230,6 +344,32 @@
                   "doc": "Takes a line out of a basket outright.",
                   "exposedBy": [
                     "removeItem"
+                  ],
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
+                    }
                   ]
                 }
               ],

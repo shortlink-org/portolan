@@ -164,7 +164,33 @@ name in PascalCase (`add_item` → `AddItem`). It is a command when `handle` -
 or a private method it calls - calls `save`, `delete`, `create`, `update` or
 `publish` on a port, else a query. The doc is the directory's `README.md`
 first paragraph, or the JSDoc above the class. `exposedBy` names the HTTP
-operations that run it, read from the handlers.
+operations that run it, read from the handlers. What it takes in is what its
+handler parses, when the handler parses with a zod schema - see below.
+
+**What a request must satisfy.** A handler that checks the request with zod -
+`addItemBody.parse(req.body)`, `basketParams.parse(req.params)` - has said what
+the caller hands in, and the schemas are read into the operation's fields with
+the rules on each of them, in the catalog's one vocabulary for rules
+(portolan.0015): `.min(1)` on a string is `min_len`, on a number `gte`, on a
+list `min_items`; `.length(3)` is `len`; `.uuid()` and `.url()` are `format`
+`uuid` and `uri`; `.regex(/^[A-Z]{3}$/)` is `pattern`; `z.enum([…])` and a
+union of literals are `in`; `.int()` is the type `integer`, as every other
+source spells it. A field is `required` unless the schema lets it be left out
+with `.optional()`, `.nullish()`, a `.default(…)`, or a `.partial()` on the
+object; `.nullable()` is not one of them, since the key must still be there.
+A predicate the vocabulary has no words for keeps zod's own word, `refine`,
+with the message the call gives it. `.describe(…)` is the field's doc.
+
+A schema is followed by the name it was given - `basketParams.extend({…})`,
+a schema imported from a file of its own - and the chain must be rooted at the
+module's own import of `zod`, so a `JSON.parse` is not read as one. The fields
+of the schema the handler parses are read, and no deeper: a field given
+another schema by name is of that schema's name (`unitPrice: money`), and what
+`money` requires is read where `money` is what a handler parses. A handler
+that parses nothing a schema says leaves the operation with no fields at all,
+which is a different claim from an operation that takes nothing. An endpoint
+that runs two use cases parsed one request for both, and does not say which
+half is whose, so neither is given the shape.
 
 **Port.** A constructor parameter of `UseCase` typed with an interface or a
 class. What it is decides what a call on it becomes:
@@ -282,6 +308,9 @@ These cases do not become facts in the fragment:
 - a peer package with no document beside it, or a route the document does not
   declare;
 - an event no flow reaches;
+- a rule inside a schema a field only names: `unitPrice: money` is a `money`,
+  and what `money` holds is read where a handler parses a `money`;
+- a request a handler checks by hand, or with a validator that is not zod;
 - a proto package or api id the manifest names no peer for.
 - an import of a dependency: what lands in `node_modules` is not read, so a
   port declared by a published package is a name with nothing behind it. A

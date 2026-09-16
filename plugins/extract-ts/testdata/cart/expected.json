@@ -131,6 +131,54 @@
                   "doc": "Adds a line, or increments one already there.",
                   "exposedBy": [
                     "addItem"
+                  ],
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "integer",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "gte",
+                          "value": "1"
+                        },
+                        {
+                          "name": "lte",
+                          "value": "99"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "money",
+                      "doc": "",
+                      "required": true
+                    }
                   ]
                 },
                 {
@@ -156,6 +204,32 @@
                   "deprecated": true,
                   "exposedBy": [
                     "mergeBaskets"
+                  ],
+                  "fields": [
+                    {
+                      "name": "fromBasketId",
+                      "type": "string",
+                      "doc": "",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "format",
+                          "value": "uuid"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "fromToken",
+                      "type": "string",
+                      "doc": "the token the basket being merged in is held by",
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
+                    }
                   ]
                 }
               ],
@@ -362,7 +436,7 @@
           "kind": "rpc",
           "label": "addItem",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:14"
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:20"
         },
         {
           "type": "step",
@@ -450,7 +524,7 @@
           "kind": "rpc",
           "label": "checkout",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:18"
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:26"
         },
         {
           "type": "step",
@@ -550,7 +624,7 @@
           "kind": "rpc",
           "label": "expireIdleBaskets",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:26"
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:35"
         },
         {
           "type": "step",
@@ -635,7 +709,7 @@
           "kind": "rpc",
           "label": "mergeBaskets",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:22"
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:30"
         },
         {
           "type": "step",

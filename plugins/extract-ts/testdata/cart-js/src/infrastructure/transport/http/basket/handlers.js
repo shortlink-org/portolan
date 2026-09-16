@@ -1,7 +1,14 @@
+import { z } from "zod";
+
 /** @typedef {import("@app/basket/usecases/add_item/usecase.js").UseCase} AddItem */
 /** @typedef {import("@app/basket/usecases/checkout/usecase.js").UseCase} Checkout */
 /** @typedef {import("@app/basket/usecases/expire/usecase.js").UseCase} Expire */
 /** @typedef {import("@app/basket/usecases/merge/usecase.js").UseCase} Merge */
+
+const money = z.object({ amountMinor: z.number().int().nonnegative(), currency: z.string().length(3) });
+const basketParams = z.object({ basketId: z.string().uuid() });
+const addItemBody = z.object({ sku: z.string().min(1), quantity: z.number().int().min(1).max(99), unitPrice: money });
+const mergeBody = z.object({ fromBasketId: z.string().uuid(), fromToken: z.string().min(1).describe("the token the basket being merged in is held by") });
 
 export class BasketHandlers {
   /**
@@ -18,11 +25,13 @@ export class BasketHandlers {
   }
 
   /**
-   * @param {{ basketId: string; body: { sku: string; quantity: number; unitPrice: { amountMinor: number; currency: string } } }} req
+   * @param {{ params: unknown; body: unknown }} req
    * @returns {Promise<void>}
    */
   async addItem(req) {
-    await this.addItemUseCase.handle({ basketId: req.basketId, sku: req.body.sku, quantity: req.body.quantity, unitPrice: /** @type {never} */ (req.body.unitPrice) });
+    const { basketId } = basketParams.parse(req.params);
+    const body = addItemBody.parse(req.body);
+    await this.addItemUseCase.handle({ basketId, sku: body.sku, quantity: body.quantity, unitPrice: /** @type {never} */ (body.unitPrice) });
   }
 
   /**
@@ -34,11 +43,12 @@ export class BasketHandlers {
   }
 
   /**
-   * @param {{ bearer: string; body: { fromBasketId: string; fromToken: string } }} req
+   * @param {{ bearer: string; body: unknown }} req
    * @returns {Promise<void>}
    */
   async mergeBaskets(req) {
-    await this.mergeUseCase.handle({ bearer: req.bearer, fromBasketId: req.body.fromBasketId, fromToken: req.body.fromToken });
+    const body = mergeBody.parse(req.body);
+    await this.mergeUseCase.handle({ bearer: req.bearer, fromBasketId: body.fromBasketId, fromToken: body.fromToken });
   }
 
   /** @returns {Promise<number>} */

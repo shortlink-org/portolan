@@ -4,7 +4,7 @@
 
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
-import type { Catalog, Service } from "../../src/catalog.ts";
+import type { Catalog, Field, Service } from "../../src/catalog.ts";
 
 /** What an extractor writes: a catalog less the stamps, which are the history's to give (portolan.0010). */
 type Fragment = Omit<Catalog, "generatedAt" | "commit">;
@@ -106,6 +106,20 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
   for (const endpoint of transport.endpoints) {
     for (const key of endpoint.useCases) exposedBy.set(key, [...(exposedBy.get(key) ?? []), endpoint.id]);
   }
+  // What the caller hands a use case in: the request the endpoint parsed,
+  // when that endpoint runs this use case and nothing else. A handler that
+  // runs two use cases parsed one request for both, and which half is whose
+  // it does not say; two endpoints that parse different shapes into one use
+  // case do not agree on what it takes, and neither word is written down.
+  const handedIn = new Map<string, Field[]>();
+  const disagree = new Set<string>();
+  for (const endpoint of transport.endpoints) {
+    const key = endpoint.useCases.length === 1 ? endpoint.useCases[0]! : undefined;
+    if (!endpoint.request || key === undefined) continue;
+    const said = handedIn.get(key);
+    if (said && JSON.stringify(said) !== JSON.stringify(endpoint.request)) disagree.add(key);
+    else handedIn.set(key, endpoint.request);
+  }
   for (const uc of useCases) {
     const agg = aggregates.find((a) => a.aggregate.slug === uc.aggregate);
     if (!agg) {
@@ -115,6 +129,8 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     const op = operationOf(uc);
     const routes = exposedBy.get(uc.key);
     if (routes) op.exposedBy = [...routes].sort();
+    const fields = disagree.has(uc.key) ? undefined : handedIn.get(uc.key);
+    if (fields) op.fields = fields;
     agg.aggregate.operations.push(op);
   }
   for (const agg of aggregates) agg.aggregate.operations.sort((a, c) => a.id.localeCompare(c.id));

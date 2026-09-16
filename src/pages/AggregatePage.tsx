@@ -47,6 +47,7 @@ import { sourceLocation, splitLine } from "../lib/source-link";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
+import { RuleMarks } from "../components/RuleMarks";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
 import { WhatLinksHere } from "../components/WhatLinksHere";
@@ -385,6 +386,7 @@ function OperationList({
                       <dt className={field.deprecated ? "line-through" : undefined}>{field.name}</dt>
                       <dd className="min-w-0 truncate">
                         <span className="text-ink">{field.type}</span>
+                        <RuleMarks field={field} />
                         {field.doc ? <span className="ml-2">{field.doc}</span> : null}
                       </dd>
                     </div>
