@@ -7,8 +7,7 @@
 //
 //   node scripts/gen-likec4.mjs
 
-import { writeFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync, mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,8 +16,7 @@ import reserved from "../src/likec4/reserved.json" with { type: "json" };
 import { catalogProfiles } from "../src/catalog-profile.ts";
 import { allDeployments, deploys, environmentOf } from "../src/catalog-model.ts";
 import { isCrossContext } from "../src/flow/cross-context.ts";
-import { fullJourney, hasJourney, journeyFlow } from "../src/flow/journey.ts";
-import { continuationIndex } from "../src/flow/continues.ts";
+import { fullJourney, hasJourney } from "../src/flow/journey.ts";
 
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
@@ -28,7 +26,7 @@ import { continuationIndex } from "../src/flow/continues.ts";
 // `gen` can settle them the way it settles every generated page - written,
 // or in check mode compared and reported as drift - and `likec4:gen` can
 // still write them on its own before the dev server starts.
-export async function likec4Sources({ catalog, manifest }, options = {}) {
+export async function likec4Sources({ catalog, manifest }) {
 const profiles = catalogProfiles(manifest);
 
 // --- ids (mirrors src/likec4/ids.ts; kept in step by src/likec4/ids.test.ts) ---
@@ -51,7 +49,6 @@ const fqn = (id) => storeRefs.get(id) ?? id.split(".").map(safeId).join(".");
 const flowViewId = (flow) => `flow_${safeId(flow.slug)}`;
 const flowCrossViewId = (flow) => `${flowViewId(flow)}_cross`;
 const flowJourneyViewId = (flow) => `${flowViewId(flow)}_journey`;
-const flowDoorViewId = (flow, door) => `${flowViewId(flow)}_door_${safeId(door)}`;
 const contextViewId = (c) => `ctx_${safeId(c.id)}`;
 const serviceViewId = (s) => `svc_${safeId(s.id)}`;
 const serviceInsideViewId = (s) => `${serviceViewId(s)}_inside`;
@@ -1243,50 +1240,11 @@ if (environments.length > 0) {
 }
 views.push("}");
 
-// --- one view per door -------------------------------------------------
-// A reader who follows one continuation wants a picture of that, and a view
-// has to be laid out before it can be drawn. These are not part of the app's
-// bundle: they are laid out beside it and fetched when a door is opened
-// (portolan.0027), so a catalog with a hundred doors costs the reader
-// nothing until they open one.
-const doors = [];
-for (const flow of catalog.flows) {
-  const index = continuationIndex(flow, catalog.flows);
-  for (const [stepId, list] of index) {
-    for (const via of list) {
-      const key = `${stepId}>${via.slug}`;
-      const path = journeyFlow({ flow, flows: catalog.flows, continuations: index, opened: new Set([key]) });
-      const body = [];
-      const doorReplied = new Set();
-      walkFlowSteps(path.steps, (step) => {
-        if (step.kind === "response" && step.replyTo) doorReplied.add(step.replyTo);
-      });
-      emitSteps(path.steps, body, "    ", doorReplied);
-      doors.push({
-        id: flowDoorViewId(flow, key),
-        c4: [
-          `  dynamic view ${flowDoorViewId(flow, key)} {`,
-          `    title ${q(`${flow.name} — ${via.name}`)}`,
-          ...body,
-          "  }",
-        ].join("\n"),
-      });
-    }
-  }
-}
-
 return [
   { name: "deployment.c4", contents: `// GENERATED — do not edit.\n${deployment.join("\n")}\n` },
   { name: "spec.c4", contents: `${spec.join("\n")}\n` },
   { name: "model.c4", contents: `// GENERATED — do not edit.\n${model.join("\n")}\n` },
   { name: "views.c4", contents: `// GENERATED — do not edit.\n${views.join("\n")}\n` },
-  // Not a source of the bundle: the caller lays these out and writes them
-  // beside the site. Named apart so nothing writes them into likec4/.
-  // Laid out beside the bundle rather than in it, and only when asked for:
-  // the caller writes these where the site can fetch one (portolan.0027).
-  ...(options.doors && doors.length > 0
-    ? [{ name: "journeys.c4", contents: `// GENERATED — do not edit.\nviews {\n${doors.map((door) => door.c4).join("\n\n")}\n}\n` }]
-    : []),
 ];
 }
 
@@ -1294,49 +1252,11 @@ return [
 // sources are written under likec4/ here and now.
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const bundle = await loadCatalog();
-  const files = await likec4Sources(bundle, { doors: true });
-  const sources = files.filter((file) => file.name !== "journeys.c4");
+  const files = await likec4Sources(bundle);
   mkdirSync("likec4", { recursive: true });
-  for (const file of sources) writeFileSync(join("likec4", file.name), file.contents);
-  const drawn = await writeDoorViews(files);
+  for (const file of files) writeFileSync(join("likec4", file.name), file.contents);
   console.log(
-    `wrote ${sources.map((file) => `likec4/${file.name}`).join(", ")} ` +
-      `(${sources.find((file) => file.name === "views.c4").contents.match(/dynamic view /g)?.length ?? 0} dynamic views` +
-      `${drawn ? `, ${drawn} door views beside the site` : ""})`,
+    `wrote ${files.map((file) => `likec4/${file.name}`).join(", ")} ` +
+      `(${files.find((file) => file.name === "views.c4").contents.match(/dynamic view /g)?.length ?? 0} dynamic views)`,
   );
-}
-
-/**
- * The views of a single opened door, laid out and written where the site can
- * fetch one: `public/portolan-assets/likec4/journeys/<view>.json`.
- *
- * Beside the bundle rather than in it (portolan.0027). A catalog of a few
- * hundred flows has a few hundred doors, and a reader who opens one should
- * pay for that one - not for every door in the estate on the first page they
- * open. Laid out here for the same reason a draft's view is laid out when the
- * draft is made: the site draws it with the renderer that draws everything
- * else, and that renderer wants positions.
- */
-async function writeDoorViews(files) {
-  const journeys = files.find((file) => file.name === "journeys.c4");
-  const out = join("public", "portolan-assets", "likec4", "journeys");
-  rmSync(out, { recursive: true, force: true });
-  if (!journeys) return 0;
-  const { LikeC4 } = await import("likec4");
-  const holder = mkdtempSync(join(tmpdir(), "portolan-doors-"));
-  try {
-    for (const file of files) writeFileSync(join(holder, file.name), file.contents);
-    const likec4 = await LikeC4.fromWorkspace(holder, { printErrors: false, logger: false });
-    const model = await likec4.layoutedModel();
-    mkdirSync(out, { recursive: true });
-    let written = 0;
-    for (const [id, view] of Object.entries(model.$data.views)) {
-      if (!id.includes("_door_")) continue;
-      writeFileSync(join(out, `${id}.json`), `${JSON.stringify(view)}\n`);
-      written += 1;
-    }
-    return written;
-  } finally {
-    rmSync(holder, { recursive: true, force: true });
-  }
 }

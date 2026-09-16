@@ -42,8 +42,6 @@ import { buildChapters, groupRows } from "../flow/chapters";
 import { continuationIndex } from "../flow/continues";
 import { useFlowPrefs } from "../flow/prefs";
 import { fullJourney, hasJourney, journeyFlow, journeyGroups, journeySteps, openEverything, journeyReach } from "../flow/journey";
-import { loadDoorView } from "../likec4/door-view";
-import type { DoorView } from "../likec4/door-view";
 import { buildOutline } from "../flow/outline";
 import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
@@ -316,16 +314,9 @@ export function FlowDetail({
     },
     [setParams],
   );
-  /**
-   * The door the reader opened last. Two doors open is a shape no view was
-   * laid out for (portolan.0027), so the canvas draws the one they just
-   * opened - the question they are asking now - and the rail keeps both.
-   */
-  const [lastDoor, setLastDoor] = useState<string | null>(null);
   const toggleEntry = useCallback(
     (key: string) => {
       const next = new Set(opened);
-      setLastDoor(next.has(key) ? null : key);
       if (next.has(key)) {
         // Closing a door closes what was opened behind it: those keys are
         // spelled from this one, and leaving them in the address would open
@@ -357,35 +348,6 @@ export function FlowDetail({
         : [],
     [flow, groups, continuations, opened],
   );
-  /**
-   * One door open has a picture of its own, fetched when it is opened
-   * (portolan.0027); the whole path has one in the bundle. Anything in
-   * between - two of five doors - has none, and the canvas keeps drawing the
-   * flow the page is about rather than a path nobody asked for.
-   */
-  const oneDoor = wholePath
-    ? null
-    : lastDoor && opened.has(lastDoor)
-      ? lastDoor
-      : opened.size === 1
-        ? ([...opened][0] ?? null)
-        : null;
-  const [doorCanvas, setDoorCanvas] = useState<DoorView | null>(null);
-  useEffect(() => {
-    if (!flow || !oneDoor) {
-      setDoorCanvas(null);
-      return;
-    }
-    let live = true;
-    const path = journeyFlow({ flow, flows: catalog.flows, continuations, opened: new Set([oneDoor]) });
-    void loadDoorView(flow, oneDoor, path).then((view) => {
-      if (live) setDoorCanvas(view);
-    });
-    return () => {
-      live = false;
-    };
-  }, [flow, oneDoor, continuations]);
-
   /** Every step of the path in rail order: what j and k walk. */
   const walkable = useMemo(() => journeySteps(journey), [journey]);
   const rowByKey = useMemo(
@@ -676,7 +638,6 @@ export function FlowDetail({
         onSelect={selectRow}
         onHover={setHoverStep}
         onToggleEntry={toggleEntry}
-        drawnEntry={crossOnly || wholePath ? null : oneDoor}
         crossContextOf={crossContextOf}
       />
     </>
@@ -798,13 +759,7 @@ export function FlowDetail({
               onResize={settle}
             >
               <FlowView
-                draft={
-                  branchCanvas
-                    ? { model: branchCanvas.model, pairing: branchCanvas.pairing }
-                    : doorCanvas && !crossOnly
-                      ? { model: doorCanvas.model, pairing: doorCanvas.pairing }
-                      : undefined
-                }
+                draft={branchCanvas ? { model: branchCanvas.model, pairing: branchCanvas.pairing } : undefined}
                 flow={flow}
                 picture={picture}
                 drawn={drawn}

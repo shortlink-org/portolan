@@ -114,14 +114,6 @@ export const flowCrossViewId = (flow: Flow | string): string =>
 export const flowJourneyViewId = (flow: Flow | string): string =>
   `${flowViewId(flow)}_journey`;
 
-/**
- * The flow with one continuation followed: a picture of its own, laid out
- * beside the site rather than in the bundle (portolan.0027). The door is
- * spelled as the rail and the address spell it, `<stepId>><flow slug>`.
- */
-export const flowDoorViewId = (flow: Flow | string, door: string): string =>
-  `${flowViewId(flow)}_door_${safeId(door)}`;
-
 /** Which of a flow's pictures is on the canvas. */
 export type FlowPicture = "flow" | "cross" | "journey";
 
