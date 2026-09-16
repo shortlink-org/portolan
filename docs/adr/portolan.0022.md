@@ -6,6 +6,7 @@
 - **Date:** 2026-09-16
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0022-the-site-toolchain-is-optional-and-ships-as-its-own-image-tag.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0022-the-site-toolchain-is-optional-and-ships-as-its-own-image-tag.md)
+- **Committed:** Victor Login, 2026-09-16 (`8cb3a3b`)
 
 ### Context and Problem Statement
 

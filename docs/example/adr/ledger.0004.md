@@ -6,7 +6,7 @@
 - **Date:** 2026-09-15
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0004-a-repeated-capture-says-payment-captured-again.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0004-a-repeated-capture-says-payment-captured-again.md)
-- **Committed:** Victor Login, 2026-09-15 (`6f7c2b0`)
+- **Committed:** Victor Login, 2026-09-16 (`4d4faa8`)
 
 ### Context and Problem Statement
 

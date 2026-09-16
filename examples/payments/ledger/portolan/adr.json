@@ -82,9 +82,9 @@
       "relates": {},
       "source": "examples/payments/ledger/docs/adr/0004-a-repeated-capture-says-payment-captured-again.md",
       "created": {
-        "commit": "6f7c2b04d58f1e46071796b690cf4b1c4e732100",
+        "commit": "4d4faa8b66fcef3a0d09e1e297c26d2cb8984ec1",
         "author": "Victor Login",
-        "date": "2026-09-15T23:09:34+07:00"
+        "date": "2026-09-16T16:03:50+07:00"
       }
     },
     {
@@ -102,9 +102,9 @@
       "relates": {},
       "source": "examples/payments/ledger/docs/adr/0005-a-hold-is-recorded-before-the-order-is-asked-again.md",
       "created": {
-        "commit": "496688f5cd81f7850f009d46145b2efe0fed643f",
+        "commit": "332efd817d58a74e7caf70b46c10451745ec79e6",
         "author": "Victor Login",
-        "date": "2026-09-15T23:18:48+07:00"
+        "date": "2026-09-16T16:03:51+07:00"
       }
     },
     {
@@ -122,9 +122,9 @@
       "relates": {},
       "source": "examples/payments/ledger/docs/adr/0006-a-cancelled-order-gets-its-captured-money-back.md",
       "created": {
-        "commit": "5c37cb6e4d50f62f14304f866bf8b06d5299a134",
+        "commit": "a6c16a13a089296dade9fea3eb35016bb3a8ccc8",
         "author": "Victor Login",
-        "date": "2026-09-16T00:02:31+07:00"
+        "date": "2026-09-16T16:03:51+07:00"
       }
     }
   ]

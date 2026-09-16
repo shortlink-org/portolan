@@ -6,7 +6,7 @@
 - **Date:** 2026-09-16
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0006-a-cancelled-order-gets-its-captured-money-back.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0006-a-cancelled-order-gets-its-captured-money-back.md)
-- **Committed:** Victor Login, 2026-09-16 (`5c37cb6`)
+- **Committed:** Victor Login, 2026-09-16 (`a6c16a1`)
 
 ### Context and Problem Statement
 

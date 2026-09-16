@@ -6,7 +6,7 @@
 - **Date:** 2026-09-15
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0005-a-hold-is-recorded-before-the-order-is-asked-again.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0005-a-hold-is-recorded-before-the-order-is-asked-again.md)
-- **Committed:** Victor Login, 2026-09-15 (`496688f`)
+- **Committed:** Victor Login, 2026-09-16 (`332efd8`)
 
 ### Context and Problem Statement
 
