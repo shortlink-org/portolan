@@ -6,6 +6,7 @@
 - **Date:** 2026-09-16
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0023-the-rules-the-code-checks-are-held-against-the-rules-the-document-promises.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0023-the-rules-the-code-checks-are-held-against-the-rules-the-document-promises.md)
+- **Committed:** Victor Login, 2026-09-16 (`346b30a`)
 
 ### Context and Problem Statement
 
