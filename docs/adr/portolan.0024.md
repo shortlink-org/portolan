@@ -6,6 +6,7 @@
 - **Date:** 2026-09-16
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0024-a-path-across-services-is-composed-in-the-reading-not-in-the-catalog.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0024-a-path-across-services-is-composed-in-the-reading-not-in-the-catalog.md)
+- **Committed:** Victor Login, 2026-09-16 (`a69db7e`)
 
 ### Context and Problem Statement
 
