@@ -4463,6 +4463,7 @@ door rows are where the difference is visible rather than hidden.
 - **Date:** 2026-09-16
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0025-an-endpoint-flow-names-the-method-it-answers-and-that-is-what-pairs-a-call-with-its-handler.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0025-an-endpoint-flow-names-the-method-it-answers-and-that-is-what-pairs-a-call-with-its-handler.md)
+- **Committed:** Victor Login, 2026-09-16 (`81c172f`)
 
 ### Context and Problem Statement
 
