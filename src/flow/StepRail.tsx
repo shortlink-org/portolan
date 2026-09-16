@@ -422,7 +422,7 @@ function EntryRow({
           className="flex shrink-0 items-center gap-1 text-accent hover:underline"
         >
           <Chevron size={11} aria-hidden className="shrink-0" />
-          {open ? "hide" : "follow"}
+          {open ? "close" : "open"}
         </button>
       )}
       <span className="min-w-0 truncate">

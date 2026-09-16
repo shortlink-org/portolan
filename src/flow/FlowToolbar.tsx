@@ -117,9 +117,9 @@ export function FlowToolbar({
   hasCrossings: boolean;
   onCrossOnly: (value: boolean) => void;
   /**
-   * The path as it stands: how many doors it has, how many are open, and what
-   * the open ones added. A flow that continues nowhere has none, and the
-   * control says so by not being there.
+   * The documents: how many doors this flow has, how many stand open beside
+   * it, and what those hold. A flow that continues nowhere has no doors, and
+   * the control says so by not being there.
    */
   journey: { doors: number; open: number; steps: number; services: number };
   /** Follow every continuation the guards allow, and undo it. */
@@ -344,13 +344,13 @@ export function FlowToolbar({
               icon={Route}
               title={
                 journey.open > 0
-                  ? "Close every flow this one continues in"
-                  : `Follow every flow this one continues in (${journey.doors} ${journey.doors === 1 ? "continuation" : "continuations"})`
+                  ? "Close the documents opened from this flow"
+                  : `Open every flow this one continues in as a document (${journey.doors} ${journey.doors === 1 ? "continuation" : "continuations"})`
               }
             >
               {journey.open > 0
-                ? `+${journey.steps} steps · ${journey.services} ${journey.services === 1 ? "service" : "services"}`
-                : `follow ${journey.doors}`}
+                ? `${journey.open} open · ${journey.steps} steps · ${journey.services} ${journey.services === 1 ? "service" : "services"}`
+                : `open ${journey.doors}`}
             </Toggle>
           </div>
         ) : null}

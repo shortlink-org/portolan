@@ -41,7 +41,9 @@ import { FlowToolbar } from "../flow/FlowToolbar";
 import { buildChapters, groupRows } from "../flow/chapters";
 import { continuationIndex } from "../flow/continues";
 import { useFlowPrefs } from "../flow/prefs";
-import { fullJourney, hasJourney, journeyFlow, journeyGroups, journeySteps, openEverything, journeyReach } from "../flow/journey";
+import { flowService, journeyFlow, journeyGroups, journeySteps, journeyReach } from "../flow/journey";
+import { FlowPane } from "../flow/FlowPane";
+import { closePane, openPane, panesOf, readPanes, writePanes } from "../flow/panes";
 import { buildOutline } from "../flow/outline";
 import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
@@ -286,27 +288,20 @@ export function FlowDetail({
   );
 
   /**
-   * The path the reader has opened, in the address: a flow followed into the
-   * next service is a reading worth sending to somebody, and a reading the
-   * back button can undo.
+   * The documents open beside this one, in the address: a flow followed into
+   * the next service is a reading worth sending to somebody, and one the back
+   * button can undo (portolan.0028).
    */
-  const openParam = params.get("open") ?? "";
-  const opened = useMemo(() => {
-    // `*` is "follow all", kept as a word rather than as the list it stands
-    // for: the list of a deep estate is a kilobyte of address, and what the
-    // reader asked for was one thing.
-    if (openParam === "*") {
-      return flow ? openEverything(groups, { flow, flows: catalog.flows, continuations }) : new Set<string>();
-    }
-    return new Set(openParam.split(",").filter(Boolean));
-  }, [openParam, flow, groups, continuations]);
-  const setOpened = useCallback(
-    (next: ReadonlySet<string>) => {
+  const openKeys = useMemo(() => readPanes(params.get("open")), [params]);
+  const opened = useMemo(() => new Set(openKeys), [openKeys]);
+  const panes = useMemo(() => panesOf(openKeys, catalog.flows), [openKeys]);
+  const setOpen = useCallback(
+    (next: readonly string[]) => {
       setParams(
         (current) => {
           const out = new URLSearchParams(current);
-          if (next.size === 0) out.delete("open");
-          else out.set("open", [...next].join(","));
+          if (next.length === 0) out.delete("open");
+          else out.set("open", writePanes(next));
           return out;
         },
         { replace: true },
@@ -314,37 +309,23 @@ export function FlowDetail({
     },
     [setParams],
   );
+  /** A door opens the flow behind it as a document, or closes it again. */
   const toggleEntry = useCallback(
     (key: string) => {
-      const next = new Set(opened);
-      if (next.has(key)) {
-        // Closing a door closes what was opened behind it: those keys are
-        // spelled from this one, and leaving them in the address would open
-        // them again the moment the reader reopens this one.
-        for (const open of opened) {
-          if (open === key || open.startsWith(`${key}/`)) next.delete(open);
-        }
-      } else next.add(key);
-      setOpened(next);
+      setOpen(openKeys.includes(key) ? closePane(openKeys, key) : openPane(openKeys, key));
     },
-    [opened, setOpened],
+    [openKeys, setOpen],
   );
 
   /**
-   * The reader has the whole path open, which is the one shape of it a picture
-   * can be generated for: `?open=*` is the same answer `openEverything` gives,
-   * and the view was laid out from it.
+   * The rail: this flow's steps, with a door under each step that continues
+   * somewhere. A door says whether its document is open; it never unfolds the
+   * other flow into this list (portolan.0028).
    */
-  const wholePath = useMemo(
-    () => openParam === "*" && flow !== undefined && hasJourney(flow, catalog.flows),
-    [openParam, flow],
-  );
-
-  /** The rail, with every opened continuation followed into it. */
   const journey = useMemo(
     () =>
       flow
-        ? journeyGroups(groups, { flow, flows: catalog.flows, continuations, opened })
+        ? journeyGroups(groups, { flow, flows: catalog.flows, continuations, opened, expand: false })
         : [],
     [flow, groups, continuations, opened],
   );
@@ -354,17 +335,23 @@ export function FlowDetail({
     () => new Map(walkable.map((row) => [row.key, row])),
     [walkable],
   );
-  const reach = useMemo(() => journeyReach(journey), [journey]);
+  /**
+   * What the control says: how many doors this flow has, and how many
+   * documents stand open beside it with what they add.
+   */
+  const reach = useMemo(() => {
+    const counted = journeyReach(journey);
+    const services = new Set(panes.map((pane) => flowService(pane.flow)));
+    const steps = panes.reduce((total, pane) => total + walkSteps(pane.flow.steps).length, 0);
+    return { doors: counted.doors, open: panes.length, steps, services: services.size };
+  }, [journey, panes]);
+  /** Every door of this flow at once: one document per continuation. */
   const openAll = useCallback(() => {
-    setParams(
-      (current) => {
-        const out = new URLSearchParams(current);
-        out.set("open", "*");
-        return out;
-      },
-      { replace: true },
+    const doors = journey.flatMap((group) =>
+      group.rows.flatMap((row) => (row.type === "entered" && !row.repeats && !row.deepest ? [row.key] : [])),
     );
-  }, [setParams]);
+    setOpen(doors.reduce<string[]>((keys, key) => openPane(keys, key), openKeys));
+  }, [journey, openKeys, setOpen]);
 
   // What each step's callee hands back, read out of the contract rather than
   // out of the flow: the rail says it beside the step, and the Mermaid copy
@@ -550,13 +537,11 @@ export function FlowDetail({
 
   const contexts = flowContexts(flow);
   /**
-   * Which picture the canvas draws. The whole path has a view of its own,
-   * generated for the one answer "follow everything" gives (portolan.0024);
-   * a path the reader opened part of has no picture, and the canvas keeps
-   * drawing the flow the page is about rather than pretending otherwise.
+   * The canvas draws this flow. A followed one is drawn in its own document
+   * beside it (portolan.0028): a picture is laid out before it is drawn, and
+   * a flow's picture is the one it already has.
    */
-  const picture: FlowPicture = crossOnly ? "cross" : wholePath ? "journey" : "flow";
-  const drawn = picture === "journey" ? fullJourney(flow, catalog.flows) : flow;
+  const picture: FlowPicture = crossOnly ? "cross" : "flow";
   const viewId = flowPictureViewId(flow, picture);
   const hiddenCount = crossOnly ? hidden.size : 0;
   const flowSource = flow.source
@@ -690,7 +675,7 @@ export function FlowDetail({
         <FlowToolbar
           journey={reach}
           onFollowAll={openAll}
-          onFollowNone={() => setOpened(new Set())}
+          onFollowNone={() => setOpen([])}
           variant={prefs.variant}
           onVariant={(variant) => setPrefs({ variant })}
           playing={walkStep !== null}
@@ -722,6 +707,16 @@ export function FlowDetail({
       </div>
 
       <div className="flex min-h-0 flex-1">
+        {/* This flow is the first document; what the reader followed stands
+            beside it, each in its own window, stacked in the order they were
+            opened (portolan.0028). */}
+        <SavedGroup
+          id="portolan:flow-documents"
+          orientation="horizontal"
+          panelIds={panes.length > 0 ? ["document", "documents"] : ["document"]}
+          className="h-full min-h-0 flex-1"
+        >
+          <Panel id="document" minSize="30" className="flex h-full min-w-0 flex-col" onResize={settle}>
         {compact ? (
           <div className="pane min-w-0 flex-1 overflow-y-auto">
             <FlowTable
@@ -762,7 +757,6 @@ export function FlowDetail({
                 draft={branchCanvas ? { model: branchCanvas.model, pairing: branchCanvas.pairing } : undefined}
                 flow={flow}
                 picture={picture}
-                drawn={drawn}
                 variant={prefs.variant}
                 litSteps={
                   litSteps.length > 0
@@ -788,6 +782,34 @@ export function FlowDetail({
             </Panel>
           </SavedGroup>
         )}
+          </Panel>
+
+          {panes.length > 0 ? (
+            <>
+              <ResizeHandle id="documents" />
+              <Panel
+                id="documents"
+                defaultSize="40"
+                minSize="20"
+                maxSize="60"
+                className="flex h-full min-w-0 flex-col overflow-y-auto border-l border-line"
+                onResize={settle}
+              >
+                {panes.map((pane) => (
+                  <FlowPane
+                    key={pane.key}
+                    paneKey={pane.key}
+                    flow={pane.flow}
+                    variant={prefs.variant}
+                    openKeys={opened}
+                    onOpenDoor={(key) => setOpen(openPane(openKeys, key))}
+                    onClose={() => setOpen(closePane(openKeys, pane.key))}
+                  />
+                ))}
+              </Panel>
+            </>
+          ) : null}
+        </SavedGroup>
       </div>
     </div>
   );

@@ -76,6 +76,13 @@ export interface JourneyOptions {
   continuations: ReadonlyMap<string, Continuation[]>;
   /** The entry keys the reader has opened. */
   opened: ReadonlySet<string>;
+  /**
+   * Whether an opened continuation is unfolded into this rail. False when the
+   * reader opens it as a document of its own (portolan.0028): the door still
+   * says what is behind it and that it is open, and the flow is read in its
+   * own window rather than inside this one's list.
+   */
+  expand?: boolean;
   maxDepth?: number;
 }
 
@@ -293,6 +300,7 @@ export function flowService(flow: Flow): string {
 class Reader {
   private readonly flows: readonly Flow[];
   private readonly opened: ReadonlySet<string>;
+  private readonly expand: boolean;
   private readonly maxDepth: number;
   private readonly bySlug: Map<string, Flow>;
   private readonly indexes = new Map<string, ReadonlyMap<string, Continuation[]>>();
@@ -301,6 +309,7 @@ class Reader {
   constructor(options: JourneyOptions) {
     this.flows = options.flows;
     this.opened = options.opened;
+    this.expand = options.expand ?? true;
     this.maxDepth = options.maxDepth ?? MAX_DEPTH;
     this.bySlug = new Map(options.flows.map((flow) => [flow.slug, flow]));
   }
@@ -352,7 +361,7 @@ class Reader {
       ...(repeats ? { repeats: true } : {}),
       ...(deepest ? { deepest: true } : {}),
     };
-    if (!open || !flow) return [entry];
+    if (!open || !flow || !this.expand) return [entry];
     const origin: JourneyOrigin = {
       slug: flow.slug,
       name: flow.name,
