@@ -397,9 +397,12 @@ function StepRow({
  */
 function EntryRow({
   row,
+  drawn,
   onToggle,
 }: {
   row: JourneyEntry;
+  /** This door's path is the one on the canvas. */
+  drawn: boolean;
   onToggle: (key: string) => void;
 }) {
   const { via, open, steps, service, repeats, deepest } = row;
@@ -436,6 +439,13 @@ function EntryRow({
           · {service}
         </span>
       ) : null}
+      {/* Which door the picture is of: a reader with two open would
+          otherwise have to guess which one the canvas is drawing. */}
+      {drawn ? (
+        <span className="shrink-0 pl-2 text-accent" title="the canvas draws this path">
+          drawn
+        </span>
+      ) : null}
       <span className="ml-auto shrink-0 pl-2">
         {stopped ?? `${steps} ${steps === 1 ? "step" : "steps"}`}
       </span>
@@ -453,6 +463,7 @@ export function StepRail({
   onSelect,
   onHover,
   onToggleEntry,
+  drawnEntry,
   crossContextOf,
   full,
   marks,
@@ -478,6 +489,8 @@ export function StepRail({
   onHover: (key: string | null) => void;
   /** Opens or closes one continuation, by the key the address carries. */
   onToggleEntry: (key: string) => void;
+  /** The door whose path the canvas is drawing, when it draws one. */
+  drawnEntry?: string | null;
   /** The context a step crosses into; undefined for a step that crosses none. */
   crossContextOf: (step: Step) => string | null | undefined;
   full?: boolean;
@@ -522,7 +535,7 @@ export function StepRail({
                       </li>
                     ) : row.type === "entered" ? (
                       <li key={row.key}>
-                        <EntryRow row={row} onToggle={onToggleEntry} />
+                        <EntryRow row={row} drawn={row.open && row.key === drawnEntry} onToggle={onToggleEntry} />
                       </li>
                     ) : (
                       <li key={row.key} data-step={row.key}>

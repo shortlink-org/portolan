@@ -316,9 +316,16 @@ export function FlowDetail({
     },
     [setParams],
   );
+  /**
+   * The door the reader opened last. Two doors open is a shape no view was
+   * laid out for (portolan.0027), so the canvas draws the one they just
+   * opened - the question they are asking now - and the rail keeps both.
+   */
+  const [lastDoor, setLastDoor] = useState<string | null>(null);
   const toggleEntry = useCallback(
     (key: string) => {
       const next = new Set(opened);
+      setLastDoor(next.has(key) ? null : key);
       if (next.has(key)) {
         // Closing a door closes what was opened behind it: those keys are
         // spelled from this one, and leaving them in the address would open
@@ -356,7 +363,13 @@ export function FlowDetail({
    * between - two of five doors - has none, and the canvas keeps drawing the
    * flow the page is about rather than a path nobody asked for.
    */
-  const oneDoor = !wholePath && opened.size === 1 ? ([...opened][0] ?? null) : null;
+  const oneDoor = wholePath
+    ? null
+    : lastDoor && opened.has(lastDoor)
+      ? lastDoor
+      : opened.size === 1
+        ? ([...opened][0] ?? null)
+        : null;
   const [doorCanvas, setDoorCanvas] = useState<DoorView | null>(null);
   useEffect(() => {
     if (!flow || !oneDoor) {
@@ -663,6 +676,7 @@ export function FlowDetail({
         onSelect={selectRow}
         onHover={setHoverStep}
         onToggleEntry={toggleEntry}
+        drawnEntry={crossOnly || wholePath ? null : oneDoor}
         crossContextOf={crossContextOf}
       />
     </>
