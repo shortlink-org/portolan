@@ -506,7 +506,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/auth/internal/user/application/change_password/usecase.go:48'
     }
-    auth.auth -> client 'HTTP response' {
+    auth.auth -> client '204' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -523,7 +523,7 @@ PaymentDeclined' }
       color declared  line solid  head none
       notes 'examples/auth/internal/user/application/get/usecase.go:22'
     }
-    auth.auth -> client 'HTTP response' {
+    auth.auth -> client 'User' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -571,7 +571,7 @@ PaymentDeclined' }
             color declared  line solid  head onormal
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
           }
-          auth.auth -> client 'HTTP response' {
+          auth.auth -> client 'Session' {
             color declared  line dashed  head normal
             notes 'Synthesized from the proven synchronous HTTP handler return.'
           }
@@ -611,7 +611,7 @@ PaymentDeclined' }
             color declared  line solid  head onormal
             notes 'inside a loop over `sessions`. — examples/auth/internal/session/application/login/usecase.go:101'
           }
-          auth.auth -> client 'HTTP response' {
+          auth.auth -> client 'Session' {
             color declared  line dashed  head normal
             notes 'Synthesized from the proven synchronous HTTP handler return.'
           }
@@ -628,7 +628,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/auth/internal/session/application/login/usecase.go:77'
     }
-    auth.auth -> client 'HTTP response' {
+    auth.auth -> client 'Session' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -653,7 +653,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/auth/internal/session/application/logout/usecase.go:48'
     }
-    auth.auth -> client 'HTTP response' {
+    auth.auth -> client '204' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -678,7 +678,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/auth/internal/user/application/register/usecase.go:53'
     }
-    auth.auth -> client 'HTTP response' {
+    auth.auth -> client 'User' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -695,7 +695,7 @@ PaymentDeclined' }
       color declared  line solid  head none
       notes 'examples/auth/internal/session/application/validate/usecase.go:33'
     }
-    auth.auth -> client 'HTTP response' {
+    auth.auth -> client 'SessionInfo' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -1425,7 +1425,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
     }
-    shop.cart -> client 'HTTP response' {
+    shop.cart -> client 'Basket' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -1458,7 +1458,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
     }
-    shop.cart -> client 'HTTP response' {
+    shop.cart -> client 'CheckedOut' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -1487,7 +1487,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
     }
-    shop.cart -> client 'HTTP response' {
+    shop.cart -> client 'BasketCreated' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -1500,7 +1500,7 @@ PaymentDeclined' }
       color declared  line solid  head normal
       notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
     }
-    shop.cart -> client 'HTTP response' {
+    shop.cart -> client 'Basket' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -1541,7 +1541,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
     }
-    shop.cart -> client 'HTTP response' {
+    shop.cart -> client 'Basket' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -1570,7 +1570,7 @@ PaymentDeclined' }
       color declared  line solid  head onormal
       notes 'examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
     }
-    shop.cart -> client 'HTTP response' {
+    shop.cart -> client 'Basket' {
       color declared  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
@@ -1930,8 +1930,8 @@ PaymentDeclined' }
           notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
         }
         shop.oms -> bus 'OrderCancelled' {
-          color declared  line solid  head onormal
-          notes 'examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
+          color verified  line solid  head onormal
+          notes 'Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50'
         }
       }
     }
@@ -2113,59 +2113,6 @@ PaymentDeclined' }
     shop.oms -> payments.ledger 'AuthorizeRequest → AuthorizeResponse' {
       color declared  line solid  head normal
       notes 'examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:53'
-    }
-  }
-
-  dynamic view flow_observed_oms_cancelorder {
-    title 'Observed: CancelOrder'
-    description 'Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
-    client -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
-      color verified  line solid  head normal
-    }
-    shop.oms -> oms_pg 'SELECT' {
-      color verified  line solid  head none
-    }
-    shop.oms -> oms_pg 'SELECT' {
-      color verified  line solid  head none
-    }
-    shop.oms -> oms_pg 'UPDATE orders' {
-      color verified  line solid  head none
-    }
-    shop.oms -> oms_pg 'DELETE' {
-      color verified  line solid  head none
-    }
-    shop.oms -> oms_pg 'INSERT' {
-      color verified  line solid  head none
-    }
-    shop.oms -> bus 'OrderCancelled' {
-      color verified  line solid  head onormal
-    }
-    shop.oms -> oms_pg 'SELECT' {
-      color verified  line solid  head none
-    }
-    shop.oms -> oms_pg 'SELECT' {
-      color verified  line solid  head none
-    }
-  }
-
-  dynamic view flow_observed_oms_getorder {
-    title 'Observed: GetOrder'
-    description 'Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.'
-    client -> shop.oms 'GetOrderRequest → GetOrderResponse' {
-      color verified  line solid  head normal
-    }
-    shop.oms -> oms_pg 'SELECT' {
-      color verified  line solid  head none
-    }
-    alt {
-      when 'SELECT' {
-        shop.oms -> oms_pg 'SELECT' {
-          color verified  line solid  head none
-          notes 'Seen in 1 recording of 2 traces.'
-        }
-      }
-      else 'otherwise' {
-      }
     }
   }
 

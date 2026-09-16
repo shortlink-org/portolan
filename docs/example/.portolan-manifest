@@ -118,8 +118,6 @@
     "flows/ledger-list-refunds.md",
     "flows/ledger-refund-payment-on-order-cancelled.md",
     "flows/ledger-void-payment-on-order-cancelled.md",
-    "flows/observed-oms-cancelorder.md",
-    "flows/observed-oms-getorder.md",
     "flows/oms-cancel-order-on-payment-declined.md",
     "flows/oms-cancel-order.md",
     "flows/oms-cdc-public-order-lines-shop-oms-public-order-lines-shop-oms-public-order-lines-envelope.md",

@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.checkout → Checkout
-   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L11)
+   `storefront.v1.Basket/Mutation.checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L11)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — checkout → CheckedOut
    `cart.v1/checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L12)

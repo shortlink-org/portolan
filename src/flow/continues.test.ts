@@ -115,3 +115,52 @@ describe("continuationIndex", () => {
     }
   });
 });
+
+// A call and the flow that answers it: the pairing that makes a path across
+// two separately read services possible at all.
+describe("a call and the flow that serves it", () => {
+  const lanes = (service: string) => [
+    { id: "client", kind: "actor" as const, context: null },
+    { id: service, kind: "service" as const, context: "shop" },
+  ];
+
+  const serving = (slug: string, service: string, ref: string): Flow => ({
+    ...makeFlow(slug, [{ type: "step", id: "t1", from: "client", to: service, kind: "rpc", ref, status: "declared" }]),
+    participants: lanes(service),
+  });
+
+  const calling = (slug: string, service: string, ref: string): Flow => ({
+    ...makeFlow(slug, [
+      { type: "step", id: "c0", from: "client", to: "shop.bff", kind: "rpc", status: "declared" },
+      { type: "step", id: "c1", from: "shop.bff", to: service, kind: "rpc", ref, status: "declared" },
+    ]),
+    participants: [...lanes("shop.bff"), { id: service, kind: "service" as const, context: "shop" }],
+  });
+
+  const REF = "cart.v1/addItem";
+  const server = serving("cart-add-item", "shop.cart", REF);
+  const caller = calling("bff-add-item", "shop.cart", REF);
+  const other = calling("web-add-item", "shop.cart", REF);
+
+  it("pairs the caller's step with the flow that serves that method", () => {
+    const step = walkSteps(caller.steps)[1]!;
+    const hits = continuationsOf(step, caller, [server, other]);
+    expect(hits.map((hit) => `${hit.slug}:${hit.kind}:${hit.confidence}`)).toEqual(["cart-add-item:contract:high"]);
+  });
+
+  it("does not pair two callers of the same method", () => {
+    const step = walkSteps(other.steps)[1]!;
+    expect(continuationsOf(step, other, [caller]).map((hit) => hit.slug)).toEqual([]);
+  });
+
+  it("does not pair a call with a flow that serves the same method on another service", () => {
+    const elsewhere = serving("shop-add-item", "shop.shop", REF);
+    const step = walkSteps(caller.steps)[1]!;
+    expect(continuationsOf(step, caller, [elsewhere]).map((hit) => hit.slug)).toEqual([]);
+  });
+
+  it("finds it through the index the rail uses, too", () => {
+    const index = continuationIndex(caller, [caller, server, other]);
+    expect(index.get("c1")?.map((hit) => hit.slug)).toEqual(["cart-add-item"]);
+  });
+});

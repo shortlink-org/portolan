@@ -88,8 +88,6 @@
 | [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
 | [Refund payment on order cancelled](flows/ledger-refund-payment-on-order-cancelled.md) | [payments](payments/README.md) | Sends captured money back once the order it was captured for is gone. |
 | [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
-| [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
-| [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Cancel order on payment declined](flows/oms-cancel-order-on-payment-declined.md) | [shop](shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |

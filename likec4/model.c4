@@ -515,9 +515,6 @@ payment was captured, and what that means for a parcel is decided here.'
   client -[uses]-> shop.billing '7 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -[uses]-> shop.oms '4 flows' {
-    style { color verified  line solid  head normal }
-  }
   developer -[uses]-> portolan.host 'npm run gen' {
     style { color declared  line dashed  head normal }
   }

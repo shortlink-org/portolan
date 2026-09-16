@@ -31,4 +31,4 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Subscription.orderStatus → OrderMoved
-   status: declared · [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts#L11)
+   `storefront.v1.Order/Subscription.orderStatus` · status: declared · [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts#L11)

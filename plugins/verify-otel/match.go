@@ -282,13 +282,21 @@ func declaredOpening(flow *catalog.Flow) string {
 		return ""
 	}
 	brokers := map[string]bool{}
+	actors := map[string]bool{}
 	for _, p := range flow.Participants {
 		if p.Kind == catalog.ParticipantBroker {
 			brokers[p.ID] = true
 		}
+		if p.Kind == catalog.ParticipantActor {
+			actors[p.ID] = true
+		}
 	}
 	switch {
-	case first.Kind == catalog.StepRPC && first.Ref == "" && first.From != first.To:
+	// The call in. A flow that opens with an outbound call - a client-side
+	// flow, read off the caller - is not an endpoint's, and the lane the call
+	// comes from is what says which is which. A ref on the step says which
+	// method it answers (portolan.0025) and changes none of that.
+	case first.Kind == catalog.StepRPC && first.From != first.To && (first.Ref == "" || actors[first.From]):
 		return openingKey(catalog.StepRPC, first.To, first.Label)
 	case first.Kind == catalog.StepEvent && first.Ref != "" && brokers[first.From]:
 		return openingKey(catalog.StepEvent, first.To, first.Ref)

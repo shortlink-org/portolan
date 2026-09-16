@@ -32,7 +32,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.billing** — invoice_partial_update
-   status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
+   `shop.billing.invoices/invoice_partial_update` · status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
 <a id="step-response-s1"></a>
 2. **shop.billing** → **client** — HTTP response
    status: declared · Synthesized from the proven synchronous HTTP handler return.

@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.viewer → Viewer
-   status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L8)
+   `storefront.v1.Viewer/Query.viewer` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L8)
 <a id="step-s2"></a>
 2. **storefront.bff** → **auth.auth** — validateSession → SessionInfo
    `auth.v1/validateSession` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L9)

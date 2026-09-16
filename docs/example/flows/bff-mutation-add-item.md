@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.addItem → Basket
-   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L8)
+   `storefront.v1.Basket/Mutation.addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L8)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — addItem → Basket
    `cart.v1/addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L9)

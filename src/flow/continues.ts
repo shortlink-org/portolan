@@ -17,7 +17,7 @@ import { walkSteps } from "../catalog";
 export interface Continuation {
   slug: string;
   name: string;
-  kind: "entrypoint" | "handoff" | "event";
+  kind: "entrypoint" | "handoff" | "event" | "contract";
   basis: string;
   confidence: "high" | "medium";
 }
@@ -69,9 +69,27 @@ function continuation(step: Step, flow: Flow): Continuation | null {
     };
   }
 
+  // The call and the flow that answers it. Both halves are the contract's
+  // word - the step names the method it calls, and the other flow's opening
+  // step is that method being served - which is why this is as strong as a
+  // source entry despite crossing two extractors' readings.
+  //
+  // What makes it the answer rather than a second caller is the direction:
+  // the other flow's opening step comes in from an actor and lands on the
+  // service this step is calling. Two flows calling the same method share a
+  // ref and neither serves it, and they continue nothing.
+  if (step.kind === "rpc" && step.ref && opening.ref === step.ref && opening.to === step.to && servedByCaller(flow, opening)) {
+    return {
+      slug: flow.slug,
+      name: flow.name,
+      kind: "contract",
+      basis: step.ref,
+      confidence: "high",
+    };
+  }
+
   // A shared domain event is useful navigation, but weaker than a proven
-  // source entry or transport handoff. RPC refs are deliberately excluded:
-  // two flows calling the same method do not continue one another.
+  // source entry or transport handoff.
   if (step.kind === "event" && opening.kind === "event" && step.ref && opening.ref === step.ref) {
     return {
       slug: flow.slug,
@@ -82,6 +100,11 @@ function continuation(step: Step, flow: Flow): Continuation | null {
     };
   }
   return null;
+}
+
+/** Whether a flow's opening step is a call coming in from outside it. */
+function servedByCaller(flow: Flow, opening: Step): boolean {
+  return flow.participants.find((participant) => participant.id === opening.from)?.kind === "actor";
 }
 
 /**
@@ -110,29 +133,49 @@ export function continuationIndex(
   // steps would otherwise walk the whole catalog forty times.
   const candidates = flows.filter((other) => other.slug !== flow.slug);
   const byRef = new Map<string, Continuation[]>();
+  // The flows that serve a method, by the method and the service that serves
+  // it: one pass, because every rpc step of a long rail would otherwise ask
+  // the whole catalog.
+  const served = new Map<string, Continuation[]>();
   for (const other of flows) {
     if (other.slug === flow.slug) continue;
     const opening = openingStep(other);
-    if (!opening?.ref || opening.kind !== "event") continue;
-    const list = byRef.get(opening.ref) ?? [];
-    list.push({
-      slug: other.slug,
-      name: other.name,
-      kind: "event",
-      basis: opening.ref,
-      confidence: "medium",
-    });
-    byRef.set(opening.ref, list);
+    if (!opening?.ref) continue;
+    if (opening.kind === "event") {
+      const list = byRef.get(opening.ref) ?? [];
+      list.push({
+        slug: other.slug,
+        name: other.name,
+        kind: "event",
+        basis: opening.ref,
+        confidence: "medium",
+      });
+      byRef.set(opening.ref, list);
+      continue;
+    }
+    if (opening.kind === "rpc" && servedByCaller(other, opening)) {
+      const key = `${opening.ref}|${opening.to}`;
+      const list = served.get(key) ?? [];
+      list.push({
+        slug: other.slug,
+        name: other.name,
+        kind: "contract",
+        basis: opening.ref,
+        confidence: "high",
+      });
+      served.set(key, list);
+    }
   }
 
   const out = new Map<string, Continuation[]>();
   for (const step of walkSteps(flow.steps)) {
     const exact = candidates.flatMap((other) => {
       const match = continuation(step, other);
-      return match && match.kind !== "event" ? [match] : [];
+      return match && match.kind !== "event" && match.kind !== "contract" ? [match] : [];
     });
+    const answered = step.kind === "rpc" && step.ref ? served.get(`${step.ref}|${step.to}`) ?? [] : [];
     const inferred = step.kind === "event" && step.ref ? byRef.get(step.ref) ?? [] : [];
-    const hits = [...exact, ...inferred].filter(
+    const hits = [...exact, ...answered, ...inferred].filter(
       (hit, index, all) => all.findIndex((candidate) => candidate.slug === hit.slug) === index,
     );
     if (hits.length > 0) out.set(step.id, hits);

@@ -31,14 +31,14 @@ sequenceDiagram
     p0->>p1: removeItem
     p1->>p2: save
     p1-)p3: BasketItemRemoved
-    p1-->>p0: HTTP response
+    p1-->>p0: Basket
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — removeItem
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L49)
+   `cart.v1/removeItem` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L49)
 <a id="step-s2"></a>
 2. **shop.cart** → **cart-pg** — save
    status: declared · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22)
@@ -46,5 +46,5 @@ sequenceDiagram
 3. **shop.cart** → **bus** — BasketItemRemoved
    [`shop.cart.basket.BasketItemRemoved`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemremoved) · status: declared · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22)
 <a id="step-response-s1"></a>
-4. **shop.cart** → **client** — HTTP response
+4. **shop.cart** → **client** — Basket
    status: declared · Synthesized from the proven synchronous HTTP handler return.

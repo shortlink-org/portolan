@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — GetRoute → GetRouteResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L37)
+   `delivery.v1.RouteService/GetRoute` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L37)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts#L22)

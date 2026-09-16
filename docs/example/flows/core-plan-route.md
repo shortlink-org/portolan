@@ -40,7 +40,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — PlanRoute → PlanRouteResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L16)
+   `delivery.v1.RouteService/PlanRoute` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L16)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts#L27) · inside a loop over `shipmentIds`.

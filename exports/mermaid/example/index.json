@@ -425,22 +425,6 @@
       "diagram": "ledger-void-payment-on-order-cancelled.mmd"
     },
     {
-      "id": "flow.observed-oms-cancelorder",
-      "slug": "observed-oms-cancelorder",
-      "name": "Observed: CancelOrder",
-      "owner": "shop",
-      "source": "examples/shop/oms/telemetry/traces.jsonl",
-      "diagram": "observed-oms-cancelorder.mmd"
-    },
-    {
-      "id": "flow.observed-oms-getorder",
-      "slug": "observed-oms-getorder",
-      "name": "Observed: GetOrder",
-      "owner": "shop",
-      "source": "examples/shop/oms/telemetry/traces.jsonl",
-      "diagram": "observed-oms-getorder.mmd"
-    },
-    {
       "id": "flow.oms-cancel-order",
       "slug": "oms-cancel-order",
       "name": "Cancel order",

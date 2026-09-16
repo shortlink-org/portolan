@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — GetShipment → GetShipmentResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L48)
+   `delivery.v1.Delivery/GetShipment` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L48)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts#L24)

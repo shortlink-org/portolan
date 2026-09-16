@@ -38,7 +38,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — RecordDelivery → RecordDeliveryResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L36)
+   `delivery.v1.Delivery/RecordDelivery` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L36)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts#L11)

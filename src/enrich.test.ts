@@ -243,6 +243,77 @@ describe("enrichCatalog: flow summaries from contracts", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("enrichCatalog: the method an endpoint flow serves", () => {
+  /** pricing, with an HTTP route beside the rpc, for the route case. */
+  const pricingWithRoute = (): Service =>
+    service("shop", "pricing", {
+      provides: [
+        {
+          id: "pricing.v1.Pricing",
+          methods: [
+            { name: "Quote", doc: "", request: "QuoteRequest", response: "QuoteResponse" },
+            { name: "listQuotes", doc: "", http: { method: "GET", path: "/v1/quotes/{id}" } },
+          ],
+          source: "pricing.proto",
+        },
+      ],
+    });
+
+  const served = (catalog: Catalog, slug: string): string | undefined => {
+    const flow = catalog.flows.find((f) => f.slug === slug)!;
+    const opening = flow.steps[0];
+    return opening?.type === "step" ? opening.ref : undefined;
+  };
+
+  it("names the method the trigger names, so a caller's step and this flow meet", () => {
+    const answering = flow("pricing-quote", [step("client", "shop.pricing", "rpc", { label: "Quote" })]);
+    answering.trigger = { kind: "callback", label: "gRPC · Quote", confidence: "high" };
+    const { catalog } = enrichCatalog(estate([answering]));
+    expect(served(catalog, "pricing-quote")).toBe(METHOD);
+  });
+
+  it("falls back to the route the trigger spells", () => {
+    const answering = flow("pricing-list", [step("client", "shop.pricing", "rpc", { label: "listing" })]);
+    // The label is the route as the document templates it, which is what an
+    // extractor writes: a concrete id belongs to a recording, not to a route.
+    answering.trigger = { kind: "http", label: "GET /v1/quotes/{id}", confidence: "high" };
+    const { catalog } = enrichCatalog(estate([answering], [oms(), pricingWithRoute()]));
+    expect(served(catalog, "pricing-list")).toBe("pricing.v1.Pricing/listQuotes");
+  });
+
+  it("says nothing when the flow is not opened from outside, or says nothing about its trigger", () => {
+    const inside = flow("pricing-inside", [step("shop.oms", "shop.pricing", "rpc", { label: "Quote" })]);
+    inside.trigger = { kind: "callback", label: "gRPC · Quote", confidence: "high" };
+    // A recording of the endpoint running is an example of it, not a way in.
+    const recorded = flow("observed-quote", [step("client", "shop.pricing", "rpc", { label: "Quote" })]);
+    const { catalog } = enrichCatalog(estate([inside, recorded]));
+    expect(served(catalog, "pricing-inside")).toBeUndefined();
+    expect(served(catalog, "observed-quote")).toBeUndefined();
+  });
+
+  it("says nothing when two methods answer to one name", () => {
+    const twice = service("shop", "pricing", {
+      provides: [
+        { id: "pricing.v1.Pricing", methods: [{ name: "Quote", doc: "" }], source: "a.proto" },
+        { id: "pricing.v2.Pricing", methods: [{ name: "Quote", doc: "" }], source: "b.proto" },
+      ],
+    });
+    const answering = flow("pricing-quote", [step("client", "shop.pricing", "rpc", { label: "Quote" })]);
+    answering.trigger = { kind: "callback", label: "gRPC · Quote", confidence: "high" };
+    const { catalog } = enrichCatalog(estate([answering], [oms(), twice]));
+    expect(served(catalog, "pricing-quote")).toBeUndefined();
+  });
+
+  it("leaves a ref the extractor already wrote alone", () => {
+    const answering = flow("pricing-quote", [
+      step("client", "shop.pricing", "rpc", { label: "Quote", ref: "pricing.v1.Pricing/Other" }),
+    ]);
+    answering.trigger = { kind: "callback", label: "gRPC · Quote", confidence: "high" };
+    const { catalog } = enrichCatalog(estate([answering]));
+    expect(served(catalog, "pricing-quote")).toBe("pricing.v1.Pricing/Other");
+  });
+});
+
 describe("enrichCatalog: HTTP route correlation", () => {
   function httpProvider(
     slug: string,

@@ -121,13 +121,10 @@
           "from": "client",
           "to": "auth.auth",
           "kind": "rpc",
+          "ref": "auth.v1/changePassword",
           "label": "changePassword",
-          "status": "verified",
-          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/user/infrastructure/http/change_password.go:20",
-          "seen": {
-            "traces": 2
-          }
+          "status": "declared",
+          "line": "examples/auth/internal/user/infrastructure/http/change_password.go:20"
         },
         {
           "evidence": [
@@ -266,7 +263,7 @@
           "from": "auth.auth",
           "to": "client",
           "kind": "response",
-          "label": "HTTP response",
+          "label": "204",
           "status": "declared",
           "note": "Synthesized from the proven synchronous HTTP handler return.",
           "replyTo": "s1"
@@ -280,18 +277,6 @@
           "recordedAt": "2026-09-12T10:21:50.40362Z",
           "durationMs": 39.81,
           "steps": [
-            {
-              "step": "s1",
-              "label": "POST /v1/users/me/password",
-              "durationMs": 39.81,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "204",
-                "http.route": "/v1/users/me/password",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
             {
               "step": "s5",
               "label": "publish auth.PasswordChanged",
@@ -311,20 +296,7 @@
           "traceId": "1d60db11c6985c62345fb483a01a815b",
           "recordedAt": "2026-09-12T10:21:56.581603Z",
           "durationMs": 18.879,
-          "steps": [
-            {
-              "step": "s1",
-              "label": "POST /v1/users/me/password",
-              "durationMs": 18.879,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "401",
-                "http.route": "/v1/users/me/password",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            }
-          ]
+          "steps": []
         }
       ]
     },
@@ -373,13 +345,10 @@
           "from": "client",
           "to": "auth.auth",
           "kind": "rpc",
+          "ref": "auth.v1/getUser",
           "label": "getUser",
-          "status": "verified",
-          "note": "Seen running in examples/auth/telemetry/traces.jsonl (3 traces).",
-          "line": "examples/auth/internal/user/infrastructure/http/get.go:11",
-          "seen": {
-            "traces": 3
-          }
+          "status": "declared",
+          "line": "examples/auth/internal/user/infrastructure/http/get.go:11"
         },
         {
           "evidence": [
@@ -421,7 +390,7 @@
           "from": "auth.auth",
           "to": "client",
           "kind": "response",
-          "label": "HTTP response",
+          "label": "User",
           "status": "declared",
           "note": "Synthesized from the proven synchronous HTTP handler return.",
           "replyTo": "s1"
@@ -434,20 +403,7 @@
           "traceId": "4477bdad7f7f3e31d841dbc63e7749e5",
           "recordedAt": "2026-09-12T10:21:50.267679Z",
           "durationMs": 1.591,
-          "steps": [
-            {
-              "step": "s1",
-              "label": "GET /v1/users/{userId}",
-              "durationMs": 1.591,
-              "attributes": {
-                "http.request.method": "GET",
-                "http.response.status_code": "404",
-                "http.route": "/v1/users/{userId}",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            }
-          ]
+          "steps": []
         },
         {
           "id": "telemetry/traces.jsonl#0ee6ade54fd1f9a3dc2a787ebacca326",
@@ -455,20 +411,7 @@
           "traceId": "0ee6ade54fd1f9a3dc2a787ebacca326",
           "recordedAt": "2026-09-12T10:21:50.280286Z",
           "durationMs": 0.732,
-          "steps": [
-            {
-              "step": "s1",
-              "label": "GET /v1/users/{userId}",
-              "durationMs": 0.732,
-              "attributes": {
-                "http.request.method": "GET",
-                "http.response.status_code": "404",
-                "http.route": "/v1/users/{userId}",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            }
-          ]
+          "steps": []
         },
         {
           "id": "telemetry/traces.jsonl#96e6f014ae5ac6d5edcb50dddb9b20e6",
@@ -476,20 +419,7 @@
           "traceId": "96e6f014ae5ac6d5edcb50dddb9b20e6",
           "recordedAt": "2026-09-12T10:21:56.538913Z",
           "durationMs": 1.109,
-          "steps": [
-            {
-              "step": "s1",
-              "label": "GET /v1/users/{userId}",
-              "durationMs": 1.109,
-              "attributes": {
-                "http.request.method": "GET",
-                "http.response.status_code": "200",
-                "http.route": "/v1/users/{userId}",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            }
-          ]
+          "steps": []
         }
       ]
     },
@@ -549,13 +479,10 @@
           "from": "client",
           "to": "auth.auth",
           "kind": "rpc",
+          "ref": "auth.v1/login",
           "label": "login",
-          "status": "verified",
-          "note": "Seen running in examples/auth/telemetry/traces.jsonl (10 traces).",
-          "line": "examples/auth/internal/session/infrastructure/http/login.go:11",
-          "seen": {
-            "traces": 10
-          }
+          "status": "declared",
+          "line": "examples/auth/internal/session/infrastructure/http/login.go:11"
         },
         {
           "evidence": [
@@ -896,7 +823,7 @@
                   "from": "auth.auth",
                   "to": "client",
                   "kind": "response",
-                  "label": "HTTP response",
+                  "label": "Session",
                   "status": "declared",
                   "note": "Synthesized from the proven synchronous HTTP handler return.",
                   "replyTo": "s1"
@@ -1198,7 +1125,7 @@
                   "from": "auth.auth",
                   "to": "client",
                   "kind": "response",
-                  "label": "HTTP response",
+                  "label": "Session",
                   "status": "declared",
                   "note": "Synthesized from the proven synchronous HTTP handler return.",
                   "replyTo": "s1"
@@ -1281,7 +1208,7 @@
           "from": "auth.auth",
           "to": "client",
           "kind": "response",
-          "label": "HTTP response",
+          "label": "Session",
           "status": "declared",
           "note": "Synthesized from the proven synchronous HTTP handler return.",
           "replyTo": "s1"
@@ -1295,18 +1222,6 @@
           "recordedAt": "2026-09-12T10:21:50.334643Z",
           "durationMs": 23.495,
           "steps": [
-            {
-              "step": "s1",
-              "label": "POST /v1/sessions",
-              "durationMs": 23.495,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "201",
-                "http.route": "/v1/sessions",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
             {
               "step": "s20",
               "label": "publish auth.SessionStarted",
@@ -1328,18 +1243,6 @@
           "durationMs": 22.089,
           "steps": [
             {
-              "step": "s1",
-              "label": "POST /v1/sessions",
-              "durationMs": 22.089,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "201",
-                "http.route": "/v1/sessions",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
-            {
               "step": "s20",
               "label": "publish auth.SessionStarted",
               "durationMs": 0.001,
@@ -1359,18 +1262,6 @@
           "recordedAt": "2026-09-12T10:21:56.548049Z",
           "durationMs": 25.225,
           "steps": [
-            {
-              "step": "s1",
-              "label": "POST /v1/sessions",
-              "durationMs": 25.225,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "201",
-                "http.route": "/v1/sessions",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
             {
               "step": "s20",
               "label": "publish auth.SessionStarted",
@@ -1392,18 +1283,6 @@
           "durationMs": 21.457,
           "steps": [
             {
-              "step": "s1",
-              "label": "POST /v1/sessions",
-              "durationMs": 21.457,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "401",
-                "http.route": "/v1/sessions",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
-            {
               "step": "s9",
               "label": "publish auth.AccountLocked",
               "durationMs": 0.001,
@@ -1422,20 +1301,7 @@
           "traceId": "e49d5adf2fb5ecc3ed0fa041fb66b7b1",
           "recordedAt": "2026-09-12T10:21:56.607654Z",
           "durationMs": 22.53,
-          "steps": [
-            {
-              "step": "s1",
-              "label": "POST /v1/sessions",
-              "durationMs": 22.53,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "401",
-                "http.route": "/v1/sessions",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            }
-          ]
+          "steps": []
         }
       ]
     },
@@ -1489,13 +1355,10 @@
           "from": "client",
           "to": "auth.auth",
           "kind": "rpc",
+          "ref": "auth.v1/logout",
           "label": "logout",
-          "status": "verified",
-          "note": "Seen running in examples/auth/telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/session/infrastructure/http/logout.go:15",
-          "seen": {
-            "traces": 1
-          }
+          "status": "declared",
+          "line": "examples/auth/internal/session/infrastructure/http/logout.go:15"
         },
         {
           "evidence": [
@@ -1600,7 +1463,7 @@
           "from": "auth.auth",
           "to": "client",
           "kind": "response",
-          "label": "HTTP response",
+          "label": "204",
           "status": "declared",
           "note": "Synthesized from the proven synchronous HTTP handler return.",
           "replyTo": "s1"
@@ -1614,18 +1477,6 @@
           "recordedAt": "2026-09-12T10:21:56.486357Z",
           "durationMs": 4.367,
           "steps": [
-            {
-              "step": "s1",
-              "label": "DELETE /v1/sessions/current",
-              "durationMs": 4.367,
-              "attributes": {
-                "http.request.method": "DELETE",
-                "http.response.status_code": "204",
-                "http.route": "/v1/sessions/current",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
             {
               "step": "s4",
               "label": "publish auth.SessionEnded",
@@ -1691,13 +1542,10 @@
           "from": "client",
           "to": "auth.auth",
           "kind": "rpc",
+          "ref": "auth.v1/registerUser",
           "label": "registerUser",
-          "status": "verified",
-          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/user/infrastructure/http/register.go:16",
-          "seen": {
-            "traces": 2
-          }
+          "status": "declared",
+          "line": "examples/auth/internal/user/infrastructure/http/register.go:16"
         },
         {
           "evidence": [
@@ -1802,7 +1650,7 @@
           "from": "auth.auth",
           "to": "client",
           "kind": "response",
-          "label": "HTTP response",
+          "label": "User",
           "status": "declared",
           "note": "Synthesized from the proven synchronous HTTP handler return.",
           "replyTo": "s1"
@@ -1816,18 +1664,6 @@
           "recordedAt": "2026-09-12T10:21:50.29868Z",
           "durationMs": 27.649,
           "steps": [
-            {
-              "step": "s1",
-              "label": "POST /v1/users",
-              "durationMs": 27.649,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "201",
-                "http.route": "/v1/users",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
             {
               "step": "s4",
               "label": "publish auth.UserRegistered",
@@ -1848,18 +1684,6 @@
           "recordedAt": "2026-09-12T10:21:56.502278Z",
           "durationMs": 28.106,
           "steps": [
-            {
-              "step": "s1",
-              "label": "POST /v1/users",
-              "durationMs": 28.106,
-              "attributes": {
-                "http.request.method": "POST",
-                "http.response.status_code": "201",
-                "http.route": "/v1/users",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            },
             {
               "step": "s4",
               "label": "publish auth.UserRegistered",
@@ -2017,13 +1841,10 @@
           "from": "client",
           "to": "auth.auth",
           "kind": "rpc",
+          "ref": "auth.v1/validateSession",
           "label": "validateSession",
-          "status": "verified",
-          "note": "Seen running in examples/auth/telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/session/infrastructure/http/validate.go:12",
-          "seen": {
-            "traces": 2
-          }
+          "status": "declared",
+          "line": "examples/auth/internal/session/infrastructure/http/validate.go:12"
         },
         {
           "evidence": [
@@ -2065,7 +1886,7 @@
           "from": "auth.auth",
           "to": "client",
           "kind": "response",
-          "label": "HTTP response",
+          "label": "SessionInfo",
           "status": "declared",
           "note": "Synthesized from the proven synchronous HTTP handler return.",
           "replyTo": "s1"
@@ -2078,20 +1899,7 @@
           "traceId": "91e3527a68d293f93c652a3a7e9d3aac",
           "recordedAt": "2026-09-12T10:21:50.395457Z",
           "durationMs": 1.238,
-          "steps": [
-            {
-              "step": "s1",
-              "label": "GET /v1/sessions/current",
-              "durationMs": 1.238,
-              "attributes": {
-                "http.request.method": "GET",
-                "http.response.status_code": "200",
-                "http.route": "/v1/sessions/current",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            }
-          ]
+          "steps": []
         },
         {
           "id": "telemetry/traces.jsonl#79ad5ecd711bcf51887ed1db916169ea",
@@ -2099,20 +1907,7 @@
           "traceId": "79ad5ecd711bcf51887ed1db916169ea",
           "recordedAt": "2026-09-12T10:21:56.469172Z",
           "durationMs": 2.666,
-          "steps": [
-            {
-              "step": "s1",
-              "label": "GET /v1/sessions/current",
-              "durationMs": 2.666,
-              "attributes": {
-                "http.request.method": "GET",
-                "http.response.status_code": "401",
-                "http.route": "/v1/sessions/current",
-                "server.address": "localhost",
-                "server.port": "8080"
-              }
-            }
-          ]
+          "steps": []
         }
       ]
     }

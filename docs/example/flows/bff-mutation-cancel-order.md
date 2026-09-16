@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.cancelOrder → Order
-   status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L8)
+   `storefront.v1.Order/Mutation.cancelOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L8)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.oms** — CancelOrder → CancelOrderResponse
    `shop.v1.OrderService/CancelOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L9)

@@ -38,7 +38,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — CloseRoute → CloseRouteResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L30)
+   `delivery.v1.RouteService/CloseRoute` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L30)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts#L11)

@@ -31,14 +31,14 @@ sequenceDiagram
     p0->>p1: createBasket
     p1->>p2: save
     p1-)p3: BasketCreated
-    p1-->>p0: HTTP response
+    p1-->>p0: BasketCreated
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — createBasket
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L33)
+   `cart.v1/createBasket` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L33)
 <a id="step-s2"></a>
 2. **shop.cart** → **cart-pg** — save
    status: declared · [`examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts#L22)
@@ -46,5 +46,5 @@ sequenceDiagram
 3. **shop.cart** → **bus** — BasketCreated
    [`shop.cart.basket.BasketCreated`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcreated) · status: declared · [`examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts#L22)
 <a id="step-response-s1"></a>
-4. **shop.cart** → **client** — HTTP response
+4. **shop.cart** → **client** — BasketCreated
    status: declared · Synthesized from the proven synchronous HTTP handler return.

@@ -38,14 +38,14 @@ sequenceDiagram
     p1->>p4: GetQuote → GetQuoteResponse
     p1->>p3: save
     p1-)p5: BasketCheckedOut
-    p1-->>p0: HTTP response
+    p1-->>p0: CheckedOut
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — checkout
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L60)
+   `cart.v1/checkout` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L60)
 <a id="step-s2"></a>
 2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
    `auth.v1/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L44)
@@ -62,5 +62,5 @@ sequenceDiagram
 6. **shop.cart** → **bus** — BasketCheckedOut
    [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L57)
 <a id="step-response-s1"></a>
-7. **shop.cart** → **client** — HTTP response
+7. **shop.cart** → **client** — CheckedOut
    status: declared · Synthesized from the proven synchronous HTTP handler return.

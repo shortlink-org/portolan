@@ -65,7 +65,9 @@ export function enrichCatalog(input: Catalog): Enriched {
     linkFlowParticipants(
       resolveStoreAccesses(
         composeExecutionContinuations(
-          hydrateFlowSummaries(resolveWireNames(resolveHTTPCalls(input))),
+          hydrateFlowSummaries(
+            resolveWireNames(nameServedMethods(resolveHTTPCalls(input))),
+          ),
         ),
       ),
     ),
@@ -493,6 +495,74 @@ function answersOn(hosts: Set<string>, candidate: string): boolean {
     }
   }
   return false;
+}
+
+/**
+ * The opening step of an endpoint flow names the interface method it answers.
+ *
+ * A caller's step says which method it calls - `cart.v1/addItem` - and the
+ * flow on the other side is the one that serves it. Until this ran, that flow
+ * said nothing about which method it was: the extractor that read it knew the
+ * handler and the route, and the contract was the other extractor's business.
+ * So the two halves never met, and a path across two separately read services
+ * stopped at the call.
+ *
+ * Read here rather than in each of eight extractors because this is the one
+ * place that has both halves: the flow, and the `provides` of the service it
+ * lands on. The method is found by the name the trigger and the step already
+ * carry - an operationId, an rpc - and, failing that, by the route the trigger
+ * spells. Two methods answering to one name is silence, not a guess: a wrong
+ * pairing would put another service's steps under a call that never makes it.
+ */
+function nameServedMethods(input: Catalog): Catalog {
+  const provided = new Map<string, { ref: string; name: string; verb: string; path: string }[]>();
+  for (const context of input.contexts) {
+    for (const service of context.services) {
+      const methods = service.provides.flatMap((contract) =>
+        contract.methods.map((method) => ({
+          ref: `${contract.id}/${method.name}`,
+          name: method.name,
+          verb: method.http?.method?.toUpperCase() ?? "",
+          path: method.http?.path ?? "",
+        })),
+      );
+      if (methods.length > 0) provided.set(service.id, methods);
+    }
+  }
+  if (provided.size === 0) return input;
+
+  let named = false;
+  const flows = input.flows.map((flow) => {
+    const opening = flow.steps[0];
+    // The call in is the first step of the flow, top level: a flow whose
+    // first node is a branch is not an endpoint's.
+    if (opening?.type !== "step" || opening.ref) return flow;
+    // A flow that does not say how it is opened is not an endpoint's
+    // declaration - a recording of one running is the case in hand, and a
+    // recording is an example of the endpoint, not a second way in.
+    if (!flow.trigger) return flow;
+    const caller = flow.participants.find((participant) => participant.id === opening.from);
+    if (caller?.kind !== "actor") return flow;
+    const methods = provided.get(opening.to);
+    if (!methods) return flow;
+
+    // "GraphQL · Query.basket", "gRPC · Authorize": the trigger says what kind
+    // of edge it is before it says which one.
+    const label = (flow.trigger?.label ?? "").split("·").pop()?.trim() ?? "";
+    const wanted = [opening.label, label].filter(Boolean);
+    const byName = methods.filter((method) => wanted.includes(method.name));
+    const route = /^([A-Z]+)\s+(\/\S*)$/.exec(label);
+    const byRoute = route
+      ? methods.filter(
+          (method) => method.verb === route[1] && sameHTTPShape(method.path, route[2]!),
+        )
+      : [];
+    const hit = byName.length === 1 ? byName[0] : byRoute.length === 1 ? byRoute[0] : undefined;
+    if (!hit) return flow;
+    named = true;
+    return { ...flow, steps: [{ ...opening, ref: hit.ref }, ...flow.steps.slice(1)] };
+  });
+  return named ? { ...input, flows } : input;
 }
 
 function rawHTTPRoute(

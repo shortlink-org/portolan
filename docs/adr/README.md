@@ -28,3 +28,4 @@
 | [portolan.0022](portolan.0022.md) | The site toolchain is optional, and the image that needs it ships as its own tag | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
 | [portolan.0023](portolan.0023.md) | The rules the code checks are held against the rules the document promises | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
 | [portolan.0024](portolan.0024.md) | A path across services is composed in the reading, not in the catalog | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
+| [portolan.0025](portolan.0025.md) | An endpoint flow names the method it answers, and that is what pairs a call with its handler | accepted | 2026-09-16 | [portolan](../portolan/README.md) |

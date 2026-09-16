@@ -25,14 +25,14 @@ sequenceDiagram
     actor p0 as client
     participant p1 as shop.cart
     p0->>p1: getBasket
-    p1-->>p0: HTTP response
+    p1-->>p0: Basket
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — getBasket
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L38)
+   `cart.v1/getBasket` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L38)
 <a id="step-response-s1"></a>
-2. **shop.cart** → **client** — HTTP response
+2. **shop.cart** → **client** — Basket
    status: declared · Synthesized from the proven synchronous HTTP handler return.

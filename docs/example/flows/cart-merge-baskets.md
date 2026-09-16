@@ -38,14 +38,14 @@ sequenceDiagram
     p1-)p4: BasketItemAdded
     p1->>p3: save
     p1-)p4: BasketMerged
-    p1-->>p0: HTTP response
+    p1-->>p0: Basket
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — mergeBaskets
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L54)
+   `cart.v1/mergeBaskets` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L54)
 <a id="step-s2"></a>
 2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
    `auth.v1/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L28)
@@ -68,5 +68,5 @@ sequenceDiagram
 8. **shop.cart** → **bus** — BasketMerged
    [`shop.cart.basket.BasketMerged`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketmerged) · status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L47)
 <a id="step-response-s1"></a>
-9. **shop.cart** → **client** — HTTP response
+9. **shop.cart** → **client** — Basket
    status: declared · Synthesized from the proven synchronous HTTP handler return.

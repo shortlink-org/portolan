@@ -15,7 +15,7 @@ sequenceDiagram
         p1->>p2: ByUserID
         p1->>p2: Save
         p1-)p3: AccountLocked
-        p1-->>p0: HTTP response
+        p1-->>p0: Session
         Note over p0: flow ends here
     else otherwise
     end
@@ -27,10 +27,10 @@ sequenceDiagram
         p1->>p2: ByUserID
         p1->>p2: Save
         p1-)p3: SessionEnded
-        p1-->>p0: HTTP response
+        p1-->>p0: Session
         Note over p0: flow ends here
     else otherwise
     end
     p1->>p2: Save
     p1-)p3: SessionStarted
-    p1-->>p0: HTTP response
+    p1-->>p0: Session

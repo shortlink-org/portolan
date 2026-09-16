@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.removeItem → Basket
-   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L3)
+   `storefront.v1.Basket/Mutation.removeItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L3)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — removeItem → Basket
    `cart.v1/removeItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L4)

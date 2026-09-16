@@ -94,8 +94,6 @@
 | [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
 | [Refund payment on order cancelled](flows/ledger-refund-payment-on-order-cancelled.md) | [payments](payments/README.md) | Sends captured money back once the order it was captured for is gone. |
 | [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
-| [Observed: CancelOrder](flows/observed-oms-cancelorder.md) | [shop](shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
-| [Observed: GetOrder](flows/observed-oms-getorder.md) | [shop](shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Cancel order on payment declined](flows/oms-cancel-order-on-payment-declined.md) | [shop](shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
@@ -6445,8 +6443,6 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [List refunds](ledger-list-refunds.md) | [payments](../payments/README.md) | Every refund against one payment, newest first. |
 | [Refund payment on order cancelled](ledger-refund-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Sends captured money back once the order it was captured for is gone. |
 | [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Gives back what was held once the order it was held for is gone. |
-| [Observed: CancelOrder](observed-oms-cancelorder.md) | [shop](../shop/README.md) | Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
-| [Observed: GetOrder](observed-oms-getorder.md) | [shop](../shop/README.md) | Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen. |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Cancel order on payment declined](oms-cancel-order-on-payment-declined.md) | [shop](../shop/README.md) | Cancels the order whose payment ledger declined (ADR oms.0007). The same fact heard twice, or after the RPC answer already cancelled, changes nothing. |
 | [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Applies the ledger's public fact; it never calls Authorize. |
@@ -6499,14 +6495,14 @@ sequenceDiagram
     p1->>p2: ByID
     p1->>p2: Save
     p1-)p3: PasswordChanged
-    p1-->>p0: HTTP response
+    p1-->>p0: 204
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — changePassword
-   status: declared · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · evidence: call-site · source-expression · `changePassword` · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20)
+   `auth.v1/changePassword` · status: declared · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · evidence: call-site · source-expression · `changePassword` · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/validate:UseCase.Handle` · [`examples/auth/internal/session/application/validate/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L28) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
@@ -6520,7 +6516,7 @@ sequenceDiagram
 5. **auth.auth** → **bus** — PasswordChanged
    [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · evidence: function · source-function · `examples/auth/internal/user/application/change_password:UseCase.Handle` · [`examples/auth/internal/user/application/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L31) · evidence: call-site · source-expression · `PasswordChanged` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
 <a id="step-response-s1"></a>
-6. **auth.auth** → **client** — HTTP response
+6. **auth.auth** → **client** — 204
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/auth-get-user.md -->
@@ -6555,19 +6551,19 @@ sequenceDiagram
     participant p2 as auth-pg
     p0->>p1: getUser
     p1->>p2: ByID
-    p1-->>p0: HTTP response
+    p1-->>p0: User
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — getUser
-   status: declared · [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11) · evidence: call-site · source-expression · `getUser` · [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11)
+   `auth.v1/getUser` · status: declared · [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11) · evidence: call-site · source-expression · `getUser` · [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByID
    status: declared · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByID` · evidence: function · source-function · `examples/auth/internal/user/application/get:UseCase.Handle` · [`examples/auth/internal/user/application/get/usecase.go:21`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L21) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22) · evidence: call-site · source-expression · `ByID` · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22)
 <a id="step-response-s1"></a>
-3. **auth.auth** → **client** — HTTP response
+3. **auth.auth** → **client** — User
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/auth-login.md -->
@@ -6614,7 +6610,7 @@ sequenceDiagram
         p1->>p2: ByUserID
         p1->>p2: Save
         p1-)p3: AccountLocked
-        p1-->>p0: HTTP response
+        p1-->>p0: Session
         Note over p0: flow ends here
     else otherwise
     end
@@ -6626,20 +6622,20 @@ sequenceDiagram
         p1->>p2: ByUserID
         p1->>p2: Save
         p1-)p3: SessionEnded
-        p1-->>p0: HTTP response
+        p1-->>p0: Session
         Note over p0: flow ends here
     else otherwise
     end
     p1->>p2: Save
     p1-)p3: SessionStarted
-    p1-->>p0: HTTP response
+    p1-->>p0: Session
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — login
-   status: declared · [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11) · evidence: call-site · source-expression · `login` · [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11)
+   `auth.v1/login` · status: declared · [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11) · evidence: call-site · source-expression · `login` · [`examples/auth/internal/session/infrastructure/http/login.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/login.go#L11)
 <a id="step-s2"></a>
 2. **auth.auth** ↺ **auth.auth** — CheckCredentials
    status: declared · [`examples/auth/internal/session/application/login/usecase.go:57`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L57) · Port `Authenticator`, bound at assembly to the CheckCredentials use case. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: binding · provider-signature · `NewAuthenticator` · [`examples/auth/internal/session/infrastructure/identity/adapter.go:19`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/identity/adapter.go#L19) · evidence: call-site · source-expression · `CheckCredentials` · [`examples/auth/internal/session/application/login/usecase.go:57`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L57)
@@ -6670,7 +6666,7 @@ sequenceDiagram
 > 9. **auth.auth** → **bus** — AccountLocked
 >    [`auth.auth.lockout.AccountLocked`](../auth/auth/aggregates/lockout.md#event-auth-auth-lockout-accountlocked) · status: declared · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53) · inside a loop over `retries`. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/user/application/check_credentials:UseCase.Handle` · [`examples/auth/internal/user/application/check_credentials/usecase.go:37`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/check_credentials/usecase.go#L37) · evidence: function · source-function · `examples/auth/internal/lockout/application/record_failure:UseCase.Handle` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L34) · evidence: call-site · source-expression · `AccountLocked` · [`examples/auth/internal/lockout/application/record_failure/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/application/record_failure/usecase.go#L53)
 > <a id="step-response-s1"></a>
-> 10. **auth.auth** → **client** — HTTP response
+> 10. **auth.auth** → **client** — Session
 >    status: declared · Synthesized from the proven synchronous HTTP handler return.
 >
 > *otherwise*
@@ -6702,7 +6698,7 @@ sequenceDiagram
 > 17. **auth.auth** → **bus** — SessionEnded
 >    [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · status: declared · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101) · inside a loop over `sessions`. · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.endAll` · [`examples/auth/internal/session/application/login/usecase.go:90`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L90) · evidence: call-site · source-expression · `SessionEnded` · [`examples/auth/internal/session/application/login/usecase.go:101`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L101)
 > <a id="step-response-s1-exit-2"></a>
-> 18. **auth.auth** → **client** — HTTP response
+> 18. **auth.auth** → **client** — Session
 >    status: declared · Synthesized from the proven synchronous HTTP handler return.
 >
 > *otherwise*
@@ -6714,7 +6710,7 @@ sequenceDiagram
 20. **auth.auth** → **bus** — SessionStarted
    [`auth.auth.session.SessionStarted`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionstarted) · status: declared · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77) · evidence: function · source-function · `examples/auth/internal/session/application/login:UseCase.Handle` · [`examples/auth/internal/session/application/login/usecase.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L56) · evidence: call-site · source-expression · `SessionStarted` · [`examples/auth/internal/session/application/login/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/login/usecase.go#L77)
 <a id="step-response-s1-exit-3"></a>
-21. **auth.auth** → **client** — HTTP response
+21. **auth.auth** → **client** — Session
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/auth-logout.md -->
@@ -6753,14 +6749,14 @@ sequenceDiagram
     p1->>p2: ByToken
     p1->>p2: Save
     p1-)p3: SessionEnded
-    p1-->>p0: HTTP response
+    p1-->>p0: 204
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — logout
-   status: declared · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15) · evidence: call-site · source-expression · `logout` · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15)
+   `auth.v1/logout` · status: declared · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15) · evidence: call-site · source-expression · `logout` · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34)
@@ -6771,7 +6767,7 @@ sequenceDiagram
 4. **auth.auth** → **bus** — SessionEnded
    [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · status: declared · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: call-site · source-expression · `SessionEnded` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
 <a id="step-response-s1"></a>
-5. **auth.auth** → **client** — HTTP response
+5. **auth.auth** → **client** — 204
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/auth-register-user.md -->
@@ -6810,14 +6806,14 @@ sequenceDiagram
     p1->>p2: ByEmail
     p1->>p2: Save
     p1-)p3: UserRegistered
-    p1-->>p0: HTTP response
+    p1-->>p0: User
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — registerUser
-   status: declared · [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16) · evidence: call-site · source-expression · `registerUser` · [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16)
+   `auth.v1/registerUser` · status: declared · [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16) · evidence: call-site · source-expression · `registerUser` · [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByEmail
    status: declared · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByEmail` · evidence: function · source-function · `examples/auth/internal/user/application/register:UseCase.Handle` · [`examples/auth/internal/user/application/register/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L31) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36) · evidence: call-site · source-expression · `ByEmail` · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36)
@@ -6828,7 +6824,7 @@ sequenceDiagram
 4. **auth.auth** → **bus** — UserRegistered
    [`auth.auth.user.UserRegistered`](../auth/auth/aggregates/user.md#event-auth-auth-user-userregistered) · status: declared · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53) · evidence: function · source-function · `examples/auth/internal/user/application/register:UseCase.Handle` · [`examples/auth/internal/user/application/register/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L31) · evidence: call-site · source-expression · `UserRegistered` · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53)
 <a id="step-response-s1"></a>
-5. **auth.auth** → **client** — HTTP response
+5. **auth.auth** → **client** — User
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/auth-revoke-sessions-on-password-change.md -->
@@ -6918,19 +6914,19 @@ sequenceDiagram
     participant p2 as auth-pg
     p0->>p1: validateSession
     p1->>p2: ByToken
-    p1-->>p0: HTTP response
+    p1-->>p0: SessionInfo
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — validateSession
-   status: declared · [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12) · evidence: call-site · source-expression · `validateSession` · [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12)
+   `auth.v1/validateSession` · status: declared · [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12) · evidence: call-site · source-expression · `validateSession` · [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/validate:UseCase.Handle` · [`examples/auth/internal/session/application/validate/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L28) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
 <a id="step-response-s1"></a>
-3. **auth.auth** → **client** — HTTP response
+3. **auth.auth** → **client** — SessionInfo
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/bff-mutation-add-item.md -->
@@ -6971,7 +6967,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.addItem → Basket
-   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L8)
+   `storefront.v1.Basket/Mutation.addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L8)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — addItem → Basket
    `cart.v1/addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L9)
@@ -7014,7 +7010,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.cancelOrder → Order
-   status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L8)
+   `storefront.v1.Order/Mutation.cancelOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L8)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.oms** — CancelOrder → CancelOrderResponse
    `shop.v1.OrderService/CancelOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L9)
@@ -7057,7 +7053,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.checkout → Checkout
-   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L11)
+   `storefront.v1.Basket/Mutation.checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L11)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — checkout → CheckedOut
    `cart.v1/checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L12)
@@ -7100,7 +7096,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.removeItem → Basket
-   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L3)
+   `storefront.v1.Basket/Mutation.removeItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L3)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — removeItem → Basket
    `cart.v1/removeItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L4)
@@ -7143,7 +7139,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.basket → Basket
-   status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L4)
+   `storefront.v1.Basket/Query.basket` · status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L4)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — getBasket → Basket
    `cart.v1/getBasket` · status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:5`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L5)
@@ -7186,7 +7182,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.order → Order
-   status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L3)
+   `storefront.v1.Order/Query.order` · status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L3)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.oms** — GetOrder → GetOrderResponse
    `shop.v1.OrderService/GetOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L4)
@@ -7229,7 +7225,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.shipment → Shipment
-   status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L3)
+   `storefront.v1.Delivery/Query.shipment` · status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L3)
 <a id="step-s2"></a>
 2. **storefront.bff** → **delivery.core** — GetShipment → GetShipmentResponse
    `delivery.v1.Delivery/GetShipment` · status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L4)
@@ -7272,7 +7268,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.viewer → Viewer
-   status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L8)
+   `storefront.v1.Viewer/Query.viewer` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L8)
 <a id="step-s2"></a>
 2. **storefront.bff** → **auth.auth** — validateSession → SessionInfo
    `auth.v1/validateSession` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L9)
@@ -7312,7 +7308,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Subscription.orderStatus → OrderMoved
-   status: declared · [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts#L11)
+   `storefront.v1.Order/Subscription.orderStatus` · status: declared · [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts#L11)
 
 <!-- flows/billing-celery-body-invoices-tasks-remind-unpaid-invoice.md -->
 
@@ -7789,7 +7785,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.billing** — invoice_list
-   status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
+   `shop.billing.invoices/invoice_list` · status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
 <a id="step-response-s1"></a>
 2. **shop.billing** → **client** — HTTP response
    status: declared · Synthesized from the proven synchronous HTTP handler return.
@@ -7830,7 +7826,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.billing** — invoice_partial_update
-   status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
+   `shop.billing.invoices/invoice_partial_update` · status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
 <a id="step-response-s1"></a>
 2. **shop.billing** → **client** — HTTP response
    status: declared · Synthesized from the proven synchronous HTTP handler return.
@@ -7918,7 +7914,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.billing** — invoice_update
-   status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
+   `shop.billing.invoices/invoice_update` · status: declared · [`examples/shop/billing/invoices/views.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L10)
 <a id="step-response-s1"></a>
 2. **shop.billing** → **client** — HTTP response
    status: declared · Synthesized from the proven synchronous HTTP handler return.
@@ -7958,14 +7954,14 @@ sequenceDiagram
     p0->>p1: addItem
     p1->>p2: save
     p1-)p3: BasketItemAdded
-    p1-->>p0: HTTP response
+    p1-->>p0: Basket
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — addItem
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L43)
+   `cart.v1/addItem` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L43)
 <a id="step-s2"></a>
 2. **shop.cart** → **cart-pg** — save
    status: declared · [`examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts#L27)
@@ -7973,7 +7969,7 @@ sequenceDiagram
 3. **shop.cart** → **bus** — BasketItemAdded
    [`shop.cart.basket.BasketItemAdded`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemadded) · status: declared · [`examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts#L27)
 <a id="step-response-s1"></a>
-4. **shop.cart** → **client** — HTTP response
+4. **shop.cart** → **client** — Basket
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/cart-checkout.md -->
@@ -8018,14 +8014,14 @@ sequenceDiagram
     p1->>p4: GetQuote → GetQuoteResponse
     p1->>p3: save
     p1-)p5: BasketCheckedOut
-    p1-->>p0: HTTP response
+    p1-->>p0: CheckedOut
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — checkout
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L60)
+   `cart.v1/checkout` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L60)
 <a id="step-s2"></a>
 2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
    `auth.v1/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L44)
@@ -8042,7 +8038,7 @@ sequenceDiagram
 6. **shop.cart** → **bus** — BasketCheckedOut
    [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L57)
 <a id="step-response-s1"></a>
-7. **shop.cart** → **client** — HTTP response
+7. **shop.cart** → **client** — CheckedOut
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/cart-create-basket.md -->
@@ -8080,14 +8076,14 @@ sequenceDiagram
     p0->>p1: createBasket
     p1->>p2: save
     p1-)p3: BasketCreated
-    p1-->>p0: HTTP response
+    p1-->>p0: BasketCreated
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — createBasket
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L33)
+   `cart.v1/createBasket` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L33)
 <a id="step-s2"></a>
 2. **shop.cart** → **cart-pg** — save
    status: declared · [`examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts#L22)
@@ -8095,7 +8091,7 @@ sequenceDiagram
 3. **shop.cart** → **bus** — BasketCreated
    [`shop.cart.basket.BasketCreated`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcreated) · status: declared · [`examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts#L22)
 <a id="step-response-s1"></a>
-4. **shop.cart** → **client** — HTTP response
+4. **shop.cart** → **client** — BasketCreated
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/cart-expire-idle-baskets.md -->
@@ -8180,16 +8176,16 @@ sequenceDiagram
     actor p0 as client
     participant p1 as shop.cart
     p0->>p1: getBasket
-    p1-->>p0: HTTP response
+    p1-->>p0: Basket
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — getBasket
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L38)
+   `cart.v1/getBasket` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L38)
 <a id="step-response-s1"></a>
-2. **shop.cart** → **client** — HTTP response
+2. **shop.cart** → **client** — Basket
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/cart-merge-baskets.md -->
@@ -8234,14 +8230,14 @@ sequenceDiagram
     p1-)p4: BasketItemAdded
     p1->>p3: save
     p1-)p4: BasketMerged
-    p1-->>p0: HTTP response
+    p1-->>p0: Basket
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — mergeBaskets
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L54)
+   `cart.v1/mergeBaskets` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L54)
 <a id="step-s2"></a>
 2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
    `auth.v1/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L28)
@@ -8264,7 +8260,7 @@ sequenceDiagram
 8. **shop.cart** → **bus** — BasketMerged
    [`shop.cart.basket.BasketMerged`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketmerged) · status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L47)
 <a id="step-response-s1"></a>
-9. **shop.cart** → **client** — HTTP response
+9. **shop.cart** → **client** — Basket
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/cart-remove-item.md -->
@@ -8302,14 +8298,14 @@ sequenceDiagram
     p0->>p1: removeItem
     p1->>p2: save
     p1-)p3: BasketItemRemoved
-    p1-->>p0: HTTP response
+    p1-->>p0: Basket
 ```
 
 ## Steps
 
 <a id="step-s1"></a>
 1. **client** → **shop.cart** — removeItem
-   status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L49)
+   `cart.v1/removeItem` · status: declared · [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L49)
 <a id="step-s2"></a>
 2. **shop.cart** → **cart-pg** — save
    status: declared · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22)
@@ -8317,7 +8313,7 @@ sequenceDiagram
 3. **shop.cart** → **bus** — BasketItemRemoved
    [`shop.cart.basket.BasketItemRemoved`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemremoved) · status: declared · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22)
 <a id="step-response-s1"></a>
-4. **shop.cart** → **client** — HTTP response
+4. **shop.cart** → **client** — Basket
    status: declared · Synthesized from the proven synchronous HTTP handler return.
 
 <!-- flows/core-close-route.md -->
@@ -8362,7 +8358,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — CloseRoute → CloseRouteResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L30)
+   `delivery.v1.RouteService/CloseRoute` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L30)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts#L11)
@@ -8497,7 +8493,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — Dispatch → DispatchResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L21)
+   `delivery.v1.Delivery/Dispatch` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L21)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts#L31)
@@ -8566,7 +8562,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — GetRoute → GetRouteResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L37)
+   `delivery.v1.RouteService/GetRoute` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L37)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts#L22)
@@ -8609,7 +8605,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — GetShipment → GetShipmentResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L48)
+   `delivery.v1.Delivery/GetShipment` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L48)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts#L24)
@@ -8658,7 +8654,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — PlanRoute → PlanRouteResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L16)
+   `delivery.v1.RouteService/PlanRoute` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L16)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts#L27) · inside a loop over `shipmentIds`.
@@ -8717,7 +8713,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — RecordDelivery → RecordDeliveryResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L36)
+   `delivery.v1.Delivery/RecordDelivery` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L36)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts#L11)
@@ -8775,7 +8771,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — RecordScan → RecordScanResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L29)
+   `delivery.v1.Delivery/RecordScan` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L29)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:17`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts#L17)
@@ -8894,7 +8890,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — StartRoute → StartRouteResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L23)
+   `delivery.v1.RouteService/StartRoute` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L23)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
    status: declared · [`examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts#L11)
@@ -8943,7 +8939,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **delivery.core** — TrackShipment → TrackShipmentResponse
-   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L43)
+   `delivery.v1.Delivery/TrackShipment` · status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L43)
 <a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byTracking
    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts#L23)
@@ -9016,7 +9012,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **payments.ledger** — Authorize → AuthorizeResponse
-   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:34`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java#L34)
+   `payments.v1.PaymentService/Authorize` · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:34`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java#L34)
 <a id="step-s2"></a>
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java#L50)
@@ -9131,7 +9127,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **payments.ledger** — Capture → CaptureResponse
-   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java#L53)
+   `payments.v1.PaymentService/Capture` · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java#L53)
 <a id="step-s2"></a>
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:41`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java#L41)
@@ -9194,7 +9190,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **payments.ledger** — GetPayment → GetPaymentResponse
-   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java#L68)
+   `payments.v1.PaymentService/GetPayment` · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java#L68)
 <a id="step-s2"></a>
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:27`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java#L27)
@@ -9251,7 +9247,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **payments.ledger** — IssueRefund → IssueRefundResponse
-   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java#L29)
+   `payments.v1.RefundService/IssueRefund` · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java#L29)
 <a id="step-s2"></a>
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:47`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java#L47)
@@ -9320,7 +9316,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **payments.ledger** — ListRefunds → ListRefundsResponse
-   status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java#L48)
+   `payments.v1.RefundService/ListRefunds` · status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java#L48)
 <a id="step-s2"></a>
 2. **payments.ledger** → **ledger-pg** — byPayment
    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:27`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java#L27)
@@ -9471,178 +9467,6 @@ sequenceDiagram
 4. **payments.ledger** → **ledger-pg** — save
    status: declared · [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:36`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java#L36)
 
-<!-- flows/observed-oms-cancelorder.md -->
-
-# Observed: CancelOrder
-
-*Generated from the portolan catalog. Do not edit by hand.*
-
-- **Id:** `flow.observed-oms-cancelorder`
-- **Owner:** [shop](../shop/README.md)
-- **Source:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
-
-Read from 1 trace in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
-
-## Participants
-
-| Participant | Kind | Context | Entity |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
-| `bus` | broker | — | — |
-
-## Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor p0 as client
-    participant p1 as shop.oms
-    participant p2 as oms-pg
-    participant p3 as bus
-    p0->>p1: CancelOrder → CancelOrderResponse
-    p1->>p2: SELECT
-    p1->>p2: SELECT
-    p1->>p2: UPDATE orders
-    p1->>p2: DELETE
-    p1->>p2: INSERT
-    p1-)p3: OrderCancelled
-    p1->>p2: SELECT
-    p1->>p2: SELECT
-```
-
-## Steps
-
-<a id="step-s1"></a>
-1. **client** → **shop.oms** — CancelOrder → CancelOrderResponse
-   seen in 1 recording
-<a id="step-s2"></a>
-2. **shop.oms** → **oms-pg** — SELECT
-   seen in 1 recording
-<a id="step-s3"></a>
-3. **shop.oms** → **oms-pg** — SELECT
-   seen in 1 recording
-<a id="step-s4"></a>
-4. **shop.oms** → **oms-pg** — UPDATE orders
-   seen in 1 recording
-<a id="step-s5"></a>
-5. **shop.oms** → **oms-pg** — DELETE
-   seen in 1 recording
-<a id="step-s6"></a>
-6. **shop.oms** → **oms-pg** — INSERT
-   seen in 1 recording
-<a id="step-s7"></a>
-7. **shop.oms** → **bus** — OrderCancelled
-   [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · seen in 1 recording
-<a id="step-s8"></a>
-8. **shop.oms** → **oms-pg** — SELECT
-   seen in 1 recording
-<a id="step-s9"></a>
-9. **shop.oms** → **oms-pg** — SELECT
-   seen in 1 recording
-
-## Recordings
-
-Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
-
-- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
-- **Trace:** `b23aa3f8bb39a65d8b5000d5741081aa`
-- **Recorded:** 2026-09-04T19:48:30.544095Z
-- **Duration:** 6.374 ms
-
-| Step | Span | Duration | Attributes |
-| --- | --- | --- | --- |
-| [s1](observed-oms-cancelorder.md#step-s1) | `shop.v1.OrderService/CancelOrder` | 6.374 ms | `rpc.method=CancelOrder` `rpc.service=shop.v1.OrderService` `rpc.system=grpc` |
-| [s2](observed-oms-cancelorder.md#step-s2) | `SELECT` | 1.046 ms | `db.collection.name=orders` `db.operation.name=SELECT` `db.system.name=postgresql` |
-| [s3](observed-oms-cancelorder.md#step-s3) | `SELECT` | 0.898 ms | `db.collection.name=order_lines` `db.operation.name=SELECT` `db.system.name=postgresql` |
-| [s4](observed-oms-cancelorder.md#step-s4) | `UPDATE orders` | 0.75 ms | `db.collection.name=orders` `db.operation.name=UPDATE` `db.system.name=postgresql` |
-| [s5](observed-oms-cancelorder.md#step-s5) | `DELETE` | 0.224 ms | `db.collection.name=order_lines` `db.operation.name=DELETE` `db.system.name=postgresql` |
-| [s6](observed-oms-cancelorder.md#step-s6) | `INSERT` | 0.221 ms | `db.collection.name=order_lines` `db.operation.name=INSERT` `db.system.name=postgresql` |
-| [s7](observed-oms-cancelorder.md#step-s7) | `publish oms.OrderCancelled` | 0.285 ms | `event.name=oms.OrderCancelled` `messaging.destination.name=shop.oms.order` `messaging.operation.type=publish` `messaging.system=outbox` |
-| [s8](observed-oms-cancelorder.md#step-s8) | `SELECT` | 0.714 ms | `db.collection.name=orders` `db.operation.name=SELECT` `db.system.name=postgresql` |
-| [s9](observed-oms-cancelorder.md#step-s9) | `SELECT` | 0.776 ms | `db.collection.name=order_lines` `db.operation.name=SELECT` `db.system.name=postgresql` |
-
-<!-- flows/observed-oms-getorder.md -->
-
-# Observed: GetOrder
-
-*Generated from the portolan catalog. Do not edit by hand.*
-
-- **Id:** `flow.observed-oms-getorder`
-- **Owner:** [shop](../shop/README.md)
-- **Source:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
-
-Read from 2 traces in examples/shop/oms/telemetry/traces.jsonl. No flow in the catalog opens this way, so the sequence is written down as it was seen.
-
-## Participants
-
-| Participant | Kind | Context | Entity |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-| `oms-pg` | store | [shop](../shop/README.md) | [shop.oms.pg](../shop/oms/stores/pg.md) |
-
-## Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor p0 as client
-    participant p1 as shop.oms
-    participant p2 as oms-pg
-    p0->>p1: GetOrder → GetOrderResponse
-    p1->>p2: SELECT
-    alt SELECT
-        p1->>p2: SELECT
-    else otherwise
-    end
-```
-
-## Steps
-
-<a id="step-s1"></a>
-1. **client** → **shop.oms** — GetOrder → GetOrderResponse
-   seen in 2 recordings
-<a id="step-s2"></a>
-2. **shop.oms** → **oms-pg** — SELECT
-   seen in 2 recordings
-
-> **One of**
->
-> *SELECT — seen in 1 recording*
->
-> <a id="step-s3"></a>
-> 3. **shop.oms** → **oms-pg** — SELECT
->    Seen in 1 recording of 2 traces.
->
-> *otherwise — seen in 1 recording*
-
-## Recordings
-
-Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
-
-- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
-- **Trace:** `a7416708d5eeef4f1559ce68e301d420`
-- **Recorded:** 2026-09-04T19:48:30.53394Z
-- **Duration:** 3.226 ms
-
-| Step | Span | Duration | Attributes |
-| --- | --- | --- | --- |
-| [s1](observed-oms-getorder.md#step-s1) | `shop.v1.OrderService/GetOrder` | 3.226 ms | `rpc.method=GetOrder` `rpc.service=shop.v1.OrderService` `rpc.system=grpc` |
-| [s2](observed-oms-getorder.md#step-s2) | `SELECT` | 1.972 ms | `db.collection.name=orders` `db.operation.name=SELECT` `db.system.name=postgresql` |
-| [s3](observed-oms-getorder.md#step-s3) | `SELECT` | 1.106 ms | `db.collection.name=order_lines` `db.operation.name=SELECT` `db.system.name=postgresql` |
-
-- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
-- **Trace:** `bd903650a50496ad991b1a24134f00d9`
-- **Recorded:** 2026-09-04T19:48:30.557266Z
-- **Duration:** 0.794 ms
-
-| Step | Span | Duration | Attributes |
-| --- | --- | --- | --- |
-| [s1](observed-oms-getorder.md#step-s1) | `shop.v1.OrderService/GetOrder` | 0.794 ms | `rpc.method=GetOrder` `rpc.service=shop.v1.OrderService` `rpc.system=grpc` |
-| [s2](observed-oms-getorder.md#step-s2) | `SELECT` | 0.712 ms | `db.collection.name=orders` `db.operation.name=SELECT` `db.system.name=postgresql` |
-
 <!-- flows/oms-cancel-order.md -->
 
 # Cancel order
@@ -9706,11 +9530,24 @@ sequenceDiagram
 >    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
 > <a id="step-s4"></a>
 > 4. **shop.oms** → **bus** — OrderCancelled
->    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50)
+>    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L50) · Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).
 
 <a id="step-s6"></a>
 5. **shop.oms** → **oms-pg** — by_id
    status: declared · [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L42)
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `b23aa3f8bb39a65d8b5000d5741081aa`
+- **Recorded:** 2026-09-04T19:48:30.544095Z
+- **Duration:** 6.374 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s4](oms-cancel-order.md#step-s4) | `publish oms.OrderCancelled` | 0.285 ms | `event.name=oms.OrderCancelled` `messaging.destination.name=shop.oms.order` `messaging.operation.type=publish` `messaging.system=outbox` |
 
 <!-- flows/oms-cancel-order-on-payment-declined.md -->
 
@@ -9875,6 +9712,21 @@ sequenceDiagram
 <a id="step-s2"></a>
 2. **shop.oms** → **oms-pg** — by_id
    status: declared · [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L42)
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `a7416708d5eeef4f1559ce68e301d420`
+- **Recorded:** 2026-09-04T19:48:30.53394Z
+- **Duration:** 3.226 ms
+
+
+- **Recording:** [`examples/shop/oms/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/telemetry/traces.jsonl)
+- **Trace:** `bd903650a50496ad991b1a24134f00d9`
+- **Recorded:** 2026-09-04T19:48:30.557266Z
+- **Duration:** 0.794 ms
 
 <!-- flows/oms-place-order-on-basket-checked-out.md -->
 

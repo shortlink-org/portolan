@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.shipment → Shipment
-   status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L3)
+   `storefront.v1.Delivery/Query.shipment` · status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L3)
 <a id="step-s2"></a>
 2. **storefront.bff** → **delivery.core** — GetShipment → GetShipmentResponse
    `delivery.v1.Delivery/GetShipment` · status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L4)

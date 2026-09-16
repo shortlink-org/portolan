@@ -34,7 +34,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.order → Order
-   status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L3)
+   `storefront.v1.Order/Query.order` · status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L3)
 <a id="step-s2"></a>
 2. **storefront.bff** → **shop.oms** — GetOrder → GetOrderResponse
    `shop.v1.OrderService/GetOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L4)
