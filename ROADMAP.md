@@ -54,3 +54,23 @@ Plan:
 Steps 1-5 are done. Open: where the canvas is positioned when a reader moves
 between versions.
 
+### PORTOLAN-23. Drafts for an estate whose services live elsewhere
+
+**Status:** open
+
+A project vendored from another repository (`fetch-git`) has no branches in the
+workspace, so it could not be drafted at all. It is drafted from a clone of its
+own repository instead (portolan.0029): the project names a `clone`, dev lists
+that repository's branches, and each side of the draft is the vendored snapshot
+written at the branch's tip and at its merge-base.
+
+Open:
+
+- The branches page lists one branch per project. A task that touches several
+  services is several drafts sharing a name and nothing else; they are not
+  grouped, ticked or compared together.
+- A branch that moved on the forge but not in the clone is reported fresh. Dev
+  never fetches: what is on this machine is what is drafted.
+- `clone` is a path that is true on one machine, committed in the manifest. A
+  teammate without that checkout is told the clone is missing.
+

@@ -1672,7 +1672,7 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             return draft ? send(res, 200, draft) : send(res, 404, { error: "No generated draft waits here." });
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/drafts/branches`) {
-            return send(res, 200, listBranches(workspace, readManifest(join(workspace, "portolan.json")).projects ?? []));
+            return send(res, 200, listBranches(workspace, readManifest(join(workspace, "portolan.json"))));
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/rules`) {
             return send(res, 200, problemRulesState(workspace));

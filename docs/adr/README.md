@@ -31,3 +31,4 @@
 | [portolan.0025](portolan.0025.md) | An endpoint flow names the method it answers, and that is what pairs a call with its handler | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
 | [portolan.0026](portolan.0026.md) | The whole path is drawn; a partly opened one is not | superseded | 2026-09-16 | [portolan](../portolan/README.md) |
 | [portolan.0028](portolan.0028.md) | A followed flow opens as a document of its own | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
+| [portolan.0029](portolan.0029.md) | A branch of a vendored service is drafted from a clone of its own repository | accepted | 2026-09-17 | [portolan](../portolan/README.md) |

@@ -317,6 +317,12 @@ function compose() {
             minLength: 1,
             description: "Repository page or clone URL, when the project comes from another repository.",
           },
+          clone: {
+            type: "string",
+            minLength: 1,
+            description: "Path to a checkout of `repository` on this machine, relative to the workspace. `portolan dev` reads this project's branches there, so a service vendored from another repository can be drafted; nothing else reads it and a build never needs it.",
+            examples: ["../aviacore"],
+          },
         },
       },
       plugin: {

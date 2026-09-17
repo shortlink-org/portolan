@@ -541,7 +541,9 @@ export interface SavedDraftStatus {
 export interface DraftBranches {
   main: string;
   projects: { id: string; name: string }[];
-  branches: { branch: string; tip: string; base: string; ahead: number; projects: string[] }[];
+  branches: { branch: string; tip: string; base: string; ahead: number; main: string; projects: string[] }[];
+  /** Projects whose branches could not be read, one line each. */
+  problems?: string[];
 }
 
 type BranchDraftFile = import("./branch-draft").BranchDraft;

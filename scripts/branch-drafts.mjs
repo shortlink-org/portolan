@@ -9,6 +9,11 @@
 // catalogs are compared by entity and the result is saved under
 // portolan-drafts/, beside the catalog the site is built from.
 //
+// A project whose source is vendored from another repository is drafted from
+// a clone of that repository instead (portolan.0029): the worktrees are of the
+// workspace as it is, and what differs between the two sides is the snapshot
+// of the service, put there at the branch's tip and at its merge-base.
+//
 //   node scripts/branch-drafts.mjs branches
 //   node scripts/branch-drafts.mjs list
 //   node scripts/branch-drafts.mjs generate --project auth --branch demo/auth-passkeys
@@ -20,6 +25,9 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { builtinDefinition } from "./builtin-plugins.mjs";
+import { readManifest } from "./manifest.mjs";
+import { copyPath, splitRepo } from "./host-plugins/fetch-git.mjs";
 import reserved from "../src/likec4/reserved.json" with { type: "json" };
 
 export const DRAFTS_DIR = "portolan-drafts";
@@ -103,6 +111,73 @@ export function tipOf(workspace, branch) {
   return commitOf(workspace, `refs/heads/${branch}`) ?? commitOf(workspace, `refs/remotes/origin/${branch}`);
 }
 
+// ---------------------------------------------------------------------------
+// A project that lives in another repository
+//
+// An estate whose services are vendored has no branches of its own: the
+// workspace holds a snapshot of every service, fetched by `fetch-git`, and a
+// feature branch is a branch of the service's repository. Such a project says
+// where a clone of that repository is, and a draft of its branch is generated
+// by putting the clone's tree where the snapshot sits - at the branch's tip on
+// one side, at its merge-base on the other. Everything after that is the
+// comparison any other draft makes (portolan.0029).
+
+/** The clone a project names, absolute, or "" for a project of this repository. */
+export function cloneOf(workspace, project) {
+  const clone = typeof project?.clone === "string" ? project.clone.trim() : "";
+  return clone ? resolve(workspace, clone) : "";
+}
+
+const rootPath = (root) => String(root ?? "").replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+
+/** Whether a step is the one that fetches other repositories into the workspace. */
+function fetches(manifest, step) {
+  const declared = (manifest.plugins ?? []).find((plugin) => plugin.name === step.plugin);
+  return ((declared ?? builtinDefinition(step.plugin))?.host ?? "") === "fetch-git";
+}
+
+/**
+ * The fetch step and the repository entry whose copy is a project's root, or
+ * null for a project whose source this repository holds itself.
+ */
+export function vendorOf(manifest, project) {
+  for (const step of manifest.extract ?? []) {
+    if (!step?.options?.cache || !fetches(manifest, step)) continue;
+    for (const want of step.options.repos ?? []) {
+      if (copyPath(step.options.cache, splitRepo(want.repo).dir) === rootPath(project?.root)) return { step, want };
+    }
+  }
+  return null;
+}
+
+/** Whether a path of the service's repository is one the snapshot takes. */
+function taken(path, want) {
+  const paths = (Array.isArray(want?.paths) ? want.paths : []).map((prefix) => rootPath(prefix)).filter(Boolean);
+  return paths.length === 0 || paths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
+/**
+ * The manifest, or nothing at all: a draft is asked for in a workspace that
+ * has one, and a test repository with two files is still a repository whose
+ * branches can be listed.
+ */
+function manifestOf(workspace) {
+  try { return readManifest(join(workspace, "portolan.json")); }
+  catch { return {}; }
+}
+
+/** The projects of a manifest that are drafted from a clone, with what that needs. */
+function clonedProjects(workspace, manifest) {
+  const out = [];
+  for (const project of manifest.projects ?? []) {
+    if (typeof project?.id !== "string") continue;
+    const clone = cloneOf(workspace, project);
+    if (!clone) continue;
+    out.push({ project, clone, vendor: vendorOf(manifest, project) });
+  }
+  return out;
+}
+
 /** Which manifest projects a set of changed paths falls in, most specific root first. */
 export function projectsTouched(projects, paths) {
   const roots = [...projects]
@@ -117,30 +192,65 @@ export function projectsTouched(projects, paths) {
 }
 
 /**
- * Every branch with commits main does not have, with the projects those
- * commits touch. A branch main already contains has nothing to draft.
+ * Every branch of one repository with commits its main does not have, each
+ * with the projects the changed paths belong to. A branch main already
+ * contains has nothing to draft.
  */
-export function listBranches(workspace, projects) {
-  const main = mainRef(workspace);
+function branchesIn(repo, owner) {
+  const main = mainRef(repo);
   const names = new Set();
-  for (const line of git(workspace, ["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes/origin"]).split("\n")) {
+  for (const line of git(repo, ["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes/origin"]).split("\n")) {
     const name = line.startsWith("refs/heads/") ? line.slice("refs/heads/".length) : line.startsWith("refs/remotes/origin/") ? line.slice("refs/remotes/origin/".length) : "";
     if (name && name !== "HEAD" && name !== "main" && name !== "master") names.add(name);
   }
   const branches = [];
   for (const branch of [...names].sort()) {
-    const tip = tipOf(workspace, branch);
+    const tip = tipOf(repo, branch);
     if (!tip) continue;
-    const base = git(workspace, ["merge-base", main, tip], { allowFailure: true });
+    const base = git(repo, ["merge-base", main, tip], { allowFailure: true });
     if (!base || base === tip) continue;
-    const changed = git(workspace, ["diff", "--name-only", base, tip]).split("\n").filter(Boolean);
-    const ahead = Number(git(workspace, ["rev-list", "--count", `${base}..${tip}`]));
-    branches.push({ branch, tip, base, ahead, projects: projectsTouched(projects, changed) });
+    const changed = git(repo, ["diff", "--name-only", base, tip]).split("\n").filter(Boolean);
+    const ahead = Number(git(repo, ["rev-list", "--count", `${base}..${tip}`]));
+    branches.push({ branch, tip, base, ahead, main, projects: owner(changed) });
+  }
+  return { main, branches };
+}
+
+/**
+ * Every branch that could be drafted: the workspace's own, for the projects
+ * this repository holds, and each cloned project's, read from its clone. Two
+ * projects may be on a branch of the same name; each is an entry of its own,
+ * because they are branches of two repositories and share nothing but a name.
+ *
+ * A clone that is not on this machine is reported rather than thrown: the
+ * other projects can still be drafted, and the page says what is missing.
+ */
+export function listBranches(workspace, manifest) {
+  const projects = (manifest?.projects ?? []).filter((project) => typeof project?.id === "string");
+  const own = projects.filter((project) => !cloneOf(workspace, project));
+  const { main, branches } = branchesIn(workspace, (changed) => projectsTouched(own, changed));
+  const problems = [];
+  for (const { project, clone, vendor } of clonedProjects(workspace, manifest ?? {})) {
+    if (!existsSync(join(clone, ".git"))) {
+      problems.push(`${project.id}: no clone at ${project.clone}`);
+      continue;
+    }
+    if (!vendor) {
+      problems.push(`${project.id}: no fetch step puts a repository at ${project.root}`);
+      continue;
+    }
+    try {
+      const found = branchesIn(clone, (changed) => changed.some((path) => taken(path, vendor.want)) ? [project.id] : []);
+      branches.push(...found.branches);
+    } catch (cause) {
+      problems.push(`${project.id}: ${cause instanceof Error ? cause.message : String(cause)}`);
+    }
   }
   return {
     main,
-    projects: projects.filter((project) => typeof project?.id === "string").map((project) => ({ id: project.id, name: project.name ?? project.id })),
+    projects: projects.map((project) => ({ id: project.id, name: project.name ?? project.id })),
     branches,
+    ...(problems.length > 0 ? { problems } : {}),
   };
 }
 
@@ -161,7 +271,7 @@ export function projectSteps(manifest, projectId, phase = "extract") {
  * other projects keep the fragments committed at this commit, which is the
  * same on both sides of a draft unless the branch changed them too.
  */
-async function catalogHere(projectId, out) {
+async function catalogHere(projectId, out, vendor = null) {
   const [{ loadManifest, stepKeys }, { describePlugin, runPlugin }, { builtinPlugin }, { historyFor }, { writeOutputFile }, { loadCatalog }, { repositoryInput }] = await Promise.all([
     import("./manifest.mjs"),
     import("./plugin-host.mjs"),
@@ -216,6 +326,33 @@ async function catalogHere(projectId, out) {
     warnings.push(...(response.warnings ?? []).map((warning) => `${step.plugin}: ${typeof warning === "string" ? warning : warning.message ?? JSON.stringify(warning)}`));
   };
 
+  // The service's own tree, put where the snapshot sits, before anything
+  // reads it: this is the side of the draft this run is. It is read out of the
+  // clone rather than fetched, so a branch that was never pushed - or one
+  // pushed to a remote the manifest does not name - is drafted all the same.
+  if (vendor) {
+    const step = (manifest.extract ?? []).find((candidate) => fetches(manifest, candidate) && (candidate.options?.repos ?? []).some((want) => want.repo === vendor.repo));
+    if (!step) throw new Error(`the manifest at this commit fetches no repository ${JSON.stringify(vendor.repo)}`);
+    const want = step.options.repos.find((entry) => entry.repo === vendor.repo);
+    const dir = splitRepo(vendor.repo).dir;
+    progress(`${vendor.repo} at ${vendor.commit.slice(0, 12)}`);
+    const { run: fetchGit } = await import("./host-plugins/fetch-git.mjs");
+    const { files } = fetchGit(
+      { portolanVersion: PORTOLAN_VERSION, input: { root: step.in, output: step.out }, options: { cache: step.options.cache, repos: [{ ...want, commit: vendor.commit }] } },
+      { env: process.env, from: (repo) => (repo === vendor.repo ? vendor.from : undefined) },
+    );
+    const written = new Set();
+    for (const file of files) {
+      writeOutputFile(step.out, file.name, file.contents);
+      written.add(file.name);
+    }
+    // A file this commit does not have goes, or the side would hold both the
+    // snapshot committed here and the file the branch deleted.
+    for (const name of committed(step)) {
+      if (name.startsWith(`${dir}/`) && !written.has(name)) rmSync(join(step.out, name), { force: true });
+    }
+  }
+
   for (const step of projectSteps(manifest, projectId, "extract")) {
     const plugin = pluginNamed(step.plugin);
     const needsHistory = plugin && ((await describePlugin(plugin).catch(() => null))?.needs ?? []).includes("history");
@@ -245,14 +382,19 @@ function progress(message) {
   process.stdout.write(`${EVENT_PREFIX}${JSON.stringify({ type: "draft-progress", message })}\n`);
 }
 
-/** Checks the commit out beside the repository and reads the project's catalog there. */
-async function catalogAt(workspace, commit, projectId, holder, label) {
+/**
+ * Checks the commit out beside the repository and reads the project's catalog
+ * there. `vendor` is the service's tree to put in the checkout first, for a
+ * project whose source comes from another repository.
+ */
+async function catalogAt(workspace, commit, projectId, holder, label, vendor = null) {
   const tree = join(holder, label);
   const out = join(holder, `${label}.json`);
   git(workspace, ["worktree", "add", "--detach", "--force", tree, commit]);
   try {
     await new Promise((done, fail) => {
-      const child = spawn(process.execPath, [SELF, "catalog", "--project", projectId, "--out", out], {
+      const args = vendor ? ["--vendor-repo", vendor.repo, "--vendor-commit", vendor.commit, "--vendor-from", vendor.from] : [];
+      const child = spawn(process.execPath, [SELF, "catalog", "--project", projectId, "--out", out, ...args], {
         cwd: tree,
         env: { ...process.env, PORTOLAN_DRAFT_HOST: workspace },
         stdio: ["ignore", "pipe", "pipe"],
@@ -352,16 +494,30 @@ export async function generateDraft(workspace, { project, branch, pending = fals
   // deleting a draft needs none.
   const { DRAFT_SCHEMA, diffBranch } = await import("../src/lib/branch-draft.ts");
   const target = pending ? pendingPath(project, branch) : draftPath(project, branch);
-  const main = mainRef(workspace);
-  const tip = tipOf(workspace, branch);
   const failed = (message) => {
     recordFailure(workspace, project, branch, message);
     return new Error(message);
   };
+  // Where the branch is, and what is put in the checkout to read it. For a
+  // project of this repository both sides are two commits of the workspace;
+  // for a vendored one the workspace stays where it is and the snapshot of
+  // the service moves (portolan.0029).
+  const manifest = manifestOf(workspace);
+  const declared = (manifest.projects ?? []).find((entry) => entry.id === project) ?? null;
+  const clone = declared ? cloneOf(workspace, declared) : "";
+  const vendored = clone ? vendorOf(manifest, declared) : null;
+  if (clone && !existsSync(join(clone, ".git"))) throw failed(`${project} is drafted from ${declared.clone}, and there is no clone of it there`);
+  if (clone && !vendored) throw failed(`${project} is drafted from ${declared.clone}, but no fetch step puts a repository at ${declared.root}`);
+  const source = clone || workspace;
+  const main = mainRef(source);
+  const tip = tipOf(source, branch);
   if (!tip) throw failed(`no branch ${JSON.stringify(branch)}, locally or on origin`);
-  const base = git(workspace, ["merge-base", main, tip], { allowFailure: true });
+  const base = git(source, ["merge-base", main, tip], { allowFailure: true });
   if (!base) throw failed(`${branch} shares no history with ${main}`);
   if (base === tip) throw failed(`${main} already contains ${branch}; there is nothing to draft`);
+  const here = clone ? commitOf(workspace, "HEAD") : null;
+  if (clone && !here) throw failed("this repository has no commit yet, so there is no catalog to lay the branch over");
+  const side = (commit) => (clone ? { repo: vendored.want.repo, commit, from: clone } : null);
 
   progress(`merge-base ${main} ${branch}: ${base.slice(0, 12)}, tip ${tip.slice(0, 12)}`);
   const holder = mkdtempSync(join(tmpdir(), "portolan-draft-"));
@@ -375,8 +531,8 @@ export async function generateDraft(workspace, { project, branch, pending = fals
   process.once("SIGTERM", cancelled);
   process.once("SIGINT", cancelled);
   try {
-    const before = await catalogAt(workspace, base, project, holder, "base");
-    const after = await catalogAt(workspace, tip, project, holder, "branch");
+    const before = await catalogAt(workspace, here ?? base, project, holder, "base", side(base));
+    const after = await catalogAt(workspace, here ?? tip, project, holder, "branch", side(tip));
     progress("compare the catalogs");
     const entities = diffBranch(before.catalog, after.catalog);
     const { views, elements } = await draftViews(entities, { branch: after, base: before });
@@ -406,6 +562,13 @@ export async function generateDraft(workspace, { project, branch, pending = fals
   }
 }
 
+/** Where each project's branches are: its clone, or this repository. */
+function draftSources(workspace) {
+  const found = new Map();
+  for (const { project, clone } of clonedProjects(workspace, manifestOf(workspace))) found.set(project.id, clone);
+  return found;
+}
+
 /**
  * Every saved draft, with what `portolan dev` can say about it now: the
  * branch moved past the saved tip, is gone, or its last regeneration failed.
@@ -413,6 +576,7 @@ export async function generateDraft(workspace, { project, branch, pending = fals
 export function listDrafts(workspace) {
   const root = join(workspace, DRAFTS_DIR);
   const failures = readFailures(workspace);
+  const clones = draftSources(workspace);
   const drafts = [];
   if (existsSync(root)) {
     for (const project of readdirSync(root, { withFileTypes: true })) {
@@ -423,9 +587,13 @@ export function listDrafts(workspace) {
         let draft;
         try { draft = JSON.parse(readFileSync(join(workspace, path), "utf8")); }
         catch { drafts.push({ path, project: project.name, status: "unreadable" }); continue; }
-        const tip = tipOf(workspace, draft.branch);
-        const failure = failures[`${draft.project}\n${draft.branch}`];
-        const ahead = tip && tip !== draft.tip ? Number(git(workspace, ["rev-list", "--count", `${draft.tip}..${tip}`], { allowFailure: true }) ?? 0) : 0;
+        // A vendored project's branch is in its clone, not here.
+        const source = clones.get(draft.project) ?? workspace;
+        const missing = source !== workspace && !existsSync(join(source, ".git"));
+        const tip = missing ? null : tipOf(source, draft.branch);
+        const failure = failures[`${draft.project}\n${draft.branch}`]
+          ?? (missing ? { message: `no clone of ${draft.project} at ${relative(workspace, source)}`, at: new Date().toISOString() } : undefined);
+        const ahead = tip && tip !== draft.tip ? Number(git(source, ["rev-list", "--count", `${draft.tip}..${tip}`], { allowFailure: true }) ?? 0) : 0;
         drafts.push({
           path,
           project: draft.project,
@@ -574,14 +742,14 @@ async function main(args) {
   const [command] = args;
   const workspace = process.cwd();
   if (command === "catalog") {
-    await catalogHere(option(args, "project"), resolve(option(args, "out")));
+    const repo = option(args, "vendor-repo");
+    await catalogHere(option(args, "project"), resolve(option(args, "out")), repo ? { repo, commit: option(args, "vendor-commit"), from: option(args, "vendor-from") } : null);
     return;
   }
   const project = option(args, "project");
   const branch = option(args, "branch");
   if (command === "branches") {
-    const { readManifest } = await import("./manifest.mjs");
-    console.log(JSON.stringify(listBranches(workspace, readManifest("portolan.json").projects ?? []), null, 2));
+    console.log(JSON.stringify(listBranches(workspace, manifestOf(workspace)), null, 2));
   } else if (command === "list") {
     console.log(JSON.stringify(listDrafts(workspace), null, 2));
   } else if (command === "generate") {

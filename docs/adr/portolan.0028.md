@@ -7,6 +7,7 @@
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0028-a-followed-flow-opens-as-a-document-of-its-own.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0028-a-followed-flow-opens-as-a-document-of-its-own.md)
 - **Committed:** Victor Login, 2026-09-16 (`96c871c`)
+- **Revised:** Victor Login, 2026-09-16 (`b16c879`)
 - **Supersedes:** [portolan.0026](portolan.0026.md)
 
 ### Context and Problem Statement

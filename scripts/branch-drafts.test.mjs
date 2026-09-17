@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { deleteDraft, discardDraft, draftPath, generateDraft, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, validBranch } from "./branch-drafts.mjs";
+import { cloneOf, deleteDraft, discardDraft, draftPath, generateDraft, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, validBranch, vendorOf } from "./branch-drafts.mjs";
 
 const created = [];
 afterEach(() => {
@@ -88,9 +88,9 @@ describe("branches and saved drafts", { timeout: 30_000 }, () => {
     git("switch", "-q", "main");
     commit("README.md", "main moves on\n");
 
-    const { main, branches, projects } = listBranches(root, PROJECTS);
+    const { main, branches, projects } = listBranches(root, { projects: PROJECTS });
     expect(main).toBe("main");
-    expect(branches).toEqual([{ branch: "demo/passkeys", tip, base, ahead: 1, projects: ["auth"] }]);
+    expect(branches).toEqual([{ branch: "demo/passkeys", tip, base, ahead: 1, main: "main", projects: ["auth"] }]);
     expect(projects.map((project) => project.id)).toEqual(["portolan", "auth", "cart"]);
   });
 
@@ -170,5 +170,112 @@ describe("branches and saved drafts", { timeout: 30_000 }, () => {
     expect(discardDraft(root, { project: "auth", branch: "demo/passkeys" })).toBe(true);
     expect(readPending(root, { project: "auth", branch: "demo/passkeys" })).toBeNull();
     expect(readDrafts(root).map((draft) => draft.tip)).toEqual(["one"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A project that lives in another repository (portolan.0029)
+
+const VENDORED = {
+  sources: ["vendor/repos/**/portolan/*.json"],
+  projects: [
+    { id: "aviacore", name: "Aviacore", root: "vendor/repos/avia/aviacore", repository: "git@gitlab.example.com:avia/aviacore.git", clone: "../aviacore" },
+    { id: "docs", name: "Docs", root: "docs" },
+  ],
+  plugins: [{ name: "git", host: "fetch-git" }],
+  extract: [
+    {
+      plugin: "git",
+      in: "vendor",
+      out: "vendor/repos",
+      options: { cache: "vendor/repos", repos: [{ repo: "git@gitlab.example.com:avia/aviacore.git", commit: "0".repeat(40), paths: ["internal"] }] },
+    },
+  ],
+};
+
+/** A workspace whose one service is vendored, with the clone beside it. */
+function estate() {
+  const holder = mkdtempSync(join(tmpdir(), "portolan-vendored-"));
+  created.push(holder);
+  const make = (name) => {
+    const root = join(holder, name);
+    mkdirSync(root, { recursive: true });
+    const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", env: { ...process.env, ...ADA }, stdio: ["ignore", "pipe", "pipe"] }).trim();
+    const commit = (file, contents, message = file) => {
+      mkdirSync(join(root, file, ".."), { recursive: true });
+      writeFileSync(join(root, file), contents);
+      git("add", ".");
+      git("commit", "-q", "-m", message);
+      return git("rev-parse", "HEAD");
+    };
+    return { root, git, commit };
+  };
+
+  const clone = make("aviacore");
+  clone.git("init", "-q", "-b", "master");
+  clone.commit("internal/app/a.go", "package app\n");
+
+  const workspace = make("portolan");
+  workspace.git("init", "-q", "-b", "main");
+  writeFileSync(join(workspace.root, "portolan.json"), `${JSON.stringify(VENDORED, null, 2)}\n`);
+  workspace.commit("vendor/repos/avia/aviacore/internal/app/a.go", "package app\n", "vendor aviacore");
+  return { workspace, clone };
+}
+
+describe("a project vendored from another repository", { timeout: 30_000 }, () => {
+  it("finds the clone and the fetch entry whose copy is the project's root", () => {
+    const [aviacore, docs] = VENDORED.projects;
+    expect(cloneOf("/w", aviacore)).toBe(join("/w", "..", "aviacore"));
+    expect(cloneOf("/w", docs)).toBe("");
+    expect(vendorOf(VENDORED, aviacore)?.want.repo).toBe("git@gitlab.example.com:avia/aviacore.git");
+    expect(vendorOf(VENDORED, docs)).toBeNull();
+  });
+
+  it("lists the clone's branches against the clone's own main, and only what the snapshot takes", () => {
+    const { workspace, clone } = estate();
+    clone.git("switch", "-q", "-c", "ASUP-976");
+    const tip = clone.commit("internal/app/b.go", "package app\n");
+    const base = clone.git("rev-parse", "master");
+    clone.git("switch", "-q", "-c", "chore/ci", "master");
+    clone.commit(".gitlab-ci.yml", "stages: []\n");
+    clone.git("switch", "-q", "master");
+
+    const { main, branches } = listBranches(workspace.root, VENDORED);
+    // The workspace's own main, and each branch ahead of the main of the
+    // repository it is in.
+    expect(main).toBe("main");
+    expect(branches).toEqual([
+      { branch: "ASUP-976", tip, base, ahead: 1, main: "master", projects: ["aviacore"] },
+      // Outside the paths the snapshot takes: nothing in the catalog to draft.
+      { branch: "chore/ci", tip: expect.any(String), base, ahead: 1, main: "master", projects: [] },
+    ]);
+  });
+
+  it("says which project's clone is not on this machine rather than failing the page", () => {
+    const { workspace } = estate();
+    rmSync(join(workspace.root, "..", "aviacore"), { recursive: true, force: true });
+    const { branches, problems } = listBranches(workspace.root, VENDORED);
+    expect(branches).toEqual([]);
+    expect(problems).toEqual(["aviacore: no clone at ../aviacore"]);
+  });
+
+  it("reads a saved draft's branch from the clone, and refuses to generate without one", async () => {
+    const { workspace, clone } = estate();
+    clone.git("switch", "-q", "-c", "ASUP-976");
+    const tip = clone.commit("internal/app/b.go", "package app\n");
+    clone.git("switch", "-q", "master");
+
+    const file = join(workspace.root, draftPath("aviacore", "ASUP-976"));
+    mkdirSync(join(file, ".."), { recursive: true });
+    writeFileSync(file, JSON.stringify({ schema: "portolan.draft/v1", project: "aviacore", branch: "ASUP-976", tip, base: "b", generatedAt: "2026-09-17T00:00:00Z", entities: [] }));
+    expect(listDrafts(workspace.root)[0]).toMatchObject({ branch: "ASUP-976", status: "fresh" });
+
+    clone.git("switch", "-q", "ASUP-976");
+    const moved = clone.commit("internal/app/c.go", "package app\n");
+    expect(listDrafts(workspace.root)[0]).toMatchObject({ status: "moved", currentTip: moved });
+
+    rmSync(clone.root, { recursive: true, force: true });
+    expect(listDrafts(workspace.root)[0]).toMatchObject({ status: "failed", failure: { message: "no clone of aviacore at ../aviacore" } });
+    await expect(generateDraft(workspace.root, { project: "aviacore", branch: "ASUP-976", pending: true })).rejects.toThrowError(/no clone of it there/);
   });
 });

@@ -104,7 +104,11 @@ let projectNames = new Map(setupInfo.projects.map((project) => [project.id, proj
  */
 function inCatalog(file: BranchDraft): boolean {
   const project = setupInfo.projects.find((candidate) => candidate.id === file.project);
-  if (project?.context && project.service) return index.serviceById.has(`${project.context}.${project.service}`);
+  // `group`/`component` as a manifest spells them now, `context`/`service` as
+  // an older one still may.
+  const context = project?.group ?? project?.context;
+  const service = project?.component ?? project?.service;
+  if (context && service) return index.serviceById.has(`${context}.${service}`);
   return file.entities.some((entity) => entity.change !== "added" && MAIN.has(`${entity.kind}:${entity.id}`));
 }
 

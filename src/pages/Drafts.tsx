@@ -292,7 +292,7 @@ function NewDraft() {
   const project = picked ?? projects[0]?.id ?? "";
   const choices: BranchChoice[] = (branches?.branches ?? [])
     .filter((b) => b.projects.includes(project))
-    .map((b) => ({ project, branch: b.branch, tip: short(b.tip), ahead: b.ahead }));
+    .map((b) => ({ project, branch: b.branch, tip: short(b.tip), ahead: b.ahead, main: b.main }));
   const [branch, setBranch] = useState("");
   const [showLog, setShowLog] = useState(false);
   const choice = choices.find((b) => b.branch === branch) ?? choices[0];
@@ -345,7 +345,7 @@ function NewDraft() {
             >
               {choices.map((b) => (
                 <option key={b.branch} value={b.branch}>
-                  {b.branch} · {b.tip} · {b.ahead} ahead of {branches.main}
+                  {b.branch} · {b.tip} · {b.ahead} ahead of {b.main ?? branches.main}
                 </option>
               ))}
             </select>
@@ -369,6 +369,13 @@ function NewDraft() {
           ) : null}
         </div>
       )}
+      {branches?.problems?.length ? (
+        <ul className="mono mt-3 flex flex-col gap-1 text-xs text-unresolved">
+          {branches.problems.map((problem) => (
+            <li key={problem}>{problem}</li>
+          ))}
+        </ul>
+      ) : null}
 
       {generation ? (
         <div className="mt-4 border-t border-line pt-3">

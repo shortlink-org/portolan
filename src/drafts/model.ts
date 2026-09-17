@@ -79,6 +79,8 @@ export interface BranchChoice {
   branch: string;
   tip: string;
   ahead: number;
+  /** The main the branch is ahead of - a cloned project's own, not this repository's. */
+  main?: string;
 }
 
 export function draftKey(draft: { project: string; branch: string }): string {

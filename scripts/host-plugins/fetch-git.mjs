@@ -76,11 +76,15 @@ export function describe() {
  * file list. The host deletes files a step stops naming, and dropping a
  * vendored service because a laptop went offline is worse than a red build.
  *
+ * `from` is the host's alone: a checkout on this machine that answers for a
+ * repository instead of the forge, which is how a branch is drafted from a
+ * clone (portolan.0029). A manifest can never ask for it.
+ *
  * @param {{options?: object}} request
- * @param {{env?: NodeJS.ProcessEnv}} [io]
+ * @param {{env?: NodeJS.ProcessEnv, from?: (repo: string) => string | undefined}} [io]
  * @returns {{files: {name: string, contents: string}[], warnings: {severity: string, message: string, ref?: string}[]}}
  */
-export function run(request, { env = process.env } = {}) {
+export function run(request, { env = process.env, from } = {}) {
   const options = request.options ?? {};
   const generatedAt = String(request.input?.generatedAt ?? "");
   const repos = Array.isArray(options.repos) ? options.repos : [];
@@ -98,16 +102,22 @@ export function run(request, { env = process.env } = {}) {
   for (const want of wanted) {
     const { url, dir } = splitRepo(want.repo);
     const at = join(options.cache, ...dir.split("/"));
+    // A checkout on this machine is read, not fetched, so being offline is no
+    // reason to fall back to the committed copy.
+    const checkout = from?.(want.repo) ?? "";
 
-    if (skip) {
+    if (skip && !checkout) {
       emitCached(out, dir, at, want, "offline", generatedAt, copyPath(options.cache, dir));
       continue;
     }
 
     let fetched;
     try {
-      fetched = live(url, want, out, env);
+      fetched = live(url, want, out, env, checkout);
     } catch (cause) {
+      // A checkout that cannot answer is an error, never the committed copy:
+      // the caller asked for one particular commit and the copy is another.
+      if (checkout) throw new Error(`${want.repo} at ${want.commit} could not be read from ${checkout} (${cause.message})`);
       // Rule 2: the tree still holds a good copy, so the output is unchanged
       // and `--check` stays clean.
       try {
@@ -249,8 +259,9 @@ function digestOf(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-function live(url, want, out, env) {
+function live(url, want, out, env, checkout = "") {
   let commit = String(want.commit ?? "");
+  if (!commit && checkout) throw new Error(`${want.repo}: a copy read from a checkout names the commit it is read at`);
   if (!commit) {
     // Pin, or every run is a lottery. Resolving a ref still works, but it is
     // said out loud, because two runs a day apart would then produce two
@@ -259,7 +270,7 @@ function live(url, want, out, env) {
     out.warn(want.repo, `is not pinned; "${want.ref || "HEAD"}" resolved to ${commit}. Pin it in portolan.json or every run is a lottery.`);
   }
   const paths = wantedPaths(want);
-  const fetched = download(url, commit, env, paths);
+  const fetched = checkout ? readTree(checkout, commit, env, paths) : download(url, commit, env, paths);
   if (fetched.files.size === 0 && fetched.skipped.length === 0) {
     throw new Error(paths.length ? `${want.repo} at ${commit} holds no files under ${paths.join(", ")}` : `${want.repo} at ${commit} holds no files`);
   }
@@ -439,49 +450,66 @@ function download(url, commit, env, paths = []) {
     } catch {
       throw new Error(`${commit} is not a commit ${url} has, or not one reachable from a branch`);
     }
-
-    const listing = git(tmp, ["ls-tree", "-r", "-z", "--format=%(objectname) %(objecttype) %(objectsize) %(path)", commit], env);
-    const blobs = [];
-    const skipped = [];
-    for (const line of listing.split("\0")) {
-      if (!line) continue;
-      const [sha, type, rawSize, ...rest] = line.split(" ");
-      if (type !== "blob") continue;
-      const path = posix.normalize(rest.join(" "));
-      if (!underPaths(path, paths)) continue;
-      const size = Number(rawSize);
-      const reason = knownBinaryReason(path);
-      if (reason) skipped.push({ path, size, reason });
-      else blobs.push({ sha, path, size });
-    }
-    const files = new Map();
-    if (blobs.length === 0) return { files, skipped };
-
-    // One `cat-file --batch` process answers every remaining sha with a header
-    // line and the bytes. Known binaries never enter this batch.
-    const batch = execFileSync("git", ["cat-file", "--batch"], {
-      cwd: tmp,
-      env: { ...env, GIT_TERMINAL_PROMPT: "0" },
-      input: `${blobs.map((blob) => blob.sha).join("\n")}\n`,
-      maxBuffer: 512 * 1024 * 1024,
-    });
-    let offset = 0;
-    for (const blob of blobs) {
-      const newline = batch.indexOf(0x0a, offset);
-      const header = batch.subarray(offset, newline).toString("utf8").split(" ");
-      if (header[1] === "missing") throw new Error(`${blob.path} is missing from ${commit}`);
-      const size = Number(header[2]);
-      const start = newline + 1;
-      const contents = batch.subarray(start, start + size);
-      const reason = sniffedBinaryReason(contents);
-      if (reason) skipped.push({ path: blob.path, size, reason });
-      else files.set(blob.path, Buffer.from(contents));
-      offset = start + size + 1;
-    }
-    return { files, skipped };
+    return readTree(tmp, commit, env, paths);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+/**
+ * The source tree of one commit, read out of a repository that already holds
+ * it: the same files a fetch would have brought back, sorted the same way and
+ * with the same binaries left out.
+ *
+ * It is exported because a checkout on this machine can answer for a
+ * repository the forge would otherwise be asked for - a branch drafted from a
+ * clone (portolan.0029) is read here rather than fetched, which is what lets a
+ * branch that was never pushed, or one pushed to a remote the manifest does
+ * not name, be drafted at all.
+ *
+ * @param {string} dir a git repository holding the commit
+ * @returns {{files: Map<string, Buffer>, skipped: {path: string, size: number, reason: string}[]}}
+ */
+export function readTree(dir, commit, env = process.env, paths = []) {
+  const listing = git(dir, ["ls-tree", "-r", "-z", "--format=%(objectname) %(objecttype) %(objectsize) %(path)", commit], env);
+  const blobs = [];
+  const skipped = [];
+  for (const line of listing.split("\0")) {
+    if (!line) continue;
+    const [sha, type, rawSize, ...rest] = line.split(" ");
+    if (type !== "blob") continue;
+    const path = posix.normalize(rest.join(" "));
+    if (!underPaths(path, paths)) continue;
+    const size = Number(rawSize);
+    const reason = knownBinaryReason(path);
+    if (reason) skipped.push({ path, size, reason });
+    else blobs.push({ sha, path, size });
+  }
+  const files = new Map();
+  if (blobs.length === 0) return { files, skipped };
+
+  // One `cat-file --batch` process answers every remaining sha with a header
+  // line and the bytes. Known binaries never enter this batch.
+  const batch = execFileSync("git", ["cat-file", "--batch"], {
+    cwd: dir,
+    env: { ...env, GIT_TERMINAL_PROMPT: "0" },
+    input: `${blobs.map((blob) => blob.sha).join("\n")}\n`,
+    maxBuffer: 512 * 1024 * 1024,
+  });
+  let offset = 0;
+  for (const blob of blobs) {
+    const newline = batch.indexOf(0x0a, offset);
+    const header = batch.subarray(offset, newline).toString("utf8").split(" ");
+    if (header[1] === "missing") throw new Error(`${blob.path} is missing from ${commit}`);
+    const size = Number(header[2]);
+    const start = newline + 1;
+    const contents = batch.subarray(start, start + size);
+    const reason = sniffedBinaryReason(contents);
+    if (reason) skipped.push({ path: blob.path, size, reason });
+    else files.set(blob.path, Buffer.from(contents));
+    offset = start + size + 1;
+  }
+  return { files, skipped };
 }
 
 function knownBinaryReason(path) {

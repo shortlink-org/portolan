@@ -245,6 +245,32 @@ describe("fetch-git", { timeout: 30_000 }, () => {
     expect(names(response)).toHaveLength(6);
   });
 
+  it("reads a checkout on this machine instead of the forge, offline, and never falls back to the copy", () => {
+    const remote = repository();
+    // A commit no forge would serve by name and that no branch reaches: a
+    // checkout that holds it answers for it all the same.
+    remote.git(["config", "--unset", "uploadpack.allowAnySHA1InWant"]);
+    remote.git(["checkout", "--quiet", "-b", "ASUP-976"]);
+    writeFileSync(join(remote.dir, "services/oms/internal/domain/order/refund.go"), "package order\n");
+    remote.git(["add", "."]);
+    remote.git(["commit", "--quiet", "-m", "refund"]);
+    const tip = remote.git(["rev-parse", "HEAD"]);
+    remote.git(["checkout", "--quiet", "main"]);
+    remote.git(["branch", "-D", "ASUP-976"]);
+
+    const cacheDir = cache();
+    const from = () => remote.dir;
+    const response = run({ options: { cache: cacheDir, repos: [{ repo: "github.com/acme/shop", commit: tip }] } }, { env: { ...process.env, ...offline }, from });
+    expect(names(response)).toContain("acme/shop/services/oms/internal/domain/order/refund.go");
+    expect(JSON.parse(contentsOf(response, `acme/shop/${PIN_NAME}`)).repos[0]).toMatchObject({ repo: "github.com/acme/shop", commit: tip });
+
+    // A checkout that cannot answer is the error; the committed copy is what
+    // the reader would silently have been shown the other side of.
+    write(cacheDir, response);
+    expect(() => run({ options: { cache: cacheDir, repos: [{ repo: "github.com/acme/shop", commit: "0".repeat(40) }] } }, { env: { ...process.env, ...offline }, from }))
+      .toThrowError(/could not be read from/);
+  });
+
   it("runs through the host like any plugin, warnings kept beside the files", async () => {
     const remote = repository();
     const cacheDir = cache();
