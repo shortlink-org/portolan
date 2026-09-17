@@ -3,8 +3,8 @@ import type { Event, Flow, FlowNode, Step } from "../catalog";
 import { DRAFT_SCHEMA } from "../lib/branch-draft";
 import type { BranchDraft } from "../lib/branch-draft";
 import { branchFlow, removedStepId } from "./branch-flow";
-import { eventLines, flowLines, presentDraft } from "./model";
-import type { PresentContext } from "./model";
+import { eventLines, flowLines, presentDraft, taskCounts, taskOf, tasksOf } from "./model";
+import type { Draft, DraftEntity, PresentContext } from "./model";
 
 const step = (id: string, from: string, to: string, label: string, kind: Step["kind"] = "call"): Step => ({ type: "step", id, from, to, kind, label, status: "declared" });
 const flow = (steps: FlowNode[], participants: Flow["participants"] = []): Flow => ({ id: "flow.login", slug: "login", name: "Login", summary: "", owner: "auth", participants, steps });
@@ -79,5 +79,33 @@ describe("branchFlow", () => {
     expect(shown.marks.get("s2")).toEqual({ state: "added" });
     expect(shown.marks.get(removedStepId("s2"))).toEqual({ state: "removed" });
     expect(shown.drawn).toBe(branch);
+  });
+});
+
+describe("the task a branch belongs to", () => {
+  it("is the tracker key its name carries, wherever the name carries it", () => {
+    expect(taskOf("ASUP-976-refund-void-bridge")).toBe("ASUP-976");
+    expect(taskOf("feature/ASUP-976")).toBe("ASUP-976");
+    expect(taskOf("bugfix/AIR-12/retry")).toBe("AIR-12");
+  });
+
+  it("is the branch itself when the name carries no key a tracker would spell", () => {
+    expect(taskOf("demo/auth-passkeys")).toBe("demo/auth-passkeys");
+    expect(taskOf("renovate/ai-7.x")).toBe("renovate/ai-7.x");
+    expect(taskOf("fix/retry-3")).toBe("fix/retry-3");
+  });
+
+  it("groups the drafts of one ticket across projects and adds up what they did", () => {
+    const of = (project: string, branch: string, state: DraftEntity["state"]): Draft =>
+      ({ project, branch, projectName: project, tip: "a", base: "b", savedAt: "", health: { kind: "fresh" }, views: {}, elements: {},
+        entities: [{ id: `${project}.x`, kind: "service", name: "x", state, owner: project, branch: [], versions: {} }] }) as Draft;
+    const tasks = tasksOf([
+      of("aviacore", "ASUP-976-refund-void-bridge", "changed"),
+      of("avia-api-bridge", "ASUP-976-refund-void-bridge", "conflict"),
+      of("aviasupp", "ASUP-995-websky", "added"),
+    ]);
+    expect(tasks.map((task) => [task.key, task.drafts.length])).toEqual([["ASUP-976", 2], ["ASUP-995", 1]]);
+    expect(tasks[0]!.branches).toEqual(["ASUP-976-refund-void-bridge"]);
+    expect(taskCounts(tasks[0]!)).toEqual({ added: 0, changed: 1, grown: 0, conflict: 1, removed: 0 });
   });
 });

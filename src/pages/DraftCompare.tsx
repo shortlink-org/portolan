@@ -1,25 +1,16 @@
 // What one branch changed in one project, entity by entity, grouped by kind
 // (portolan.0019).
 
-import { versionHref } from "../drafts/version-param";
 import { ArrowRight, GitBranch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useDocumentTitle } from "../app/title";
-import { draftKey } from "../drafts/model";
-import type { DraftEntityKind, DraftState } from "../drafts/model";
+import { EntityRows, NothingRead } from "../drafts/EntityRows";
+import { draftKey, taskOf } from "../drafts/model";
+import type { DraftState } from "../drafts/model";
 import { counts, useDrafts } from "../drafts/store";
-import { DraftChip, STATES, STATE_LABEL, STATE_TONE, StateChip, when } from "../drafts/ui";
+import { STATES, STATE_LABEL, STATE_TONE, when } from "../drafts/ui";
 import { paths } from "../routes";
-
-const KIND_LABEL: Record<DraftEntityKind, string> = {
-  flow: "Flows",
-  service: "Services",
-  aggregate: "Aggregates",
-  event: "Events",
-};
-
-const KINDS: DraftEntityKind[] = ["flow", "service", "aggregate", "event"];
 
 export function DraftCompare() {
   const { project = "", branch: encoded = "" } = useParams();
@@ -55,6 +46,10 @@ export function DraftCompare() {
 
   const key = draftKey(draft);
   const n = counts(draft);
+  const task = taskOf(draft.branch);
+  // The same task in other projects: one ticket, one branch name, several
+  // repositories, and no way to see them together without this.
+  const elsewhere = drafts.filter((other) => other !== draft && taskOf(other.branch) === task);
   const flip = (state: DraftState) =>
     setActive((previous) => {
       const next = new Set(previous);
@@ -78,6 +73,15 @@ export function DraftCompare() {
               <GitBranch size={18} aria-hidden className="text-muted" />
               {draft.branch}
             </h1>
+            {elsewhere.length > 0 ? (
+              <div className="mono mt-1 text-xs text-muted">
+                part of{" "}
+                <Link to={paths.draftTask(task)} className="text-accent hover:underline">
+                  {task}
+                </Link>{" "}
+                · also in {elsewhere.map((other) => other.projectName).join(", ")}
+              </div>
+            ) : null}
           </div>
           <div className="ml-auto flex flex-col items-end gap-2">
             <div className="mono flex items-center gap-2 rounded-control border border-line bg-surface px-3 py-2 text-sm">
@@ -96,7 +100,7 @@ export function DraftCompare() {
           </div>
         </div>
 
-        <div className="mt-section grid grid-cols-4 gap-2">
+        <div className="mt-section grid grid-cols-2 gap-2 sm:grid-cols-5">
           {STATES.map((state) => (
             <button
               key={state}
@@ -128,65 +132,11 @@ export function DraftCompare() {
         </div>
 
         {draft.entities.length === 0 ? (
-          <div className="empty mt-4">The branch changes nothing in {draft.projectName}.</div>
+          <NothingRead draft={draft} />
         ) : shown.length === 0 ? (
           <div className="empty mt-4">No entities match these filters.</div>
         ) : (
-          KINDS.filter((kind) => shown.some((e) => e.kind === kind)).map((kind) => (
-            <section key={kind} className="mt-section">
-              <h2 className="label mb-2">{KIND_LABEL[kind]}</h2>
-              <div className="flex flex-col gap-1">
-                {shown
-                  .filter((e) => e.kind === kind)
-                  .map((entity) => (
-                    <div key={entity.id} id={`draft-${entity.id}`} className="row items-start gap-3 rounded-control px-3 py-2.5">
-                      <StateChip state={entity.state} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {entity.state === "added" ? (
-                            <Link to={paths.draftEntity(draft.project, draft.branch, entity.id)} className="font-medium text-ink hover:underline">
-                              {entity.name}
-                            </Link>
-                          ) : entity.href ? (
-                            <Link to={versionHref(entity.href, draft.branch)} className={`font-medium hover:underline ${entity.state === "removed" ? "text-muted line-through" : "text-ink"}`}>
-                              {entity.name}
-                            </Link>
-                          ) : (
-                            <span className="font-medium text-ink">{entity.name}</span>
-                          )}
-                          {entity.state === "added" ? <DraftChip branch={draft.branch} /> : null}
-                          <span className="mono text-xs text-muted">{entity.id}</span>
-                          {drafts
-                            .filter((other) => other !== draft && other.entities.some((e) => e.id === entity.id))
-                            .map((other) => (
-                              <Link
-                                key={other.branch}
-                                to={paths.draftCompare(other.project, other.branch)}
-                                className="mono rounded-sm border border-unresolved/30 bg-unresolved/5 px-1.5 py-0.5 text-[10px] text-unresolved hover:underline"
-                                title={`${other.branch} changes this too`}
-                              >
-                                also in {other.branch}
-                              </Link>
-                            ))}
-                        </div>
-                        {entity.state === "conflict" ? (
-                          <div className="mt-2 grid gap-2 md:grid-cols-2">
-                            <Side title={`in ${draft.branch}`} lines={entity.branch} tone="text-accent" />
-                            <Side title="on main since the base" lines={entity.main ?? []} tone="text-unresolved" />
-                          </div>
-                        ) : (
-                          <ul className="mono mt-1 flex flex-col gap-0.5 text-xs text-muted">
-                            {entity.branch.map((line) => (
-                              <li key={line}>{line}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </section>
-          ))
+          <EntityRows draft={draft} entities={shown} />
         )}
 
         <div className="mono mt-section flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-muted">
@@ -194,19 +144,6 @@ export function DraftCompare() {
           <span>compared from base {draft.base}, overlaid on the current main</span>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Side({ title, lines, tone }: { title: string; lines: string[]; tone: string }) {
-  return (
-    <div className="rounded-control border border-line bg-canvas p-2">
-      <div className={`mono text-[10px] uppercase tracking-wide ${tone}`}>{title}</div>
-      <ul className="mono mt-1 flex flex-col gap-0.5 text-xs text-muted">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
     </div>
   );
 }

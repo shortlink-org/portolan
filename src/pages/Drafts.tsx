@@ -1,13 +1,14 @@
 // Every saved branch draft of every project, with a way to make a new one
 // while the dev server runs (portolan.0019).
 
-import { AlertTriangle, Check, CircleSlash, GitBranch, GitCompare, History, LoaderCircle, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, CircleSlash, ExternalLink, GitBranch, GitCompare, History, LoaderCircle, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useDocumentTitle } from "../app/title";
+import { relativeTime } from "../lib/format";
 import { useToastStore } from "../app/toast";
-import { draftKey, short } from "../drafts/model";
-import type { BranchChoice, Draft } from "../drafts/model";
+import { draftKey, short, taskCounts, tasksOf } from "../drafts/model";
+import type { BranchChoice, Draft, DraftTask } from "../drafts/model";
 import { counts, useDrafts } from "../drafts/store";
 import { DraftChip, STATES, STATE_LABEL, STATE_TONE, StateChip, when } from "../drafts/ui";
 import { paths } from "../routes";
@@ -18,15 +19,72 @@ function choiceFor(draft: Draft): BranchChoice {
 
 const message = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
+/**
+ * When the project's clone last heard from its remote. Dev never fetches by
+ * itself, so a draft of a branch that moved on the forge and not here reads
+ * as fresh; the age says how much that is worth, and the button closes it.
+ */
+function CloneAge({ draft }: { draft: Draft }) {
+  const mode = useDrafts((s) => s.mode);
+  const fetchClone = useDrafts((s) => s.fetchClone);
+  const say = useToastStore((s) => s.say);
+  const [busy, setBusy] = useState(false);
+  const age = draft.clone?.fetchedAt ? relativeTime(draft.clone.fetchedAt) : "never";
+  if (mode !== "dev") return null;
+  return (
+    <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted/80">
+      <span title={`${draft.clone?.path} last fetched ${age}`}>clone {age}</span>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          fetchClone(draft.project)
+            .catch((cause) => say(`Could not fetch ${draft.clone?.path}: ${message(cause)}`))
+            .finally(() => setBusy(false));
+        }}
+        aria-label={`Fetch the clone of ${draft.projectName}`}
+        className="inline-flex items-center gap-1 hover:text-accent disabled:opacity-40"
+      >
+        {busy ? <LoaderCircle size={10} aria-hidden className="animate-spin" /> : <RefreshCw size={10} aria-hidden />}
+        fetch
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A draft with no entities is not an empty row: the branch changed files, and
+ * none of what it changed is something the catalog reads. Saying how much it
+ * touched, and where the diff is, turns a dead line into the finding.
+ */
+function TouchedOnly({ draft }: { draft: Draft }) {
+  const touched = draft.touched;
+  return (
+    <span className="mono flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+      <span>no changes the catalog reads</span>
+      {touched ? (
+        <span className="text-muted/80">
+          · {touched.files} file{touched.files === 1 ? "" : "s"} in {touched.dirs.join(", ")}
+        </span>
+      ) : null}
+      {draft.diffHref ? (
+        <a href={draft.diffHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-accent hover:underline">
+          diff <ExternalLink size={11} aria-hidden />
+        </a>
+      ) : null}
+    </span>
+  );
+}
+
 export function Drafts() {
   useDocumentTitle("Branch drafts");
   const drafts = useDrafts((s) => s.drafts);
-  const enabled = useDrafts((s) => s.enabled);
-  const toggle = useDrafts((s) => s.toggle);
+  const grouping = useDrafts((s) => s.grouping);
+  const setGrouping = useDrafts((s) => s.setGrouping);
   const remove = useDrafts((s) => s.remove);
   const restore = useDrafts((s) => s.restore);
   const generate = useDrafts((s) => s.generate);
-  const generation = useDrafts((s) => s.generation);
   const mode = useDrafts((s) => s.mode);
   const outside = useDrafts((s) => s.outside);
   const refresh = useDrafts((s) => s.refresh);
@@ -43,6 +101,9 @@ export function Drafts() {
     () => [...drafts].sort((a, b) => a.projectName.localeCompare(b.projectName) || b.savedAt.localeCompare(a.savedAt)),
     [drafts],
   );
+  // A task is the row a reader thinks in - one ticket, several repositories -
+  // and the project view is still there for whoever wants it.
+  const tasks = useMemo(() => tasksOf(sorted), [sorted]);
   const attention = drafts.filter((d) => d.health.kind !== "fresh").length;
 
   const drop = (draft: Draft) => {
@@ -87,6 +148,19 @@ export function Drafts() {
               <AlertTriangle size={12} aria-hidden /> {attention} need attention
             </span>
           ) : null}
+          <div className="mono ml-auto flex overflow-hidden rounded-control border border-line text-xs">
+            {(["task", "project"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={grouping === value}
+                onClick={() => setGrouping(value)}
+                className={`px-2 py-1 ${grouping === value ? "bg-accent/15 text-accent" : "bg-canvas text-muted hover:text-ink"}`}
+              >
+                by {value}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mt-2 overflow-x-auto">
@@ -103,113 +177,22 @@ export function Drafts() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((draft) => {
-                const key = draftKey(draft);
-                const n = counts(draft);
-                const health = draft.health;
-                const running = generation && draftKey(generation.choice) === key && !generation.result && !generation.error;
-                return (
-                  <FragmentRows key={key}>
-                    <tr className={`align-middle hover:bg-surface ${health.kind === "fresh" || mode === "static" ? "border-b border-line" : ""}`}>
-                      <td className="py-2.5 pr-3 pl-2">
-                        <input
-                          type="checkbox"
-                          aria-label={`Show ${draft.branch} in the catalog`}
-                          checked={enabled.includes(key)}
-                          onChange={() => toggle(key)}
-                          className="accent-[var(--accent)]"
-                        />
-                      </td>
-                      <td className="py-2.5 pr-3 text-ink">{draft.projectName}</td>
-                      <td className="mono py-2.5 pr-3">
-                        <Link
-                          to={paths.draftCompare(draft.project, draft.branch)}
-                          className={`inline-flex items-center gap-1.5 hover:text-accent hover:underline ${health.kind === "gone" && mode === "dev" ? "text-muted line-through" : "text-ink"}`}
-                        >
-                          <GitBranch size={13} aria-hidden className="text-muted" />
-                          {draft.branch}
-                        </Link>
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        {draft.entities.length === 0 ? (
-                          <span className="mono text-xs text-muted">no changes</span>
-                        ) : (
-                          <span className="flex flex-wrap gap-1">
-                            {STATES.filter((s) => n[s] > 0).map((s) => (
-                              <span key={s} className={`mono tnum rounded-sm border px-1.5 py-0.5 text-[10px] ${STATE_TONE[s]}`}>
-                                {n[s]} {STATE_LABEL[s].toLowerCase()}
-                              </span>
-                            ))}
-                          </span>
-                        )}
-                      </td>
-                      <td className="mono py-2.5 pr-3 text-xs text-muted">
-                        {draft.base} → {draft.tip}
-                      </td>
-                      <td className="mono py-2.5 pr-3 text-xs text-muted">{when(draft.savedAt)}</td>
-                      <td className="py-2.5 pr-2 text-right whitespace-nowrap">
-                        <Link
-                          to={paths.draftCompare(draft.project, draft.branch)}
-                          className="mono mr-2 inline-flex items-center gap-1 rounded-control border border-line px-2 py-1 text-xs text-muted hover:border-line-strong hover:text-ink"
-                        >
-                          <GitCompare size={12} aria-hidden /> compare
-                        </Link>
-                        {mode === "dev" ? (
-                          <button
-                            type="button"
-                            onClick={() => drop(draft)}
-                            aria-label={`Delete the draft of ${draft.branch}`}
-                            className="mono inline-flex items-center gap-1 rounded-control border border-line px-2 py-1 text-xs text-muted hover:border-unresolved/40 hover:text-unresolved"
-                          >
-                            <Trash2 size={12} aria-hidden /> delete
-                          </button>
-                        ) : null}
-                      </td>
-                    </tr>
-
-                    {mode === "dev" && health.kind !== "fresh" ? (
-                      <tr className="border-b border-line">
-                        <td />
-                        <td colSpan={6} className="pb-2.5 pr-2">
-                          {running ? (
-                            <Notice tone="text-accent" icon={<LoaderCircle size={13} aria-hidden className="animate-spin" />}>
-                              regenerating…
-                            </Notice>
-                          ) : health.kind === "stale" ? (
-                            <Notice
-                              tone="text-accent"
-                              icon={<History size={13} aria-hidden />}
-                              action={<RowButton onClick={() => regenerate(draft)} icon={<RefreshCw size={12} aria-hidden />}>regenerate</RowButton>}
-                            >
-                              the branch moved to {health.tip}, {health.ahead} commits this draft does not show
-                            </Notice>
-                          ) : health.kind === "failed" ? (
-                            <>
-                              <Notice
-                                tone="text-unresolved"
-                                icon={<AlertTriangle size={13} aria-hidden />}
-                                action={
-                                  <>
-                                    <RowButton onClick={() => setOpenLog(openLog === key ? null : key)}>{openLog === key ? "hide log" : "show log"}</RowButton>
-                                    <RowButton onClick={() => regenerate(draft)} icon={<RefreshCw size={12} aria-hidden />}>retry</RowButton>
-                                  </>
-                                }
-                              >
-                                regeneration failed {when(health.at)} at “{health.step}” · showing the draft saved {when(draft.savedAt)}
-                              </Notice>
-                              {openLog === key ? <Log lines={health.log} /> : null}
-                            </>
-                          ) : (
-                            <Notice tone="text-muted" icon={<CircleSlash size={13} aria-hidden />}>
-                              the branch is no longer in the repository · the saved draft stays until you delete it
-                            </Notice>
-                          )}
-                        </td>
-                      </tr>
-                    ) : null}
-                  </FragmentRows>
-                );
-              })}
+              {grouping === "task"
+                ? tasks.map((task) =>
+                    task.drafts.length === 1 ? (
+                      <DraftRow key={task.key} draft={task.drafts[0]!} indented={false} openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
+                    ) : (
+                      <FragmentRows key={task.key}>
+                        <TaskRow task={task} />
+                        {task.drafts.map((draft) => (
+                          <DraftRow key={draftKey(draft)} draft={draft} indented openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
+                        ))}
+                      </FragmentRows>
+                    ),
+                  )
+                : sorted.map((draft) => (
+                    <DraftRow key={draftKey(draft)} draft={draft} indented={false} openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
+                  ))}
             </tbody>
           </table>
           {sorted.length === 0 ? (
@@ -450,5 +433,192 @@ function NewDraft() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * One saved draft: its row, and under it whatever dev has to say about the
+ * branch since the draft was made.
+ */
+function DraftRow({ draft, indented, openLog, setOpenLog, drop, regenerate }: {
+  draft: Draft;
+  indented: boolean;
+  openLog: string | null;
+  setOpenLog: (key: string | null) => void;
+  drop: (draft: Draft) => void;
+  regenerate: (draft: Draft) => void;
+}) {
+  const enabled = useDrafts((s) => s.enabled);
+  const toggle = useDrafts((s) => s.toggle);
+  const mode = useDrafts((s) => s.mode);
+  const generation = useDrafts((s) => s.generation);
+  const key = draftKey(draft);
+  const n = counts(draft);
+  const health = draft.health;
+  const running = generation && draftKey(generation.choice) === key && !generation.result && !generation.error;
+  return (
+    <FragmentRows key={key}>
+      <tr className={`align-middle hover:bg-surface ${health.kind === "fresh" || mode === "static" ? "border-b border-line" : ""}`}>
+        <td className={`py-2.5 pr-3 ${indented ? "pl-6" : "pl-2"}`}>
+          <input
+            type="checkbox"
+            aria-label={`Show ${draft.branch} in the catalog`}
+            checked={enabled.includes(key)}
+            onChange={() => toggle(key)}
+            className="accent-[var(--accent)]"
+          />
+        </td>
+        <td className="py-2.5 pr-3 text-ink">{draft.projectName}</td>
+        <td className="mono py-2.5 pr-3">
+          <Link
+            to={paths.draftCompare(draft.project, draft.branch)}
+            className={`inline-flex items-center gap-1.5 hover:text-accent hover:underline ${health.kind === "gone" && mode === "dev" ? "text-muted line-through" : "text-ink"}`}
+          >
+            <GitBranch size={13} aria-hidden className="text-muted" />
+            {draft.branch}
+          </Link>
+        </td>
+        <td className="py-2.5 pr-3">
+          {draft.entities.length === 0 ? (
+            <TouchedOnly draft={draft} />
+          ) : (
+            <span className="flex flex-wrap gap-1">
+              {STATES.filter((s) => n[s] > 0).map((s) => (
+                <span key={s} className={`mono tnum rounded-sm border px-1.5 py-0.5 text-[10px] ${STATE_TONE[s]}`}>
+                  {n[s]} {STATE_LABEL[s].toLowerCase()}
+                </span>
+              ))}
+            </span>
+          )}
+        </td>
+        <td className="mono py-2.5 pr-3 text-xs text-muted">
+          {draft.base} → {draft.tip}
+        </td>
+        <td className="mono py-2.5 pr-3 text-xs text-muted">
+          {when(draft.savedAt)}
+          {draft.clone ? <CloneAge draft={draft} /> : null}
+        </td>
+        <td className="py-2.5 pr-2 text-right whitespace-nowrap">
+          <Link
+            to={paths.draftCompare(draft.project, draft.branch)}
+            className="mono mr-2 inline-flex items-center gap-1 rounded-control border border-line px-2 py-1 text-xs text-muted hover:border-line-strong hover:text-ink"
+          >
+            <GitCompare size={12} aria-hidden /> compare
+          </Link>
+          {mode === "dev" ? (
+            <button
+              type="button"
+              onClick={() => drop(draft)}
+              aria-label={`Delete the draft of ${draft.branch}`}
+              className="mono inline-flex items-center gap-1 rounded-control border border-line px-2 py-1 text-xs text-muted hover:border-unresolved/40 hover:text-unresolved"
+            >
+              <Trash2 size={12} aria-hidden /> delete
+            </button>
+          ) : null}
+        </td>
+      </tr>
+
+      {mode === "dev" && health.kind !== "fresh" ? (
+        <tr className="border-b border-line">
+          <td />
+          <td colSpan={6} className="pb-2.5 pr-2">
+            {running ? (
+              <Notice tone="text-accent" icon={<LoaderCircle size={13} aria-hidden className="animate-spin" />}>
+                regenerating…
+              </Notice>
+            ) : health.kind === "stale" ? (
+              <Notice
+                tone="text-accent"
+                icon={<History size={13} aria-hidden />}
+                action={<RowButton onClick={() => regenerate(draft)} icon={<RefreshCw size={12} aria-hidden />}>regenerate</RowButton>}
+              >
+                the branch moved to {health.tip}, {health.ahead} commits this draft does not show
+              </Notice>
+            ) : health.kind === "failed" ? (
+              <>
+                <Notice
+                  tone="text-unresolved"
+                  icon={<AlertTriangle size={13} aria-hidden />}
+                  action={
+                    <>
+                      <RowButton onClick={() => setOpenLog(openLog === key ? null : key)}>{openLog === key ? "hide log" : "show log"}</RowButton>
+                      <RowButton onClick={() => regenerate(draft)} icon={<RefreshCw size={12} aria-hidden />}>retry</RowButton>
+                    </>
+                  }
+                >
+                  regeneration failed {when(health.at)} at “{health.step}” · showing the draft saved {when(draft.savedAt)}
+                </Notice>
+                {openLog === key ? <Log lines={health.log} /> : null}
+              </>
+            ) : (
+              <Notice tone="text-muted" icon={<CircleSlash size={13} aria-hidden />}>
+                the branch is no longer in the repository · the saved draft stays until you delete it
+              </Notice>
+            )}
+          </td>
+        </tr>
+      ) : null}
+    </FragmentRows>
+  );
+}
+
+/**
+ * The task a group of drafts belongs to: one ticket worked on in several
+ * repositories, shown, compared and counted as the one thing it is.
+ */
+function TaskRow({ task }: { task: DraftTask }) {
+  const enabled = useDrafts((s) => s.enabled);
+  const toggleTask = useDrafts((s) => s.toggleTask);
+  const n = taskCounts(task);
+  const shown = task.drafts.filter((draft) => enabled.includes(draftKey(draft))).length;
+  const attention = task.drafts.filter((draft) => draft.health.kind !== "fresh").length;
+  return (
+    <tr className="border-b border-line bg-surface/60 align-middle">
+      <td className="py-2 pr-3 pl-2">
+        <input
+          type="checkbox"
+          checked={shown === task.drafts.length}
+          ref={(node) => {
+            if (node) node.indeterminate = shown > 0 && shown < task.drafts.length;
+          }}
+          aria-label={`Show every draft of ${task.key}`}
+          onChange={() => toggleTask(task.key)}
+          className="accent-[var(--accent)]"
+        />
+      </td>
+      <td colSpan={2} className="py-2 pr-3">
+        <Link to={paths.draftTask(task.key)} className="font-medium text-ink hover:text-accent hover:underline">
+          {task.key}
+        </Link>
+        <span className="mono ml-2 text-xs text-muted">
+          {task.drafts.length} projects
+          {task.branches.length === 1 && task.branches[0] !== task.key ? ` · ${task.branches[0]}` : ""}
+          {task.branches.length > 1 ? ` · ${task.branches.length} branches` : ""}
+        </span>
+        {attention > 0 ? (
+          <span className="mono ml-2 inline-flex items-center gap-1 text-xs text-unresolved">
+            <AlertTriangle size={11} aria-hidden /> {attention}
+          </span>
+        ) : null}
+      </td>
+      <td className="py-2 pr-3">
+        <span className="flex flex-wrap gap-1">
+          {STATES.filter((s) => n[s] > 0).map((s) => (
+            <span key={s} className={`mono tnum rounded-sm border px-1.5 py-0.5 text-[10px] ${STATE_TONE[s]}`}>
+              {n[s]} {STATE_LABEL[s].toLowerCase()}
+            </span>
+          ))}
+        </span>
+      </td>
+      <td colSpan={2} />
+      <td className="py-2 pr-2 text-right whitespace-nowrap">
+        <Link
+          to={paths.draftTask(task.key)}
+          className="mono inline-flex items-center gap-1 rounded-control border border-line px-2 py-1 text-xs text-muted hover:border-line-strong hover:text-ink"
+        >
+          <GitCompare size={12} aria-hidden /> compare task
+        </Link>
+      </td>
+    </tr>
   );
 }

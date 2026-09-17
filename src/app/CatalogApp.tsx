@@ -42,6 +42,7 @@ import { Problems } from "../pages/Problems";
 import { Changes } from "../pages/Changes";
 import { Drafts } from "../pages/Drafts";
 import { DraftCompare } from "../pages/DraftCompare";
+import { TaskCompare } from "../pages/TaskCompare";
 import { DraftEntityPage } from "../pages/DraftEntityPage";
 import { RegistryIndex } from "../pages/RegistryIndex";
 import { ModulePage } from "../pages/ModulePage";
@@ -208,6 +209,7 @@ function AppRoutes({
       />
       <Route path="/changes" element={<Changes />} />
       <Route path="/drafts" element={<Drafts />} />
+      <Route path="/drafts/task/:task" element={<TaskCompare />} />
       <Route path="/drafts/:project/:branch" element={<DraftCompare />} />
       <Route path="/drafts/:project/:branch/e/:entity" element={<DraftEntityPage />} />
       <Route

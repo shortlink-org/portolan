@@ -1,9 +1,11 @@
 // On an entity's page, every shown draft that touches it, with the version
 // switch. With a branch picked, the page below reads that branch's version.
 
+import { GitBranch } from "lucide-react";
 import { Link } from "react-router";
 import { paths } from "../routes";
-import { useDraftsTouching } from "./store";
+import { draftKey } from "./model";
+import { useDrafts, useDraftsOff, useDraftsTouching } from "./store";
 import { useVersion } from "./version-param";
 import { DraftChip, StateChip } from "./ui";
 
@@ -11,7 +13,7 @@ export function DraftBanner({ id, className = "" }: { id: string; className?: st
   const touching = useDraftsTouching(id);
   const [version, setPicked] = useVersion();
   const picked = touching.some(({ draft }) => draft.branch === version) ? version : "main";
-  if (touching.length === 0) return null;
+  if (touching.length === 0) return <DraftHint id={id} className={className} />;
 
   const versions = ["main", ...touching.map(({ draft }) => draft.branch)];
   const current = touching.find(({ draft }) => draft.branch === picked);
@@ -103,6 +105,35 @@ export function DraftBanner({ id, className = "" }: { id: string; className?: st
           )}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * One quiet line for the drafts that touch this entity and are not shown: a
+ * reader who came for the page itself is told, without being interrupted, that
+ * a branch has something to say about it (portolan.0019).
+ */
+function DraftHint({ id, className = "" }: { id: string; className?: string }) {
+  const off = useDraftsOff(id);
+  const toggle = useDrafts((state) => state.toggle);
+  if (off.length === 0) return null;
+  return (
+    <div className={`mono flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted ${className}`}>
+      <GitBranch size={11} aria-hidden className="text-muted/70" />
+      <span>
+        {off.length} draft{off.length === 1 ? "" : "s"} touch{off.length === 1 ? "es" : ""} this
+      </span>
+      {off.map(({ draft }) => (
+        <span key={draftKey(draft)} className="flex items-center gap-1.5">
+          <Link to={paths.draftCompare(draft.project, draft.branch)} className="hover:text-accent hover:underline">
+            {draft.branch}
+          </Link>
+          <button type="button" onClick={() => toggle(draftKey(draft))} className="text-muted/80 hover:text-accent hover:underline">
+            show
+          </button>
+        </span>
+      ))}
     </div>
   );
 }

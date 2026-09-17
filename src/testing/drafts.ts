@@ -72,13 +72,13 @@ export function savedDraft(branch: string, edits: Edit[], { project = "auth", ba
 }
 
 /** The draft as the pages read it, against the main the site is built from. */
-export function shownDraft(file: BranchDraft, { main = catalog, health }: { main?: Catalog; health?: DraftHealth } = {}): Draft {
+export function shownDraft(file: BranchDraft, { main = catalog, health, projectName }: { main?: Catalog; health?: DraftHealth; projectName?: string } = {}): Draft {
   return presentDraft(file, {
     main: mainEntities(main),
     hrefOf: (kind, id) => (kind === "flow" ? `/flows/${id.replace(/^flow\./, "")}` : `/entity/${id}`),
     contextOf: (serviceId) => serviceId.split(".")[0],
     knownParticipants: new Set(main.flows.flatMap((flow) => flow.participants.map((participant) => participant.id))),
-    projectName: "Authentication",
+    projectName: projectName ?? "Authentication",
     ...(health ? { health } : {}),
   });
 }

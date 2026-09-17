@@ -6,6 +6,7 @@
 - **Date:** 2026-09-17
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0029-a-branch-of-a-vendored-service-is-drafted-from-a-clone-of-its-own-repository.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0029-a-branch-of-a-vendored-service-is-drafted-from-a-clone-of-its-own-repository.md)
+- **Committed:** Victor Login, 2026-09-17 (`6191dd2`)
 
 ### Context and Problem Statement
 

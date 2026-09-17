@@ -49,6 +49,13 @@ export interface BranchDraft {
   /** `git merge-base main <branch>` at generation. */
   base: string;
   generatedAt: string;
+  /**
+   * What the branch changed in the project's files, whether or not the
+   * catalog noticed. A draft with no entities is a statement - the branch
+   * touched this much and none of it is modelled - and it can only be read
+   * that way if the files are counted (portolan.0019).
+   */
+  touched?: { files: number; dirs: string[] };
   entities: DraftEntity[];
   /** Layouted LikeC4 views of the flows the branch touched, by view id. */
   views?: Record<string, unknown>;

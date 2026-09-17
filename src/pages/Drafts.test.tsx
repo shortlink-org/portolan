@@ -100,6 +100,44 @@ describe("the branches page under portolan dev", () => {
   });
 });
 
+describe("one task across projects", () => {
+  const task = [
+    shownDraft(savedDraft("ASUP-976-refund-void-bridge", [relabelStep(LOGIN, "s4", "CheckVoid")], { project: "aviacore" }), { projectName: "Aviacore" }),
+    shownDraft(savedDraft("ASUP-976-refund-void-bridge", [relabelStep(LOGIN, "s2", "Forward")], { project: "avia-api-bridge" }), { projectName: "Avia API Bridge" }),
+  ];
+
+  it("files the projects of one ticket under it, with what they changed together", async () => {
+    const { container, text } = await page(task, "dev");
+    const head = [...container.querySelectorAll("tbody tr")][0]!;
+    expect(head.textContent).toContain("ASUP-976");
+    expect(head.textContent).toContain("2 projects");
+    expect(head.textContent).toContain("2 changed");
+    expect(head.textContent).toContain("compare task");
+    expect(text()).toContain("Aviacore");
+    expect(text()).toContain("Avia API Bridge");
+  });
+
+  it("shows or hides the whole task with one tick", async () => {
+    const { container, click } = await page(task, "dev");
+    const head = [...container.querySelectorAll("tbody tr")][0]! as HTMLElement;
+    const box = head.querySelector("input[type=checkbox]") as HTMLInputElement;
+    // One of the two is shown to start with, so the task reads as partly shown.
+    expect(box.checked).toBe(false);
+    await click(box);
+    expect(useDrafts.getState().enabled).toEqual(task.map(draftKey));
+    await click(box);
+    expect(useDrafts.getState().enabled).toEqual([]);
+  });
+
+  it("keeps the flat project view for whoever wants it", async () => {
+    const { container, click } = await page(task, "dev");
+    await click(button(container, "by project"));
+    const rows = [...container.querySelectorAll("tbody tr")];
+    expect(rows[0]!.textContent).not.toContain("compare task");
+    expect(rows[0]!.textContent).toContain("Avia API Bridge");
+  });
+});
+
 describe("the branches page on a published site", () => {
   it("lists the saved drafts without dev's notices, generation or deletion", async () => {
     const drafts = [draft("demo/moved", { kind: "stale", tip: "c19a7f0", ahead: 2 }), draft("demo/gone", { kind: "gone" })];

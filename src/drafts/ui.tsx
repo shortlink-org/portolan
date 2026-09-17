@@ -6,6 +6,7 @@ import type { DraftState } from "./model";
 export const STATE_LABEL: Record<DraftState, string> = {
   added: "Added",
   changed: "Changed",
+  grown: "Also on main",
   conflict: "Conflict",
   removed: "Removed",
 };
@@ -13,11 +14,12 @@ export const STATE_LABEL: Record<DraftState, string> = {
 export const STATE_TONE: Record<DraftState, string> = {
   added: "text-verified border-verified/30 bg-verified/5",
   changed: "text-accent border-accent/30 bg-accent/5",
+  grown: "text-declared border-declared/30 bg-declared/5",
   conflict: "text-unresolved border-unresolved/30 bg-unresolved/5",
   removed: "text-muted border-line bg-surface",
 };
 
-export const STATES: DraftState[] = ["added", "changed", "conflict", "removed"];
+export const STATES: DraftState[] = ["added", "changed", "grown", "conflict", "removed"];
 
 export function StateChip({ state }: { state: DraftState }) {
   return (

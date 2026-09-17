@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { cloneOf, deleteDraft, discardDraft, draftPath, generateDraft, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, validBranch, vendorOf } from "./branch-drafts.mjs";
+import { cloneOf, deleteDraft, discardDraft, draftPath, fetchClone, generateDraft, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, touchedBy, validBranch, vendorOf } from "./branch-drafts.mjs";
 
 const created = [];
 afterEach(() => {
@@ -257,6 +257,46 @@ describe("a project vendored from another repository", { timeout: 30_000 }, () =
     const { branches, problems } = listBranches(workspace.root, VENDORED);
     expect(branches).toEqual([]);
     expect(problems).toEqual(["aviacore: no clone at ../aviacore"]);
+  });
+
+  it("counts what the branch changed in the project's files, whatever the catalog made of it", () => {
+    const { workspace, clone } = estate();
+    clone.git("switch", "-q", "-c", "ASUP-976");
+    clone.commit("internal/app/b.go", "package app\n");
+    clone.commit("docs/ADR/2-void.md", "# void\n");
+    const tip = clone.commit("pkg/events/void.go", "package events\n");
+    const base = clone.git("rev-parse", "master");
+
+    // The snapshot takes internal/ only, so the ADR is not the project's file.
+    const { want } = vendorOf(VENDORED, VENDORED.projects[0]);
+    expect(touchedBy(clone.root, base, tip, { want })).toEqual({ files: 1, dirs: ["internal/"] });
+    expect(touchedBy(clone.root, base, tip, { want: { ...want, paths: [] } })).toEqual({ files: 3, dirs: ["docs/", "internal/", "pkg/"] });
+    expect(listDrafts(workspace.root)).toEqual([]);
+  });
+
+  it("says when the clone last fetched, and fetches it when asked", () => {
+    const { workspace, clone } = estate();
+    const origin = mkdtempSync(join(tmpdir(), "portolan-origin-"));
+    created.push(origin);
+    execFileSync("git", ["clone", "--quiet", "--bare", clone.root, origin], { encoding: "utf8", env: { ...process.env, ...ADA } });
+    clone.git("remote", "add", "origin", origin);
+
+    // Nothing has been fetched yet, so the age is the clone's own HEAD.
+    const draft = join(workspace.root, draftPath("aviacore", "ASUP-976"));
+    mkdirSync(join(draft, ".."), { recursive: true });
+    clone.git("switch", "-q", "-c", "ASUP-976");
+    const tip = clone.commit("internal/app/b.go", "package app\n");
+    clone.git("switch", "-q", "master");
+    writeFileSync(draft, JSON.stringify({ schema: "portolan.draft/v1", project: "aviacore", branch: "ASUP-976", tip, base: "b", generatedAt: "2026-09-17T00:00:00Z", entities: [] }));
+
+    const [saved] = listDrafts(workspace.root);
+    expect(saved.clone).toBe("../aviacore");
+    expect(saved.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+    const fetched = fetchClone(workspace.root, { project: "aviacore" });
+    expect(fetched).toMatchObject({ project: "aviacore", clone: "../aviacore" });
+    expect(fetched.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(() => fetchClone(workspace.root, { project: "docs" })).toThrowError(/not drafted from a clone/);
   });
 
   it("reads a saved draft's branch from the clone, and refuses to generate without one", async () => {

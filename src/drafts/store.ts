@@ -17,6 +17,7 @@ import {
   deleteBranchDraft,
   discardBranchDraft,
   draftBranches,
+  fetchDraftClone,
   generateBranchDraft,
   pendingBranchDraft,
   restoreBranchDraft,
@@ -27,11 +28,15 @@ import {
 import type { DraftBranches, SavedDraftStatus } from "../lib/local-api";
 import { setupInfo } from "../lib/setup-info";
 import { paths } from "../routes";
-import { draftKey, healthFrom, presentDraft } from "./model";
+import { draftKey, healthFrom, presentDraft, taskOf } from "./model";
 import type { BranchChoice, Draft, DraftEntity, DraftEntityKind } from "./model";
 import { versionFrom } from "./version-param";
 
 const ENABLED_KEY = "portolan:drafts-enabled";
+const GROUPING_KEY = "portolan:drafts-grouping";
+
+/** How the branches page files its rows: by the task a branch names, or by project. */
+export type Grouping = "task" | "project";
 
 export type SiteMode = "dev" | "static";
 
@@ -113,6 +118,7 @@ function inCatalog(file: BranchDraft): boolean {
 }
 
 export function present(file: BranchDraft, status?: SavedDraftStatus): Draft {
+  const project = setupInfo.projects.find((candidate) => candidate.id === file.project);
   return presentDraft(file, {
     main: MAIN,
     hrefOf,
@@ -120,6 +126,8 @@ export function present(file: BranchDraft, status?: SavedDraftStatus): Draft {
     knownParticipants: KNOWN_LANES,
     projectName: projectNames.get(file.project) ?? file.project,
     health: healthFrom(status),
+    ...(project?.repository ? { repoUrl: project.repository } : {}),
+    ...(status?.clone ? { clone: { path: status.clone, ...(status.fetchedAt ? { fetchedAt: status.fetchedAt } : {}) } } : {}),
   });
 }
 
@@ -134,10 +142,16 @@ interface DraftStore {
   outside: number;
   enabled: string[];
   toggle: (key: string) => void;
+  /** Every draft of one task at once: a task is done or shown as a whole. */
+  toggleTask: (key: string) => void;
+  grouping: Grouping;
+  setGrouping: (grouping: Grouping) => void;
   /** Asks the dev server for the drafts on disk and what it knows about their branches. */
   refresh: () => Promise<void>;
   branches: DraftBranches | null;
   loadBranches: () => Promise<void>;
+  /** Fetches one project's clone and re-reads what dev says about its drafts. */
+  fetchClone: (project: string) => Promise<void>;
   remove: (key: string) => Promise<Draft | undefined>;
   restore: (draft: Draft) => Promise<void>;
   generation: Generation | null;
@@ -158,6 +172,18 @@ export const useDrafts = create<DraftStore>()((set, get) => ({
     write(ENABLED_KEY, enabled);
     set({ enabled });
   },
+  toggleTask: (key) => {
+    const keys = get().drafts.filter((draft) => taskOf(draft.branch) === key).map(draftKey);
+    const shown = keys.every((one) => get().enabled.includes(one));
+    const enabled = shown ? get().enabled.filter((one) => !keys.includes(one)) : [...new Set([...get().enabled, ...keys])];
+    write(ENABLED_KEY, enabled);
+    set({ enabled });
+  },
+  grouping: read<Grouping>(GROUPING_KEY, "task"),
+  setGrouping: (grouping) => {
+    write(GROUPING_KEY, grouping);
+    set({ grouping });
+  },
   refresh: async () => {
     if (get().mode !== "dev") return;
     const { drafts, files } = await savedDrafts();
@@ -166,6 +192,11 @@ export const useDrafts = create<DraftStore>()((set, get) => ({
       drafts: files.filter(inCatalog).map((file) => present(file, status.get(draftKey(file)))),
       outside: files.filter((file) => !inCatalog(file)).length,
     });
+  },
+  fetchClone: async (project: string) => {
+    if (get().mode !== "dev") return;
+    await fetchDraftClone(project);
+    await get().refresh();
   },
   branches: null,
   loadBranches: async () => {
@@ -279,6 +310,22 @@ export function useDraftsTouching(id: string): { draft: Draft; entity: DraftEnti
 }
 
 /**
+ * Drafts that touch an entity and are not shown. A reader who never opens the
+ * branches page should still learn, quietly, that a branch is doing something
+ * to the page they are on.
+ */
+export function useDraftsOff(id: string): { draft: Draft; entity: DraftEntity }[] {
+  const drafts = useDrafts((state) => state.drafts);
+  const enabled = useDrafts((state) => state.enabled);
+  return useMemo(
+    () => drafts
+      .filter((draft) => !enabled.includes(draftKey(draft)))
+      .flatMap((draft) => draft.entities.filter((entity) => entity.id === id).map((entity) => ({ draft, entity }))),
+    [drafts, enabled, id],
+  );
+}
+
+/**
  * The branch version on screen for an entity, when the address names one that
  * touches it. A branch that does not is main: a link to a page about something
  * else must not carry a version over to it.
@@ -290,7 +337,7 @@ export function usePickedDraft(id: string): { draft: Draft; entity: DraftEntity 
 }
 
 export function counts(draft: Draft): Record<DraftEntity["state"], number> {
-  const out = { added: 0, changed: 0, conflict: 0, removed: 0 };
+  const out = { added: 0, changed: 0, grown: 0, conflict: 0, removed: 0 };
   for (const entity of draft.entities) out[entity.state] += 1;
   return out;
 }

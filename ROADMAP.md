@@ -64,13 +64,23 @@ own repository instead (portolan.0029): the project names a `clone`, dev lists
 that repository's branches, and each side of the draft is the vendored snapshot
 written at the branch's tip and at its merge-base.
 
+Drafts of one ticket are filed under it, in the catalog and on a page of its
+own; a draft the catalog reads nothing of says what the branch touched anyway;
+two changes to one entity conflict only when they touch the same thing
+(portolan.0030); a page quietly says when a draft it is not showing touches it.
+
 Open:
 
-- The branches page lists one branch per project. A task that touches several
-  services is several drafts sharing a name and nothing else; they are not
-  grouped, ticked or compared together.
-- A branch that moved on the forge but not in the clone is reported fresh. Dev
-  never fetches: what is on this machine is what is drafted.
+- The branch picker lists every branch of the repository, alphabetically: 238
+  of them on one real service, most named after a hash. It wants a search, an
+  order by date, the subject of the last commit, and a default that leaves out
+  what has not moved in months. Listing them also takes 14 seconds, three git
+  commands per branch.
+- A branch that moved on the forge but not in the clone is reported fresh, with
+  the age of the last fetch beside it. Dev fetches only when a reader asks.
 - `clone` is a path that is true on one machine, committed in the manifest. A
   teammate without that checkout is told the clone is missing.
+- A task is grouped by the tracker key in the branch name. A branch that
+  carries no key is a task of its own, and two repositories using different
+  names for one piece of work are two tasks.
 

@@ -535,6 +535,9 @@ export interface SavedDraftStatus {
   status: "fresh" | "moved" | "gone" | "failed" | "unreadable";
   currentTip?: string;
   ahead?: number;
+  /** For a project drafted from a clone: where it is and when it last fetched. */
+  clone?: string;
+  fetchedAt?: string;
   failure?: { message: string; at: string; step?: string };
 }
 
@@ -556,6 +559,10 @@ export function savedDrafts(): Promise<{ drafts: SavedDraftStatus[]; files: Bran
   return json("/drafts?files=1");
 }
 export function draftBranches(): Promise<DraftBranches> { return json("/drafts/branches"); }
+/** Fetches a project's clone, so dev can see where its branches are now. */
+export function fetchDraftClone(project: string): Promise<{ project: string; clone: string; fetchedAt?: string; drafts: SavedDraftStatus[] }> {
+  return json("/drafts/fetch", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ project }) });
+}
 export function generateBranchDraft(ref: DraftRef): Promise<{ runId: string; mode: "draft"; path: string }> { return json("/drafts/generate", draftBody(ref)); }
 export function pendingBranchDraft(ref: DraftRef): Promise<BranchDraftFile> {
   return json(`/drafts/pending?project=${encodeURIComponent(ref.project)}&branch=${encodeURIComponent(ref.branch)}`);

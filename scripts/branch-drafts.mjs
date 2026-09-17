@@ -20,7 +20,7 @@
 //   node scripts/branch-drafts.mjs delete --project auth --branch demo/auth-passkeys
 
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -154,6 +154,54 @@ export function vendorOf(manifest, project) {
 function taken(path, want) {
   const paths = (Array.isArray(want?.paths) ? want.paths : []).map((prefix) => rootPath(prefix)).filter(Boolean);
   return paths.length === 0 || paths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
+/**
+ * What the branch changed in the project's own files, from its base: how many
+ * and the directories they are in. A branch that changes nothing the catalog
+ * models still changed something, and the page says what rather than leaving
+ * the reader with "no changes".
+ */
+export function touchedBy(source, base, tip, scope) {
+  const changed = git(source, ["diff", "--name-only", base, tip], { allowFailure: true });
+  const paths = (changed ?? "").split("\n").filter(Boolean).filter((path) => scope.want
+    ? taken(path, scope.want)
+    : projectsTouched(scope.projects, [path])[0] === scope.project?.id);
+  const root = scope.want ? "" : rootPath(scope.project?.root);
+  const dirs = new Map();
+  for (const path of paths) {
+    const inside = root && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
+    const at = inside.indexOf("/");
+    const dir = at > 0 ? `${inside.slice(0, at)}/` : inside;
+    dirs.set(dir, (dirs.get(dir) ?? 0) + 1);
+  }
+  // Where the change is, not what sorts first: a branch that touches ten files
+  // in internal/ and one .gitlab-ci.yml is about internal/.
+  const ranked = [...dirs].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+  return { files: paths.length, dirs: ranked.slice(0, 6).map(([dir]) => dir) };
+}
+
+/**
+ * When a clone last fetched, as its FETCH_HEAD was written. Dev never fetches
+ * by itself, so a draft is only as current as this: a branch that moved on the
+ * forge and not here is drafted at the commit the clone has.
+ */
+export function fetchedAt(repo) {
+  for (const name of ["FETCH_HEAD", "HEAD"]) {
+    try { return statSync(join(repo, ".git", name)).mtime.toISOString(); }
+    catch { /* a clone that never fetched, or a worktree; try the next */ }
+  }
+  return null;
+}
+
+/** Fetches a project's clone, so dev can see where its branches are now. */
+export function fetchClone(workspace, { project }) {
+  const declared = (manifestOf(workspace).projects ?? []).find((entry) => entry.id === project);
+  const clone = declared ? cloneOf(workspace, declared) : "";
+  if (!clone) throw Object.assign(new Error(`${project} is not drafted from a clone`), { status: 400 });
+  if (!existsSync(join(clone, ".git"))) throw Object.assign(new Error(`no clone of ${project} at ${declared.clone}`), { status: 404 });
+  git(clone, ["fetch", "--prune", "--quiet", "origin"]);
+  return { project, clone: declared.clone, fetchedAt: fetchedAt(clone) };
 }
 
 /**
@@ -518,6 +566,7 @@ export async function generateDraft(workspace, { project, branch, pending = fals
   const here = clone ? commitOf(workspace, "HEAD") : null;
   if (clone && !here) throw failed("this repository has no commit yet, so there is no catalog to lay the branch over");
   const side = (commit) => (clone ? { repo: vendored.want.repo, commit, from: clone } : null);
+  const touched = touchedBy(source, base, tip, clone ? { want: vendored.want } : { project: declared, projects: manifest.projects ?? [] });
 
   progress(`merge-base ${main} ${branch}: ${base.slice(0, 12)}, tip ${tip.slice(0, 12)}`);
   const holder = mkdtempSync(join(tmpdir(), "portolan-draft-"));
@@ -543,6 +592,7 @@ export async function generateDraft(workspace, { project, branch, pending = fals
       tip,
       base,
       generatedAt: new Date().toISOString(),
+      ...(touched.files > 0 ? { touched } : {}),
       entities,
       ...(Object.keys(views).length > 0 ? { views, elements } : {}),
     };
@@ -604,6 +654,7 @@ export function listDrafts(workspace) {
           entities: draft.entities?.length ?? 0,
           status: failure ? "failed" : !tip ? "gone" : tip !== draft.tip ? "moved" : "fresh",
           ...(tip && tip !== draft.tip ? { currentTip: tip, ahead } : {}),
+          ...(source !== workspace && !missing ? { clone: relative(workspace, source), fetchedAt: fetchedAt(source) ?? undefined } : {}),
           ...(failure ? { failure } : {}),
         });
       }

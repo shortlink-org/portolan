@@ -47,3 +47,4 @@
 | [portolan.0026](adr/portolan.0026.md) | The whole path is drawn; a partly opened one is not | superseded | 2026-09-16 |
 | [portolan.0028](adr/portolan.0028.md) | A followed flow opens as a document of its own | accepted | 2026-09-16 |
 | [portolan.0029](adr/portolan.0029.md) | A branch of a vendored service is drafted from a clone of its own repository | accepted | 2026-09-17 |
+| [portolan.0030](adr/portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 |

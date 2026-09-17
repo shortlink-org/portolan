@@ -117,10 +117,11 @@ export function DraftServiceEventRows({ serviceId }: { serviceId: string }) {
   );
 }
 
-const GLYPH = { added: "+", changed: "~", conflict: "!", removed: "−" } as const;
+const GLYPH = { added: "+", changed: "~", grown: "~", conflict: "!", removed: "−" } as const;
 const GLYPH_COLOR = {
   added: "var(--status-verified)",
   changed: "var(--accent)",
+  grown: "var(--status-declared)",
   conflict: "var(--status-unresolved)",
   removed: "var(--fg-muted)",
 } as const;

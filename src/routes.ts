@@ -60,6 +60,8 @@ export const paths = {
   /** Every saved branch draft of every project. */
   drafts: () => "/drafts",
   /** What one branch changed in one project. */
+  /** Every project's draft of one task. */
+  draftTask: (task: string) => `/drafts/task/${encodeURIComponent(task)}`,
   draftCompare: (project: string, branch: string) =>
     `/drafts/${encodeURIComponent(project)}/${encodeURIComponent(branch)}`,
   /** An entity only a branch has. */
@@ -442,6 +444,7 @@ const ROUTES: RegExp[] = [
   /^\/problems$/,
   /^\/changes$/,
   /^\/drafts$/,
+  /^\/drafts\/task\/[^/]+$/,
   /^\/drafts\/[^/]+\/[^/]+$/,
   /^\/drafts\/[^/]+\/[^/]+\/e\/[^/]+$/,
   /^\/settings(?:\/(?:projects|pipeline|delivery|recordings|rules|integrations|preferences|about))?$/,

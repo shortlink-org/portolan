@@ -49,6 +49,24 @@ describe("a draft against a main that moved on", () => {
     expect(login.main).toEqual([`- flow, ${walkSteps(flowIn(estateWith(), LOGIN).steps).length} steps`]);
   });
 
+  it("is not a conflict when main changed another part of the same entity", () => {
+    // Main relabelled a different step: two changes in one flow that have
+    // nothing to resolve between them (portolan.0030).
+    const main = estateWith(relabelStep(LOGIN, "s2", "LookUpByEmail"));
+    const login = entity(shownDraft(file, { main }), LOGIN);
+    expect(login.state).toBe("grown");
+    expect(login.branch).toEqual(["~ step s4 Check → CheckPasswordOrPasskey"]);
+    expect(login.main).toEqual(["~ step s2 Authenticate → LookUpByEmail"]);
+  });
+
+  it("is not a conflict when a branch and main each add a field of their own", () => {
+    const added = savedDraft("demo/audit", [addField(SESSION_STARTED, "userAgent")]);
+    const main = estateWith(addField(SESSION_STARTED, "ip"));
+    const started = entity(shownDraft(added, { main }), SESSION_STARTED);
+    expect(started.state).toBe("grown");
+    expect(started.main).toEqual(["+ field ip string"]);
+  });
+
   it("is a conflict when two branches' shared entity was added on main differently", () => {
     const added = savedDraft("demo/audit", [addField(SESSION_STARTED, "userAgent")]);
     const main = estateWith(addField(SESSION_STARTED, "userAgent", "UserAgent"));

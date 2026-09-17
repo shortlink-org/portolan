@@ -30,7 +30,7 @@ import { taskTrackerState, saveTaskTrackerSettings, taskTrackerFullScanTarget } 
 import { requestWorkItemsFullScan } from "./work-items-scans.mjs";
 import { gitFetchState, saveGitFetchSettings, checkGitAccess } from "./git-fetch-settings.mjs";
 import { listGitRefs } from "./git-refs.mjs";
-import { deleteDraft, discardDraft, draftPath, listBranches, listDrafts, readDrafts, readPending, restoreDraft, saveDraft } from "./branch-drafts.mjs";
+import { deleteDraft, discardDraft, draftPath, fetchClone, listBranches, listDrafts, readDrafts, readPending, restoreDraft, saveDraft } from "./branch-drafts.mjs";
 import { eventBridgeState, saveEventBridgeSettings } from "./eventbridge-settings.mjs";
 import { annotationState, saveAnnotation } from "./annotations.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
@@ -1745,6 +1745,13 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             const project = String(input.project ?? "");
             const branch = String(input.branch ?? "");
             return send(res, 200, { deleted: deleteDraft(workspace, { project, branch }), path: draftPath(project, branch) });
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/drafts/fetch`) {
+            // The one place dev touches a network for drafts, and only when a
+            // reader asks: fetch the project's clone, then say where its
+            // branches are now.
+            const fetched = fetchClone(workspace, { project: String(input.project ?? "") });
+            return send(res, 200, { ...fetched, drafts: listDrafts(workspace) });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/drafts/restore`) {
             return send(res, 200, { path: restoreDraft(workspace, { project: String(input.project ?? ""), branch: String(input.branch ?? "") }) });

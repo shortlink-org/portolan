@@ -70,9 +70,17 @@ describe("DraftBanner", () => {
     expect(page).toContain("compare demo/audit");
   });
 
-  it("shows nothing for an entity no shown draft touches, or a draft that is not ticked", async () => {
+  it("shows nothing for an entity no draft touches at all", async () => {
     expect((await show([loginCheck()], SESSION_STARTED, "/c/auth/auth/session/session-started")).text()).toBe("");
-    rendered?.unmount();
-    expect((await show([loginCheck()], LOGIN, "/flows/auth-login", [])).text()).toBe("");
+  });
+
+  it("is one quiet line, not a banner, for a draft that touches this and is not ticked", async () => {
+    const { container, text } = await show([loginCheck()], LOGIN, "/flows/auth-login", []);
+    const page = text();
+    expect(page).toContain("1 draft touches this");
+    expect(page).toContain("demo/login-check");
+    // No version switch and no state chips: the page is still main's.
+    expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["show"]);
+    expect(page).not.toContain("version");
   });
 });
