@@ -20,6 +20,12 @@ class EventServiceProvider extends ServiceProvider
         'sales.order.cancel.after' => [
             'Acme\Checkout\Listeners\ReleaseStock@onOrderCanceled',
         ],
+        'Prettus\Repository\Events\RepositoryEntityDeleted' => [
+            'Acme\Checkout\Listeners\CartUpkeep@forget',
+        ],
+        'shop.checkout.cart.summary.after' => [
+            'Acme\Checkout\Listeners\CartUpkeep@addNote',
+        ],
     ];
 
     /**

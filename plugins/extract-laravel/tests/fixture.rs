@@ -334,6 +334,7 @@ fn puts_jobs_on_their_queues_and_works_them() {
     assert_eq!(
         summary,
         [
+            "default [ExportCompleted send, ExportCompleted receive, ExportOrders send, ExportOrders receive]",
             "indexing [IndexOrder send, IndexOrder receive]",
             "mail [SendCartReminder send, SendCartReminder receive]"
         ]
@@ -362,6 +363,59 @@ fn puts_jobs_on_their_queues_and_works_them() {
         reminder["participants"][0]["id"], "queue-mail",
         "a job with no queue of its own is worked where it is dispatched"
     );
+}
+
+#[test]
+fn reads_what_the_application_hears_from_packages_and_templates() {
+    let fragment = common::fragment();
+    let service = &fragment["contexts"][0]["services"][0];
+    let events: Vec<&serde_json::Value> = service["aggregates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|a| a["events"].as_array().unwrap())
+        .collect();
+    let wire = |name: &str| events.iter().find(|e| e["wire"]["name"] == name).copied();
+
+    // Laravel's class, the application's dispatch: an event of the tree with no shape.
+    let login = wire("Illuminate\\Auth\\Events\\Login").expect("a framework event the tree dispatches is declared");
+    assert_eq!(login["id"], "shop.shop.models-customer.Login");
+    assert!(login["versions"][0]["doc"].as_str().unwrap().contains("`laravel/framework`"));
+
+    // A template's hook is an event when something listens, and only then.
+    assert!(wire("shop.checkout.cart.summary.after").is_some());
+    assert!(wire("shop.checkout.cart.summary.before").is_none());
+
+    // A class only a package dispatches starts its flow in that package's lane.
+    let flows = fragment["flows"].as_array().unwrap();
+    let forget = flows.iter().find(|f| f["slug"] == "shop-cart-upkeep-forget").unwrap();
+    assert_eq!(forget["participants"][0]["kind"], "external");
+    assert_eq!(forget["participants"][0]["label"], "prettus/l5-repository");
+    assert_eq!(forget["steps"][0]["from"], "package-prettus-l5-repository");
+    assert_eq!(forget["steps"][0]["status"], "declared");
+    let unresolved: Vec<&str> = flows
+        .iter()
+        .flat_map(|f| f["steps"].as_array().unwrap())
+        .filter(|s| s["status"] == "unresolved")
+        .map(|s| s["label"].as_str().unwrap())
+        .collect();
+    assert!(
+        !unresolved.contains(&"RepositoryEntityDeleted") && !unresolved.contains(&"Login"),
+        "{unresolved:?}"
+    );
+
+    // Jobs collected in a variable before the batch and the chain are sent.
+    let default = service["channels"].as_array().unwrap().iter().find(|c| c["address"] == "default").unwrap();
+    let sent: Vec<&str> = default["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["direction"] == "send")
+        .map(|m| m["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(sent, ["ExportCompleted", "ExportOrders"]);
+    // A queue's source is where it is configured, not whichever job sorted first.
+    assert_eq!(default["source"], "testdata/shop/config/queue.php");
 }
 
 #[test]

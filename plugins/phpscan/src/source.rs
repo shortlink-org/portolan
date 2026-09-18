@@ -42,6 +42,10 @@ pub enum Val {
     Chain(Box<Chain>),
     /// `function () { ... }` or `fn () => ...`: the chains its body makes.
     Closure(Vec<Chain>),
+    /// `$jobs`, or an element of it, `$jobs['import']`: the variable by
+    /// name, without the dollar - what an assignment in the same method may
+    /// have put there.
+    Var(String),
     Other,
 }
 
@@ -204,6 +208,25 @@ pub struct MethodInfo {
     pub chains: Vec<Chain>,
     /// What `return` statements hand back, as far as syntax says.
     pub returns: Vec<Val>,
+    /// What the body puts into its local variables, in order: `$x = v`,
+    /// `$x[] = v`, `$x['k'][] = v`, closures included.
+    pub assigns: Vec<Assign>,
+}
+
+impl MethodInfo {
+    /// Everything the body assigned into `$var` or an element of it.
+    pub fn assigned(&self, var: &str) -> impl Iterator<Item = &Val> {
+        self.assigns.iter().filter(move |a| a.var == var).map(|a| &a.value)
+    }
+}
+
+/// `$jobs[] = new ImportBatch($batch)`: the variable, without the dollar and
+/// whatever index it was written under, and the value.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Assign {
+    pub var: String,
+    pub value: Val,
+    pub line: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -429,6 +452,7 @@ pub fn parse_bytes(path: &Path, text: &[u8]) -> SourceFile {
             parse_errors: program.errors.len(),
         },
         sinks: vec![Vec::new()],
+        assigns: vec![Vec::new()],
     };
     walk_program_mut(&mut reader, program, &mut ());
     let chains = reader.sinks.pop().unwrap_or_default();
@@ -442,6 +466,9 @@ struct Reader<'ast, 'arena> {
     file: &'ast File,
     out: SourceFile,
     sinks: Vec<Vec<Chain>>,
+    /// Assignments of the method being read; the bottom one catches those
+    /// outside any method, which nobody reads.
+    assigns: Vec<Vec<Assign>>,
 }
 
 fn text(bytes: &[u8]) -> String {
@@ -594,6 +621,16 @@ impl<'ast, 'arena> Reader<'ast, 'arena> {
                     _ => Val::Other,
                 }
             }
+            Expression::Variable(_) | Expression::ArrayAccess(_) => match root_var(expr) {
+                Some(name) => {
+                    walk_expression_mut(self, expr, &mut ());
+                    Val::Var(name)
+                }
+                None => {
+                    walk_expression_mut(self, expr, &mut ());
+                    Val::Other
+                }
+            },
             Expression::Array(a) => self.array(a.elements.iter()),
             Expression::LegacyArray(a) => self.array(a.elements.iter()),
             Expression::Closure(c) => Val::Closure(self.closure_body(&c.body)),
@@ -956,10 +993,13 @@ impl<'ast, 'arena> Reader<'ast, 'arena> {
             })
             .collect();
         let mut returns = Vec::new();
+        let mut assigns = Vec::new();
         let chains = match &m.body {
             MethodBody::Concrete(block) => {
                 self.sinks.push(Vec::new());
+                self.assigns.push(Vec::new());
                 walk_block_mut(self, block, &mut ());
+                assigns = self.assigns.pop().unwrap_or_default();
                 let chains = self.sinks.pop().unwrap_or_default();
                 collect_returns(self, block, &mut returns);
                 chains
@@ -976,7 +1016,42 @@ impl<'ast, 'arena> Reader<'ast, 'arena> {
             return_hint: m.return_type_hint.as_ref().map(|r| self.hint(&r.hint)).unwrap_or_default(),
             chains,
             returns,
+            assigns,
         }
+    }
+
+    /// `$x = v`, `$x[] = v`, `$x['k'][] = v`: recorded against `$x`. The
+    /// value is read into a sink of its own and dropped, so that the walk
+    /// that follows harvests the calls in it exactly as it always has.
+    fn record_assignment(&mut self, assignment: &'ast Assignment<'arena>) {
+        if !matches!(assignment.operator, AssignmentOperator::Assign(_) | AssignmentOperator::Coalesce(_)) {
+            return;
+        }
+        let Some(var) = root_var(assignment.lhs) else { return };
+        let line = self.line(assignment.rhs);
+        self.sinks.push(Vec::new());
+        self.assigns.push(Vec::new());
+        let value = self.val(assignment.rhs);
+        self.assigns.pop();
+        self.sinks.pop();
+        if let Some(assigns) = self.assigns.last_mut() {
+            assigns.push(Assign { var, value, line });
+        }
+    }
+}
+
+/// The variable an expression is, or is an element of: `$x`, `$x['k']`,
+/// `$x[]`, `$x['k'][]`. `$this` is not a local.
+fn root_var(expr: &Expression<'_>) -> Option<String> {
+    match expr {
+        Expression::Variable(Variable::Direct(d)) => {
+            let name = text(d.name).trim_start_matches('$').to_string();
+            (name != "this").then_some(name)
+        }
+        Expression::ArrayAccess(a) => root_var(a.array),
+        Expression::ArrayAppend(a) => root_var(a.array),
+        Expression::Parenthesized(p) => root_var(p.expression),
+        _ => None,
     }
 }
 
@@ -1129,6 +1204,9 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reader<'ast, 'arena> {
     }
 
     fn walk_expression(&mut self, expression: &'ast Expression<'arena>, context: &mut ()) {
+        if let Expression::Assignment(assignment) = expression {
+            self.record_assignment(assignment);
+        }
         match self.chain(expression) {
             Some(chain) => self.push(chain),
             None => walk_expression_mut(self, expression, context),
@@ -1273,6 +1351,40 @@ mod tests {
         // A call harvested out of an argument the reader could not shape
         // lands before the call it was an argument of; nothing is lost.
         assert_eq!(names, ["Event::dispatch", "bar", "foo"]);
+    }
+
+    #[test]
+    fn records_what_a_method_puts_into_its_variables() {
+        let file = one(
+            "<?php\nclass A { function f($batches) {\n  $jobs = [];\n  foreach ($batches as $b) { $jobs['import'][] = new Import($b); }\n  $chain[] = Bus::batch($jobs['import']);\n  $this->done = true;\n  $n += 1;\n  Bus::chain($chain)->dispatch();\n} }\n",
+        );
+        let method = &file.classes[0].methods[0];
+        let vars: Vec<(&str, u32)> = method.assigns.iter().map(|a| (a.var.as_str(), a.line)).collect();
+        // `$this->done` is a property and `+=` computes rather than puts.
+        assert_eq!(vars, [("jobs", 3), ("jobs", 4), ("chain", 5)]);
+        let Val::Chain(import) = method.assigned("jobs").nth(1).unwrap() else {
+            panic!("a new")
+        };
+        assert_eq!(import.base, Base::New("Import".into(), vec![Val::Var("b".into())]));
+        let Val::Chain(batch) = method.assigned("chain").next().unwrap() else {
+            panic!("a call")
+        };
+        assert_eq!(batch.parts[0].args.as_ref().unwrap()[0], Val::Var("jobs".into()));
+        // The walk still harvests every call, once, as it did before assignments were kept.
+        let mut all = Vec::new();
+        for chain in &method.chains {
+            chain.flatten(&mut all);
+        }
+        let bases: Vec<String> = all
+            .iter()
+            .map(|c| match &c.base {
+                Base::Static(s) => format!("{s}::{}", c.parts[0].name),
+                Base::New(s, _) => format!("new {s}"),
+                Base::Var(v) => format!("${v}"),
+                _ => "?".into(),
+            })
+            .collect();
+        assert_eq!(bases, ["new Import", "Bus::batch", "$this", "Bus::chain"]);
     }
 
     #[test]

@@ -44,7 +44,10 @@ is one service with forty groups, and the events that cross between the
 groups are the reason they are worth telling apart.
 
 `vendor/`, tests, resources, storage and `Database/` (migrations, seeders,
-factories) are not read.
+factories) are not read as PHP. Two things from outside the code are looked
+at for names only: the `*.blade.php` templates under a module, for the events
+they dispatch, and `composer.lock`, for which package autoloads a namespace
+the tree uses and does not declare.
 
 ## What becomes what
 
@@ -76,6 +79,18 @@ A string handed to `Event::dispatch('sales.order.cancel.after', $order)` or
 `<group>.SalesOrderCancelAfter`, wire name the string, and no fields - which
 is reported once per module rather than invented. Leaving those out would hide
 most of what a package-built monolith publishes.
+
+A class the tree does not declare is an event of the tree too when the tree
+dispatches it: `event(new PasswordReset($user))` with Laravel's
+`Illuminate\Auth\Events\PasswordReset` is the application publishing, and
+only the shape is somebody else's. It is declared with no fields, a doc
+naming the package composer.lock autoloads it from (`laravel/framework`),
+and belongs to the module that dispatches it most. And a name a Blade
+template dispatches - `view_render_event('bagisto.shop.products.price.after')`,
+`Event::dispatch('...')` or `event('...')` with a literal in a view - is an
+event when something in the tree listens to it; Bagisto's templates hold over
+a thousand such hooks for markup, and only the ones a listener answers are
+news.
 
 A named event belongs to the module its name says: `sales.order.cancel.after`
 is Sales's whoever dispatches it, by the first segment of the name or the
@@ -166,9 +181,13 @@ publishes - itself, or through the classes it holds, `$this->orders->create()`
 reaching `OrderRepository::create` when the constructor promoted `$orders`
 with that type, up to five calls deep. And one per listener method: the
 events it reacts to, then what it publishes in turn. A step's `ref` is the
-event's id when the tree dispatches it, and the step is unresolved with a
-note when it does not - a framework event, or a name nobody in the tree
-dispatches, which is reported. Endpoint flows carry an exact verb/path `http`
+event's id when the tree dispatches it. A class a package declares and only
+the package dispatches - l5-repository's `RepositoryEntityDeleted`, fired by
+every repository's `delete` inside the package - comes in from that package:
+the step starts in an `external` lane named after it, `prettus/l5-repository`,
+declared, with no `ref`, because there is nothing in the catalog to point
+at. A name nobody dispatches is an unresolved step with a note, and
+reported. Endpoint flows carry an exact verb/path `http`
 trigger; listener flows carry an `event` trigger listing their declared events.
 
 **Store.** The migrations, replayed. `extract-sql` reads DDL and a Laravel
@@ -200,13 +219,17 @@ and drawn as a step to the store lane in every flow that reaches it.
 
 **Job.** A class under `Jobs/` or implementing `ShouldQueue`. Every way one
 is handed to the queue is read - `Job::dispatch(...)`, `dispatch(new Job)`,
-`Bus::dispatch(new Job)`, the lists of `Bus::chain` and `Bus::batch` - and
+`Bus::dispatch(new Job)`, the lists of `Bus::chain` and `Bus::batch`, written
+out or built up first in a variable of the same method (`$jobs[] = new
+ImportBatch($batch)`, then `Bus::batch($jobs)`, itself a link of a
+`$chain[]` that `Bus::chain($chain)` dispatches) - and
 the queue is the site's `onQueue('mail')`, else the job's own `$queue`, else
 the queue its first dispatch site names, else `default`. Each queue is a
 channel of kind `job` on the service, with a `send` message per job put on
 it and a `receive` per job worked from it, the shape extract-celery writes
 for a Celery queue; the transport is the connection config/queue.php
-defaults to. A dispatch is a hop in the flow that makes it, a `call` to the
+defaults to, and that file is the channel's source - the first job put on
+the queue is no more its source than the last. A dispatch is a hop in the flow that makes it, a `call` to the
 `Queue · mail` lane with a `job` handoff, and every job has a worker flow of
 its own from the queue in through what `handle()` does. That worker flow has a
 `job` trigger labelled with its resolved Laravel queue.
@@ -237,10 +260,10 @@ printf '%s' '{"input":{"root":"bagisto","output":"bagisto/portolan"},"options":{
   | cargo run --quiet --manifest-path plugins/extract-laravel/Cargo.toml
 ```
 
-On Bagisto 2.4 that is 41 packages read in well under a second: 28 model
-groups, 125 models, 22 enums, 309 events - most of them named, dispatched
+On Bagisto 2.4 that is 41 packages read in well under a second: 29 model
+groups, 125 models, 22 enums, 313 events - most of them named, dispatched
 from admin and storefront controllers and owned by the package their name
-says, 50 of them with a listener - ten HTTP interfaces with 520 operations,
+says, 53 of them with a listener - ten HTTP interfaces with 520 operations,
 a database of 138 tables and 1300 columns replayed from 189 migrations with
 185 foreign keys and 120 places the code reads or writes them, 17 jobs on
 one queue, 610 flows, and one controller the admin routes name that does not

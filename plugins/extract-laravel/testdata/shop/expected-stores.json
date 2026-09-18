@@ -335,6 +335,11 @@
               "operation": "read",
               "method": "Cart.find",
               "source": "testdata/shop/packages/Acme/Checkout/src/Jobs/SendCartReminder.php:23"
+            },
+            {
+              "operation": "delete",
+              "method": "Cart.delete",
+              "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/CartUpkeep.php:14"
             }
           ]
         },

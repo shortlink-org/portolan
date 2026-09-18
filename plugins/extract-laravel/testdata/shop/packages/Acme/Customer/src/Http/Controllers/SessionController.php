@@ -2,6 +2,7 @@
 
 namespace Acme\Customer\Http\Controllers;
 
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 
 class SessionController extends Controller
@@ -14,6 +15,8 @@ class SessionController extends Controller
         $customer = auth()->guard('customer')->user();
 
         Event::dispatch('customer.after.login', $customer);
+
+        event(new Login('customer', $customer, false));
 
         return redirect()->intended(route('shop.customer.profile.index'));
     }

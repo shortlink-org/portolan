@@ -416,6 +416,29 @@
                   "wire": {
                     "name": "checkout.order.save.after"
                   }
+                },
+                {
+                  "id": "shop.shop.models-checkout.ShopCheckoutCartSummaryAfter",
+                  "slug": "shop-checkout-cart-summary-after",
+                  "name": "ShopCheckoutCartSummaryAfter",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Dispatched from a Blade template while the page renders.",
+                      "source": "testdata/shop/packages/Acme/Checkout/src/Resources/views/cart/index.blade.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.shop",
+                      "status": "declared",
+                      "note": "CartUpkeep::addNote"
+                    }
+                  ],
+                  "wire": {
+                    "name": "shop.checkout.cart.summary.after"
+                  }
                 }
               ]
             },
@@ -522,6 +545,23 @@
                   "consumers": [],
                   "wire": {
                     "name": "customer.after.logout"
+                  }
+                },
+                {
+                  "id": "shop.shop.models-customer.Login",
+                  "slug": "login",
+                  "name": "Login",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Declared by `laravel/framework`, outside this tree; the application dispatches it, the package says what it carries.",
+                      "source": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "Illuminate\\Auth\\Events\\Login"
                   }
                 }
               ]
@@ -791,6 +831,39 @@
           ],
           "channels": [
             {
+              "address": "default",
+              "kind": "job",
+              "title": "Queue · default",
+              "doc": "Jobs queued and worked through Laravel's queue over redis.",
+              "messages": [
+                {
+                  "name": "Acme\\Sales\\Jobs\\ExportCompleted",
+                  "title": "ExportCompleted",
+                  "doc": "Marks an export done once every chunk is written.",
+                  "direction": "send"
+                },
+                {
+                  "name": "Acme\\Sales\\Jobs\\ExportCompleted",
+                  "title": "ExportCompleted",
+                  "doc": "Worked by `ExportCompleted::handle` on the `default` queue. Marks an export done once every chunk is written.",
+                  "direction": "receive"
+                },
+                {
+                  "name": "Acme\\Sales\\Jobs\\ExportOrders",
+                  "title": "ExportOrders",
+                  "doc": "Writes one chunk of orders to the export file.",
+                  "direction": "send"
+                },
+                {
+                  "name": "Acme\\Sales\\Jobs\\ExportOrders",
+                  "title": "ExportOrders",
+                  "doc": "Worked by `ExportOrders::handle` on the `default` queue. Writes one chunk of orders to the export file.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "testdata/shop/config/queue.php"
+            },
+            {
               "address": "indexing",
               "kind": "job",
               "title": "Queue · indexing",
@@ -809,7 +882,7 @@
                   "direction": "receive"
                 }
               ],
-              "source": "testdata/shop/packages/Acme/Sales/src/Repositories/OrderRepository.php:50"
+              "source": "testdata/shop/config/queue.php"
             },
             {
               "address": "mail",
@@ -830,7 +903,7 @@
                   "direction": "receive"
                 }
               ],
-              "source": "testdata/shop/packages/Acme/Checkout/src/Http/Controllers/CartController.php:30"
+              "source": "testdata/shop/config/queue.php"
             }
           ]
         }
@@ -1256,7 +1329,18 @@
           "label": "CustomerAfterLogin",
           "status": "declared",
           "ref": "shop.shop.models-customer.CustomerAfterLogin",
-          "line": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php:16"
+          "line": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php:17"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.shop",
+          "to": "bus",
+          "kind": "event",
+          "label": "Login",
+          "status": "declared",
+          "ref": "shop.shop.models-customer.Login",
+          "line": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php:19"
         }
       ]
     },
@@ -1309,7 +1393,7 @@
           "label": "CustomerAfterLogout",
           "status": "declared",
           "ref": "shop.shop.models-customer.CustomerAfterLogout",
-          "line": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php:28"
+          "line": "testdata/shop/packages/Acme/Customer/src/Http/Controllers/SessionController.php:31"
         }
       ]
     },
@@ -1384,6 +1468,102 @@
           "label": "shop_customer_addresses_store",
           "status": "declared",
           "line": "testdata/shop/packages/Acme/Customer/src/Routes/customer-routes.php:12"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-cart-upkeep-add-note",
+      "slug": "shop-cart-upkeep-add-note",
+      "name": "Add note",
+      "summary": "Adds a delivery note under the cart's summary.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/CartUpkeep.php",
+      "trigger": {
+        "kind": "event",
+        "label": "ShopCheckoutCartSummaryAfter",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.shop",
+          "kind": "event",
+          "label": "ShopCheckoutCartSummaryAfter",
+          "status": "declared",
+          "ref": "shop.shop.models-checkout.ShopCheckoutCartSummaryAfter",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Listeners/CartUpkeep.php:20"
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-cart-upkeep-forget",
+      "slug": "shop-cart-upkeep-forget",
+      "name": "Forget",
+      "summary": "Drops the carts of whatever the repository deleted.",
+      "source": "testdata/shop/packages/Acme/Checkout/src/Listeners/CartUpkeep.php",
+      "trigger": {
+        "kind": "event",
+        "label": "RepositoryEntityDeleted",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "package-prettus-l5-repository",
+          "kind": "external",
+          "context": null,
+          "label": "prettus/l5-repository"
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "shop-db",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "package-prettus-l5-repository",
+          "to": "shop.shop",
+          "kind": "event",
+          "label": "RepositoryEntityDeleted",
+          "status": "declared",
+          "note": "`Prettus\\Repository\\Events\\RepositoryEntityDeleted` is dispatched by `prettus/l5-repository`, which the application runs and this tree does not hold.",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Listeners/CartUpkeep.php:12"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.shop",
+          "to": "shop-db",
+          "kind": "call",
+          "label": "Cart.delete",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Checkout/src/Listeners/CartUpkeep.php:14",
+          "storeAccess": {
+            "store": "shop.shop.db",
+            "method": "Cart.delete"
+          }
         }
       ]
     },
@@ -1572,6 +1752,96 @@
           "storeAccess": {
             "store": "shop.shop.db",
             "method": "Cart.find"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-job-export-completed",
+      "slug": "shop-job-export-completed",
+      "name": "Export completed",
+      "summary": "Marks an export done once every chunk is written.",
+      "source": "testdata/shop/packages/Acme/Sales/src/Jobs/ExportCompleted.php",
+      "trigger": {
+        "kind": "job",
+        "label": "Laravel queue · default",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "queue-default",
+          "kind": "broker",
+          "context": null,
+          "label": "Queue · default"
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "queue-default",
+          "to": "shop.shop",
+          "kind": "call",
+          "label": "work ExportCompleted",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Sales/src/Jobs/ExportCompleted.php:12",
+          "handoff": {
+            "kind": "job",
+            "transport": "laravel-queue",
+            "channel": "default",
+            "message": "Acme\\Sales\\Jobs\\ExportCompleted",
+            "direction": "receive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.shop-job-export-orders",
+      "slug": "shop-job-export-orders",
+      "name": "Export orders",
+      "summary": "Writes one chunk of orders to the export file.",
+      "source": "testdata/shop/packages/Acme/Sales/src/Jobs/ExportOrders.php",
+      "trigger": {
+        "kind": "job",
+        "label": "Laravel queue · default",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "queue-default",
+          "kind": "broker",
+          "context": null,
+          "label": "Queue · default"
+        },
+        {
+          "id": "shop.shop",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "queue-default",
+          "to": "shop.shop",
+          "kind": "call",
+          "label": "work ExportOrders",
+          "status": "declared",
+          "line": "testdata/shop/packages/Acme/Sales/src/Jobs/ExportOrders.php:19",
+          "handoff": {
+            "kind": "job",
+            "transport": "laravel-queue",
+            "channel": "default",
+            "message": "Acme\\Sales\\Jobs\\ExportOrders",
+            "direction": "receive"
           }
         }
       ]

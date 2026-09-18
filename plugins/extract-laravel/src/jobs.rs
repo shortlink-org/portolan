@@ -2,14 +2,16 @@
 //! now. A class under `Jobs/` or implementing `ShouldQueue` is a job; the
 //! places that hand one over are `Job::dispatch(...)`, `dispatch(new Job)`,
 //! `Bus::dispatch(new Job)` and the `Bus::chain([...])` and `Bus::batch`
-//! lists. Each queue the jobs go on is a channel of kind `job`, the way
-//! extract-celery writes a Celery queue, and a dispatch is a hop in a flow.
+//! lists - written out, or built up in a variable of the same method first,
+//! `$jobs[] = new Job(...)` and then `Bus::batch($jobs)`. Each queue the
+//! jobs go on is a channel of kind `job`, the way extract-celery writes a
+//! Celery queue, and a dispatch is a hop in a flow.
 
 use std::path::PathBuf;
 
 use crate::events::every_chain;
 use crate::ids::short;
-use crate::source::{Base, Chain, ClassInfo, ClassKind, SourceFile, Tree, Val};
+use crate::source::{Base, Chain, ClassInfo, ClassKind, MethodInfo, SourceFile, Tree, Val};
 
 #[derive(Debug, Clone)]
 pub struct Job {
@@ -86,8 +88,8 @@ pub fn read(tree: &Tree) -> Jobs {
             line: class.line,
         });
     }
-    for (file, chain, _) in every_chain(tree) {
-        for (job, queue) in dispatched(tree, &jobs, chain) {
+    for (file, chain, owner) in every_chain(tree) {
+        for (job, queue) in dispatched(tree, &jobs, chain, owner.map(|(_, m)| m)) {
             jobs.dispatches.push(Dispatch {
                 job,
                 queue,
@@ -100,7 +102,9 @@ pub fn read(tree: &Tree) -> Jobs {
 }
 
 /// The jobs a chain hands to the queue, with the queue the site names.
-pub fn dispatched(tree: &Tree, jobs: &Jobs, chain: &Chain) -> Vec<(String, Option<String>)> {
+/// `method` is the one the chain is in, where a variable handed over was
+/// filled.
+pub fn dispatched(tree: &Tree, jobs: &Jobs, chain: &Chain, method: Option<&MethodInfo>) -> Vec<(String, Option<String>)> {
     let on_queue = |parts: &[crate::source::Part]| {
         parts
             .iter()
@@ -112,23 +116,9 @@ pub fn dispatched(tree: &Tree, jobs: &Jobs, chain: &Chain) -> Vec<(String, Optio
     };
     let is_job = |name: &str| tree.class(name).is_some_and(|c| jobs.job(&c.fqn).is_some());
     let new_jobs = |val: &Val| -> Vec<String> {
-        match val {
-            Val::Chain(inner) => match &inner.base {
-                Base::New(class, _) if is_job(class) => vec![class.clone()],
-                _ => vec![],
-            },
-            Val::Arr(items) => items
-                .iter()
-                .flat_map(|(_, v)| match v {
-                    Val::Chain(inner) => match &inner.base {
-                        Base::New(class, _) if is_job(class) => Some(class.clone()),
-                        _ => None,
-                    },
-                    _ => None,
-                })
-                .collect(),
-            _ => vec![],
-        }
+        let mut out = Vec::new();
+        jobs_in(val, &is_job, method, 0, &mut out);
+        out
     };
     match &chain.base {
         Base::Static(class) if short(class) == "Bus" => {
@@ -167,6 +157,35 @@ pub fn dispatched(tree: &Tree, jobs: &Jobs, chain: &Chain) -> Vec<(String, Optio
                 .unwrap_or_default()
         }
         _ => vec![],
+    }
+}
+
+/// The jobs a value handed to the queue holds: `new Job`, a list of them,
+/// or a variable the method filled with either - followed one variable deep
+/// into another, `$chain[] = $jobs`, and no further.
+fn jobs_in(val: &Val, is_job: &dyn Fn(&str) -> bool, method: Option<&MethodInfo>, depth: usize, out: &mut Vec<String>) {
+    match val {
+        Val::Chain(inner) => {
+            if let Base::New(class, _) = &inner.base
+                && is_job(class)
+                && !out.contains(class)
+            {
+                out.push(class.clone());
+            }
+        }
+        Val::Arr(items) => {
+            for (_, v) in items {
+                jobs_in(v, is_job, method, depth, out);
+            }
+        }
+        Val::Var(name) if depth < 2 => {
+            if let Some(m) = method {
+                for assigned in m.assigned(name) {
+                    jobs_in(assigned, is_job, method, depth + 1, out);
+                }
+            }
+        }
+        _ => {}
     }
 }
 
@@ -213,5 +232,34 @@ mod tests {
             crate::source::summary(&jobs.job("A\\Sales\\Jobs\\IndexOrder").unwrap().doc),
             "Puts the order in the search index."
         );
+    }
+
+    #[test]
+    fn follows_a_chain_or_batch_built_up_in_a_variable() {
+        // Bagisto's importer: batches collected per kind, each batch a link
+        // of one chain, the chain dispatched at the end.
+        let tree = Tree::from_sources(&[
+            (
+                "packages/A/DataTransfer/src/Jobs/Import/ImportBatch.php",
+                "<?php\nnamespace A\\DataTransfer\\Jobs\\Import;\nclass ImportBatch { public function handle() {} }\n",
+            ),
+            (
+                "packages/A/DataTransfer/src/Jobs/Import/Linking.php",
+                "<?php\nnamespace A\\DataTransfer\\Jobs\\Import;\nclass Linking { public function handle() {} }\n",
+            ),
+            (
+                "packages/A/DataTransfer/src/Jobs/Import/Completed.php",
+                "<?php\nnamespace A\\DataTransfer\\Jobs\\Import;\nclass Completed { public function handle() {} }\n",
+            ),
+            (
+                "packages/A/DataTransfer/src/Helpers/Importer.php",
+                "<?php\nnamespace A\\DataTransfer\\Helpers;\nuse A\\DataTransfer\\Jobs\\Import\\ImportBatch as ImportBatchJob;\nuse A\\DataTransfer\\Jobs\\Import\\Linking as LinkingJob;\nuse A\\DataTransfer\\Jobs\\Import\\Completed as CompletedJob;\nuse Illuminate\\Support\\Facades\\Bus;\nclass Importer {\n  public function importData() {\n    foreach ($this->import->batches as $batch) {\n      $typeBatches['import'][] = new ImportBatchJob($batch);\n    }\n    $chain[] = Bus::batch($typeBatches['import'])->allowFailures();\n    $chain[] = new LinkingJob($this->import);\n    $chain[] = new CompletedJob($this->import);\n    Bus::chain($chain)->dispatch();\n  }\n  public function unrelated() {\n    $chain = [new CompletedJob(1)];\n    return $chain;\n  }\n}\n",
+            ),
+        ]);
+        let jobs = read(&tree);
+        let sites: Vec<String> = jobs.dispatches.iter().map(|d| format!("{} @{}", short(&d.job), d.line)).collect();
+        // The variable is read in the method that fills it; `unrelated`'s
+        // `$chain` is another method's and is never handed over.
+        assert_eq!(sites, ["ImportBatch @12", "Linking @15", "Completed @15"]);
     }
 }

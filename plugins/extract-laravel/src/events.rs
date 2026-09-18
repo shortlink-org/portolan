@@ -12,13 +12,23 @@
 //! `subscribe()` method, `Event::listen(...)` in a provider, and the
 //! `handle(SomeEvent $e)` of a class under `Listeners/`, which Laravel
 //! discovers on its own.
+//!
+//! Two more kinds are the application's events without being its classes or
+//! its code. A class a dependency declares - `Illuminate\Auth\Events\PasswordReset`,
+//! handed to `event(new PasswordReset($user))` - is an event of the tree
+//! when the tree dispatches it: the name and the dispatch are here, only the
+//! shape is in the package. And a name a Blade template dispatches is an
+//! event when something in the tree listens to it; a view hook nobody
+//! answers is a place to hang markup, not news.
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
+use crate::blade::ViewDispatch;
 use crate::catalog::Field;
 use crate::ids::{camel, short, slug};
 use crate::source::{Base, Chain, ClassInfo, ClassKind, MethodInfo, SourceFile, Tree, Val, summary};
+use crate::vendors::Vendors;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -86,6 +96,12 @@ pub fn is_event_class(file: &SourceFile, class: &ClassInfo) -> bool {
 /// Everything the tree declares, dispatches and listens to. `modules` are
 /// the module slugs by index, which is how a named event finds its owner.
 pub fn read(tree: &Tree, modules: &[String]) -> Events {
+    read_with(tree, modules, &Vendors::default(), &[])
+}
+
+/// `read`, knowing whose the classes the tree does not declare are and what
+/// its templates dispatch.
+pub fn read_with(tree: &Tree, modules: &[String], vendors: &Vendors, views: &[ViewDispatch]) -> Events {
     let mut events = Events::default();
     for (file, class) in tree.classes() {
         if !is_event_class(file, class) {
@@ -102,16 +118,22 @@ pub fn read(tree: &Tree, modules: &[String]) -> Events {
             fields: payload_of(class),
         });
     }
-    // Named events, with every place each is dispatched from, in file order.
+    // Named events, and classes the tree does not declare, with every place
+    // each is dispatched from, in file order.
     let mut named: Vec<(String, Vec<(usize, PathBuf)>)> = Vec::new();
+    let mut foreign: Vec<(String, Vec<(usize, PathBuf)>)> = Vec::new();
     for (file, chain, _) in every_chain(tree) {
         let Some(key) = dispatched(tree, chain) else { continue };
-        if key.contains('\\') {
+        let list = if !key.contains('\\') {
+            &mut named
+        } else if tree.class(&key).is_none() {
+            &mut foreign
+        } else {
             continue;
-        }
-        match named.iter_mut().find(|(k, _)| *k == key) {
+        };
+        match list.iter_mut().find(|(k, _)| *k == key) {
             Some((_, sites)) => sites.push((file.module, file.path.clone())),
-            None => named.push((key, vec![(file.module, file.path.clone())])),
+            None => list.push((key, vec![(file.module, file.path.clone())])),
         }
     }
     for (key, sites) in named {
@@ -133,7 +155,54 @@ pub fn read(tree: &Tree, modules: &[String]) -> Events {
             fields: vec![],
         });
     }
+    for (key, sites) in foreign {
+        let module = owner_of(&key, &sites, modules);
+        let name = short(&key).to_string();
+        events.decls.push(EventDecl {
+            kind: Kind::Class,
+            key: key.clone(),
+            slug: slug(&name),
+            name,
+            module,
+            doc: format!(
+                "Declared by `{}`, outside this tree; the application dispatches it, the package says what it carries.",
+                vendors.package_of(&key)
+            ),
+            source: sites.iter().find(|(m, _)| *m == module).map(|(_, p)| p.clone()).unwrap_or_default(),
+            fields: vec![],
+        });
+    }
     events.listeners = read_listeners(tree, &events);
+
+    // Names only a template dispatches, when something here listens.
+    let mut viewed: Vec<(String, Vec<(usize, PathBuf)>)> = Vec::new();
+    for v in views {
+        if events.decl(&v.key).is_some() || events.listeners_of(&v.key).is_empty() {
+            continue;
+        }
+        match viewed.iter_mut().find(|(k, _)| *k == v.key) {
+            Some((_, sites)) => sites.push((v.module, v.file.clone())),
+            None => viewed.push((v.key.clone(), vec![(v.module, v.file.clone())])),
+        }
+    }
+    for (key, sites) in viewed {
+        let module = owner_of(&key, &sites, modules);
+        events.decls.push(EventDecl {
+            kind: Kind::Named,
+            key: key.clone(),
+            name: camel(&key),
+            slug: slug(&key),
+            module,
+            doc: "Dispatched from a Blade template while the page renders.".into(),
+            source: sites
+                .iter()
+                .find(|(m, _)| *m == module)
+                .or(sites.first())
+                .map(|(_, p)| p.clone())
+                .unwrap_or_default(),
+            fields: vec![],
+        });
+    }
     events
 }
 

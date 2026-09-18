@@ -3,6 +3,7 @@
 //! request on stdin, one JSON response on stdout, and a `describe` that
 //! answers with what the plugin is and what it can be told.
 
+pub mod blade;
 pub mod catalog;
 pub mod events;
 pub mod extract;
@@ -15,6 +16,7 @@ pub mod requests;
 pub mod routes;
 pub mod rules;
 pub mod stores;
+pub mod vendors;
 pub mod yaml;
 
 // The tree as syntax and the id rules come from phpscan; the paths the rest

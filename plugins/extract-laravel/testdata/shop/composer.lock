@@ -1,0 +1,26 @@
+{
+    "_readme": [
+        "Trimmed to what extract-laravel reads: each package's name and the namespaces it autoloads."
+    ],
+    "packages": [
+        {
+            "name": "laravel/framework",
+            "version": "v11.0.0",
+            "autoload": {
+                "psr-4": {
+                    "Illuminate\\": "src/Illuminate/"
+                }
+            }
+        },
+        {
+            "name": "prettus/l5-repository",
+            "version": "2.9.0",
+            "autoload": {
+                "psr-4": {
+                    "Prettus\\Repository\\": "src/Prettus/Repository/"
+                }
+            }
+        }
+    ],
+    "packages-dev": []
+}

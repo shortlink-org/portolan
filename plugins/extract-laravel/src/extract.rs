@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::blade;
 use crate::catalog::{
     Aggregate, Catalog, Channel, ChannelMessage, Column, Context, Event, EventConsumer, EventVersion, Flow, FlowNode, FlowTrigger, ForeignKey, Handoff,
     HttpRoute, Participant, Persists, RpcMessage, RpcMethod, RpcService, Service, Step, Store, StoreAccess, Table, TableAccess, Wire,
@@ -27,6 +28,7 @@ use crate::requests;
 use crate::routes::{self, Action, Endpoint};
 use crate::source::{Base, ClassInfo, MethodInfo, Tree, summary};
 use crate::stores;
+use crate::vendors::Vendors;
 use crate::yaml::to_yaml;
 
 pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
@@ -83,7 +85,9 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     }
 
     let module_slugs: Vec<String> = modules.iter().map(|m| m.slug.clone()).collect();
-    let events = events::read(&tree, &module_slugs);
+    let vendors = Vendors::read(&root);
+    let views = blade::read(&roots);
+    let events = events::read_with(&tree, &module_slugs, &vendors, &views);
     let jobs = jobs::read(&tree);
     let schema = stores::read_schema(&tree);
     let endpoints: Vec<Endpoint> = tree.files.iter().filter(|f| layout::is_route_file(&f.path)).flat_map(routes::read).collect();
@@ -409,8 +413,43 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         let source_file = tree.file_of(&class).map(|f| f.path.clone()).unwrap_or_else(|| first.file.clone());
         let flow_slug = unique(&mut flow_slugs, format!("{service}-{}-{}", slug(short(&class)), slug(&method)));
         let mut steps = Vec::new();
+        let mut outside: Vec<Participant> = Vec::new();
         for l in &listeners {
             let known = event_ids.contains_key(&l.key);
+            let line = handler.map(|(_, m)| m.line).unwrap_or(l.line);
+            // A class a package declares and only the package dispatches -
+            // l5-repository's `RepositoryEntityDeleted` on every repository
+            // delete - comes from that package, which the flow names as the
+            // lane it starts in rather than calling the step unresolved.
+            if !known && l.key.contains('\\') && tree.class(&l.key).is_none() {
+                let package = vendors.package_of(&l.key);
+                let lane = Participant {
+                    id: format!("package-{}", slug(&package)),
+                    kind: "external".into(),
+                    context: None,
+                    label: Some(package.clone()),
+                };
+                steps.push(FlowNode::Step(Step {
+                    id: format!("s{}", steps.len() + 1),
+                    from: lane.id.clone(),
+                    to: svc_id.clone(),
+                    kind: "event".into(),
+                    label: events.display(&l.key),
+                    status: "declared".into(),
+                    reference: None,
+                    note: Some(format!(
+                        "`{}` is dispatched by `{package}`, which the application runs and this tree does not hold.",
+                        l.key
+                    )),
+                    line: Some(format!("{}:{line}", rel(&source_file))),
+                    handoff: None,
+                    store_access: None,
+                }));
+                if !outside.iter().any(|p| p.id == lane.id) {
+                    outside.push(lane);
+                }
+                continue;
+            }
             if !known {
                 b.warn(
                     &class,
@@ -421,7 +460,6 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                     ),
                 );
             }
-            let line = handler.map(|(_, m)| m.line).unwrap_or(l.line);
             steps.push(FlowNode::Step(Step {
                 id: format!("s{}", steps.len() + 1),
                 from: "bus".into(),
@@ -442,7 +480,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         }
         let mut effects = Vec::new();
         follow(&tree, &jobs, &class, &method, 5, &mut BTreeSet::new(), &mut effects);
-        let mut participants = vec![lanes.bus(), lanes.service()];
+        let mut participants = outside;
+        if steps.iter().any(|s| matches!(s, FlowNode::Step(step) if step.from == "bus")) {
+            participants.insert(0, lanes.bus());
+        }
+        participants.push(lanes.service());
         lanes.steps(&effects, &mut steps, &mut participants, &rel);
         // `handle` says nothing; the class was named for what it does.
         let flow_name = if matches!(method.as_str(), "handle" | "__invoke") {
@@ -533,10 +575,15 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             }
         }
     }
+    // A queue is declared where its connection is, config/queue.php; the
+    // first job put on it is no more its source than any other, and a
+    // reader looking for who sends one job would be sent to another's.
+    let queue_config = root.join("config").join("queue.php");
+    let queue_config = queue_config.is_file().then(|| rel(&queue_config));
     let mut channels: Vec<Channel> = Vec::new();
     for (queue, jobs_on) in &queues {
         let mut messages = Vec::new();
-        let mut source = String::new();
+        let mut source = queue_config.clone().unwrap_or_default();
         let mut jobs_on: Vec<&&jobs::Job> = jobs_on.iter().collect();
         jobs_on.sort_by(|a, c| a.fqn.cmp(&c.fqn));
         for job in jobs_on {
@@ -977,7 +1024,7 @@ fn follow(tree: &Tree, jobs: &Jobs, class: &str, method: &str, depth: usize, vis
             );
             continue;
         }
-        let enqueued = jobs::dispatched(tree, jobs, chain);
+        let enqueued = jobs::dispatched(tree, jobs, chain, Some(m));
         if !enqueued.is_empty() {
             for (job, queue) in enqueued {
                 let queue = jobs.queue_of(&job, queue.as_deref());
