@@ -160,11 +160,13 @@ async function generate() {
   // extract step wrote, which is still on disk because the sweep runs once
   // every step has written. Read into this merge, a service nobody extracts
   // any more would be written back into an overlay, and the overlay would
-  // carry it into the generators and into the next run.
+  // carry it into the generators and into the next run. The flows are
+  // handed over as declared, not enriched: what a verifier writes back is
+  // laid over the declaration (portolan.0031).
   for (const step of manifest.verify ?? []) {
     const plugin = pluginNamed(step.plugin);
     const own = (previous(step.out)[keys.keyOf(step)] ?? []).map((name) => join(step.out, name));
-    const { catalog, sources } = await loadSources({ exclude: [...own, ...staleAll()] });
+    const { verifierCatalog: catalog, sources } = await loadSources({ exclude: [...own, ...staleAll()] });
     await executeStep("verify", step, `${step.plugin} ⇐ ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,

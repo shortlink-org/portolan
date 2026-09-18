@@ -33,7 +33,7 @@
       "id": "flow.cart-add-item",
       "slug": "cart-add-item",
       "name": "Add item",
-      "summary": " Source-backed cross-protocol continuations are included.",
+      "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
       "trigger": {
         "kind": "http",
@@ -55,8 +55,7 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.cart.pg"
+          "context": "shop"
         },
         {
           "id": "bus",
@@ -71,10 +70,13 @@
           "from": "client",
           "to": "shop.cart",
           "kind": "rpc",
-          "ref": "cart.v1/addItem",
           "label": "addItem",
-          "status": "declared",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43"
+          "status": "verified",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (3 traces).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43",
+          "seen": {
+            "traces": 3
+          }
         },
         {
           "type": "step",
@@ -100,17 +102,6 @@
           "seen": {
             "traces": 3
           }
-        },
-        {
-          "type": "step",
-          "id": "response-s1",
-          "from": "shop.cart",
-          "to": "client",
-          "kind": "response",
-          "label": "Basket",
-          "status": "declared",
-          "note": "Synthesized from the proven synchronous HTTP handler return.",
-          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -121,6 +112,18 @@
           "recordedAt": "2026-09-04T18:33:36.566Z",
           "durationMs": 5.486,
           "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/items",
+              "durationMs": 5.486,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
             {
               "step": "s3",
               "label": "publish cart.BasketItemAdded",
@@ -142,6 +145,18 @@
           "durationMs": 4.235,
           "steps": [
             {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/items",
+              "durationMs": 4.235,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
               "step": "s3",
               "label": "publish cart.BasketItemAdded",
               "durationMs": 0.317,
@@ -162,6 +177,18 @@
           "durationMs": 3.558,
           "steps": [
             {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/items",
+              "durationMs": 3.558,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
               "step": "s3",
               "label": "publish cart.BasketItemAdded",
               "durationMs": 0.431,
@@ -180,7 +207,7 @@
       "id": "flow.cart-checkout",
       "slug": "cart-checkout",
       "name": "Checkout",
-      "summary": " Source-backed cross-protocol continuations are included.",
+      "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
       "trigger": {
         "kind": "http",
@@ -207,8 +234,7 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.cart.pg"
+          "context": "shop"
         },
         {
           "id": "shop.pricing",
@@ -228,10 +254,13 @@
           "from": "client",
           "to": "shop.cart",
           "kind": "rpc",
-          "ref": "cart.v1/checkout",
           "label": "checkout",
-          "status": "declared",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60"
+          "status": "verified",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -293,17 +322,6 @@
           "seen": {
             "traces": 1
           }
-        },
-        {
-          "type": "step",
-          "id": "response-s1",
-          "from": "shop.cart",
-          "to": "client",
-          "kind": "response",
-          "label": "CheckedOut",
-          "status": "declared",
-          "note": "Synthesized from the proven synchronous HTTP handler return.",
-          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -314,6 +332,18 @@
           "recordedAt": "2026-09-04T18:33:36.657Z",
           "durationMs": 4.541,
           "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/checkout",
+              "durationMs": 4.541,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/checkout",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
             {
               "step": "s2",
               "label": "GET",
@@ -344,7 +374,7 @@
       "id": "flow.cart-create-basket",
       "slug": "cart-create-basket",
       "name": "Create basket",
-      "summary": " Source-backed cross-protocol continuations are included.",
+      "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
       "trigger": {
         "kind": "http",
@@ -366,8 +396,7 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.cart.pg"
+          "context": "shop"
         },
         {
           "id": "bus",
@@ -382,10 +411,13 @@
           "from": "client",
           "to": "shop.cart",
           "kind": "rpc",
-          "ref": "cart.v1/createBasket",
           "label": "createBasket",
-          "status": "declared",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33"
+          "status": "verified",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "type": "step",
@@ -411,17 +443,6 @@
           "seen": {
             "traces": 2
           }
-        },
-        {
-          "type": "step",
-          "id": "response-s1",
-          "from": "shop.cart",
-          "to": "client",
-          "kind": "response",
-          "label": "BasketCreated",
-          "status": "declared",
-          "note": "Synthesized from the proven synchronous HTTP handler return.",
-          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -432,6 +453,18 @@
           "recordedAt": "2026-09-04T18:33:36.548Z",
           "durationMs": 4.357,
           "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets",
+              "durationMs": 4.357,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/baskets",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
             {
               "step": "s3",
               "label": "publish cart.BasketCreated",
@@ -453,6 +486,18 @@
           "durationMs": 2.524,
           "steps": [
             {
+              "step": "s1",
+              "label": "POST /v1/baskets",
+              "durationMs": 2.524,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "201",
+                "http.route": "/v1/baskets",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
+            {
               "step": "s3",
               "label": "publish cart.BasketCreated",
               "durationMs": 0.395,
@@ -471,7 +516,7 @@
       "id": "flow.cart-get-basket",
       "slug": "cart-get-basket",
       "name": "Get basket",
-      "summary": " Source-backed cross-protocol continuations are included.",
+      "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
       "trigger": {
         "kind": "http",
@@ -498,21 +543,13 @@
           "from": "client",
           "to": "shop.cart",
           "kind": "rpc",
-          "ref": "cart.v1/getBasket",
           "label": "getBasket",
-          "status": "declared",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38"
-        },
-        {
-          "type": "step",
-          "id": "response-s1",
-          "from": "shop.cart",
-          "to": "client",
-          "kind": "response",
-          "label": "Basket",
-          "status": "declared",
-          "note": "Synthesized from the proven synchronous HTTP handler return.",
-          "replyTo": "s1"
+          "status": "verified",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38",
+          "seen": {
+            "traces": 2
+          }
         }
       ],
       "examples": [
@@ -522,7 +559,20 @@
           "traceId": "4997ef8e00085dbb06d43f5f7bf37ee9",
           "recordedAt": "2026-09-04T18:33:36.448Z",
           "durationMs": 4.395,
-          "steps": []
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/baskets/:basketId",
+              "durationMs": 4.395,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "404",
+                "http.route": "/v1/baskets/:basketId",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            }
+          ]
         },
         {
           "id": "telemetry/traces.jsonl#6ec632f40403e66bf6b0cb4d6ef57508",
@@ -530,7 +580,20 @@
           "traceId": "6ec632f40403e66bf6b0cb4d6ef57508",
           "recordedAt": "2026-09-04T18:33:36.601Z",
           "durationMs": 1.337,
-          "steps": []
+          "steps": [
+            {
+              "step": "s1",
+              "label": "GET /v1/baskets/:basketId",
+              "durationMs": 1.337,
+              "attributes": {
+                "http.request.method": "GET",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            }
+          ]
         }
       ]
     },
@@ -538,7 +601,7 @@
       "id": "flow.cart-merge-baskets",
       "slug": "cart-merge-baskets",
       "name": "Merge baskets",
-      "summary": " Source-backed cross-protocol continuations are included.",
+      "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
       "trigger": {
         "kind": "http",
@@ -565,8 +628,7 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.cart.pg"
+          "context": "shop"
         },
         {
           "id": "bus",
@@ -581,10 +643,13 @@
           "from": "client",
           "to": "shop.cart",
           "kind": "rpc",
-          "ref": "cart.v1/mergeBaskets",
           "label": "mergeBaskets",
-          "status": "declared",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+          "status": "verified",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -675,17 +740,6 @@
           "seen": {
             "traces": 1
           }
-        },
-        {
-          "type": "step",
-          "id": "response-s1",
-          "from": "shop.cart",
-          "to": "client",
-          "kind": "response",
-          "label": "Basket",
-          "status": "declared",
-          "note": "Synthesized from the proven synchronous HTTP handler return.",
-          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -696,6 +750,18 @@
           "recordedAt": "2026-09-04T18:33:36.633Z",
           "durationMs": 14.668,
           "steps": [
+            {
+              "step": "s1",
+              "label": "POST /v1/baskets/:basketId/merge",
+              "durationMs": 14.668,
+              "attributes": {
+                "http.request.method": "POST",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/merge",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
             {
               "step": "s2",
               "label": "GET",
@@ -748,7 +814,7 @@
       "id": "flow.cart-remove-item",
       "slug": "cart-remove-item",
       "name": "Remove item",
-      "summary": " Source-backed cross-protocol continuations are included.",
+      "summary": "",
       "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
       "trigger": {
         "kind": "http",
@@ -770,8 +836,7 @@
         {
           "id": "cart-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.cart.pg"
+          "context": "shop"
         },
         {
           "id": "bus",
@@ -786,10 +851,13 @@
           "from": "client",
           "to": "shop.cart",
           "kind": "rpc",
-          "ref": "cart.v1/removeItem",
           "label": "removeItem",
-          "status": "declared",
-          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49"
+          "status": "verified",
+          "note": "Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -815,17 +883,6 @@
           "seen": {
             "traces": 1
           }
-        },
-        {
-          "type": "step",
-          "id": "response-s1",
-          "from": "shop.cart",
-          "to": "client",
-          "kind": "response",
-          "label": "Basket",
-          "status": "declared",
-          "note": "Synthesized from the proven synchronous HTTP handler return.",
-          "replyTo": "s1"
         }
       ],
       "examples": [
@@ -836,6 +893,18 @@
           "recordedAt": "2026-09-04T18:33:36.59Z",
           "durationMs": 3.887,
           "steps": [
+            {
+              "step": "s1",
+              "label": "DELETE /v1/baskets/:basketId/items/:sku",
+              "durationMs": 3.887,
+              "attributes": {
+                "http.request.method": "DELETE",
+                "http.response.status_code": "200",
+                "http.route": "/v1/baskets/:basketId/items/:sku",
+                "server.address": "localhost",
+                "server.port": "8081"
+              }
+            },
             {
               "step": "s3",
               "label": "publish cart.BasketItemRemoved",

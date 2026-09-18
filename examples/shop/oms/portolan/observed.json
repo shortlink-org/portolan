@@ -112,8 +112,7 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.oms.pg"
+          "context": "shop"
         },
         {
           "id": "bus",
@@ -130,8 +129,12 @@
           "kind": "rpc",
           "ref": "shop.v1.OrderService/CancelOrder",
           "label": "CancelOrder",
-          "status": "declared",
-          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41"
+          "status": "verified",
+          "note": "Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41",
+          "seen": {
+            "traces": 1
+          }
         },
         {
           "type": "step",
@@ -204,6 +207,16 @@
           "durationMs": 6.374,
           "steps": [
             {
+              "step": "s1",
+              "label": "shop.v1.OrderService/CancelOrder",
+              "durationMs": 6.374,
+              "attributes": {
+                "rpc.method": "CancelOrder",
+                "rpc.service": "shop.v1.OrderService",
+                "rpc.system": "grpc"
+              }
+            },
+            {
               "step": "s4",
               "label": "publish oms.OrderCancelled",
               "durationMs": 0.285,
@@ -244,8 +257,7 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.oms.pg"
+          "context": "shop"
         }
       ],
       "steps": [
@@ -257,8 +269,12 @@
           "kind": "rpc",
           "ref": "shop.v1.OrderService/GetOrder",
           "label": "GetOrder",
-          "status": "declared",
-          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31"
+          "status": "verified",
+          "note": "Seen running in examples/shop/oms/telemetry/traces.jsonl (2 traces).",
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31",
+          "seen": {
+            "traces": 2
+          }
         },
         {
           "type": "step",
@@ -278,7 +294,18 @@
           "traceId": "a7416708d5eeef4f1559ce68e301d420",
           "recordedAt": "2026-09-04T19:48:30.53394Z",
           "durationMs": 3.226,
-          "steps": []
+          "steps": [
+            {
+              "step": "s1",
+              "label": "shop.v1.OrderService/GetOrder",
+              "durationMs": 3.226,
+              "attributes": {
+                "rpc.method": "GetOrder",
+                "rpc.service": "shop.v1.OrderService",
+                "rpc.system": "grpc"
+              }
+            }
+          ]
         },
         {
           "id": "telemetry/traces.jsonl#bd903650a50496ad991b1a24134f00d9",
@@ -286,7 +313,18 @@
           "traceId": "bd903650a50496ad991b1a24134f00d9",
           "recordedAt": "2026-09-04T19:48:30.557266Z",
           "durationMs": 0.794,
-          "steps": []
+          "steps": [
+            {
+              "step": "s1",
+              "label": "shop.v1.OrderService/GetOrder",
+              "durationMs": 0.794,
+              "attributes": {
+                "rpc.method": "GetOrder",
+                "rpc.service": "shop.v1.OrderService",
+                "rpc.system": "grpc"
+              }
+            }
+          ]
         }
       ]
     },
@@ -316,8 +354,7 @@
         {
           "id": "oms-pg",
           "kind": "store",
-          "context": "shop",
-          "entityRef": "shop.oms.pg"
+          "context": "shop"
         }
       ],
       "steps": [

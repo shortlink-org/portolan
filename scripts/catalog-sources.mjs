@@ -92,5 +92,20 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
     throw new Error(`the merged catalog is not valid: ${cause.message}`);
   }
 
-  return { manifest, ...merged, catalog: enriched.catalog, derived: enriched.derived };
+  // `verifierCatalog` is what a verify step is handed (portolan.0031): the
+  // estate enriched - every edge the flows imply, so a call or a consumer a
+  // recording shows is known by the id the reader knows it by - and the flows
+  // as their sources declared them. A verifier lays what it saw over a flow
+  // and writes the flow back, and the merge lays that over the declaration
+  // step for step; a flow handed over enriched came back carrying what the
+  // enrichment derived - the method an endpoint answers (portolan.0025), the
+  // responses synthesized for its exits, a callee composed into it - and the
+  // merge refused the whole overlay as a different flow.
+  return {
+    manifest,
+    ...merged,
+    catalog: enriched.catalog,
+    derived: enriched.derived,
+    verifierCatalog: { ...enriched.catalog, flows: scoped.flows },
+  };
 }

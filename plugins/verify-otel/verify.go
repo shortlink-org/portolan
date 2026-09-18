@@ -314,10 +314,15 @@ func (v *verifier) match(opening hop, hops []hop, root *span) bool {
 func declaredKeys(flow *catalog.Flow) map[string]string {
 	keys := map[string]string{}
 	first := firstStep(flow.Steps)
+	// The call in is known by its route or operation whether or not the step
+	// also names the method it answers (portolan.0025): an extractor that
+	// writes that ref itself - oms's - opens its flow the same way a trace
+	// does, and was never counted as seen.
+	entry := strings.HasPrefix(declaredOpening(flow), string(catalog.StepRPC)+"|")
 	walkSteps(flow.Steps, func(step *catalog.Step) {
 		switch step.Kind {
 		case catalog.StepRPC:
-			if step == first && step.Ref == "" {
+			if step == first && (step.Ref == "" || entry) {
 				keys["entry|"+step.To+"|"+step.Label] = step.ID
 			} else if step.Ref != "" {
 				keys["rpc|"+step.From+"|"+step.Ref] = step.ID

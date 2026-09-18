@@ -48,7 +48,7 @@ export async function readWorkItems(workspace) {
 
   let catalog;
   try {
-    ({ catalog } = await loadCatalog(join(workspace, "portolan.json"), { cwd: workspace }));
+    ({ verifierCatalog: catalog } = await loadCatalog(join(workspace, "portolan.json"), { cwd: workspace }));
   } catch (cause) {
     return { sources: [], warnings: [`work-items: the catalog could not be read, so no task links are shown: ${cause instanceof Error ? cause.message : String(cause)}`] };
   }

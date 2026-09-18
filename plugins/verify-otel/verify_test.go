@@ -214,6 +214,24 @@ func TestATraceRaisesTheHopsItShows(t *testing.T) {
 	}
 }
 
+// A call in whose step also names the method it answers (portolan.0025) -
+// an extractor that writes the ref itself - is still the call in: the trace
+// that opens the flow counts it, and the ref is written back as it was.
+func TestAnOpeningThatNamesItsMethodIsStillSeen(t *testing.T) {
+	cat := estate()
+	first := firstStep(cat.Flows[0].Steps)
+	first.Ref = "auth.v1.Sessions/login"
+	out, _ := runVerifyOn(t, cat, recording, Options{})
+
+	opening := firstStep(flowNamed(t, out, "auth-login").Steps)
+	if opening.Status != catalog.StatusVerified || opening.Seen == nil || opening.Seen.Traces != 1 {
+		t.Errorf("opening = %+v, want it raised and the one recording counted", opening)
+	}
+	if opening.Ref != "auth.v1.Sessions/login" {
+		t.Errorf("ref = %q, want the declared one kept", opening.Ref)
+	}
+}
+
 // An event that declares its wire is matched by that name before any guess
 // from the last segment, and a publish span that names a channel other than
 // the declared one is reported once - the hop stays, because the event did
