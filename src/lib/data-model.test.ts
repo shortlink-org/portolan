@@ -162,6 +162,23 @@ describe("outboxOfService", () => {
     if (!outbox) throw new Error("fixture has no outbox");
     expect(payloadColumn(outbox.table)?.name).toBe("payload");
   });
+
+  it("takes a large-object column where there is no json one", () => {
+    const table = (...columns: [string, string][]) =>
+      ({ columns: columns.map(([name, type]) => ({ name, type, nullable: false })) }) as unknown as Parameters<typeof payloadColumn>[0];
+    // SQL Server has no json type: the modular monolith's outbox keeps the
+    // serialized notification in `Data VARCHAR(MAX)`.
+    expect(payloadColumn(table(["Type", "varchar(255)"], ["Data", "varchar(max)"]))?.name).toBe("Data");
+    expect(payloadColumn(table(["Type", "nvarchar(255)"], ["Data", "NVARCHAR(MAX)"]))?.name).toBe("Data");
+    expect(payloadColumn(table(["type", "varchar(64)"], ["body", "longtext"]))?.name).toBe("body");
+    expect(payloadColumn(table(["body", "bytea"]))?.name).toBe("body");
+    // json still wins over text, wherever it stands.
+    expect(payloadColumn(table(["note", "text"], ["payload", "jsonb"]))?.name).toBe("payload");
+    // A bounded column holds a name or a key, not a body; nor does a plain
+    // `text`, which is how Postgres spells every string.
+    expect(payloadColumn(table(["Type", "varchar(255)"], ["Id", "uniqueidentifier"], ["Flag", "nvarchar"]))).toBeNull();
+    expect(payloadColumn(table(["event_type", "text"], ["topic", "varchar"]))).toBeNull();
+  });
 });
 
 describe("storedFields", () => {

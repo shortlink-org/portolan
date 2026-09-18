@@ -187,9 +187,31 @@ export function outboxOfService(
   return null;
 }
 
-/** A table's payload column: the first `jsonb`/`json` it holds, if any. */
+/**
+ * A table's payload column: the first `jsonb`/`json` it holds, and failing
+ * that the first column spelled as a large object - `varchar(max)`,
+ * `longtext`, `bytea`. A database with no json type (SQL Server before 2025)
+ * keeps a serialized body in exactly such a column, and a body serialized to
+ * bytes is no less a body. A plain `text` is not taken: Postgres spells every
+ * string that way, and an outbox's `event_type text` is a name, not an event.
+ */
 export function payloadColumn(table: Table): Column | null {
-  return table.columns.find((c) => dbClass(c.type) === "json") ?? null;
+  return (
+    table.columns.find((c) => dbClass(c.type) === "json") ??
+    table.columns.find((c) => unbounded(c.type)) ??
+    null
+  );
+}
+
+const LARGE_OBJECTS = new Set(["ntext", "mediumtext", "longtext", "clob", "nclob", "bytea", "blob", "mediumblob", "longblob"]);
+const SIZED = new Set(["varchar", "nvarchar", "varbinary"]);
+
+function unbounded(type: string): boolean {
+  const base = bare(type);
+  if (LARGE_OBJECTS.has(base)) return true;
+  // SQL Server's large objects are its sized types with no size: `(max)`.
+  const size = /\(\s*([^)]*)\)\s*$/.exec(type.trim())?.[1];
+  return SIZED.has(base) && size?.toLowerCase() === "max";
 }
 
 // ---------------------------------------------------------------------------

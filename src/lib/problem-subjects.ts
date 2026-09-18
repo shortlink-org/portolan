@@ -93,8 +93,10 @@ export function subjectsOf(catalog: Catalog, index: CatalogIndex, over: RuleSubj
       return columnSubjects(catalog, index);
     case "deployment":
       return deploymentSubjects(catalog);
-    case "flow":
-      return catalog.flows.map((flow) => flowSubject(catalog, flow));
+    case "flow": {
+      const operations = operationRefs(catalog);
+      return catalog.flows.map((flow) => flowSubject(catalog, flow, operations));
+    }
     case "aggregate":
       return servicesOf(catalog).flatMap(({ service }) => service.aggregates.map((aggregate) => aggregateSubject(catalog, index, aggregate)));
     case "operation":
@@ -687,7 +689,21 @@ function deploymentSubjects(catalog: Catalog): Subject[] {
 // ---------------------------------------------------------------------------
 // Flows and aggregates.
 
-function flowSubject(catalog: Catalog, flow: Flow): Subject {
+/**
+ * The operations each service answers, as `service|aggregate/operation`: the
+ * key a `call` step's ref resolves against, the same one validation uses.
+ */
+function operationRefs(catalog: Catalog): Set<string> {
+  return new Set(
+    servicesOf(catalog).flatMap(({ service }) =>
+      service.aggregates.flatMap((aggregate) =>
+        aggregate.operations.map((operation) => `${service.id}|${aggregate.id}/${operation.id}`),
+      ),
+    ),
+  );
+}
+
+function flowSubject(catalog: Catalog, flow: Flow, operations: ReadonlySet<string>): Subject {
   const steps = walkSteps(flow.steps);
   const participants = flow.participants.filter((participant) => participant.kind === "service").map((participant) => participant.id);
   const contexts = unique(flow.participants.flatMap((participant) => (participant.context ? [participant.context] : [])));
@@ -704,7 +720,14 @@ function flowSubject(catalog: Catalog, flow: Flow): Subject {
       ((step.kind === "rpc" || step.kind === "event") &&
         Boolean(step.ref) &&
         step.status !== "unresolved") ||
-      (step.kind === "response" && Boolean(step.replyTo));
+      (step.kind === "response" && Boolean(step.replyTo)) ||
+      // An in-process call into another module is contracted when it lands
+      // on a command or query that module answers - through its facade, or
+      // over a bus both share. A call with no such ref is a reach inside.
+      (step.kind === "call" &&
+        step.ref !== undefined &&
+        step.status !== "unresolved" &&
+        operations.has(`${step.to}|${step.ref}`));
     return (
       from !== null &&
       to !== null &&

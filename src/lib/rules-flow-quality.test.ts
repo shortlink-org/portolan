@@ -102,4 +102,43 @@ describe("flow quality rules", () => {
       ),
     ).toEqual(["flow-crossing-uncontracted"]);
   });
+
+  it("takes an in-process call onto the other module's operation as its contract", () => {
+    const flow = (ref: string): Flow => ({
+      id: "flow.checkout",
+      slug: "checkout",
+      name: "Checkout",
+      summary: "Checks the session before checkout.",
+      owner: "shop",
+      trigger: { kind: "http", confidence: "high" },
+      participants: [
+        { id: "shop.cart", kind: "service", context: "shop" },
+        { id: "auth.auth", kind: "service", context: "auth" },
+      ],
+      steps: [{ type: "step", id: "validate", from: "shop.cart", to: "auth.auth", kind: "call", ref, status: "declared", seen: { traces: 1 } }],
+    });
+    const withOperation = (catalog: Catalog): Catalog => {
+      catalog.contexts[1]!.services[0]!.aggregates = [
+        {
+          id: "auth.auth.sessions",
+          slug: "sessions",
+          name: "Session",
+          root: "Session",
+          entities: [],
+          valueObjects: [],
+          enums: [],
+          operations: [{ id: "validate-session", name: "ValidateSession", kind: "query" }],
+          events: [],
+        } as unknown as Catalog["contexts"][number]["services"][number]["aggregates"][number],
+      ];
+      return catalog;
+    };
+    const answered = withOperation(catalogWith(flow("auth.auth.sessions/validate-session")));
+    expect(builtinProblems(answered, buildIndex(answered), FLOW_RULES)).toEqual([]);
+    // A ref the other side does not answer is still no contract.
+    const unanswered = withOperation(catalogWith(flow("auth.auth.sessions/revoke-session")));
+    expect(
+      builtinProblems(unanswered, buildIndex(unanswered), FLOW_RULES).map((problem) => problem.rule),
+    ).toEqual(["flow-crossing-uncontracted"]);
+  });
 });

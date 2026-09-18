@@ -49,7 +49,7 @@
     "severity": "error",
     "title": "Context crossing has no contract",
     "note": "a bounded-context crossing names no resolved contract",
-    "description": "A flow crosses from one bounded context into another without a resolved RPC or event reference.",
+    "description": "A flow crosses from one bounded context into another without a resolved RPC or event reference, or an in-process call onto a command or query the other side answers.",
     "action": "Attach the RPC method or event id to the step and include the owning contract source.",
     "when": "flow.uncontractedCrossings > 0",
     "message": "flow.name + ' has ' + string(flow.uncontractedCrossings) + ' context crossing(s) without a resolved contract.'"
@@ -167,10 +167,10 @@
     "severity": "warning",
     "title": "Outbox without a payload column",
     "note": "an outbox with no payload column",
-    "description": "A table plays the outbox role and has no json column that could carry a message body. The whole point of the pattern is that the event body is committed with the state change, so this is either not an outbox or not finished.",
+    "description": "A table plays the outbox role and has no column that could carry a message body: no json column, and no text or binary column without a bound on its length. The whole point of the pattern is that the event body is committed with the state change, so this is either not an outbox or not finished.",
     "action": "Add a payload column to the outbox table, or clear its role if it is not an outbox.",
     "when": "table.role == 'outbox' && !table.hasPayload",
-    "message": "'an outbox carries the event body in the same transaction as the state change; this table declares no json column to hold one'",
+    "message": "'an outbox carries the event body in the same transaction as the state change; this table declares no json or unbounded text column to hold one'",
     "peer": "table.store"
   },
   {
