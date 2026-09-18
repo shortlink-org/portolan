@@ -137,6 +137,19 @@ describe("cases that only look like problems", () => {
     expect(derived).toEqual([]);
   });
 
+  it("reads a column's field off the block its mapping names, not the root", () => {
+    // `OrderLine.id` is a line's id, which the line does not declare; the
+    // order's own `id` is another field, and no type to hold the column to.
+    const catalog = clone();
+    const lines = (catalog.stores ?? []).find((s) => s.id === "shop.oms.pg")?.tables.find((t) => t.name === "order_items");
+    const orderId = lines?.columns.find((c) => c.name === "order_id");
+    if (!orderId) throw new Error("fixture has no order_items.order_id");
+    orderId.maps = "OrderLine.id";
+
+    const types = found(catalog).filter((p) => p.rule === "column-type" && p.id === "shop.oms.pg.order_items.order_id");
+    expect(types).toEqual([]);
+  });
+
   it("does not report drift for a table whose columns still map", () => {
     const problems = found(clone());
     expect(

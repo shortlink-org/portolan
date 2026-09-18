@@ -39,6 +39,7 @@ import {
   blockFields,
   deploys,
   enumsOf,
+  mapsBlockId,
   mapsFieldPath,
   relationOfColumnId,
   storeViews,
@@ -514,6 +515,20 @@ function declaredFields(catalog: Catalog, aggregate: Aggregate | undefined): Map
   return fields;
 }
 
+/**
+ * The type of the field a column's `maps` names, read off the block the path
+ * names - `Posting.id` is the posting's id, not the payment's - the way the
+ * store page joins them. A path whose head is no block of the aggregate falls
+ * back to the aggregate's fields at large. Empty when nothing declares it.
+ */
+function mappedFieldType(catalog: Catalog, index: CatalogIndex, aggregate: Aggregate | undefined, maps: string): string {
+  const head = mapsFieldPath(maps).split(".")[0] ?? "";
+  const blockId = mapsBlockId(aggregate, maps);
+  const owner = blockId ? index.blockById.get(blockId) : undefined;
+  if (owner) return blockFields(catalog, owner.block).find((field) => field.name === head)?.type ?? "";
+  return declaredFields(catalog, aggregate).get(head) ?? "";
+}
+
 function relationSubject(catalog: Catalog, index: CatalogIndex, store: Store, relation: Table | View, kind: "table" | "view"): Subject {
   const owner = index.serviceById.get(store.owner);
   const context = contextOf(index, owner);
@@ -583,8 +598,8 @@ function columnSubject(catalog: Catalog, index: CatalogIndex, store: Store, rela
     }),
   );
   const aggregateId = relation.persists?.aggregate;
-  const fields = declaredFields(catalog, aggregateId ? index.aggregateById.get(aggregateId) : undefined);
-  const fieldType = column.maps ? fields.get(mapsFieldPath(column.maps).split(".")[0] ?? "") ?? "" : "";
+  const aggregate = aggregateId ? index.aggregateById.get(aggregateId) : undefined;
+  const fieldType = column.maps ? mappedFieldType(catalog, index, aggregate, column.maps) : "";
   return {
     id: `${relation.id}.${column.name}`,
     context,
