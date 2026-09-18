@@ -17,7 +17,7 @@ link on the site open the file on GitHub at the pinned commit.
 | file | what it is |
 | --- | --- |
 | `git.repo.json` | the pin: `github.com/bagisto/bagisto` at `7b5df45a`, branch `2.4` on 2026-09-11 |
-| `catalog/domain.json` | 28 model groups, 125 models, 22 enums, 309 events, 17 jobs on one queue, 610 flows |
+| `catalog/domain.json` | 29 model groups, 125 models, 22 enums, 313 events, 17 jobs on one queue, 610 flows |
 | `catalog/stores.json` | the MySQL schema: 138 tables and 1300 columns replayed from 189 migrations, 185 foreign keys, 120 places the code reads or writes them |
 | `catalog/openapi.inferred.yaml` | 520 operations across 10 route files, inferred from `Route::` declarations |
 
@@ -42,7 +42,7 @@ git -C /tmp/bagisto rev-parse HEAD                      # goes into git.repo.jso
 cargo build --release --manifest-path plugins/extract-laravel/Cargo.toml
 mv vendor/repos/bagisto/bagisto /tmp/bagisto-fragments  # the clone stands in for the run
 ln -s /tmp/bagisto vendor/repos/bagisto/bagisto
-printf '%s' '{"portolanVersion":"0.1.0","input":{"root":"vendor/repos/bagisto/bagisto","output":"vendor/repos/bagisto/bagisto/catalog"},"options":{"context":"commerce","contextName":"Commerce","classification":"core","service":"bagisto","serviceName":"Bagisto","repo":"github.com/bagisto/bagisto"}}' \
+printf '%s' '{"portolanVersion":"0.1.0","input":{"root":"vendor/repos/bagisto/bagisto","repository":"vendor/repos/bagisto/bagisto","output":"vendor/repos/bagisto/bagisto/catalog"},"options":{"context":"commerce","contextName":"Commerce","classification":"core","service":"bagisto","serviceName":"Bagisto","repo":"github.com/bagisto/bagisto"}}' \
   | ./plugins/extract-laravel/target/release/portolan-extract-laravel > /tmp/bagisto-out.json
 rm vendor/repos/bagisto/bagisto && mv /tmp/bagisto-fragments vendor/repos/bagisto/bagisto
 for i in 0 1 2; do
@@ -50,8 +50,12 @@ for i in 0 1 2; do
 done
 ```
 
-The clone stands in at the vendor path only for the run, so that the paths
-the extractor writes are the vendor ones. The warnings on stderr are part of
+The clone stands in at the vendor path only for the run, and `repository`
+names that path, so that the paths the extractor writes are spelled from
+Bagisto's own root, the way `fetch-git` spells a fetched copy's. The
+extractor reads `packages/`, the Blade templates in them, `routes/`,
+`config/` and `composer.json` with `composer.lock`; a tarball of the pinned
+commit from codeload does as well as a clone. The warnings on stderr are part of
 the result: see the README's section on this example for what they say.
 
 ## What to look at
