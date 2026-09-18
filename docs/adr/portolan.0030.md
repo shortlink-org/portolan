@@ -6,6 +6,7 @@
 - **Date:** 2026-09-17
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0030-two-changes-to-one-entity-conflict-only-when-they-touch-the-same-thing.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0030-two-changes-to-one-entity-conflict-only-when-they-touch-the-same-thing.md)
+- **Committed:** Victor Login, 2026-09-17 (`5988fd2`)
 
 ### Context and Problem Statement
 
