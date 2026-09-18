@@ -16,5 +16,8 @@
   ],
   "glossary": [
     "glossary.json"
+  ],
+  "proto": [
+    "risk.json"
   ]
 }

@@ -635,6 +635,21 @@
         "author": "Victor Login",
         "date": "2026-09-17T15:59:26+07:00"
       }
+    },
+    {
+      "id": "portolan.0031",
+      "slug": "portolan-0031-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy",
+      "number": 31,
+      "title": "A gRPC call outside the estate is named by the manifest and described by the copy",
+      "status": "accepted",
+      "date": "2026-09-18",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nA system outside the estate that answers over HTTP already has a place in the\ncatalog: an external, described by the copy of its document vendored beside\nthe adapter that calls it (an `openapi` step with `external`), and joined to\nthe caller by the domain extractor's `externals` line, or, failing that, by\nthe title of the document.\n\nA system that answers over gRPC had none. Auth asks a risk service before it\nissues a session, on purpose and by a decision of its own (auth.0007), and\nvendors a narrowed copy of `risk.v1` to do it. The call was recorded against\nthe package, unresolved, and Problems listed it twice - a call that resolves\nto nothing and a flow step that lands nowhere - beside real defects. It was\ntrue that no service here answers, and wrong that nobody knew who does.\n\n## Decision Drivers\n\n- One convention for an external, whatever the contract's format: the\n  manifest names it, the copy describes it, the merge joins them by id.\n- The catalog claims nothing about a third party beyond the copy.\n- No name is guessed where the tree does not write one.\n\n## Considered Options\n\n- Derive the external from the package, `risk.v1` giving `risk`, the way an\n  HTTP document's title gives its system.\n- Map the package under the proto step's `peers`, since that is where a\n  vendored copy's caller is already described.\n- Keep the caller's `externals`, now for a proto package as well as an api\n  id, and give the `proto` extractor the same `external` options the\n  `openapi` one has.\n\n## Decision Outcome\n\nChosen: `externals` on the caller's domain step, and `external` on a `proto`\nstep over the copy.\n\nThe domain extractor already looked a gRPC client's package up in\n`externals`; what was missing was saying so, and a step that describes the\nfar end. A `proto` step with `external` set reads the protos under `paths` as\nwhat that external answers on, and writes a fragment with the external and\nnothing else - no context, no service, no module, no shared types, because\nthe copy is a narrowed excerpt the caller keeps, not a module anybody\npublishes. The call is then declared against the external, and the merge\nresolves it against the interface the copy declares.\n\nA package is not a name for a system. `risk.v1` could be answered by a vendor\ncalled anything, and `peers` is for services of the estate; neither is read as\nan external without a manifest line.\n\n### Consequences\n\n- Good: a gRPC call out of the estate reads the way an HTTP one does - on an\n  external lane, declared, with the rpc and its messages on the external's\n  page.\n- Good: the proto step keeps one meaning per option; `peers` still names only\n  services of the estate.\n- Bad: two lines in the manifest for one external, one on each side, and\n  nothing checks that they name the same id except the call that fails to\n  resolve when they do not.\n- Neutral: an HTTP client still falls back to the document's title; a gRPC\n  client has no such fallback and stays unresolved until the manifest speaks.\n",
+      "relates": {},
+      "source": "adr/0031-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy.md"
     }
   ]
 }

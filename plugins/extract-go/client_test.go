@@ -124,6 +124,32 @@ func TestThePeerIsTheManifestsToName(t *testing.T) {
 	}
 }
 
+// A proto package can be answered by a system outside the estate, as an api
+// id can: a line under externals puts the step on the external's lane,
+// declared, with the external as the call's peer, and says nothing more.
+func TestAGRPCPackageCanBeAnExternal(t *testing.T) {
+	client := client{pkg: "risk.v1", methods: map[string]string{"Assess": "risk.v1.RiskService/Assess"}, source: "gen/risk_grpc.pb.go"}
+
+	b := &plugin.Builder{}
+	r := newFlowReader(t.TempDir(), flowOptions{svcID: "auth.auth", externals: map[string]string{"risk.v1": "risk"}}, b)
+	d := newDraft()
+	r.rpcHop(d, rpcHop{client: client, method: "Assess"}, "usecase.go:12")
+
+	step := d.steps[0].(*catalog.Step)
+	if step.To != "risk" || step.Ref != "risk.v1.RiskService/Assess" || step.Status != catalog.StatusDeclared {
+		t.Errorf("step = %+v", step)
+	}
+	if lane := d.lanes[0]; lane.Kind != catalog.ParticipantExternal || lane.ID != "risk" {
+		t.Errorf("lane = %+v", lane)
+	}
+	if calls := r.consumes(); len(calls) != 1 || calls[0].Peer != "risk" || calls[0].Status != catalog.StatusDeclared {
+		t.Errorf("consumes = %+v", calls)
+	}
+	if n := len(b.Response().Warnings()); n != 0 {
+		t.Errorf("diagnostics = %d, want none: the manifest named the external", n)
+	}
+}
+
 // A policy on somebody else's event is still a policy. Its trigger has an id
 // this tree cannot form, so the step names the type and resolves to nothing.
 func TestAPolicyOnAForeignEventIsKeptAndUnresolved(t *testing.T) {

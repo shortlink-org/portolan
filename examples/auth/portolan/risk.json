@@ -1,0 +1,73 @@
+{
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "externals": [
+    {
+      "id": "risk",
+      "slug": "risk",
+      "name": "Risk",
+      "summary": "Scores a login attempt before auth issues a session. Nobody in the estate provides it; the copy of its contract beside auth's adapter is narrowed to the one rpc auth runs, and is all the catalog claims about it.",
+      "provides": [
+        {
+          "id": "risk.v1.RiskService",
+          "methods": [
+            {
+              "name": "Assess",
+              "doc": "Assess says whether a login attempt should go ahead.",
+              "request": "AssessRequest",
+              "response": "AssessResponse"
+            }
+          ],
+          "source": "examples/auth/internal/session/infrastructure/risk/proto/risk/v1/risk.proto:12",
+          "messages": [
+            {
+              "name": "AssessRequest",
+              "fields": [
+                {
+                  "name": "user_id",
+                  "type": "string",
+                  "doc": "The user the attempt is for. Auth has already checked the credentials by\nthe time it asks; risk decides whether that is enough today.",
+                  "number": 1
+                }
+              ]
+            },
+            {
+              "name": "AssessResponse",
+              "fields": [
+                {
+                  "name": "verdict",
+                  "type": "Verdict",
+                  "doc": "",
+                  "number": 1
+                }
+              ]
+            }
+          ],
+          "enums": [
+            {
+              "name": "Verdict",
+              "doc": "Verdict is closed on purpose: a caller switches on it, and a new value is a\ncontract change rather than a string somebody starts sending.",
+              "values": [
+                {
+                  "name": "VERDICT_UNSPECIFIED",
+                  "number": 0
+                },
+                {
+                  "name": "VERDICT_ALLOW",
+                  "number": 1
+                },
+                {
+                  "name": "VERDICT_BLOCK",
+                  "number": 2,
+                  "doc": "Refuse the attempt and treat the account as compromised."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

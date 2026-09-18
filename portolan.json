@@ -514,6 +514,9 @@
         "service": "auth",
         "repo": "github.com/shortlink-org/portolan",
         "store": "pg",
+        "externals": {
+          "risk.v1": "risk"
+        },
         "out": "domain.json"
       }
     },
@@ -526,6 +529,20 @@
         "service": "auth",
         "spec": "internal/transport/http/gen/openapi.yaml",
         "out": "api.json"
+      }
+    },
+    {
+      "plugin": "proto",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "external": "risk",
+        "externalName": "Risk",
+        "externalSummary": "Scores a login attempt before auth issues a session. Nobody in the estate provides it; the copy of its contract beside auth's adapter is narrowed to the one rpc auth runs, and is all the catalog claims about it.",
+        "paths": [
+          "internal/session/infrastructure/risk/proto"
+        ],
+        "out": "risk.json"
       }
     },
     {

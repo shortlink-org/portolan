@@ -53,8 +53,8 @@
     "externals": {
       "type": "object",
       "additionalProperties": { "type": "string" },
-      "description": "Which system outside the estate answers to an api this service calls, as the api id to the external's bare id. Left out, a generated HTTP client whose package no peers line claims is read as calling the system its vendored document is titled after: a document titled \"Stripe API\" makes the external stripe.",
-      "examples": [{ "stripe.v1": "stripe" }]
+      "description": "Which system outside the estate answers to what this service calls, as the callee's package to the external's bare id - the same name the openapi or proto extractor is given under external: a proto package for a gRPC client, whose proto names no system, the api id for a generated HTTP client. The calls are declared against the external rather than unresolved. Left out, a generated HTTP client whose package no peers line claims is read as calling the system its vendored document is titled after: a document titled \"Stripe API\" makes the external stripe.",
+      "examples": [{ "stripe.v1": "stripe", "risk.v1": "risk" }]
     },
     "events": {
       "type": "object",

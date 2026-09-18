@@ -450,10 +450,11 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Which system outside the estate answers to an api this service calls, as the api id to the external's bare id. Left out, a generated HTTP client whose package no peers line claims is read as calling the system its vendored document is titled after: a document titled \"Stripe API\" makes the external stripe.",
+          "description": "Which system outside the estate answers to what this service calls, as the callee's package to the external's bare id - the same name the openapi or proto extractor is given under external: a proto package for a gRPC client, whose proto names no system, the api id for a generated HTTP client. The calls are declared against the external rather than unresolved. Left out, a generated HTTP client whose package no peers line claims is read as calling the system its vendored document is titled after: a document titled \"Stripe API\" makes the external stripe.",
           "examples": [
             {
-              "stripe.v1": "stripe"
+              "stripe.v1": "stripe",
+              "risk.v1": "risk"
             }
           ]
         },
@@ -3550,21 +3551,17 @@
     "options": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "context",
-        "service"
-      ],
       "properties": {
         "context": {
           "type": "string",
-          "description": "Slug of the bounded context the service belongs to. A .proto knows its package, not which context owns it.",
+          "description": "Slug of the bounded context the service belongs to. A .proto knows its package, not which context owns it. Defaults to the name of the input directory; not read when external is set.",
           "examples": [
             "shop"
           ]
         },
         "service": {
           "type": "string",
-          "description": "Slug of the service that publishes or calls these protos.",
+          "description": "Slug of the service that publishes or calls these protos. Defaults to the name of the input directory; not read when external is set.",
           "examples": [
             "oms"
           ]
@@ -3574,7 +3571,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Directories of protos this service publishes, relative to the input root. They become what it provides. A directory fetch-bsr wrote carries its lock, and the lock says which module the protos came from.",
+          "description": "Directories of protos this service publishes, relative to the input root. They become what it provides. A directory fetch-bsr wrote carries its lock, and the lock says which module the protos came from. With external set, the copy vendored beside the adapter that calls the external, and what it provides is what the external answers on.",
           "examples": [
             [
               "vendor/proto/shortlink-org/portolan-shop-order"
@@ -3624,6 +3621,28 @@
           ],
           "description": "Whether a message imported from another file is promoted to a shared type, on the reasoning that the import is the author's own signal it is not local.",
           "default": "shared"
+        },
+        "external": {
+          "type": "string",
+          "description": "Id of a system outside the estate the protos under paths belong to, when it is not one of ours: a copy vendored beside the adapter that calls it, read for what the third party answers on. A bare name with no dot, the same one the caller's extractor is given under externals. Set, the fragment carries the external and no service, and context, service, vendored, peers and modules are not read.",
+          "examples": [
+            "risk"
+          ]
+        },
+        "externalName": {
+          "type": "string",
+          "description": "What the external is called on the page.",
+          "examples": [
+            "Risk"
+          ]
+        },
+        "externalSummary": {
+          "type": "string",
+          "description": "A sentence or two on what the estate uses it for."
+        },
+        "externalUrl": {
+          "type": "string",
+          "description": "Where the third party documents itself, for a reader who needs more than the vendored copy."
         },
         "out": {
           "type": "string",

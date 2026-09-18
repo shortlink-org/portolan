@@ -78,6 +78,17 @@ type Options struct {
 	// an import is their own signal the type is not local.
 	Defs string `json:"defs,omitempty"`
 
+	// External names a system outside the estate the protos under Paths
+	// belong to: the copy vendored beside the adapter that calls it, read for
+	// what the third party answers on. Set, the fragment carries the external
+	// and no service - the same shape the openapi extractor gives a vendored
+	// document - and Context, Service, Vendored, Peers and Modules are not
+	// read. The caller's extractor names the same bare id under `externals`.
+	External        string `json:"external,omitempty"`
+	ExternalName    string `json:"externalName,omitempty"`
+	ExternalSummary string `json:"externalSummary,omitempty"`
+	ExternalURL     string `json:"externalUrl,omitempty"`
+
 	Out string `json:"out,omitempty"`
 }
 

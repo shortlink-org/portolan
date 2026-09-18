@@ -46,12 +46,14 @@ type Options struct {
 	// with no line here is called as `unknown`, and the steps are unresolved.
 	Peers map[string]string `json:"peers,omitempty"`
 
-	// Externals says which system outside the estate answers to an api this
-	// service calls, as the api id to the external's bare id: {"stripe.v1":
-	// "stripe"}. Written when the name the document would give the system is
-	// not the one wanted; left out, a generated HTTP client whose package no
-	// peers line claims is read as calling the system its vendored document
-	// is titled after.
+	// Externals says which system outside the estate answers to a package
+	// this service calls - a proto package for a gRPC client, an api id for a
+	// generated HTTP one - as the package to the external's bare id:
+	// {"stripe.v1": "stripe", "risk.v1": "risk"}. Required for a gRPC client,
+	// whose proto names no system; for an HTTP client written when the name
+	// the document would give the system is not the one wanted, and left
+	// out, a generated HTTP client whose package no peers line claims is read
+	// as calling the system its vendored document is titled after.
 	Externals map[string]string `json:"externals,omitempty"`
 
 	// Events says which aggregate another service's events belong to, as the

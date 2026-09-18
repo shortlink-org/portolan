@@ -36,6 +36,10 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	b := &plugin.Builder{}
 	root := in.Root
 
+	if opts.External != "" {
+		return extractExternal(in, opts, b)
+	}
+
 	if opts.Context == "" {
 		opts.Context = filepath.Base(root)
 	}

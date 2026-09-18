@@ -37,5 +37,6 @@ thing the attacker came to learn.
 
 - Good: a compromised account loses its sessions at the moment the compromise
   is known, without anyone else having to react.
-- Bad: no service in the estate provides `risk.v1`; the catalog shows the
-  call as unresolved, which is the true state until one does.
+- Bad: no service in the estate provides `risk.v1`. The catalog shows risk
+  as a system outside the estate, described by nothing but the narrowed
+  copy, until a service here provides it.
