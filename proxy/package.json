@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.70",
-    "ai": "7.0.101"
+    "ai": "7.0.106"
   }
 }
