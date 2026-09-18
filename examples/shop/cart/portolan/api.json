@@ -149,7 +149,13 @@
                       "name": "sku",
                       "type": "string",
                       "doc": "",
-                      "required": true
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
                     },
                     {
                       "name": "quantity",
@@ -188,7 +194,13 @@
                       "name": "fromToken",
                       "type": "string",
                       "doc": "",
-                      "required": true
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
                     }
                   ]
                 },
@@ -222,7 +234,13 @@
                       "name": "sku",
                       "type": "string",
                       "doc": "",
-                      "required": true
+                      "required": true,
+                      "rules": [
+                        {
+                          "name": "min_len",
+                          "value": "1"
+                        }
+                      ]
                     },
                     {
                       "name": "quantity",

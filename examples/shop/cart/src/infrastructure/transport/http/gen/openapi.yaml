@@ -83,7 +83,7 @@ paths:
       - name: sku
         in: path
         required: true
-        schema: { type: string }
+        schema: { type: string, minLength: 1 }
     delete:
       operationId: removeItem
       tags: [baskets]
@@ -211,7 +211,7 @@ components:
       type: object
       required: [sku, quantity, unitPrice]
       properties:
-        sku: { type: string }
+        sku: { type: string, minLength: 1 }
         quantity: { type: integer, minimum: 1, maximum: 99 }
         unitPrice: { $ref: "#/components/schemas/Money" }
 
@@ -240,7 +240,7 @@ components:
       type: object
       required: [sku, quantity, unitPrice]
       properties:
-        sku: { type: string }
+        sku: { type: string, minLength: 1 }
         quantity: { type: integer, minimum: 1, maximum: 99 }
         unitPrice: { $ref: "#/components/schemas/Money" }
 
@@ -249,7 +249,7 @@ components:
       required: [fromBasketId, fromToken]
       properties:
         fromBasketId: { type: string, format: uuid }
-        fromToken: { type: string }
+        fromToken: { type: string, minLength: 1 }
 
     CheckedOut:
       type: object

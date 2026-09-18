@@ -844,6 +844,8 @@ export function compareFieldRules(checked: Field[], promised: Field[]): string[]
     if (other.required === true && field.required !== true) out.push(`${field.name}: the document requires it, the handler does not`);
     const code = ruleMap(field);
     const document = ruleMap(other);
+    formatFromType(document, other, code);
+    formatFromType(code, field, document);
     for (const [name, value] of code) {
       const said = document.get(name);
       if (said === undefined) out.push(`${field.name}: the handler checks ${spellRule(name, value)}, the document says nothing`);
@@ -863,6 +865,17 @@ function ruleMap(field: Field): Map<string, string> {
     if (!out.has(rule.name)) out.set(rule.name, rule.value ?? "");
   }
   return out;
+}
+
+/**
+ * A format one side spelled in the type - OpenAPI's `string (uuid)`, where
+ * portolan.0015 leaves it - answers a `format` rule the other side has. It is
+ * read only then: `integer (int64)` is a wire width, not a check anyone owes.
+ */
+function formatFromType(rules: Map<string, string>, field: Field, other: Map<string, string>): void {
+  if (rules.has("format") || !other.has("format")) return;
+  const format = /\(([A-Za-z][\w-]*)\)$/.exec(field.type ?? "")?.[1];
+  if (format) rules.set("format", format);
 }
 
 function spellRule(name: string, value: string): string {

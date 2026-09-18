@@ -133,6 +133,16 @@ describe("the comparison itself", () => {
     ]);
   });
 
+  it("reads a format the document keeps in the type as the rule the handler checks", () => {
+    const uuid = { ...field("fromBasketId", undefined), type: "string (uuid)" };
+    expect(compareFieldRules([field("fromBasketId", [{ name: "format", value: "uuid" }])], [uuid])).toEqual([]);
+    expect(compareFieldRules([field("fromBasketId", [{ name: "format", value: "email" }])], [uuid])).toEqual([
+      "fromBasketId: the handler checks format = email, the document says format = uuid",
+    ]);
+    // A width in the type is no check the handler owes.
+    expect(compareFieldRules([field("amount", undefined)], [{ ...field("amount", undefined), type: "integer (int64)" }])).toEqual([]);
+  });
+
   it("holds a rule with no value against one with none", () => {
     expect(compareFieldRules([field("code", [{ name: "unique" }])], [field("code", [{ name: "unique" }])])).toEqual([]);
     expect(compareFieldRules([field("code", [{ name: "unique" }])], [field("code", undefined)])).toEqual([
