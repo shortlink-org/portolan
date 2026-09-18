@@ -194,7 +194,10 @@ public static class Extract
                 Name = ie.Type.Name,
                 Versions = { new EventVersion { Version = "v1", Doc = tree.Doc(ie.Type), Source = tree.PathOf(ie.Type), Fields = Model.EventFields(tree, ie.Type) } },
                 Consumers = consumers,
-                Wire = new Wire { Name = ie.Type.Name, Channel = BusAddress(tree, ie.Type) },
+                // The wire is where the event goes out, so an event no module
+                // publishes has none: naming the bus channel here would say
+                // it leaves on it, and its subscribers would read as heard.
+                Wire = ie.Publisher != null ? new Wire { Name = ie.Type.Name, Channel = BusAddress(tree, ie.Type) } : null,
             });
         }
         var enums = info.Enums.OrderBy(e => e.Name, StringComparer.Ordinal).Select(e => Model.ReadEnum(tree, info, e)).ToList();

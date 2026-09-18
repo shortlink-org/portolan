@@ -114,11 +114,7 @@
                       ]
                     }
                   ],
-                  "consumers": [],
-                  "wire": {
-                    "name": "MemberCreatedIntegrationEvent",
-                    "channel": "integration-events.MemberCreatedIntegrationEvent"
-                  }
+                  "consumers": []
                 }
               ]
             },

@@ -83,6 +83,8 @@ Check(created.GetProperty("consumers")[0].GetProperty("note").GetString() == "Me
 var attendeeAdded = meetings.GetProperty("events").EnumerateArray().First(e => e.GetProperty("name").GetString() == "MeetingAttendeeAddedIntegrationEvent");
 Check(attendeeAdded.GetProperty("wire").GetProperty("channel").GetString() == "integration-events.MeetingAttendeeAddedIntegrationEvent", "an integration event is its own channel on the bus");
 Check(attendeeAdded.GetProperty("consumers").GetArrayLength() == 0, "nobody subscribes to MeetingAttendeeAddedIntegrationEvent");
+var memberCreated = Aggregate(catalog, "meetings.module.integration-events").GetProperty("events").EnumerateArray().First(e => e.GetProperty("name").GetString() == "MemberCreatedIntegrationEvent");
+Check(!memberCreated.TryGetProperty("wire", out _), "an integration event no module publishes goes out on no wire");
 
 var registrations = Aggregate(catalog, "registrations.module.user-registrations");
 var registered = registrations.GetProperty("events").EnumerateArray().First(e => e.GetProperty("name").GetString() == "NewUserRegisteredIntegrationEvent");

@@ -965,11 +965,7 @@
                       "status": "unresolved",
                       "note": "subscribed, and no handler"
                     }
-                  ],
-                  "wire": {
-                    "name": "MemberCreatedIntegrationEvent",
-                    "channel": "integration-events.MemberCreatedIntegrationEvent"
-                  }
+                  ]
                 }
               ]
             },

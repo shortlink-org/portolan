@@ -99,7 +99,9 @@ nobody publishes is reported and filed under the owning module's
 `integration-events` group. Its wire is the class name on its own channel,
 `<bus>.<Event>` with `bus` from the options, `integration-events` by
 default, because the code names the class `InMemoryEventBus` and nothing
-else. Its consumers are the modules whose
+else. An event nobody publishes has no wire: it goes out on nothing, and a
+module that subscribes to it reads as listening for what the catalog never
+sends. Its consumers are the modules whose
 infrastructure says `SubscribeToIntegrationEvent<X>` or
 `new IntegrationEventGenericHandler<X>()`, each with the
 `INotificationHandler<X>` that hears it - `declared` when both are there,
