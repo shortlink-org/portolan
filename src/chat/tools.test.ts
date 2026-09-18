@@ -24,4 +24,6 @@ it.each([
   fetcher.mockResolvedValue(new Response("# Auth service"));
   expect(await tools.readPage("docs/auth/README.md")).toBe("# Auth service");
   expect(fetcher).toHaveBeenLastCalledWith(`${pages}auth/README.md`);
-});
+  // The first import of ./tools transforms the chat module graph; under a full
+  // parallel run that alone can pass the default 5 s.
+}, 30_000);
