@@ -3,7 +3,7 @@ model {
   client = actor 'client'
   auth_pg = store 'auth-pg'
   bus = broker 'bus'
-  risk_v1 = unknown 'risk.v1'
+  risk = external 'Risk'
   ledger_pg = store 'ledger-pg'
   stripe = external 'Stripe'
   celery_billing = broker 'Celery · billing'
@@ -271,10 +271,10 @@ payment was captured, and what that means for a parcel is decided here.'
     }
   }
 
-  auth.auth -[calls]-> risk_v1 'Assess' {
+  auth.auth -[calls]-> risk 'Assess' {
     technology 'gRPC'
-    description 'risk.v1.RiskService/Assess · unresolved · examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go'
-    style { color unresolved  line dotted  head normal }
+    description 'risk.v1.RiskService/Assess · declared · examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go'
+    style { color declared  line dashed  head normal }
   }
   auth.auth -[owns]-> auth._store_auth_auth_pg 'owns' {
     style { color muted  line solid  head none }
@@ -486,7 +486,7 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color declared  line dashed  head onormal }
   }
   shop.cart -[bus]-> bus '6 events' {
-    style { color declared  line dashed  head onormal }
+    style { color verified  line solid  head onormal }
   }
   delivery.core -[bus]-> bus '9 events' {
     style { color declared  line dashed  head onormal }
@@ -509,11 +509,20 @@ payment was captured, and what that means for a parcel is decided here.'
   bus -[bus]-> shop.pricing 'BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
   }
+  client -[uses]-> auth.auth '6 flows' {
+    style { color verified  line solid  head normal }
+  }
   client -[uses]-> storefront.bff '9 flows' {
     style { color declared  line dashed  head normal }
   }
   client -[uses]-> shop.billing '7 flows' {
     style { color declared  line dashed  head normal }
+  }
+  client -[uses]-> shop.cart '6 flows' {
+    style { color verified  line solid  head normal }
+  }
+  client -[uses]-> shop.oms '2 flows' {
+    style { color verified  line solid  head normal }
   }
   developer -[uses]-> portolan.host 'npm run gen' {
     style { color declared  line dashed  head normal }

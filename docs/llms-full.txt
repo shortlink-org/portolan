@@ -54,6 +54,8 @@
 | [portolan.0028](adr/portolan.0028.md) | A followed flow opens as a document of its own | accepted | 2026-09-16 |
 | [portolan.0029](adr/portolan.0029.md) | A branch of a vendored service is drafted from a clone of its own repository | accepted | 2026-09-17 |
 | [portolan.0030](adr/portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 |
+| [portolan.0031](adr/portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 |
+| [portolan.0032](adr/portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 |
 
 <!-- portolan/README.md -->
 
@@ -111,6 +113,8 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0028](../adr/portolan.0028.md) | A followed flow opens as a document of its own | accepted | 2026-09-16 |
 | [portolan.0029](../adr/portolan.0029.md) | A branch of a vendored service is drafted from a clone of its own repository | accepted | 2026-09-17 |
 | [portolan.0030](../adr/portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 |
+| [portolan.0031](../adr/portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 |
+| [portolan.0032](../adr/portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 |
 
 <!-- portolan/glossary.md -->
 
@@ -1290,8 +1294,20 @@ The domain extractor keeps the same rule from its side: a generated HTTP
 client whose api no `peers` line claims is read as calling the system the
 document beside it is titled after, and the call lands on an `external` lane,
 declared, under the id both sides derive from that title. `externals` on the
-domain step overrides the name; a proto client, whose contract names no
-system, stays unresolved until `peers` says who answers.
+domain step overrides the name. A proto client's contract names no system,
+so it stays unresolved until the manifest says who answers: `peers` when it
+is one of ours, `externals` - `{"risk.v1": "risk"}` - when it is not. The
+external's side is a `proto` step over the copy with `external` set, the same
+four options the `openapi` step takes; `paths` names the copy, and the
+fragment carries the external with the services the copy declares, and no
+service, module or shared type of the estate's:
+
+```json
+{ "plugin": "proto", "in": "examples/auth", "out": "examples/auth/portolan",
+  "options": { "external": "risk", "externalName": "Risk",
+               "paths": ["internal/session/infrastructure/risk/proto"],
+               "out": "risk.json" } }
+```
 
 The copy is **narrow** - the operations the service calls and the schemas they
 answer with, every field verbatim - for the reason org.0001 gives for a proto:
@@ -2164,6 +2180,8 @@ sequenceDiagram
 | [portolan.0028](portolan.0028.md) | A followed flow opens as a document of its own | accepted | 2026-09-16 | [portolan](../portolan/README.md) |
 | [portolan.0029](portolan.0029.md) | A branch of a vendored service is drafted from a clone of its own repository | accepted | 2026-09-17 | [portolan](../portolan/README.md) |
 | [portolan.0030](portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 | [portolan](../portolan/README.md) |
+| [portolan.0031](portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 | [portolan](../portolan/README.md) |
+| [portolan.0032](portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
@@ -4929,3 +4947,163 @@ to compare, and the two versions are the whole disagreement.
   the catalog cannot tell, neither can this.
 - Neutral: the states a draft's entity can be in are now five, and a page that
   files entities by state has one more column.
+
+<!-- adr/portolan.0031.md -->
+
+# portolan.0031 — A verifier is handed the flows as declared, not as enriched
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-18
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0031-a-verifier-is-handed-the-flows-as-declared-not-as-enriched.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0031-a-verifier-is-handed-the-flows-as-declared-not-as-enriched.md)
+- **Committed:** Victor Login, 2026-09-18 (`e83eafc`)
+
+### Context and Problem Statement
+
+A verifier reads evidence against the catalog and writes back a fragment. For
+`verify-otel` that fragment is the flow a recording opened, with the steps the
+recording showed raised and counted and the hops the code does not declare laid
+in (portolan.0014). The merge lays that flow over the declaration step for step
+and refuses it when the two disagree about anything but what a recording can
+vouch for.
+
+The generator handed verifiers the catalog after enrichment. Enrichment writes
+into flows: the opening step of an endpoint flow gains the method it answers
+(portolan.0025), the exits of a synchronous handler gain synthesized response
+steps, a callee a step continues into is composed in. The verifier copied the
+flow it was handed, so its overlay carried all of it, and the merge found an
+opening with a ref the code never gave and steps with ids the code never gave
+that carried no `seen`. It refused the overlay. On the example estate that was
+twelve flows of `auth` and `cart` - every recording of them thrown away, the
+`seen` counts, the raised statuses and the examples with it - reported as
+twelve `merge-conflict` errors.
+
+### Decision Drivers
+
+- An overlay says what the evidence saw. What the enrichment derived is said
+  again at every read; written into a source it would be said twice, and a
+  derived fact frozen into a fragment goes stale when the rule deriving it
+  changes.
+- The merge's rule for a second declaration of a flow is narrow on purpose:
+  it may raise, count and add what a recording witnessed, and nothing else.
+- Every verifier should be fixed at once, not each taught which enrichments
+  to strip.
+- A verifier still needs the enriched estate to name what it saw: a call is
+  known by the id the flows imply, an event by the consumers the flows imply.
+
+### Considered Options
+
+1. **Hand verifiers the enriched estate with the flows as declared.**
+   `loadCatalog` returns `verifierCatalog` - the enriched catalog whose `flows`
+   are the merged sources' - and the verify phase passes that.
+2. **Hand verifiers the catalog before enrichment.** The flows come out
+   right, and the calls and consumers the flows imply are gone from the
+   estate a recording is matched against.
+3. **Strip enrichment in `verify-otel`.** A synthesized response has a shape
+   one could recognise; a derived ref has none, and `oms` writes the same ref
+   itself. The next enrichment that writes into a flow would break it again.
+4. **Let the merge tolerate it.** Accept an incoming ref where the code has
+   none on an opening from an actor lane, and skip unseen steps with new ids.
+   The merge would then accept a flow that says something the code does not,
+   which is the one thing its rule exists to refuse.
+
+### Decision Outcome
+
+Option 1. The verify phase of `gen.mjs` and the site's reading of the
+work-items verifier both take `verifierCatalog`, so a verifier sees one
+catalog wherever it runs.
+
+`verify-otel` also counts an opening that names its method as the call in:
+an endpoint flow's first step is keyed by the route or operation it answers
+whether or not it carries the ref. It used to be keyed by the ref when it had
+one, which no recording ever matches - `oms`'s openings, whose extractor
+writes the ref, were never counted as seen.
+
+#### Consequences
+
+- The twelve flows keep what their recordings showed: on the example estate
+  `merge-conflict` goes from 12 to none, and `flow-observed-coverage-low`
+  from 66 to 60.
+- `observed.json` says only what the recordings saw on top of what the code
+  declared; the ref of an opening and the responses are derived at read time
+  as for every other flow.
+- A verifier that links evidence to steps (work-items) no longer sees the
+  steps composed into a flow from its callee, only the callee's own flow,
+  which is where those steps' source lines belong.
+
+<!-- adr/portolan.0032.md -->
+
+# portolan.0032 — A gRPC call outside the estate is named by the manifest and described by the copy
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-18
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0032-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0032-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy.md)
+- **Committed:** Victor Login, 2026-09-18 (`e43d1bb`)
+
+### Context and Problem Statement
+
+A system outside the estate that answers over HTTP already has a place in the
+catalog: an external, described by the copy of its document vendored beside
+the adapter that calls it (an `openapi` step with `external`), and joined to
+the caller by the domain extractor's `externals` line, or, failing that, by
+the title of the document.
+
+A system that answers over gRPC had none. Auth asks a risk service before it
+issues a session, on purpose and by a decision of its own (auth.0007), and
+vendors a narrowed copy of `risk.v1` to do it. The call was recorded against
+the package, unresolved, and Problems listed it twice - a call that resolves
+to nothing and a flow step that lands nowhere - beside real defects. It was
+true that no service here answers, and wrong that nobody knew who does.
+
+### Decision Drivers
+
+- One convention for an external, whatever the contract's format: the
+  manifest names it, the copy describes it, the merge joins them by id.
+- The catalog claims nothing about a third party beyond the copy.
+- No name is guessed where the tree does not write one.
+
+### Considered Options
+
+- Derive the external from the package, `risk.v1` giving `risk`, the way an
+  HTTP document's title gives its system.
+- Map the package under the proto step's `peers`, since that is where a
+  vendored copy's caller is already described.
+- Keep the caller's `externals`, now for a proto package as well as an api
+  id, and give the `proto` extractor the same `external` options the
+  `openapi` one has.
+
+### Decision Outcome
+
+Chosen: `externals` on the caller's domain step, and `external` on a `proto`
+step over the copy.
+
+The domain extractor already looked a gRPC client's package up in
+`externals`; what was missing was saying so, and a step that describes the
+far end. A `proto` step with `external` set reads the protos under `paths` as
+what that external answers on, and writes a fragment with the external and
+nothing else - no context, no service, no module, no shared types, because
+the copy is a narrowed excerpt the caller keeps, not a module anybody
+publishes. The call is then declared against the external, and the merge
+resolves it against the interface the copy declares.
+
+A package is not a name for a system. `risk.v1` could be answered by a vendor
+called anything, and `peers` is for services of the estate; neither is read as
+an external without a manifest line.
+
+#### Consequences
+
+- Good: a gRPC call out of the estate reads the way an HTTP one does - on an
+  external lane, declared, with the rpc and its messages on the external's
+  page.
+- Good: the proto step keeps one meaning per option; `peers` still names only
+  services of the estate.
+- Bad: two lines in the manifest for one external, one on each side, and
+  nothing checks that they name the same id except the call that fails to
+  resolve when they do not.
+- Neutral: an HTTP client still falls back to the document's title; a gRPC
+  client has no such fallback and stays unresolved until the manifest speaks.

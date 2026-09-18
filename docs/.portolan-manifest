@@ -31,6 +31,8 @@
     "adr/portolan.0028.md",
     "adr/portolan.0029.md",
     "adr/portolan.0030.md",
+    "adr/portolan.0031.md",
+    "adr/portolan.0032.md",
     "flows/README.md",
     "flows/gen.md",
     "llms-full.txt",

@@ -1014,8 +1014,20 @@ The domain extractor keeps the same rule from its side: a generated HTTP
 client whose api no `peers` line claims is read as calling the system the
 document beside it is titled after, and the call lands on an `external` lane,
 declared, under the id both sides derive from that title. `externals` on the
-domain step overrides the name; a proto client, whose contract names no
-system, stays unresolved until `peers` says who answers.
+domain step overrides the name. A proto client's contract names no system,
+so it stays unresolved until the manifest says who answers: `peers` when it
+is one of ours, `externals` - `{"risk.v1": "risk"}` - when it is not. The
+external's side is a `proto` step over the copy with `external` set, the same
+four options the `openapi` step takes; `paths` names the copy, and the
+fragment carries the external with the services the copy declares, and no
+service, module or shared type of the estate's:
+
+```json
+{ "plugin": "proto", "in": "examples/auth", "out": "examples/auth/portolan",
+  "options": { "external": "risk", "externalName": "Risk",
+               "paths": ["internal/session/infrastructure/risk/proto"],
+               "out": "risk.json" } }
+```
 
 The copy is **narrow** - the operations the service calls and the schemas they
 answer with, every field verbatim - for the reason org.0001 gives for a proto:

@@ -17,6 +17,7 @@
 
 | System | Interfaces | Summary |
 | --- | --- | --- |
+| [Risk](externals/risk.md) | `risk.v1.RiskService` | Scores a login attempt before auth issues a session. Nobody in the estate provides it; the copy of its contract beside auth's adapter is narrowed to the one rpc auth runs, and is all the catalog claims about it. |
 | [Stripe](externals/stripe.md) | `stripe.v1` | The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it. |
 
 ## Schema modules

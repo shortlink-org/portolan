@@ -7,7 +7,7 @@
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md)
 - **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
-- **Revised:** Victor Login, 2026-09-07 (`34b9b7c`)
+- **Revised:** Victor Login, 2026-09-18 (`e43d1bb`)
 
 ### Context and Problem Statement
 
@@ -42,5 +42,6 @@ thing the attacker came to learn.
 
 - Good: a compromised account loses its sessions at the moment the compromise
   is known, without anyone else having to react.
-- Bad: no service in the estate provides `risk.v1`; the catalog shows the
-  call as unresolved, which is the true state until one does.
+- Bad: no service in the estate provides `risk.v1`. The catalog shows risk
+  as a system outside the estate, described by nothing but the narrowed
+  copy, until a service here provides it.

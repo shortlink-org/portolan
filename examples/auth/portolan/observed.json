@@ -503,10 +503,9 @@
           "context": null
         },
         {
-          "id": "risk-v1",
-          "kind": "unknown",
-          "context": null,
-          "label": "risk.v1"
+          "id": "risk",
+          "kind": "external",
+          "context": null
         }
       ],
       "steps": [
@@ -1029,11 +1028,11 @@
           "type": "step",
           "id": "s14",
           "from": "auth.auth",
-          "to": "risk-v1",
+          "to": "risk",
           "kind": "rpc",
           "ref": "risk.v1.RiskService/Assess",
           "label": "Assess",
-          "status": "unresolved",
+          "status": "declared",
           "line": "examples/auth/internal/session/application/login/usecase.go:62"
         },
         {

@@ -3,13 +3,13 @@ views {
   view landscape {
     title 'Estate'
     description 'Every architecture group, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe, scheduler, developer
+    include auth, storefront, payments, shop, delivery, portolan, client, risk, stripe, scheduler, developer
   }
 
   view containers {
     title 'Containers'
     description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, scheduler, developer
+    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler, developer
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -77,7 +77,7 @@ PaymentDeclined' }
     include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
 QuoteIssued' }
     include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
-    include auth.auth -> risk_v1 where kind is calls with { title '1 call'  technology 'gRPC'  color unresolved  line dotted }
+    include auth.auth -> risk where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include storefront.bff -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
     include storefront.bff -> shop.cart where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
     include storefront.bff -> delivery.core where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
@@ -127,13 +127,13 @@ QuoteIssued' }
   view landscape_example {
     title 'Example estate'
     description 'The groups and outside systems selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, client, risk_v1, stripe, scheduler
+    include auth, storefront, payments, shop, delivery, client, risk, stripe, scheduler
   }
 
   view containers_example {
     title 'Example estate containers'
     description 'The services, stores and transports selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk_v1, stripe, scheduler
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -198,7 +198,7 @@ PaymentDeclined' }
     include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
 QuoteIssued' }
     include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
-    include auth.auth -> risk_v1 where kind is calls with { title '1 call'  technology 'gRPC'  color unresolved  line dotted }
+    include auth.auth -> risk where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
     include storefront.bff -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
     include storefront.bff -> shop.cart where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
     include storefront.bff -> delivery.core where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
@@ -487,8 +487,8 @@ PaymentDeclined' }
     title 'Change password'
     description 'Replaces the password of a user, given the current one. Source-backed cross-protocol continuations are included.'
     client -> auth.auth 'ChangePasswordRequest' {
-      color declared  line solid  head normal
-      notes 'examples/auth/internal/user/infrastructure/http/change_password.go:20'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/change_password.go:20'
     }
     auth.auth -> auth_pg 'ByToken' {
       color declared  line solid  head none
@@ -503,11 +503,11 @@ PaymentDeclined' }
       notes 'examples/auth/internal/user/application/change_password/usecase.go:48'
     }
     auth.auth -> bus 'PasswordChanged' {
-      color declared  line solid  head onormal
-      notes 'examples/auth/internal/user/application/change_password/usecase.go:48'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/change_password/usecase.go:48'
     }
     auth.auth -> client '204' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -516,15 +516,15 @@ PaymentDeclined' }
     title 'Get user'
     description 'Reads a user by id. Source-backed cross-protocol continuations are included.'
     client -> auth.auth 'getUser' {
-      color declared  line solid  head normal
-      notes 'examples/auth/internal/user/infrastructure/http/get.go:11'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (3 traces). — examples/auth/internal/user/infrastructure/http/get.go:11'
     }
     auth.auth -> auth_pg 'ByID' {
       color declared  line solid  head none
       notes 'examples/auth/internal/user/application/get/usecase.go:22'
     }
     auth.auth -> client 'User' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -533,8 +533,8 @@ PaymentDeclined' }
     title 'Login'
     description 'Turns credentials into a session. Source-backed cross-protocol continuations are included.'
     client -> auth.auth 'LoginRequest' {
-      color declared  line solid  head normal
-      notes 'examples/auth/internal/session/infrastructure/http/login.go:11'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
     }
     auth.auth -> auth.auth 'CheckCredentials' {
       color declared  line solid  head none
@@ -568,11 +568,11 @@ PaymentDeclined' }
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
           }
           auth.auth -> bus 'AccountLocked' {
-            color declared  line solid  head onormal
+            color verified  line solid  head onormal
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:53'
           }
           auth.auth -> client 'Session' {
-            color declared  line dashed  head normal
+            color verified  line dashed  head normal
             notes 'Synthesized from the proven synchronous HTTP handler return.'
           }
         }
@@ -592,8 +592,8 @@ PaymentDeclined' }
       color declared  line solid  head none
       notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_success/usecase.go:43'
     }
-    auth.auth -> risk_v1 'Assess' {
-      color unresolved  line solid  head normal
+    auth.auth -> risk 'AssessRequest → AssessResponse' {
+      color declared  line solid  head normal
       notes 'examples/auth/internal/session/application/login/usecase.go:62'
     }
     alt {
@@ -612,7 +612,7 @@ PaymentDeclined' }
             notes 'inside a loop over `sessions`. — examples/auth/internal/session/application/login/usecase.go:101'
           }
           auth.auth -> client 'Session' {
-            color declared  line dashed  head normal
+            color verified  line dashed  head normal
             notes 'Synthesized from the proven synchronous HTTP handler return.'
           }
         }
@@ -625,11 +625,11 @@ PaymentDeclined' }
       notes 'examples/auth/internal/session/application/login/usecase.go:77'
     }
     auth.auth -> bus 'SessionStarted' {
-      color declared  line solid  head onormal
-      notes 'examples/auth/internal/session/application/login/usecase.go:77'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (10 traces). — examples/auth/internal/session/application/login/usecase.go:77'
     }
     auth.auth -> client 'Session' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -638,8 +638,8 @@ PaymentDeclined' }
     title 'Logout'
     description 'Ends the session behind a token. Source-backed cross-protocol continuations are included.'
     client -> auth.auth 'logout' {
-      color declared  line solid  head normal
-      notes 'examples/auth/internal/session/infrastructure/http/logout.go:15'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/http/logout.go:15'
     }
     auth.auth -> auth_pg 'ByToken' {
       color declared  line solid  head none
@@ -650,11 +650,11 @@ PaymentDeclined' }
       notes 'examples/auth/internal/session/application/logout/usecase.go:48'
     }
     auth.auth -> bus 'SessionEnded' {
-      color declared  line solid  head onormal
-      notes 'examples/auth/internal/session/application/logout/usecase.go:48'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/application/logout/usecase.go:48'
     }
     auth.auth -> client '204' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -663,8 +663,8 @@ PaymentDeclined' }
     title 'Register user'
     description 'Creates a user from an email address and a password. Source-backed cross-protocol continuations are included.'
     client -> auth.auth 'RegisterRequest' {
-      color declared  line solid  head normal
-      notes 'examples/auth/internal/user/infrastructure/http/register.go:16'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/infrastructure/http/register.go:16'
     }
     auth.auth -> auth_pg 'ByEmail' {
       color declared  line solid  head none
@@ -675,11 +675,11 @@ PaymentDeclined' }
       notes 'examples/auth/internal/user/application/register/usecase.go:53'
     }
     auth.auth -> bus 'UserRegistered' {
-      color declared  line solid  head onormal
-      notes 'examples/auth/internal/user/application/register/usecase.go:53'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:53'
     }
     auth.auth -> client 'User' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -688,15 +688,15 @@ PaymentDeclined' }
     title 'Validate session'
     description 'Resolves a token to a live session: who is calling, and how long the answer stays good. Source-backed cross-protocol continuations are included.'
     client -> auth.auth 'validateSession' {
-      color declared  line solid  head normal
-      notes 'examples/auth/internal/session/infrastructure/http/validate.go:12'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/auth/telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/validate.go:12'
     }
     auth.auth -> auth_pg 'ByToken' {
       color declared  line solid  head none
       notes 'examples/auth/internal/session/application/validate/usecase.go:33'
     }
     auth.auth -> client 'SessionInfo' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -1414,19 +1414,19 @@ PaymentDeclined' }
     title 'Add item'
     description ' Source-backed cross-protocol continuations are included.'
     client -> shop.cart 'AddItemRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
     }
     shop.cart -> bus 'BasketItemAdded' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
     }
     shop.cart -> client 'Basket' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -1435,12 +1435,12 @@ PaymentDeclined' }
     title 'Checkout'
     description ' Source-backed cross-protocol continuations are included.'
     client -> shop.cart 'checkout' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
     }
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
     shop.cart -> cart_pg 'byId' {
       color declared  line solid  head none
@@ -1455,11 +1455,11 @@ PaymentDeclined' }
       notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
     }
     shop.cart -> bus 'BasketCheckedOut' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
     }
     shop.cart -> client 'CheckedOut' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -1467,8 +1467,8 @@ PaymentDeclined' }
   dynamic view flow_cart_checkout_cross {
     title 'Checkout — crossings only'
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
   }
 
@@ -1476,19 +1476,19 @@ PaymentDeclined' }
     title 'Create basket'
     description ' Source-backed cross-protocol continuations are included.'
     client -> shop.cart 'createBasket' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
     }
     shop.cart -> bus 'BasketCreated' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
     }
     shop.cart -> client 'BasketCreated' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -1497,11 +1497,11 @@ PaymentDeclined' }
     title 'Get basket'
     description ' Source-backed cross-protocol continuations are included.'
     client -> shop.cart 'getBasket' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
     }
     shop.cart -> client 'Basket' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -1510,12 +1510,12 @@ PaymentDeclined' }
     title 'Merge baskets'
     description ' Source-backed cross-protocol continuations are included.'
     client -> shop.cart 'MergeRequest' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
     }
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
     shop.cart -> cart_pg 'openFor' {
       color declared  line solid  head none
@@ -1526,23 +1526,23 @@ PaymentDeclined' }
       notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
     }
     shop.cart -> bus 'BasketCreated' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
     }
     shop.cart -> bus 'BasketItemAdded' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
     }
     shop.cart -> bus 'BasketMerged' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
     }
     shop.cart -> client 'Basket' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -1550,8 +1550,8 @@ PaymentDeclined' }
   dynamic view flow_cart_merge_baskets_cross {
     title 'Merge baskets — crossings only'
     shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
   }
 
@@ -1559,19 +1559,19 @@ PaymentDeclined' }
     title 'Remove item'
     description ' Source-backed cross-protocol continuations are included.'
     client -> shop.cart 'removeItem' {
-      color declared  line solid  head normal
-      notes 'examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
     }
     shop.cart -> cart_pg 'save' {
       color declared  line solid  head none
       notes 'examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
     }
     shop.cart -> bus 'BasketItemRemoved' {
-      color declared  line solid  head onormal
-      notes 'examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
+      color verified  line solid  head onormal
+      notes 'Seen running in examples/shop/cart/telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
     }
     shop.cart -> client 'Basket' {
-      color declared  line dashed  head normal
+      color verified  line dashed  head normal
       notes 'Synthesized from the proven synchronous HTTP handler return.'
     }
   }
@@ -1912,8 +1912,8 @@ PaymentDeclined' }
     title 'Cancel order'
     description 'Reads one order by id.'
     client -> shop.oms 'CancelOrderRequest → CancelOrderResponse' {
-      color declared  line solid  head normal
-      notes 'examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
     }
     shop.oms -> oms_pg 'by_id' {
       color declared  line solid  head none
@@ -1945,8 +1945,8 @@ PaymentDeclined' }
     title 'Get order'
     description 'Reads one order by id.'
     client -> shop.oms 'GetOrderRequest → GetOrderResponse' {
-      color declared  line solid  head normal
-      notes 'examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
+      color verified  line solid  head normal
+      notes 'Seen running in examples/shop/oms/telemetry/traces.jsonl (2 traces). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
     }
     shop.oms -> oms_pg 'by_id' {
       color declared  line solid  head none

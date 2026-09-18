@@ -63,6 +63,7 @@
     "delivery/core/aggregates/shipment.md",
     "delivery/core/stores/pg.md",
     "delivery/glossary.md",
+    "externals/risk.md",
     "externals/stripe.md",
     "flows/README.md",
     "flows/auth-change-password.md",

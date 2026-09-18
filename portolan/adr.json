@@ -638,8 +638,28 @@
     },
     {
       "id": "portolan.0031",
-      "slug": "portolan-0031-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy",
+      "slug": "portolan-0031-a-verifier-is-handed-the-flows-as-declared-not-as-enriched",
       "number": 31,
+      "title": "A verifier is handed the flows as declared, not as enriched",
+      "status": "accepted",
+      "date": "2026-09-18",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nA verifier reads evidence against the catalog and writes back a fragment. For\n`verify-otel` that fragment is the flow a recording opened, with the steps the\nrecording showed raised and counted and the hops the code does not declare laid\nin (portolan.0014). The merge lays that flow over the declaration step for step\nand refuses it when the two disagree about anything but what a recording can\nvouch for.\n\nThe generator handed verifiers the catalog after enrichment. Enrichment writes\ninto flows: the opening step of an endpoint flow gains the method it answers\n(portolan.0025), the exits of a synchronous handler gain synthesized response\nsteps, a callee a step continues into is composed in. The verifier copied the\nflow it was handed, so its overlay carried all of it, and the merge found an\nopening with a ref the code never gave and steps with ids the code never gave\nthat carried no `seen`. It refused the overlay. On the example estate that was\ntwelve flows of `auth` and `cart` - every recording of them thrown away, the\n`seen` counts, the raised statuses and the examples with it - reported as\ntwelve `merge-conflict` errors.\n\n## Decision Drivers\n\n- An overlay says what the evidence saw. What the enrichment derived is said\n  again at every read; written into a source it would be said twice, and a\n  derived fact frozen into a fragment goes stale when the rule deriving it\n  changes.\n- The merge's rule for a second declaration of a flow is narrow on purpose:\n  it may raise, count and add what a recording witnessed, and nothing else.\n- Every verifier should be fixed at once, not each taught which enrichments\n  to strip.\n- A verifier still needs the enriched estate to name what it saw: a call is\n  known by the id the flows imply, an event by the consumers the flows imply.\n\n## Considered Options\n\n1. **Hand verifiers the enriched estate with the flows as declared.**\n   `loadCatalog` returns `verifierCatalog` - the enriched catalog whose `flows`\n   are the merged sources' - and the verify phase passes that.\n2. **Hand verifiers the catalog before enrichment.** The flows come out\n   right, and the calls and consumers the flows imply are gone from the\n   estate a recording is matched against.\n3. **Strip enrichment in `verify-otel`.** A synthesized response has a shape\n   one could recognise; a derived ref has none, and `oms` writes the same ref\n   itself. The next enrichment that writes into a flow would break it again.\n4. **Let the merge tolerate it.** Accept an incoming ref where the code has\n   none on an opening from an actor lane, and skip unseen steps with new ids.\n   The merge would then accept a flow that says something the code does not,\n   which is the one thing its rule exists to refuse.\n\n## Decision Outcome\n\nOption 1. The verify phase of `gen.mjs` and the site's reading of the\nwork-items verifier both take `verifierCatalog`, so a verifier sees one\ncatalog wherever it runs.\n\n`verify-otel` also counts an opening that names its method as the call in:\nan endpoint flow's first step is keyed by the route or operation it answers\nwhether or not it carries the ref. It used to be keyed by the ref when it had\none, which no recording ever matches - `oms`'s openings, whose extractor\nwrites the ref, were never counted as seen.\n\n### Consequences\n\n- The twelve flows keep what their recordings showed: on the example estate\n  `merge-conflict` goes from 12 to none, and `flow-observed-coverage-low`\n  from 66 to 60.\n- `observed.json` says only what the recordings saw on top of what the code\n  declared; the ref of an opening and the responses are derived at read time\n  as for every other flow.\n- A verifier that links evidence to steps (work-items) no longer sees the\n  steps composed into a flow from its callee, only the callee's own flow,\n  which is where those steps' source lines belong.\n",
+      "relates": {},
+      "source": "adr/0031-a-verifier-is-handed-the-flows-as-declared-not-as-enriched.md",
+      "created": {
+        "commit": "e83eafc36cf396bf3c5f13aac0d5b8e68d301782",
+        "author": "Victor Login",
+        "date": "2026-09-18T15:16:09+07:00"
+      }
+    },
+    {
+      "id": "portolan.0032",
+      "slug": "portolan-0032-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy",
+      "number": 32,
       "title": "A gRPC call outside the estate is named by the manifest and described by the copy",
       "status": "accepted",
       "date": "2026-09-18",
@@ -649,7 +669,12 @@
       },
       "body": "## Context and Problem Statement\n\nA system outside the estate that answers over HTTP already has a place in the\ncatalog: an external, described by the copy of its document vendored beside\nthe adapter that calls it (an `openapi` step with `external`), and joined to\nthe caller by the domain extractor's `externals` line, or, failing that, by\nthe title of the document.\n\nA system that answers over gRPC had none. Auth asks a risk service before it\nissues a session, on purpose and by a decision of its own (auth.0007), and\nvendors a narrowed copy of `risk.v1` to do it. The call was recorded against\nthe package, unresolved, and Problems listed it twice - a call that resolves\nto nothing and a flow step that lands nowhere - beside real defects. It was\ntrue that no service here answers, and wrong that nobody knew who does.\n\n## Decision Drivers\n\n- One convention for an external, whatever the contract's format: the\n  manifest names it, the copy describes it, the merge joins them by id.\n- The catalog claims nothing about a third party beyond the copy.\n- No name is guessed where the tree does not write one.\n\n## Considered Options\n\n- Derive the external from the package, `risk.v1` giving `risk`, the way an\n  HTTP document's title gives its system.\n- Map the package under the proto step's `peers`, since that is where a\n  vendored copy's caller is already described.\n- Keep the caller's `externals`, now for a proto package as well as an api\n  id, and give the `proto` extractor the same `external` options the\n  `openapi` one has.\n\n## Decision Outcome\n\nChosen: `externals` on the caller's domain step, and `external` on a `proto`\nstep over the copy.\n\nThe domain extractor already looked a gRPC client's package up in\n`externals`; what was missing was saying so, and a step that describes the\nfar end. A `proto` step with `external` set reads the protos under `paths` as\nwhat that external answers on, and writes a fragment with the external and\nnothing else - no context, no service, no module, no shared types, because\nthe copy is a narrowed excerpt the caller keeps, not a module anybody\npublishes. The call is then declared against the external, and the merge\nresolves it against the interface the copy declares.\n\nA package is not a name for a system. `risk.v1` could be answered by a vendor\ncalled anything, and `peers` is for services of the estate; neither is read as\nan external without a manifest line.\n\n### Consequences\n\n- Good: a gRPC call out of the estate reads the way an HTTP one does - on an\n  external lane, declared, with the rpc and its messages on the external's\n  page.\n- Good: the proto step keeps one meaning per option; `peers` still names only\n  services of the estate.\n- Bad: two lines in the manifest for one external, one on each side, and\n  nothing checks that they name the same id except the call that fails to\n  resolve when they do not.\n- Neutral: an HTTP client still falls back to the document's title; a gRPC\n  client has no such fallback and stays unresolved until the manifest speaks.\n",
       "relates": {},
-      "source": "adr/0031-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy.md"
+      "source": "adr/0032-a-grpc-call-outside-the-estate-is-named-by-the-manifest-and-described-by-the-copy.md",
+      "created": {
+        "commit": "e43d1bbf484e6c982e2ba6947df209c3a90d9b41",
+        "author": "Victor Login",
+        "date": "2026-09-18T15:16:24+07:00"
+      }
     }
   ]
 }

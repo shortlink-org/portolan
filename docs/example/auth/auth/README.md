@@ -200,7 +200,7 @@ mocks from each feature slice's `.mockery.yml`.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | [`examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go) |
+| `risk.v1.RiskService/Assess` | [risk](../../externals/risk.md) | declared | [`examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go) |
 
 ## Publishes
 

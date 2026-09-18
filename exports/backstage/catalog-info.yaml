@@ -12,6 +12,70 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
+    name: risk
+    title: Risk
+    description: Scores a login attempt before auth issues a session. Nobody in the estate provides it; the copy of its contract beside auth's adapter is narrowed to the one rpc auth runs, and is all the catalog claims about it.
+    annotations:
+        portolan.io/id: risk
+spec:
+    lifecycle: production
+    owner: architecture
+    providesApis:
+        - api:default/risk-v1-riskservice
+    type: external-service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: risk-v1-riskservice
+    title: risk.v1.RiskService
+    description: Interface provided by Risk
+    annotations:
+        portolan.io/id: risk.v1.RiskService
+spec:
+    definition: |-
+        {
+          "id": "risk.v1.RiskService",
+          "messages": [
+            {
+              "name": "AssessRequest",
+              "fields": [
+                {
+                  "name": "user_id",
+                  "type": "string",
+                  "doc": "The user the attempt is for. Auth has already checked the credentials by\nthe time it asks; risk decides whether that is enough today.",
+                  "number": 1
+                }
+              ]
+            },
+            {
+              "name": "AssessResponse",
+              "fields": [
+                {
+                  "name": "verdict",
+                  "type": "Verdict",
+                  "doc": "",
+                  "number": 1
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "Assess",
+              "doc": "Assess says whether a login attempt should go ahead.",
+              "request": "AssessRequest",
+              "response": "AssessResponse"
+            }
+          ]
+        }
+    lifecycle: production
+    owner: architecture
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
     name: stripe
     title: Stripe
     description: The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it.
@@ -296,7 +360,10 @@ metadata:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/auth
         portolan.io/id: auth.auth
 spec:
+    consumesApis:
+        - api:default/risk-v1-riskservice
     dependsOn:
+        - component:default/risk
         - resource:default/auth-auth-pg
     lifecycle: production
     owner: shortlink-org/identity
@@ -1836,7 +1903,13 @@ spec:
                   "name": "sku",
                   "type": "string",
                   "doc": "",
-                  "required": true
+                  "required": true,
+                  "rules": [
+                    {
+                      "name": "min_len",
+                      "value": "1"
+                    }
+                  ]
                 },
                 {
                   "name": "quantity",
@@ -1875,7 +1948,13 @@ spec:
                   "name": "fromToken",
                   "type": "string",
                   "doc": "",
-                  "required": true
+                  "required": true,
+                  "rules": [
+                    {
+                      "name": "min_len",
+                      "value": "1"
+                    }
+                  ]
                 }
               ]
             },
@@ -1909,7 +1988,13 @@ spec:
                   "name": "sku",
                   "type": "string",
                   "doc": "",
-                  "required": true
+                  "required": true,
+                  "rules": [
+                    {
+                      "name": "min_len",
+                      "value": "1"
+                    }
+                  ]
                 },
                 {
                   "name": "quantity",

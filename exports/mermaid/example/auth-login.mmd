@@ -4,7 +4,7 @@ sequenceDiagram
     participant p1 as auth.auth
     participant p2 as auth-pg
     participant p3 as bus
-    participant p4 as risk.v1
+    participant p4 as risk
     p0->>p1: login
     p1->>p1: CheckCredentials
     p1->>p2: ByEmail
@@ -22,7 +22,7 @@ sequenceDiagram
     p1->>p1: RecordSuccess
     p1->>p2: ByUserID
     p1->>p2: Save
-    p1->>p4: Assess
+    p1->>p4: Assess → AssessResponse
     alt verdict == VerdictBlock
         p1->>p2: ByUserID
         p1->>p2: Save

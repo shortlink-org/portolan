@@ -83,7 +83,7 @@ Docker the tests that need Postgres or NATS are skipped.
 
 | Field | Type | Rules |
 | --- | --- | --- |
-| `sku` | `string` | `required` |
+| `sku` | `string` | `required`, `min_len 1` |
 | `quantity` | `integer` | `required`, `gte 1`, `lte 99` |
 | `unitPrice` | `Money` | `required` |
 
@@ -139,7 +139,7 @@ Docker the tests that need Postgres or NATS are skipped.
 
 | Field | Type | Rules |
 | --- | --- | --- |
-| `sku` | `string` | `required` |
+| `sku` | `string` | `required`, `min_len 1` |
 | `quantity` | `integer` | `required`, `gte 1`, `lte 99` |
 | `unitPrice` | `Money` | `required` |
 
@@ -151,7 +151,7 @@ Docker the tests that need Postgres or NATS are skipped.
 | Field | Type | Rules |
 | --- | --- | --- |
 | `fromBasketId` | `string (uuid)` | `required` |
-| `fromToken` | `string` | `required` |
+| `fromToken` | `string` | `required`, `min_len 1` |
 
 </details>
 

@@ -39,7 +39,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — logout
-   `auth.v1/logout` · status: declared · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15) · evidence: call-site · source-expression · `logout` · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15)
+   `auth.v1/logout` · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15) · Seen running in examples/auth/telemetry/traces.jsonl (1 trace). · evidence: call-site · source-expression · `logout` · [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34)
@@ -48,7 +48,21 @@ sequenceDiagram
    status: declared · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
 <a id="step-s4"></a>
 4. **auth.auth** → **bus** — SessionEnded
-   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · status: declared · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: call-site · source-expression · `SessionEnded` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
+   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · Seen running in examples/auth/telemetry/traces.jsonl (1 trace). · evidence: function · source-function · `examples/auth/internal/session/application/logout:UseCase.Handle` · [`examples/auth/internal/session/application/logout/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L29) · evidence: call-site · source-expression · `SessionEnded` · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
 <a id="step-response-s1"></a>
 5. **auth.auth** → **client** — 204
-   status: declared · Synthesized from the proven synchronous HTTP handler return.
+   Synthesized from the proven synchronous HTTP handler return.
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `68ff2d8dd5a0d19ece14c983ae2b752d`
+- **Recorded:** 2026-09-12T10:21:56.486357Z
+- **Duration:** 4.367 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-logout.md#step-s1) | `DELETE /v1/sessions/current` | 4.367 ms | `http.request.method=DELETE` `http.response.status_code=204` `http.route=/v1/sessions/current` `server.address=localhost` `server.port=8080` |
+| [s4](auth-logout.md#step-s4) | `publish auth.SessionEnded` | 0.002 ms | `event.name=auth.SessionEnded` `messaging.destination.name=auth_session` `messaging.operation.type=publish` `messaging.system=outbox` |

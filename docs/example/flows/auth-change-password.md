@@ -40,7 +40,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — changePassword
-   `auth.v1/changePassword` · status: declared · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · evidence: call-site · source-expression · `changePassword` · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20)
+   `auth.v1/changePassword` · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20) · Seen running in examples/auth/telemetry/traces.jsonl (2 traces). · evidence: call-site · source-expression · `changePassword` · [`examples/auth/internal/user/infrastructure/http/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/change_password.go#L20)
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `ByToken` · evidence: function · source-function · `examples/auth/internal/session/application/validate:UseCase.Handle` · [`examples/auth/internal/session/application/validate/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L28) · evidence: binding · domain-port-convention · `session.Repository` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33) · evidence: call-site · source-expression · `ByToken` · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)
@@ -52,7 +52,30 @@ sequenceDiagram
    status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · store: [auth.auth.pg](../auth/auth/stores/pg.md) · `Save` · evidence: function · source-function · `examples/auth/internal/user/application/change_password:UseCase.Handle` · [`examples/auth/internal/user/application/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L31) · evidence: binding · domain-port-convention · `user.Repository` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · evidence: call-site · source-expression · `Save` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
 <a id="step-s5"></a>
 5. **auth.auth** → **bus** — PasswordChanged
-   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · status: declared · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · evidence: function · source-function · `examples/auth/internal/user/application/change_password:UseCase.Handle` · [`examples/auth/internal/user/application/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L31) · evidence: call-site · source-expression · `PasswordChanged` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
+   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48) · Seen running in examples/auth/telemetry/traces.jsonl (2 traces). · evidence: function · source-function · `examples/auth/internal/user/application/change_password:UseCase.Handle` · [`examples/auth/internal/user/application/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L31) · evidence: call-site · source-expression · `PasswordChanged` · [`examples/auth/internal/user/application/change_password/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/change_password/usecase.go#L48)
 <a id="step-response-s1"></a>
 6. **auth.auth** → **client** — 204
-   status: declared · Synthesized from the proven synchronous HTTP handler return.
+   Synthesized from the proven synchronous HTTP handler return.
+
+## Recordings
+
+Traces this flow was seen running in, kept as examples: which steps ran, how long each took, and the names the spans carried.
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `c101e38bee6bdba8a160e8eb5fe5543d`
+- **Recorded:** 2026-09-12T10:21:50.40362Z
+- **Duration:** 39.81 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-change-password.md#step-s1) | `POST /v1/users/me/password` | 39.81 ms | `http.request.method=POST` `http.response.status_code=204` `http.route=/v1/users/me/password` `server.address=localhost` `server.port=8080` |
+| [s5](auth-change-password.md#step-s5) | `publish auth.PasswordChanged` | 0.002 ms | `event.name=auth.PasswordChanged` `messaging.destination.name=auth_user` `messaging.operation.type=publish` `messaging.system=outbox` |
+
+- **Recording:** [`examples/auth/telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/telemetry/traces.jsonl)
+- **Trace:** `1d60db11c6985c62345fb483a01a815b`
+- **Recorded:** 2026-09-12T10:21:56.581603Z
+- **Duration:** 18.879 ms
+
+| Step | Span | Duration | Attributes |
+| --- | --- | --- | --- |
+| [s1](auth-change-password.md#step-s1) | `POST /v1/users/me/password` | 18.879 ms | `http.request.method=POST` `http.response.status_code=401` `http.route=/v1/users/me/password` `server.address=localhost` `server.port=8080` |

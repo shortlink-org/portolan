@@ -42,7 +42,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.oms** — CancelOrder → CancelOrderResponse
-   `shop.v1.OrderService/CancelOrder` · status: declared · [`examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs#L41)
+   `shop.v1.OrderService/CancelOrder` · [`examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs#L41) · Seen running in examples/shop/oms/telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
 2. **shop.oms** → **oms-pg** — by_id
    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L35)
@@ -76,4 +76,5 @@ Traces this flow was seen running in, kept as examples: which steps ran, how lon
 
 | Step | Span | Duration | Attributes |
 | --- | --- | --- | --- |
+| [s1](oms-cancel-order.md#step-s1) | `shop.v1.OrderService/CancelOrder` | 6.374 ms | `rpc.method=CancelOrder` `rpc.service=shop.v1.OrderService` `rpc.system=grpc` |
 | [s4](oms-cancel-order.md#step-s4) | `publish oms.OrderCancelled` | 0.285 ms | `event.name=oms.OrderCancelled` `messaging.destination.name=shop.oms.order` `messaging.operation.type=publish` `messaging.system=outbox` |

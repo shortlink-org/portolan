@@ -117,6 +117,26 @@
     "vendor/repos/**/portolan/*.json",
     "examples/argocd/argocd.apps.json"
   ],
+  "problemRules": [
+    {
+      "id": "deployment-unclaimed",
+      "enabled": false,
+      "reason": "The GitOps example deploys platform charts (project platform) and Argo CD's own app-of-apps next to the estate's services; those are infrastructure, not services nobody has read. deployment-unclaimed-service keeps the rule for everything else."
+    },
+    {
+      "id": "deployment-unclaimed-service",
+      "over": "deployment",
+      "severity": "warning",
+      "title": "Deployed from nowhere the catalog knows",
+      "note": "the deployer runs this from a repository and directory no service in the catalog lives at",
+      "description": "deployment-unclaimed without the platform: an Application outside Argo CD's `platform` project and outside its own `argocd` namespace that matches no service is a service nobody has read yet, or a path spelled differently.",
+      "action": "Read the service into the catalog, or align its path with where its manifests live.",
+      "reason": "The estate's platform charts and the app-of-apps are not services; every other unclaimed Application still is news.",
+      "when": "!deployment.claimed && deployment.project != 'platform' && deployment.namespace != 'argocd'",
+      "message": "deployment.name + ' runs in ' + deployment.runsIn + (deployment.namespace != '' ? ', namespace ' + deployment.namespace : '') + '; ' + (deployment.labelled != '' ? 'its labels name ' + deployment.labelled + ', which is no service of the estate' : 'if it is a service of the estate, its `path` should be a directory the Application\\'s path is under, or the Application should carry app.kubernetes.io/part-of and app.kubernetes.io/name') + '. ' + deployment.url",
+      "peer": "deployment.from"
+    }
+  ],
   "plugins": [
     {
       "name": "work-items",
