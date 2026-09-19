@@ -89,7 +89,7 @@
   },
   "optionalDependencies": {
     "@ai-sdk/openai-compatible": "3.0.52",
-    "@ai-sdk/react": "4.0.109",
+    "@ai-sdk/react": "4.0.110",
     "@asyncapi/react-component": "^3.2.1",
     "@blocknote/core": "^0.54.2",
     "@blocknote/diagram-block": "^0.54.2",
