@@ -88,7 +88,7 @@
     "yaml": "^2.9.1"
   },
   "optionalDependencies": {
-    "@ai-sdk/openai-compatible": "3.0.52",
+    "@ai-sdk/openai-compatible": "3.0.53",
     "@ai-sdk/react": "4.0.109",
     "@asyncapi/react-component": "^3.2.1",
     "@blocknote/core": "^0.54.2",
