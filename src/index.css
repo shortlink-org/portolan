@@ -2218,4 +2218,12 @@ h3 {
     border-radius: 0;
     box-shadow: none;
   }
+  /* What the page around a drawing says - its title, its level - is gone
+     once the drawing has the whole screen; this carries it only then. */
+  .fullscreen-only {
+    display: none;
+  }
+  [data-fullscreen]:fullscreen .fullscreen-only {
+    display: flex;
+  }
 }

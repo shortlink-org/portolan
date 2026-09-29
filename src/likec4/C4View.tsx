@@ -12,6 +12,7 @@ import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { FullscreenButton } from "../components/FullscreenButton";
 import { LegendButton, LegendPanel, useLegend } from "./ViewLegend";
 import { viewLegend } from "./legend";
+import { ViewTitle } from "./ViewTitle";
 
 const layouts = new Map<string, Promise<LikeC4Model.Layouted>>();
 function containerModel(viewId: string) {
@@ -102,6 +103,7 @@ export function C4View({
         <FullscreenButton />
       </div>
       {legend && key.open ? <LegendPanel id={key.id} legend={legend} onClose={key.close} /> : null}
+      <ViewTitle viewId={viewId} />
       {focus ? <div className="absolute right-3 bottom-3 flex max-w-[calc(100%-4.5rem)] items-center gap-2 rounded-control border border-line bg-canvas px-3 py-2 shadow-xs">
         <span className="truncate text-sm">Focus: {selection?.id}</span>
         <button type="button" className="tbtn shrink-0" onClick={onCanvas}>Show all</button>

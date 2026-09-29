@@ -28,6 +28,18 @@ export const C4_LEVEL: Record<C4Level, { name: string; note: string }> = {
   },
 };
 
+/**
+ * The level a generated view is drawn at, read off its id: the estate and the
+ * context landscape at 1, containers and a service's neighbours at 2, the
+ * inside of a service at 3. A deployment view is not a C4 level of its own.
+ */
+export function viewLevel(viewId: string): C4Level | "deployment" {
+  if (viewId.startsWith("deploy_")) return "deployment";
+  if (viewId.startsWith("landscape")) return 1;
+  if (viewId.startsWith("svc_") && viewId.endsWith("_inside")) return 3;
+  return 2;
+}
+
 /** Says which level a canvas is drawn at, for a page that only draws one. */
 export function LevelBadge({ level }: { level: C4Level }) {
   return (
