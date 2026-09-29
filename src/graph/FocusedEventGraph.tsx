@@ -14,15 +14,32 @@ import { nodeTypes } from "./nodes";
 import { useElkFlow } from "./useElkFlow";
 import type { FlowSpec } from "./useElkFlow";
 import { ViewportSeg } from "./GraphToolbar";
-import { EVENT_W, NODE_H } from "./theme";
+import { EVENT_W, NODE_H, NODE_W } from "./theme";
 import { useSelectionStore } from "../selection/store";
+import { useNavigate } from "react-router";
+import { triggersOf } from "../lib/triggers";
+import { commandAnchor } from "../flow/command-info";
+import { AGGREGATE_ANCHOR, paths } from "../routes";
+
+/**
+ * A node wide enough for its 12px mono label: a state change is two state
+ * names and an arrow, and cut to "confirmed → canc…" it no longer says where
+ * the root goes. Capped, so one long name cannot push the event off the page.
+ */
+function fitLabel(label: string): number {
+  return Math.min(280, Math.max(NODE_W, Math.ceil(label.length * 7.3) + 62));
+}
 
 /** Air above and below the picture. Anything more is a canvas with a hole in it. */
 const PAD = 28;
 /** elk's own gap between two nodes in the same layer. */
 const ROW_GAP = 34;
 
-/** producer -> event -> consumers, computed at runtime from the catalog. */
+/**
+ * What publishes the event -> the event -> who consumes it, computed at runtime
+ * from the catalog. The left column is the operations and lifecycle moves that
+ * say they emit it, or the publishing service when none do.
+ */
 export function FocusedEventGraph({
   event,
   height,
@@ -41,20 +58,67 @@ export function FocusedEventGraph({
     ? (index.serviceContext.get(owner.service.id)?.id ?? null)
     : null;
 
+  // What the service does to publish it, when its aggregates say: the
+  // operations that emit it and the lifecycle moves that announce it. They
+  // take the publisher's place on the left - each one is the publisher, named
+  // by the thing it runs - and carry its context colour on their tiles.
+  const triggers = useMemo(
+    () => (owner ? triggersOf(owner.service, event.id) : []),
+    [owner, event.id],
+  );
+
   const spec: FlowSpec = useMemo(() => {
     const eventNodeId = `event:${event.id}`;
+    const context = producerContext ?? "";
+    const aggregateAt = (slug: string) =>
+      owner ? paths.aggregate(context, owner.service.slug, slug) : "";
+    const left = triggers.length
+      ? triggers.map((trigger) =>
+          trigger.kind === "operation"
+            ? {
+                id: `op:${trigger.aggregate.id}/${trigger.operation.id}`,
+                width: fitLabel(trigger.operation.id),
+                data: {
+                  label: trigger.operation.id,
+                  context: producerContext,
+                  ghost: false,
+                  kind: "command" as const,
+                  role: trigger.operation.kind,
+                  href: `${aggregateAt(trigger.aggregate.slug)}#${
+                    trigger.operation.kind === "command"
+                      ? encodeURIComponent(commandAnchor(trigger.operation.id))
+                      : AGGREGATE_ANCHOR.queries
+                  }`,
+                },
+              }
+            : {
+                id: `move:${trigger.aggregate.id}/${trigger.transition.on}/${trigger.transition.from}/${trigger.transition.to}`,
+                width: fitLabel(`${trigger.transition.from} → ${trigger.transition.to}`),
+                data: {
+                  label: `${trigger.transition.from} → ${trigger.transition.to}`,
+                  context: producerContext,
+                  ghost: false,
+                  kind: "move" as const,
+                  role: `${trigger.transition.on} · state change`,
+                  href: `${aggregateAt(trigger.aggregate.slug)}#${AGGREGATE_ANCHOR.lifecycle}`,
+                },
+              },
+        )
+      : [
+          {
+            id: producerId,
+            data: {
+              label: producerId,
+              context: producerContext,
+              ghost: !owner,
+              kind: "producer" as const,
+              role: "publisher",
+            },
+          },
+        ];
     return {
       nodes: [
-        {
-          id: producerId,
-          data: {
-            label: producerId,
-            context: producerContext,
-            ghost: !owner,
-            kind: "producer" as const,
-            role: "publisher",
-          },
-        },
+        ...left,
         {
           id: eventNodeId,
           width: EVENT_W,
@@ -78,13 +142,20 @@ export function FocusedEventGraph({
         })),
       ],
       edges: [
-        {
-          id: `publishes:${event.id}`,
-          source: producerId,
+        // Every arrow into the event is read from the publisher's own code, so
+        // they share one status; the word on the line says which fact it is.
+        ...left.map((node) => ({
+          id: `publishes:${node.id}`,
+          source: node.id,
           target: eventNodeId,
-          label: "publishes",
+          label:
+            node.data.kind === "command"
+              ? "emits"
+              : node.data.kind === "move"
+                ? "announces"
+                : "publishes",
           status: "verified" as const,
-        },
+        })),
         ...event.consumers.map((consumer) => ({
           id: `consumes:${consumer.service}`,
           source: eventNodeId,
@@ -99,8 +170,10 @@ export function FocusedEventGraph({
       ],
       direction: "RIGHT" as const,
       layerSpacing: 96,
+      // Commands before state changes, as the section above lists them.
+      considerModelOrder: true,
     };
-  }, [event, owner, producerContext, producerId]);
+  }, [event, owner, producerContext, producerId, triggers]);
 
   const { nodes, edges, ready } = useElkFlow(spec);
 
@@ -121,19 +194,27 @@ export function FocusedEventGraph({
     );
     return Math.round(bottom - top);
   }, [nodes]);
-  const rows = Math.max(1, event.consumers.length);
+  const rows = Math.max(1, event.consumers.length, triggers.length);
   const content = measured ?? rows * NODE_H + (rows - 1) * ROW_GAP;
   const canvasHeight = height ?? Math.min(420, content + PAD * 2);
 
   // The middle node stands for the event itself; the others are services. Both
   // are catalog ids, so a click here reads the same as a click anywhere else.
+  // A command or a state change is a line on its aggregate's page rather than
+  // an entity of its own, so a click on one goes there instead of selecting.
+  const navigate = useNavigate();
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: { id: string }) =>
+    (_: React.MouseEvent, node: { id: string; data?: { href?: string } }) => {
+      if (node.data?.href) {
+        void navigate(node.data.href);
+        return;
+      }
       select(
         node.id.startsWith("event:") ? node.id.slice(6) : node.id,
         "diagram",
-      ),
-    [select],
+      );
+    },
+    [select, navigate],
   );
 
   /**

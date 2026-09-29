@@ -55,6 +55,8 @@ import { eventChain } from "../flow/chain";
 import { ChainList } from "../flow/ChainList";
 import { commandAnchor } from "../flow/command-info";
 import { triggersOf } from "../lib/triggers";
+import { methodId } from "../lib/api";
+import { KindIcon } from "../components/kind";
 
 /**
  * One row of the schema table: a field of the version shown, or a field the
@@ -525,6 +527,8 @@ export function EventPage({
   }
 
   const triggers = triggersOf(service, event.id);
+  const operationTriggers = triggers.flatMap((t) => (t.kind === "operation" ? [t] : []));
+  const moveTriggers = triggers.flatMap((t) => (t.kind === "transition" ? [t] : []));
   const outbox = outboxOfService(index, service.id);
   const outboxTo = outbox ? tablePath(outbox.table.id) : null;
   const schemaModule = selected.schema
@@ -922,64 +926,78 @@ export function EventPage({
           {/* --- Triggered by ------------------------------------------ */}
           {/* The producing side, read from the aggregates: the operations
               whose handlers can hand this event back, and the lifecycle
-              moves that announce it. The consumers below are the other end. */}
+              moves that announce it. Two kinds of fact, so two labelled
+              groups - a command is what a caller runs, a state change is what
+              it does to the root - and nothing here claims which command
+              makes which move: the catalog does not say. */}
           <section id={EVENT_ANCHOR.triggers} className="mt-section max-w-table">
             <SectionTitle anchor={EVENT_ANCHOR.triggers}>Triggered by</SectionTitle>
             {triggers.length === 0 ? (
               <Empty>no operation or lifecycle move of {service.id} says it publishes this event</Empty>
             ) : (
-              <div className="flex flex-col gap-1.5" data-nav-list>
-                {triggers.map((trigger) => {
-                  const at = paths.aggregate(context.id, service.slug, trigger.aggregate.slug);
-                  const elsewhere = trigger.aggregate.id !== aggregate.id;
-                  if (trigger.kind === "operation") {
-                    const { operation } = trigger;
-                    const hash =
-                      operation.kind === "command"
-                        ? encodeURIComponent(commandAnchor(operation.id))
-                        : AGGREGATE_ANCHOR.queries;
-                    return (
-                      <div key={`op:${trigger.aggregate.id}/${operation.id}`} className="row items-baseline gap-2">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-y-3" data-nav-list>
+                {operationTriggers.length ? (
+                  <>
+                    <dt className="label pt-0.5">{operationTriggers.every((t) => t.operation.kind === "command") ? "Commands" : "Operations"}</dt>
+                    <dd className="flex min-w-0 flex-col gap-1.5">
+                      {operationTriggers.map(({ aggregate: owner, operation }) => {
+                        const at = paths.aggregate(context.id, service.slug, owner.slug);
+                        const hash =
+                          operation.kind === "command"
+                            ? encodeURIComponent(commandAnchor(operation.id))
+                            : AGGREGATE_ANCHOR.queries;
+                        return (
+                          <div key={`${owner.id}/${operation.id}`} className="min-w-0">
+                            <span className="flex flex-wrap items-center gap-x-2">
+                              <KindIcon kind={operation.kind} />
+                              <Link
+                                to={`${at}#${hash}`}
+                                data-nav-item
+                                className="mono rounded-control text-accent"
+                              >
+                                {operation.id}
+                              </Link>
+                              {owner.id !== aggregate.id ? (
+                                <span className="mono text-muted">on {owner.name}</span>
+                              ) : null}
+                              {operation.exposedBy?.length ? (
+                                <span className="mono min-w-0 truncate text-muted">
+                                  via {operation.exposedBy.map((method) => methodId(service, method)).join(", ")}
+                                </span>
+                              ) : null}
+                            </span>
+                            {operation.doc ? (
+                              <p className="mt-0.5 max-w-prose truncate pl-5 text-muted" title={operation.doc}>
+                                {operation.doc}
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </dd>
+                  </>
+                ) : null}
+                {moveTriggers.length ? (
+                  <>
+                    <dt className={`label pt-0.5 ${operationTriggers.length ? "mt-2 sm:mt-0" : ""}`}>State changes</dt>
+                    <dd className="flex flex-wrap gap-x-4 gap-y-1.5">
+                      {moveTriggers.map(({ aggregate: owner, transition }) => (
                         <Link
-                          to={`${at}#${hash}`}
+                          key={`${owner.id}/${transition.from}/${transition.to}/${transition.on}`}
+                          to={`${paths.aggregate(context.id, service.slug, owner.slug)}#${AGGREGATE_ANCHOR.lifecycle}`}
                           data-nav-item
-                          className="mono rounded-control text-accent"
+                          className="mono rounded-control text-muted hover:text-ink"
+                          title={`${owner.name}.${transition.on} moves the root from ${transition.from} to ${transition.to}`}
                         >
-                          {operation.id}
+                          <span className="text-accent">{transition.on}</span>{" "}
+                          {transition.from} → {transition.to}
+                          {owner.id !== aggregate.id ? ` on ${owner.name}` : ""}
                         </Link>
-                        <span className="mono text-muted">
-                          {operation.kind}
-                          {elsewhere ? ` on ${trigger.aggregate.name}` : ""}
-                        </span>
-                        {operation.doc ? (
-                          <span className="min-w-0 flex-1 truncate text-muted" title={operation.doc}>
-                            {operation.doc}
-                          </span>
-                        ) : null}
-                      </div>
-                    );
-                  }
-                  const { transition } = trigger;
-                  return (
-                    <div
-                      key={`move:${trigger.aggregate.id}/${transition.from}/${transition.to}/${transition.on}`}
-                      className="row items-baseline gap-2"
-                    >
-                      <Link
-                        to={`${at}#${AGGREGATE_ANCHOR.lifecycle}`}
-                        data-nav-item
-                        className="mono rounded-control text-accent"
-                      >
-                        {transition.on}
-                      </Link>
-                      <span className="mono text-muted">
-                        {transition.from} → {transition.to}
-                        {elsewhere ? ` on ${trigger.aggregate.name}` : ""}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                      ))}
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
             )}
           </section>
 

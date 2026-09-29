@@ -453,6 +453,17 @@
   .chip {
     @apply mono inline-flex items-center gap-1 rounded-control border px-1.5 py-px leading-4;
   }
+  /* An event named inline: the domain-event amber on its own faint wash, so a
+     row of them reads as "what comes out" beside the command that emits it.
+     The border stays so a linked chip can firm it on hover. */
+  .chip-event {
+    color: var(--kind-event);
+    background: color-mix(in srgb, var(--kind-event) 12%, transparent);
+    border-color: transparent;
+  }
+  a.chip-event:hover {
+    border-color: color-mix(in srgb, var(--kind-event) 55%, transparent);
+  }
   .chip-lg {
     @apply mono inline-flex items-center gap-1.5 rounded-control border px-2 py-0.5 leading-4;
   }

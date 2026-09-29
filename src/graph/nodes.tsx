@@ -1,14 +1,14 @@
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps, Node } from "@xyflow/react";
-import { Server } from "lucide-react";
-import { EventIcon } from "../components/ddd-icons";
+import { ArrowRightFromLine, Server } from "lucide-react";
+import { CommandIcon, EventIcon } from "../components/ddd-icons";
 import { contextVar } from "../lib/context-color";
 
 export type ServiceNodeData = {
   label: string;
   context: string | null;
   ghost: boolean;
-  kind: "service" | "event" | "producer" | "context";
+  kind: "service" | "event" | "producer" | "context" | "command" | "move";
   /**
    * What this node is to the graph it is in - "publisher", "consumer". The
    * kind says what an entity IS; the role says why it is on this canvas, and
@@ -19,6 +19,8 @@ export type ServiceNodeData = {
   sub?: string;
   /** Right-aligned tag - a context's classification, and nothing else so far. */
   tag?: string;
+  /** Where a click on the node goes, for a node that is not a catalog entity. */
+  href?: string;
 };
 
 export type PortolanNode = Node<ServiceNodeData, "portolan">;
@@ -29,6 +31,8 @@ const ROLE: Record<ServiceNodeData["kind"], string> = {
   event: "event",
   service: "service",
   context: "context",
+  command: "command",
+  move: "state change",
 };
 
 /**
@@ -53,7 +57,14 @@ export function PortolanNode({ data }: NodeProps<PortolanNode>) {
         // because blue is what --accent happened to be.
         "var(--kind-event)"
       : contextVar(data.context);
-  const Icon = data.kind === "event" ? EventIcon : Server;
+  const Icon =
+    data.kind === "event"
+      ? EventIcon
+      : data.kind === "command"
+        ? CommandIcon
+        : data.kind === "move"
+          ? ArrowRightFromLine
+          : Server;
   // A node the catalog does not know is not a publisher or a consumer - it is
   // a name someone wrote down, and the eyebrow is where that is said.
   const eyebrow = data.ghost
