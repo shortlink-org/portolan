@@ -36,7 +36,7 @@ describe("C4 legend", () => {
   });
 
   it("explains a folded arrow by its head and its grey as mixed evidence", () => {
-    const legend = legendFrom([], [{ color: "gray", head: "normal" }, { kind: "consumes", color: "verified", head: "onormal" }]);
+    const legend = legendFrom([], [{ color: "gray", head: "normal" }, { kind: "publishes_to", color: "verified", head: "onormal" }]);
     expect(legend.arrows.map((arrow) => [arrow.name, arrow.head])).toEqual([["Event", "onormal"], ["Call or use", "normal"]]);
     expect(legend.evidence.map((entry) => entry.status)).toEqual(["verified", "mixed"]);
   });

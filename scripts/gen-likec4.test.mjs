@@ -448,16 +448,16 @@ describe("the LikeC4 generator", () => {
     expect(model).toContain("technology 'Go · HTTP'");
     expect(model).toContain("technology 'postgres'");
     // Every relation says what kind of fact it is; a call carries its protocol.
-    expect(model).toContain("shop.oms -[calls]-> shop.cart 'getBasket' {\n    technology 'HTTP'");
+    expect(model).toContain("shop.oms -[calls]-> shop.cart 'calls getBasket' {\n    technology 'HTTP'");
     expect(model).toContain(
-      "shop.cart -[consumes]-> shop.oms 'BasketCheckedOut'",
+      "shop.cart -[publishes_to]-> shop.oms 'publishes BasketCheckedOut'",
     );
     // The hop through the broker, once per direction, with the step's status.
     expect(model).toContain(
-      "shop.cart -[bus]-> bus 'BasketCheckedOut' {\n    style { color verified",
+      "shop.cart -[bus]-> bus 'publishes BasketCheckedOut' {\n    style { color verified",
     );
     expect(model).toContain(
-      "bus -[bus]-> shop.oms 'BasketCheckedOut' {\n    style { color declared",
+      "bus -[bus]-> shop.oms 'delivers BasketCheckedOut' {\n    style { color declared",
     );
 
     // The estate's containers: contexts opened, stores and the bus named.
@@ -466,12 +466,12 @@ describe("the LikeC4 generator", () => {
     );
     // One edge per pair, counted, with the protocol and the best status.
     const pair =
-      "include shop.oms -> shop.cart where kind is calls with { title '1 call'  multiple true }";
+      "include shop.oms -> shop.cart where kind is calls with { multiple true }";
     expect(views).toContain(`view containers {\n    title 'Containers'`);
     expect(views.split(pair)).toHaveLength(4); // containers, containers_default, and ctx_shop
     // With the bus on the picture the direct consumer arrow is not drawn twice.
     expect(views).toContain("include *, shop._store_shop_cart_pg");
-    expect(views).toContain("exclude shop.cart -> shop.oms where kind is consumes");
+    expect(views).toContain("exclude shop.cart -> shop.oms where kind is publishes_to");
     expect(model).toContain("shop.cart -[owns]-> shop._store_shop_cart_pg 'owns'");
     expect(views).toContain("autoLayout LeftRight 100 70");
     expect(views).toContain("include shop.cart with { description '' }");
@@ -491,9 +491,73 @@ describe("the LikeC4 generator", () => {
         expect(view.nodes.find((node) => node.id === "shop.cart").children).toEqual([]);
         expect(view.nodes.find((node) => node.id === "shop._store_shop_cart_pg").parent).toBe("shop");
         expect(view.edges.filter((edge) => edge.source === "shop.oms" && edge.target === "shop.cart")).toHaveLength(2);
-        expect(view.edges.some((edge) => edge.kind === "consumes")).toBe(false);
+        expect(view.edges.some((edge) => edge.kind === "publishes_to")).toBe(false);
         expect(view.edges.filter((edge) => edge.kind === "bus")).toHaveLength(2);
       }
+    } finally { await engine.dispose(); }
+  });
+
+  it("labels every arrow by what it does, and a folded one by what crosses", async () => {
+    const service = (id, slug, extra) => ({
+      id, slug, name: slug, repo: "example/demo", path: slug, readme: "",
+      provides: [], consumes: [], aggregates: [], ...extra,
+    });
+    const { model, views, spec } = generate({
+      contexts: [
+        {
+          id: "shop", slug: "shop", name: "Shop", summary: "",
+          services: [service("shop.cart", "cart", {
+            consumes: [
+              { id: "ledger.v1/Charge", peer: "pay.ledger", status: "declared", source: "ledger.proto" },
+              { id: "ledger.v1/Refund", peer: "pay.ledger", status: "declared", source: "ledger.proto" },
+            ],
+          })],
+        },
+        {
+          id: "pay", slug: "pay", name: "Pay", summary: "",
+          services: [service("pay.ledger", "ledger", {
+            aggregates: [{
+              id: "pay.ledger.payment", slug: "payment", name: "Payment", root: "Payment",
+              entities: [{ id: "pay.ledger.payment.payment", slug: "payment", name: "Payment", fields: [{ name: "id", type: "string" }] }], valueObjects: [], operations: [],
+              events: [{
+                id: "pay.ledger.payment.PaymentCaptured", slug: "payment-captured", name: "PaymentCaptured",
+                versions: [{ version: "v1", doc: "", source: "payment.go:2", fields: [] }],
+                consumers: [{ service: "shop.cart", status: "declared" }],
+              }],
+            }],
+          })],
+        },
+      ],
+      flows: [{
+        id: "flow.mail", slug: "mail", name: "Mail", summary: "", source: "mail.go:1", owner: "pay",
+        participants: [
+          { id: "pay.ledger", kind: "service", context: "pay" },
+          { id: "mailq", kind: "broker", context: null },
+        ],
+        steps: [
+          { type: "step", id: "s1", from: "pay.ledger", to: "mailq", kind: "call", label: "send_receipt", status: "declared" },
+          { type: "step", id: "s2", from: "mailq", to: "pay.ledger", kind: "call", label: "send_receipt", status: "declared" },
+        ],
+      }],
+    });
+
+    // One relation reads the way its arrow points.
+    expect(model).toContain("shop.cart -[calls]-> pay.ledger 'calls Charge'");
+    expect(model).toContain("pay.ledger -[publishes_to]-> shop.cart 'publishes PaymentCaptured'");
+    // A job is sent onto the queue and delivered off it, and keeps a head.
+    expect(model).toContain("pay.ledger -[bus]-> mailq 'enqueues send_receipt' {\n    style { color declared  line dashed  head onormal }");
+    expect(model).toContain("mailq -[bus]-> pay.ledger 'delivers send_receipt' {\n    style { color declared  line dashed  head onormal }");
+    // Between two contexts, the fold says what crosses rather than `[...]`.
+    expect(views).toContain("include shop -> pay with { title 'calls 2 methods'  notes 'calls Charge\ncalls Refund' }");
+    expect(views).toContain("include pay -> shop with { title 'publishes PaymentCaptured'");
+
+    const engine = await LikeC4.fromSource(spec + model + views, { logger: false });
+    try {
+      const computed = await engine.computedModel();
+      const landscape = computed.view("landscape").$view;
+      const label = (from, to) => landscape.edges.find((edge) => edge.source === from && edge.target === to)?.label;
+      expect(label("shop", "pay")).toBe("calls 2 methods");
+      expect(label("pay", "shop")).toBe("publishes PaymentCaptured");
     } finally { await engine.dispose(); }
   });
 

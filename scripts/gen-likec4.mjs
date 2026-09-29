@@ -64,6 +64,13 @@ const includeTargets = (targets) =>
 const q = (text) =>
   `'${String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
+// An arrow's label says what the relation does, in the direction it points:
+// `publishes OrderPlaced`, not a bare `OrderPlaced` a reader has to turn round.
+// A label that already opens with a verb — a flow step's `enqueue send_email`
+// — keeps its own; a bare name is given the relation's.
+const withVerb = (verb, name) => (/^[a-z]+ /.test(name) ? name : `${verb} ${name}`);
+const counted = (verb, count, noun) => `${verb} ${count} ${noun}${count === 1 ? "" : "s"}`;
+
 // The protocol a call travels on, read off the document that declares it.
 // Mirrors sourceDocKind in src/lib/source-doc.ts, plus the generated stub a
 // Go client is read from when no proto is vendored. Empty when the source
@@ -128,7 +135,7 @@ const KIND_HEAD = {
 // facts it draws: a level-2 picture with the bus on it leaves out the arrows
 // that skip the bus, and nothing else has to change for it to do so.
 const RELATION_KINDS = [
-  "consumes",
+  "publishes_to",
   "calls",
   "depends_on",
   "bus",
@@ -345,6 +352,10 @@ model.push("");
 
 // relations: event consumption, then rpc calls
 const relations = [];
+// What each relation does, kept beside its text so a picture that folds many
+// of them into one arrow can still say what the arrow carries.
+const crossings = []; // { from, to, verb, name } in LikeC4 references
+const crossing = (from, to, verb, name) => crossings.push({ from, to, verb, name });
 for (const context of catalog.contexts) {
   for (const service of context.services) {
     for (const aggregate of service.aggregates) {
@@ -354,8 +365,9 @@ for (const context of catalog.contexts) {
           // an arrow between two boxes; the app's graph keeps it on the
           // event for the same reason.
           if (consumer.service === service.id) continue;
+          crossing(fqn(service.id), participantRef(consumer.service), "publishes", event.name);
           relations.push(
-            `  ${fqn(service.id)} -[consumes]-> ${participantRef(consumer.service)} ${q(event.name)} {\n` +
+            `  ${fqn(service.id)} -[publishes_to]-> ${participantRef(consumer.service)} ${q(withVerb("publishes", event.name))} {\n` +
               `    style { color ${consumer.status}  line ${STATUS_LINE[consumer.status]}  head onormal }\n` +
               `  }`,
           );
@@ -367,8 +379,9 @@ for (const context of catalog.contexts) {
       if (!peer) continue;
       const method = call.id.split("/").pop() ?? call.id;
       const protocol = protocolOf(call.source);
+      crossing(fqn(service.id), participantRef(peer), "calls", method);
       relations.push(
-        `  ${fqn(service.id)} -[calls]-> ${participantRef(peer)} ${q(method)} {\n` +
+        `  ${fqn(service.id)} -[calls]-> ${participantRef(peer)} ${q(withVerb("calls", method))} {\n` +
           (protocol ? `    technology ${q(protocol)}\n` : "") +
           `    description ${q(`${call.id} · ${call.status}${call.source ? ` · ${call.source}` : ""}`)}\n` +
           `    style { color ${call.status}  line ${STATUS_LINE[call.status]}  head normal }\n` +
@@ -377,6 +390,7 @@ for (const context of catalog.contexts) {
     }
     for (const dependency of service.dependsOn ?? []) {
       if (!serviceIds.has(dependency)) continue;
+      crossing(fqn(service.id), fqn(dependency), "depends on", dependency);
       relations.push(
         `  ${fqn(service.id)} -[depends_on]-> ${fqn(dependency)} 'depends on' {\n` +
           `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
@@ -391,6 +405,7 @@ for (const context of catalog.contexts) {
     for (const storeId of service.stores ?? []) {
       const store = storeById.get(storeId);
       if (!store || store.owner === service.id) continue;
+      crossing(fqn(service.id), fqn(store.id), "reads", store.name || store.id);
       relations.push(
         `  ${fqn(service.id)} -[reads]-> ${fqn(store.id)} 'reads' {\n` +
           `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
@@ -433,6 +448,7 @@ for (const store of catalog.stores ?? []) {
   }
 }
 for (const edge of persists.values()) {
+  for (const name of edge.labels) crossing(fqn(edge.aggregate), fqn(edge.store), "persists", name);
   const label =
     edge.labels.length > 3
       ? `${edge.labels.length} persisted shapes`
@@ -456,6 +472,18 @@ const brokerIds = new Set(
     .map(([id]) => id),
 );
 const busEdges = new Map(); // "from|to" -> { from, to, kind, labels:Set, status }
+// A hop onto a broker is sent — an event published, a job enqueued — and a hop
+// off it is delivered. A job is a message like an event is, so it takes the
+// hollow head too: a sequence diagram's headless in-process call would leave
+// the queue's arrow without a direction.
+const busHead = (edge) => (edge.kind === "rpc" ? "normal" : "onormal");
+function busLabel(edge) {
+  const names = [...edge.labels].sort();
+  const onto = brokerIds.has(edge.to);
+  const verb = !onto ? "delivers" : edge.kind === "event" ? "publishes" : "enqueues";
+  const noun = edge.kind === "event" ? "event" : "job";
+  return names.length === 1 ? withVerb(verb, names[0]) : counted(verb, names.length, noun);
+}
 for (const flow of catalog.flows) {
   walkFlowSteps(flow.steps, (step) => {
     if (step.kind === "response") return;
@@ -475,12 +503,9 @@ for (const flow of catalog.flows) {
   });
 }
 for (const edge of busEdges.values()) {
-  const names = [...edge.labels].sort();
-  const noun = edge.kind === "event" ? "events" : "calls";
-  const label = names.length === 1 ? names[0] : `${names.length} ${noun}`;
   relations.push(
-    `  ${participantRef(edge.from)} -[bus]-> ${participantRef(edge.to)} ${q(label)} {\n` +
-      `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head ${KIND_HEAD[edge.kind]} }\n` +
+    `  ${participantRef(edge.from)} -[bus]-> ${participantRef(edge.to)} ${q(busLabel(edge))} {\n` +
+      `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head ${busHead(edge)} }\n` +
       `  }`,
   );
 }
@@ -535,7 +560,8 @@ for (const flow of catalog.flows) {
 for (const edge of actorEdges.values()) {
   if (edge.status !== "verified" && calledFromInside.has(edge.to)) continue;
   const names = [...edge.flows];
-  const label = names.length === 1 ? names[0] : `${names.length} flows`;
+  for (const name of names) crossing(participantRef(edge.from), participantRef(edge.to), "starts", name);
+  const label = names.length === 1 ? withVerb("starts", names[0]) : counted("starts", names.length, "flow");
   relations.push(
     `  ${participantRef(edge.from)} -[uses]-> ${participantRef(edge.to)} ${q(label)} {\n` +
       `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head normal }\n` +
@@ -584,9 +610,10 @@ function pairEdge(pair) {
   // appearance to a declared gRPC call or to an event between the same nodes.
   const target = `${participantRef(pair.from)} -> ${participantRef(pair.to)} where kind is calls`;
   if (pair.statuses.size > 1 || pair.protocols.size > 1) {
-    return `include ${target} with { title '1 call'  multiple true }`;
+    // Drawn one relation per edge, each under its own `calls <method>`.
+    return `include ${target} with { multiple true }`;
   }
-  const title = `${pair.methods.length} ${pair.methods.length === 1 ? "call" : "calls"}`;
+  const title = pair.methods.length === 1 ? withVerb("calls", pair.methods[0]) : counted("calls", pair.methods.length, "method");
   const technology = [...pair.protocols].sort().join(" · ");
   const props = [
     `title ${q(title)}`,
@@ -637,7 +664,7 @@ function containerPredicates(pairs, carried, indent) {
     ...pairs.map((pair) => `${indent}${pairEdge(pair)}`),
     ...carried.map(
       ([from, to]) =>
-        `${indent}exclude ${participantRef(from)} -> ${participantRef(to)} where kind is consumes`,
+        `${indent}exclude ${participantRef(from)} -> ${participantRef(to)} where kind is publishes_to`,
     ),
     `${indent}autoLayout LeftRight 100 70`,
     `${indent}style * { size sm  textSize xl }`,
@@ -657,9 +684,7 @@ function containerCards(services, indent = "    ") {
 function transportLabels(services, roots, indent = "    ") {
   const visible = new Set([...services.map((service) => service.id), ...roots]);
   return [...busEdges.values()].filter((edge) => visible.has(edge.from) && visible.has(edge.to)).map((edge) => {
-    const count = edge.labels.size;
-    const noun = edge.kind === "event" ? "event" : "call";
-    return `${indent}include ${participantRef(edge.from)} -> ${participantRef(edge.to)} where kind is bus with { title ${q(`${count} ${noun}${count === 1 ? "" : "s"}`)}  notes ${q([...edge.labels].sort().join("\n"))} }`;
+    return `${indent}include ${participantRef(edge.from)} -> ${participantRef(edge.to)} where kind is bus with { title ${q(busLabel(edge))}  notes ${q([...edge.labels].sort().join("\n"))} }`;
   });
 }
 // Rank constraints align only local queues, without claiming that they are
@@ -846,6 +871,56 @@ const OUTSIDE = new Set(["actor", "external", "unknown"]);
 const outside = [...rootParticipants]
   .filter(([, meta]) => OUTSIDE.has(meta.kind))
   .map(([id]) => safeId(id));
+// LikeC4 folds every relation between two top-level boxes into one arrow and,
+// once there is more than one, labels it `[...]`. The fold is labelled here
+// instead: what crosses, counted by what it does, and each fact in the notes.
+const CROSSING_NOUNS = [
+  ["calls", "method"],
+  ["publishes", "event"],
+  ["starts", "flow"],
+  ["reads", "store"],
+  ["persists", "shape"],
+  ["depends on", "service"],
+];
+/**
+ * `include from -> to with { title … }` lines for folded arrows. `endpoint`
+ * maps a relation's end to the box that draws it on this picture, or to
+ * nothing when the picture does not hold it.
+ */
+function foldLabels(endpoint, indent = "    ") {
+  const pairs = new Map(); // "from|to" -> { from, to, byVerb: Map<verb, Set<name>> }
+  for (const { from: source, to: target, verb, name } of crossings) {
+    const [from, to] = [endpoint(source), endpoint(target)];
+    if (!from || !to || from === to) continue;
+    const key = `${from}|${to}`;
+    const pair = pairs.get(key) ?? { from, to, byVerb: new Map() };
+    const names = pair.byVerb.get(verb) ?? new Set();
+    names.add(name);
+    pair.byVerb.set(verb, names);
+    pairs.set(key, pair);
+  }
+  return [...pairs.values()].map((pair) => {
+    const parts = CROSSING_NOUNS.filter(([verb]) => pair.byVerb.has(verb)).map(([verb, noun]) => {
+      const names = [...pair.byVerb.get(verb)].sort();
+      return { verb, names, title: names.length === 1 ? withVerb(verb, names[0]) : counted(verb, names.length, noun) };
+    });
+    const title = parts.map((part) => part.title).join(" · ");
+    const facts = parts.flatMap((part) => part.names.map((name) => withVerb(part.verb, name)));
+    // One fact is its own title; the notes are for the ones a count stands for.
+    const notes = facts.length > 1 ? `  notes ${q(facts.join("\n"))}` : "";
+    return `${indent}include ${pair.from} -> ${pair.to} with { title ${q(title)}${notes} }`;
+  });
+}
+
+/** A top-level box stands for everything nested in it. */
+function landscapeLabels(roots, indent = "    ") {
+  const visible = new Set(roots);
+  return foldLabels((ref) => {
+    const root = ref.split(".")[0];
+    return visible.has(root) ? root : null;
+  }, indent);
+}
+
 views.push(`  view ${LANDSCAPE_VIEW} {`);
 views.push("    title 'Estate'");
 views.push(
@@ -858,6 +933,7 @@ views.push(
 views.push(
   `    include ${includeTargets([...catalog.contexts.map((c) => safeId(c.id)), ...outside])}`,
 );
+views.push(...landscapeLabels([...catalog.contexts.map((c) => safeId(c.id)), ...outside]));
 views.push("  }");
 views.push("");
 
@@ -973,6 +1049,7 @@ for (const profile of profiles) {
   views.push(
     `    include ${includeTargets([...profileContexts.map((context) => safeId(context.id)), ...profileOutside])}`,
   );
+  views.push(...landscapeLabels([...profileContexts.map((context) => safeId(context.id)), ...profileOutside]));
   views.push("  }");
   views.push("");
 
@@ -1196,6 +1273,9 @@ if (environments.length > 0) {
     views.push(`  deployment view ${deploymentViewId(env)} {`);
     views.push(`    title ${q(`${env} — deployed`)}`);
     views.push(`    include ${[...framesOfEnvironment.get(env)].join(", ")}`);
+    // No fold labels here: LikeC4 1.59 parses `include a -> b with { … }` in
+    // a deployment view and then ignores it, so folded calls between two
+    // instances still read `[...]`.
     views.push("  }");
   }
   for (const service of allServices) {

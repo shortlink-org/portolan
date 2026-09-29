@@ -49,7 +49,7 @@ specification {
     style { shape rectangle  opacity 15%  color muted }
   }
 
-  relationship consumes
+  relationship publishes_to
   relationship calls
   relationship depends_on
   relationship bus

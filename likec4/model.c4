@@ -271,7 +271,7 @@ payment was captured, and what that means for a parcel is decided here.'
     }
   }
 
-  auth.auth -[calls]-> risk 'Assess' {
+  auth.auth -[calls]-> risk 'calls Assess' {
     technology 'gRPC'
     description 'risk.v1.RiskService/Assess · declared · examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go'
     style { color declared  line dashed  head normal }
@@ -279,79 +279,79 @@ payment was captured, and what that means for a parcel is decided here.'
   auth.auth -[owns]-> auth._store_auth_auth_pg 'owns' {
     style { color muted  line solid  head none }
   }
-  storefront.bff -[calls]-> auth.auth 'validateSession' {
+  storefront.bff -[calls]-> auth.auth 'calls validateSession' {
     technology 'HTTP'
     description 'auth.v1/validateSession · declared · examples/bff/src/infrastructure/auth/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'addItem' {
+  storefront.bff -[calls]-> shop.cart 'calls addItem' {
     technology 'HTTP'
     description 'cart.v1/addItem · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'checkout' {
+  storefront.bff -[calls]-> shop.cart 'calls checkout' {
     technology 'HTTP'
     description 'cart.v1/checkout · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'getBasket' {
+  storefront.bff -[calls]-> shop.cart 'calls getBasket' {
     technology 'HTTP'
     description 'cart.v1/getBasket · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.cart 'removeItem' {
+  storefront.bff -[calls]-> shop.cart 'calls removeItem' {
     technology 'HTTP'
     description 'cart.v1/removeItem · declared · examples/bff/src/infrastructure/cart/gen/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> delivery.core 'GetShipment' {
+  storefront.bff -[calls]-> delivery.core 'calls GetShipment' {
     technology 'gRPC'
     description 'delivery.v1.Delivery/GetShipment · declared · examples/bff/src/infrastructure/delivery/proto/delivery/v1/delivery.proto'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.oms 'CancelOrder' {
+  storefront.bff -[calls]-> shop.oms 'calls CancelOrder' {
     technology 'gRPC'
     description 'shop.v1.OrderService/CancelOrder · declared · examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto'
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -[calls]-> shop.oms 'GetOrder' {
+  storefront.bff -[calls]-> shop.oms 'calls GetOrder' {
     technology 'gRPC'
     description 'shop.v1.OrderService/GetOrder · declared · examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[consumes]-> shop.oms 'PaymentAuthorized' {
+  payments.ledger -[publishes_to]-> shop.oms 'publishes PaymentAuthorized' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -[consumes]-> shop.billing 'PaymentCaptured' {
+  payments.ledger -[publishes_to]-> shop.billing 'publishes PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -[consumes]-> delivery.core 'PaymentCaptured' {
+  payments.ledger -[publishes_to]-> delivery.core 'publishes PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -[consumes]-> shop.oms 'PaymentDeclined' {
+  payments.ledger -[publishes_to]-> shop.oms 'publishes PaymentDeclined' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -[calls]-> shop.oms 'GetOrder' {
+  payments.ledger -[calls]-> shop.oms 'calls GetOrder' {
     technology 'gRPC'
     description 'shop.v1.OrderService/GetOrder · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostPaymentIntents' {
+  payments.ledger -[calls]-> stripe 'calls PostPaymentIntents' {
     technology 'HTTP'
     description 'stripe.v1/PostPaymentIntents · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCancel' {
+  payments.ledger -[calls]-> stripe 'calls PostPaymentIntentsIntentCancel' {
     technology 'HTTP'
     description 'stripe.v1/PostPaymentIntentsIntentCancel · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCapture' {
+  payments.ledger -[calls]-> stripe 'calls PostPaymentIntentsIntentCapture' {
     technology 'HTTP'
     description 'stripe.v1/PostPaymentIntentsIntentCapture · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -[calls]-> stripe 'PostRefunds' {
+  payments.ledger -[calls]-> stripe 'calls PostRefunds' {
     technology 'HTTP'
     description 'stripe.v1/PostRefunds · declared · examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml'
     style { color declared  line dashed  head normal }
@@ -359,7 +359,7 @@ payment was captured, and what that means for a parcel is decided here.'
   payments.ledger -[owns]-> payments._store_payments_ledger_pg 'owns' {
     style { color muted  line solid  head none }
   }
-  shop.billing -[calls]-> auth.auth 'validateSession' {
+  shop.billing -[calls]-> auth.auth 'calls validateSession' {
     technology 'HTTP'
     description 'auth.v1/validateSession · declared · examples/shop/billing/invoices/clients/auth/openapi.yaml'
     style { color declared  line dashed  head normal }
@@ -367,18 +367,18 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.billing -[owns]-> shop._store_shop_billing_pg 'owns' {
     style { color muted  line solid  head none }
   }
-  shop.cart -[consumes]-> shop.oms 'BasketCheckedOut' {
+  shop.cart -[publishes_to]-> shop.oms 'publishes BasketCheckedOut' {
     style { color verified  line solid  head onormal }
   }
-  shop.cart -[consumes]-> shop.pricing 'BasketCheckedOut' {
+  shop.cart -[publishes_to]-> shop.pricing 'publishes BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
   }
-  shop.cart -[calls]-> auth.auth 'validateSession' {
+  shop.cart -[calls]-> auth.auth 'calls validateSession' {
     technology 'HTTP'
     description 'auth.v1/validateSession · verified · examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml'
     style { color verified  line solid  head normal }
   }
-  shop.cart -[calls]-> shop.pricing 'GetQuote' {
+  shop.cart -[calls]-> shop.pricing 'calls GetQuote' {
     technology 'gRPC'
     description 'shop.v1.Pricing/GetQuote · declared · examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto'
     style { color declared  line dashed  head normal }
@@ -386,13 +386,13 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.cart -[owns]-> shop._store_shop_cart_pg 'owns' {
     style { color muted  line solid  head none }
   }
-  shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
+  shop.oms -[publishes_to]-> payments.ledger 'publishes OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms -[consumes]-> delivery.core 'OrderConfirmed' {
+  shop.oms -[publishes_to]-> delivery.core 'publishes OrderConfirmed' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms -[calls]-> payments.ledger 'Authorize' {
+  shop.oms -[calls]-> payments.ledger 'calls Authorize' {
     technology 'gRPC'
     description 'payments.v1.PaymentService/Authorize · declared · examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto'
     style { color declared  line dashed  head normal }
@@ -406,12 +406,12 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.pricing -[owns]-> shop._store_shop_pricing_pg 'owns' {
     style { color muted  line solid  head none }
   }
-  delivery.core -[calls]-> payments.ledger 'Capture' {
+  delivery.core -[calls]-> payments.ledger 'calls Capture' {
     technology 'gRPC'
     description 'payments.v1.PaymentService/Capture · declared · examples/shop/delivery/core/src/infrastructure/ledger/proto/payments/v1/payments.proto'
     style { color declared  line dashed  head normal }
   }
-  delivery.core -[calls]-> shop.oms 'GetOrder' {
+  delivery.core -[calls]-> shop.oms 'calls GetOrder' {
     technology 'gRPC'
     description 'shop.v1.OrderService/GetOrder · declared · examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto'
     style { color declared  line dashed  head normal }
@@ -455,73 +455,73 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.pricing.quote -[persists]-> shop._store_shop_pricing_pg 'quotes, quote_lines' {
     style { color declared  line dashed  head normal }
   }
-  auth.auth -[bus]-> bus '5 events' {
+  auth.auth -[bus]-> bus 'publishes 5 events' {
     style { color verified  line solid  head onormal }
   }
-  bus -[bus]-> auth.auth 'PasswordChanged' {
+  bus -[bus]-> auth.auth 'delivers PasswordChanged' {
     style { color verified  line solid  head onormal }
   }
-  payments.ledger -[bus]-> bus '4 events' {
+  payments.ledger -[bus]-> bus 'publishes 4 events' {
     style { color declared  line dashed  head onormal }
   }
-  bus -[bus]-> payments.ledger 'OrderCancelled' {
+  bus -[bus]-> payments.ledger 'delivers OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
   shop.billing -[bus]-> celery_billing 'enqueue remind_unpaid_invoice' {
-    style { color declared  line dashed  head none }
+    style { color declared  line dashed  head onormal }
   }
-  celery_billing -[bus]-> shop.billing 'remind_unpaid_invoice' {
-    style { color declared  line dashed  head none }
+  celery_billing -[bus]-> shop.billing 'delivers remind_unpaid_invoice' {
+    style { color declared  line dashed  head onormal }
   }
   shop.billing -[bus]-> celery_billing_mail 'enqueue send_invoice_email' {
-    style { color declared  line dashed  head none }
-  }
-  celery_billing_mail -[bus]-> shop.billing 'send_invoice_email' {
-    style { color declared  line dashed  head none }
-  }
-  shop.billing -[bus]-> bus '3 events' {
     style { color declared  line dashed  head onormal }
   }
-  bus -[bus]-> shop.billing 'PaymentCaptured' {
+  celery_billing_mail -[bus]-> shop.billing 'delivers send_invoice_email' {
     style { color declared  line dashed  head onormal }
   }
-  shop.cart -[bus]-> bus '6 events' {
+  shop.billing -[bus]-> bus 'publishes 3 events' {
+    style { color declared  line dashed  head onormal }
+  }
+  bus -[bus]-> shop.billing 'delivers PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.cart -[bus]-> bus 'publishes 6 events' {
     style { color verified  line solid  head onormal }
   }
-  delivery.core -[bus]-> bus '9 events' {
+  delivery.core -[bus]-> bus 'publishes 9 events' {
     style { color declared  line dashed  head onormal }
   }
-  bus -[bus]-> delivery.core '2 events' {
+  bus -[bus]-> delivery.core 'delivers 2 events' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms_cdc -[bus]-> oms_cdc_kafka '2 events' {
+  shop.oms_cdc -[bus]-> oms_cdc_kafka 'publishes 2 events' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms -[bus]-> bus '3 events' {
+  shop.oms -[bus]-> bus 'publishes 3 events' {
     style { color verified  line solid  head onormal }
   }
-  bus -[bus]-> shop.oms '4 events' {
+  bus -[bus]-> shop.oms 'delivers 4 events' {
     style { color verified  line solid  head onormal }
   }
-  shop.pricing -[bus]-> bus '2 events' {
+  shop.pricing -[bus]-> bus 'publishes 2 events' {
     style { color declared  line dashed  head onormal }
   }
-  bus -[bus]-> shop.pricing 'BasketCheckedOut' {
+  bus -[bus]-> shop.pricing 'delivers BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
   }
-  client -[uses]-> auth.auth '6 flows' {
+  client -[uses]-> auth.auth 'starts 6 flows' {
     style { color verified  line solid  head normal }
   }
-  client -[uses]-> storefront.bff '9 flows' {
+  client -[uses]-> storefront.bff 'starts 9 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -[uses]-> shop.billing '7 flows' {
+  client -[uses]-> shop.billing 'starts 7 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -[uses]-> shop.cart '6 flows' {
+  client -[uses]-> shop.cart 'starts 6 flows' {
     style { color verified  line solid  head normal }
   }
-  client -[uses]-> shop.oms '2 flows' {
+  client -[uses]-> shop.oms 'starts 2 flows' {
     style { color verified  line solid  head normal }
   }
   developer -[uses]-> portolan.host 'npm run gen' {

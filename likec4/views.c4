@@ -4,6 +4,61 @@ views {
     title 'Estate'
     description 'Every architecture group, and everything outside the estate that touches one.'
     include auth, storefront, payments, shop, delivery, portolan, client, risk, stripe, scheduler, developer
+    include auth -> risk with { title 'calls Assess' }
+    include storefront -> auth with { title 'calls validateSession' }
+    include storefront -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
+calls GetOrder
+calls addItem
+calls checkout
+calls getBasket
+calls removeItem' }
+    include storefront -> delivery with { title 'calls GetShipment' }
+    include payments -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
+publishes PaymentAuthorized
+publishes PaymentCaptured
+publishes PaymentDeclined' }
+    include payments -> delivery with { title 'publishes PaymentCaptured' }
+    include payments -> stripe with { title 'calls 4 methods'  notes 'calls PostPaymentIntents
+calls PostPaymentIntentsIntentCancel
+calls PostPaymentIntentsIntentCapture
+calls PostRefunds' }
+    include shop -> auth with { title 'calls validateSession' }
+    include shop -> payments with { title 'calls Authorize · publishes OrderCancelled'  notes 'calls Authorize
+publishes OrderCancelled' }
+    include shop -> delivery with { title 'publishes OrderConfirmed' }
+    include delivery -> payments with { title 'calls Capture' }
+    include delivery -> shop with { title 'calls GetOrder' }
+    include client -> auth with { title 'starts 6 flows'  notes 'starts Change password
+starts Get user
+starts Login
+starts Logout
+starts Register user
+starts Validate session' }
+    include client -> storefront with { title 'starts 9 flows'  notes 'starts Mutation add item
+starts Mutation cancel order
+starts Mutation checkout
+starts Mutation remove item
+starts Query basket
+starts Query order
+starts Query shipment
+starts Query viewer
+starts Subscription order status' }
+    include client -> shop with { title 'starts 15 flows'  notes 'starts Add item
+starts Cancel order
+starts Checkout
+starts Create basket
+starts Get basket
+starts Get order
+starts Invoice create
+starts Invoice destroy
+starts Invoice issue
+starts Invoice list
+starts Invoice partial update
+starts Invoice retrieve
+starts Invoice update
+starts Merge baskets
+starts Remove item' }
+    include developer -> portolan with { title 'npm run gen' }
   }
 
   view containers {
@@ -29,32 +84,32 @@ views {
     include portolan.host with { description '' }
     include portolan.plugins with { description '' }
     include portolan.site with { description '' }
-    include auth.auth -> bus where kind is bus with { title '5 events'  notes 'AccountLocked
+    include auth.auth -> bus where kind is bus with { title 'publishes 5 events'  notes 'AccountLocked
 PasswordChanged
 SessionEnded
 SessionStarted
 UserRegistered' }
-    include bus -> auth.auth where kind is bus with { title '1 event'  notes 'PasswordChanged' }
-    include payments.ledger -> bus where kind is bus with { title '4 events'  notes 'PaymentAuthorized
+    include bus -> auth.auth where kind is bus with { title 'delivers PasswordChanged'  notes 'PasswordChanged' }
+    include payments.ledger -> bus where kind is bus with { title 'publishes 4 events'  notes 'PaymentAuthorized
 PaymentCaptured
 PaymentDeclined
 RefundIssued' }
-    include bus -> payments.ledger where kind is bus with { title '1 event'  notes 'OrderCancelled' }
-    include shop.billing -> celery_billing where kind is bus with { title '1 call'  notes 'enqueue remind_unpaid_invoice' }
-    include celery_billing -> shop.billing where kind is bus with { title '1 call'  notes 'remind_unpaid_invoice' }
-    include shop.billing -> celery_billing_mail where kind is bus with { title '1 call'  notes 'enqueue send_invoice_email' }
-    include celery_billing_mail -> shop.billing where kind is bus with { title '1 call'  notes 'send_invoice_email' }
-    include shop.billing -> bus where kind is bus with { title '3 events'  notes 'InvoiceIssued
+    include bus -> payments.ledger where kind is bus with { title 'delivers OrderCancelled'  notes 'OrderCancelled' }
+    include shop.billing -> celery_billing where kind is bus with { title 'enqueue remind_unpaid_invoice'  notes 'enqueue remind_unpaid_invoice' }
+    include celery_billing -> shop.billing where kind is bus with { title 'delivers remind_unpaid_invoice'  notes 'remind_unpaid_invoice' }
+    include shop.billing -> celery_billing_mail where kind is bus with { title 'enqueue send_invoice_email'  notes 'enqueue send_invoice_email' }
+    include celery_billing_mail -> shop.billing where kind is bus with { title 'delivers send_invoice_email'  notes 'send_invoice_email' }
+    include shop.billing -> bus where kind is bus with { title 'publishes 3 events'  notes 'InvoiceIssued
 InvoicePaid
 InvoiceVoided' }
-    include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
-    include shop.cart -> bus where kind is bus with { title '6 events'  notes 'BasketAbandoned
+    include bus -> shop.billing where kind is bus with { title 'delivers PaymentCaptured'  notes 'PaymentCaptured' }
+    include shop.cart -> bus where kind is bus with { title 'publishes 6 events'  notes 'BasketAbandoned
 BasketCheckedOut
 BasketCreated
 BasketItemAdded
 BasketItemRemoved
 BasketMerged' }
-    include delivery.core -> bus where kind is bus with { title '9 events'  notes 'RouteClosed
+    include delivery.core -> bus where kind is bus with { title 'publishes 9 events'  notes 'RouteClosed
 RoutePlanned
 RouteStarted
 ShipmentCreated
@@ -63,40 +118,40 @@ ShipmentDispatched
 ShipmentInTransit
 ShipmentLost
 ShipmentReleased' }
-    include bus -> delivery.core where kind is bus with { title '2 events'  notes 'OrderConfirmed
+    include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
-    include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
+    include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
 OrderPlaced' }
-    include bus -> shop.oms where kind is bus with { title '4 events'  notes 'BasketCheckedOut
+    include bus -> shop.oms where kind is bus with { title 'delivers 4 events'  notes 'BasketCheckedOut
 OrderPlaced
 PaymentAuthorized
 PaymentDeclined' }
-    include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
+    include shop.pricing -> bus where kind is bus with { title 'publishes 2 events'  notes 'QuoteExpired
 QuoteIssued' }
-    include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
-    include auth.auth -> risk where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include storefront.bff -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> shop.cart where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> delivery.core where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include storefront.bff -> shop.oms where kind is calls with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> stripe where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
-    include shop.billing -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
-    include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
-    include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include shop.oms -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include delivery.core -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    exclude payments.ledger -> shop.oms where kind is consumes
-    exclude payments.ledger -> shop.billing where kind is consumes
-    exclude payments.ledger -> delivery.core where kind is consumes
-    exclude shop.cart -> shop.oms where kind is consumes
-    exclude shop.cart -> shop.pricing where kind is consumes
-    exclude shop.oms -> payments.ledger where kind is consumes
-    exclude shop.oms -> delivery.core where kind is consumes
+    include bus -> shop.pricing where kind is bus with { title 'delivers BasketCheckedOut'  notes 'BasketCheckedOut' }
+    include auth.auth -> risk where kind is calls with { title 'calls Assess'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> auth.auth where kind is calls with { title 'calls validateSession'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> shop.cart where kind is calls with { title 'calls 4 methods'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> delivery.core where kind is calls with { title 'calls GetShipment'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> shop.oms where kind is calls with { title 'calls 2 methods'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> shop.oms where kind is calls with { title 'calls GetOrder'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> stripe where kind is calls with { title 'calls 4 methods'  technology 'HTTP'  color declared  line dashed }
+    include shop.billing -> auth.auth where kind is calls with { title 'calls validateSession'  technology 'HTTP'  color declared  line dashed }
+    include shop.cart -> auth.auth where kind is calls with { title 'calls validateSession'  technology 'HTTP'  color verified  line solid }
+    include shop.cart -> shop.pricing where kind is calls with { title 'calls GetQuote'  technology 'gRPC'  color declared  line dashed }
+    include shop.oms -> payments.ledger where kind is calls with { title 'calls Authorize'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> payments.ledger where kind is calls with { title 'calls Capture'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> shop.oms where kind is calls with { title 'calls GetOrder'  technology 'gRPC'  color declared  line dashed }
+    exclude payments.ledger -> shop.oms where kind is publishes_to
+    exclude payments.ledger -> shop.billing where kind is publishes_to
+    exclude payments.ledger -> delivery.core where kind is publishes_to
+    exclude shop.cart -> shop.oms where kind is publishes_to
+    exclude shop.cart -> shop.pricing where kind is publishes_to
+    exclude shop.oms -> payments.ledger where kind is publishes_to
+    exclude shop.oms -> delivery.core where kind is publishes_to
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -109,6 +164,7 @@ QuoteIssued' }
     title 'Portolan'
     description 'The groups and outside systems selected by this catalog profile.'
     include portolan, developer
+    include developer -> portolan with { title 'npm run gen' }
   }
 
   view containers_portolan {
@@ -128,6 +184,60 @@ QuoteIssued' }
     title 'Example estate'
     description 'The groups and outside systems selected by this catalog profile.'
     include auth, storefront, payments, shop, delivery, client, risk, stripe, scheduler
+    include auth -> risk with { title 'calls Assess' }
+    include storefront -> auth with { title 'calls validateSession' }
+    include storefront -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
+calls GetOrder
+calls addItem
+calls checkout
+calls getBasket
+calls removeItem' }
+    include storefront -> delivery with { title 'calls GetShipment' }
+    include payments -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
+publishes PaymentAuthorized
+publishes PaymentCaptured
+publishes PaymentDeclined' }
+    include payments -> delivery with { title 'publishes PaymentCaptured' }
+    include payments -> stripe with { title 'calls 4 methods'  notes 'calls PostPaymentIntents
+calls PostPaymentIntentsIntentCancel
+calls PostPaymentIntentsIntentCapture
+calls PostRefunds' }
+    include shop -> auth with { title 'calls validateSession' }
+    include shop -> payments with { title 'calls Authorize · publishes OrderCancelled'  notes 'calls Authorize
+publishes OrderCancelled' }
+    include shop -> delivery with { title 'publishes OrderConfirmed' }
+    include delivery -> payments with { title 'calls Capture' }
+    include delivery -> shop with { title 'calls GetOrder' }
+    include client -> auth with { title 'starts 6 flows'  notes 'starts Change password
+starts Get user
+starts Login
+starts Logout
+starts Register user
+starts Validate session' }
+    include client -> storefront with { title 'starts 9 flows'  notes 'starts Mutation add item
+starts Mutation cancel order
+starts Mutation checkout
+starts Mutation remove item
+starts Query basket
+starts Query order
+starts Query shipment
+starts Query viewer
+starts Subscription order status' }
+    include client -> shop with { title 'starts 15 flows'  notes 'starts Add item
+starts Cancel order
+starts Checkout
+starts Create basket
+starts Get basket
+starts Get order
+starts Invoice create
+starts Invoice destroy
+starts Invoice issue
+starts Invoice list
+starts Invoice partial update
+starts Invoice retrieve
+starts Invoice update
+starts Merge baskets
+starts Remove item' }
   }
 
   view containers_example {
@@ -150,32 +260,32 @@ QuoteIssued' }
     include shop._store_shop_pricing_pg with { description '' }
     include delivery.core with { description '' }
     include delivery._store_delivery_core_pg with { description '' }
-    include auth.auth -> bus where kind is bus with { title '5 events'  notes 'AccountLocked
+    include auth.auth -> bus where kind is bus with { title 'publishes 5 events'  notes 'AccountLocked
 PasswordChanged
 SessionEnded
 SessionStarted
 UserRegistered' }
-    include bus -> auth.auth where kind is bus with { title '1 event'  notes 'PasswordChanged' }
-    include payments.ledger -> bus where kind is bus with { title '4 events'  notes 'PaymentAuthorized
+    include bus -> auth.auth where kind is bus with { title 'delivers PasswordChanged'  notes 'PasswordChanged' }
+    include payments.ledger -> bus where kind is bus with { title 'publishes 4 events'  notes 'PaymentAuthorized
 PaymentCaptured
 PaymentDeclined
 RefundIssued' }
-    include bus -> payments.ledger where kind is bus with { title '1 event'  notes 'OrderCancelled' }
-    include shop.billing -> celery_billing where kind is bus with { title '1 call'  notes 'enqueue remind_unpaid_invoice' }
-    include celery_billing -> shop.billing where kind is bus with { title '1 call'  notes 'remind_unpaid_invoice' }
-    include shop.billing -> celery_billing_mail where kind is bus with { title '1 call'  notes 'enqueue send_invoice_email' }
-    include celery_billing_mail -> shop.billing where kind is bus with { title '1 call'  notes 'send_invoice_email' }
-    include shop.billing -> bus where kind is bus with { title '3 events'  notes 'InvoiceIssued
+    include bus -> payments.ledger where kind is bus with { title 'delivers OrderCancelled'  notes 'OrderCancelled' }
+    include shop.billing -> celery_billing where kind is bus with { title 'enqueue remind_unpaid_invoice'  notes 'enqueue remind_unpaid_invoice' }
+    include celery_billing -> shop.billing where kind is bus with { title 'delivers remind_unpaid_invoice'  notes 'remind_unpaid_invoice' }
+    include shop.billing -> celery_billing_mail where kind is bus with { title 'enqueue send_invoice_email'  notes 'enqueue send_invoice_email' }
+    include celery_billing_mail -> shop.billing where kind is bus with { title 'delivers send_invoice_email'  notes 'send_invoice_email' }
+    include shop.billing -> bus where kind is bus with { title 'publishes 3 events'  notes 'InvoiceIssued
 InvoicePaid
 InvoiceVoided' }
-    include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
-    include shop.cart -> bus where kind is bus with { title '6 events'  notes 'BasketAbandoned
+    include bus -> shop.billing where kind is bus with { title 'delivers PaymentCaptured'  notes 'PaymentCaptured' }
+    include shop.cart -> bus where kind is bus with { title 'publishes 6 events'  notes 'BasketAbandoned
 BasketCheckedOut
 BasketCreated
 BasketItemAdded
 BasketItemRemoved
 BasketMerged' }
-    include delivery.core -> bus where kind is bus with { title '9 events'  notes 'RouteClosed
+    include delivery.core -> bus where kind is bus with { title 'publishes 9 events'  notes 'RouteClosed
 RoutePlanned
 RouteStarted
 ShipmentCreated
@@ -184,40 +294,40 @@ ShipmentDispatched
 ShipmentInTransit
 ShipmentLost
 ShipmentReleased' }
-    include bus -> delivery.core where kind is bus with { title '2 events'  notes 'OrderConfirmed
+    include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title '2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
-    include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
+    include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
 OrderPlaced' }
-    include bus -> shop.oms where kind is bus with { title '4 events'  notes 'BasketCheckedOut
+    include bus -> shop.oms where kind is bus with { title 'delivers 4 events'  notes 'BasketCheckedOut
 OrderPlaced
 PaymentAuthorized
 PaymentDeclined' }
-    include shop.pricing -> bus where kind is bus with { title '2 events'  notes 'QuoteExpired
+    include shop.pricing -> bus where kind is bus with { title 'publishes 2 events'  notes 'QuoteExpired
 QuoteIssued' }
-    include bus -> shop.pricing where kind is bus with { title '1 event'  notes 'BasketCheckedOut' }
-    include auth.auth -> risk where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include storefront.bff -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> shop.cart where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
-    include storefront.bff -> delivery.core where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include storefront.bff -> shop.oms where kind is calls with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> stripe where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
-    include shop.billing -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color declared  line dashed }
-    include shop.cart -> auth.auth where kind is calls with { title '1 call'  technology 'HTTP'  color verified  line solid }
-    include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include shop.oms -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include delivery.core -> payments.ledger where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include delivery.core -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    exclude payments.ledger -> shop.oms where kind is consumes
-    exclude payments.ledger -> shop.billing where kind is consumes
-    exclude payments.ledger -> delivery.core where kind is consumes
-    exclude shop.cart -> shop.oms where kind is consumes
-    exclude shop.cart -> shop.pricing where kind is consumes
-    exclude shop.oms -> payments.ledger where kind is consumes
-    exclude shop.oms -> delivery.core where kind is consumes
+    include bus -> shop.pricing where kind is bus with { title 'delivers BasketCheckedOut'  notes 'BasketCheckedOut' }
+    include auth.auth -> risk where kind is calls with { title 'calls Assess'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> auth.auth where kind is calls with { title 'calls validateSession'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> shop.cart where kind is calls with { title 'calls 4 methods'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> delivery.core where kind is calls with { title 'calls GetShipment'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> shop.oms where kind is calls with { title 'calls 2 methods'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> shop.oms where kind is calls with { title 'calls GetOrder'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> stripe where kind is calls with { title 'calls 4 methods'  technology 'HTTP'  color declared  line dashed }
+    include shop.billing -> auth.auth where kind is calls with { title 'calls validateSession'  technology 'HTTP'  color declared  line dashed }
+    include shop.cart -> auth.auth where kind is calls with { title 'calls validateSession'  technology 'HTTP'  color verified  line solid }
+    include shop.cart -> shop.pricing where kind is calls with { title 'calls GetQuote'  technology 'gRPC'  color declared  line dashed }
+    include shop.oms -> payments.ledger where kind is calls with { title 'calls Authorize'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> payments.ledger where kind is calls with { title 'calls Capture'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> shop.oms where kind is calls with { title 'calls GetOrder'  technology 'gRPC'  color declared  line dashed }
+    exclude payments.ledger -> shop.oms where kind is publishes_to
+    exclude payments.ledger -> shop.billing where kind is publishes_to
+    exclude payments.ledger -> delivery.core where kind is publishes_to
+    exclude shop.cart -> shop.oms where kind is publishes_to
+    exclude shop.cart -> shop.pricing where kind is publishes_to
+    exclude shop.oms -> payments.ledger where kind is publishes_to
+    exclude shop.oms -> delivery.core where kind is publishes_to
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -260,6 +370,10 @@ QuoteIssued' }
     title 'Modular Monolith with DDD'
     description 'The groups and outside systems selected by this catalog profile.'
     include payments, client, stripe
+    include payments -> stripe with { title 'calls 4 methods'  notes 'calls PostPaymentIntents
+calls PostPaymentIntentsIntentCancel
+calls PostPaymentIntentsIntentCapture
+calls PostRefunds' }
   }
 
   view containers_modular_monolith {
@@ -268,16 +382,16 @@ QuoteIssued' }
     include payments, payments.ledger, payments._store_payments_ledger_pg, bus, client, stripe
     include payments.ledger with { description '' }
     include payments._store_payments_ledger_pg with { description '' }
-    include payments.ledger -> bus where kind is bus with { title '4 events'  notes 'PaymentAuthorized
+    include payments.ledger -> bus where kind is bus with { title 'publishes 4 events'  notes 'PaymentAuthorized
 PaymentCaptured
 PaymentDeclined
 RefundIssued' }
-    include bus -> payments.ledger where kind is bus with { title '1 event'  notes 'OrderCancelled' }
-    include shop.billing -> bus where kind is bus with { title '3 events'  notes 'InvoiceIssued
+    include bus -> payments.ledger where kind is bus with { title 'delivers OrderCancelled'  notes 'OrderCancelled' }
+    include shop.billing -> bus where kind is bus with { title 'publishes 3 events'  notes 'InvoiceIssued
 InvoicePaid
 InvoiceVoided' }
-    include bus -> shop.billing where kind is bus with { title '1 event'  notes 'PaymentCaptured' }
-    include delivery.core -> bus where kind is bus with { title '9 events'  notes 'RouteClosed
+    include bus -> shop.billing where kind is bus with { title 'delivers PaymentCaptured'  notes 'PaymentCaptured' }
+    include delivery.core -> bus where kind is bus with { title 'publishes 9 events'  notes 'RouteClosed
 RoutePlanned
 RouteStarted
 ShipmentCreated
@@ -286,17 +400,17 @@ ShipmentDispatched
 ShipmentInTransit
 ShipmentLost
 ShipmentReleased' }
-    include bus -> delivery.core where kind is bus with { title '2 events'  notes 'OrderConfirmed
+    include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms -> bus where kind is bus with { title '3 events'  notes 'OrderCancelled
+    include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
 OrderPlaced' }
-    include bus -> shop.oms where kind is bus with { title '4 events'  notes 'BasketCheckedOut
+    include bus -> shop.oms where kind is bus with { title 'delivers 4 events'  notes 'BasketCheckedOut
 OrderPlaced
 PaymentAuthorized
 PaymentDeclined' }
-    include payments.ledger -> shop.oms where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    include payments.ledger -> stripe where kind is calls with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include payments.ledger -> shop.oms where kind is calls with { title 'calls GetOrder'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> stripe where kind is calls with { title 'calls 4 methods'  technology 'HTTP'  color declared  line dashed }
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -370,9 +484,9 @@ PaymentDeclined' }
     include shop.oms_cdc with { description '' }
     include shop.pricing with { description '' }
     include shop._store_shop_pricing_pg with { description '' }
-    include shop.cart -> shop.pricing where kind is calls with { title '1 call'  technology 'gRPC'  color declared  line dashed }
-    exclude shop.cart -> shop.oms where kind is consumes
-    exclude shop.cart -> shop.pricing where kind is consumes
+    include shop.cart -> shop.pricing where kind is calls with { title 'calls GetQuote'  technology 'gRPC'  color declared  line dashed }
+    exclude shop.cart -> shop.oms where kind is publishes_to
+    exclude shop.cart -> shop.pricing where kind is publishes_to
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }

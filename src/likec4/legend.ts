@@ -75,9 +75,8 @@ const ARROWS: Record<string, Omit<ArrowEntry, "key" | "head">> = {
   "reads:normal": { name: "Reads", note: "A service reading a store another service owns.", muted: false },
   "persists:normal": { name: "Persists", note: "From an aggregate to the store its tables are in.", muted: false },
   "depends_on:normal": { name: "Depends on", note: "A dependency declared in the manifest.", muted: false },
-  "consumes:onormal": { name: "Event", note: "From the publisher to a service that consumes it.", muted: false },
-  "bus:onormal": { name: "Event through a broker", note: "Publisher to broker, broker to subscriber.", muted: false },
-  "bus:none": { name: "Job through a queue", note: "No head: the label says whether the job is enqueued or run.", muted: false },
+  "publishes_to:onormal": { name: "Event", note: "From the publisher to a service that consumes it.", muted: false },
+  "bus:onormal": { name: "Through a broker", note: "An event or a job: sent onto the broker, delivered off it to the receiver.", muted: false },
   "owns:none": { name: "Owns", note: "The service keeps its state in this store.", muted: true },
 };
 
