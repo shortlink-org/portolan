@@ -5,9 +5,13 @@ model {
   bus = broker 'bus' {
     technology 'NATS'
   }
-  risk = external 'Risk'
+  risk = external 'Risk' {
+    description 'Scores a login attempt before auth issues a session.'
+  }
   ledger_pg = store 'ledger-pg'
-  stripe = external 'Stripe'
+  stripe = external 'Stripe' {
+    description 'The card network the ledger moves money through.'
+  }
   celery_billing = broker 'Celery · billing' {
     technology 'Celery'
   }
@@ -31,7 +35,7 @@ model {
     description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
     style { color ctx0 }
     auth = service 'Authentication & Sessions' {
-      description 'github.com/shortlink-org/portolan/examples/auth'
+      description 'Owns who someone is and whether they are still logged in.'
       technology 'Go · PostgreSQL · OpenTelemetry · Watermill · Docker · HTTP'
       style { color ctx0 }
       lockout = aggregate 'Lockout' {
@@ -65,7 +69,7 @@ model {
     description 'One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper\'s screen uses.'
     style { color ctx1 }
     bff = service 'Storefront BFF' {
-      description 'github.com/shortlink-org/portolan/examples/bff'
+      description 'One graph in front of four services, for one kind of client: the storefront.'
       technology 'Node.js · Docker · GraphQL'
       style { color ctx1 }
     }
@@ -74,7 +78,7 @@ model {
     description 'Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.'
     style { color ctx2 }
     ledger = service 'Ledger' {
-      description 'github.com/shortlink-org/portolan/examples/payments/ledger'
+      description 'Owns money.'
       technology 'Java · Docker · gRPC'
       style { color ctx2 }
       payment = aggregate 'Payment' {
@@ -103,7 +107,7 @@ model {
     description 'What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing.'
     style { color ctx3 }
     billing = service 'Billing' {
-      description 'github.com/shortlink-org/portolan/examples/shop/billing'
+      description 'Owns the invoice: what a customer is asked to pay for one order, and what happens to it between being drawn up and being closed.'
       technology 'Python · Docker · HTTP'
       style { color ctx3 }
       invoice = aggregate 'Invoice' {
@@ -119,7 +123,7 @@ model {
       }
     }
     cart = service 'Shopping Cart' {
-      description 'github.com/shortlink-org/portolan/examples/shop/cart'
+      description 'Owns the basket: the one mutable thing between a customer arriving and an order existing.'
       technology 'Node.js · Docker · HTTP'
       style { color ctx3 }
       basket = aggregate 'Basket' {
@@ -147,7 +151,7 @@ that now holds everything.'
       }
     }
     oms = service 'Order Management' {
-      description 'github.com/shortlink-org/portolan/examples/shop/oms'
+      description 'Owns the order: what a basket became at checkout, from the moment the cart says BasketCheckedOut until the order is confirmed or cancelled.'
       technology 'Rust · Docker · gRPC'
       style { color ctx3 }
       _order = aggregate 'Order' {
@@ -168,12 +172,11 @@ the bus too, to ask for that money itself.'
       }
     }
     oms_cdc = service 'oms-cdc' {
-      description 'data-pipeline · Debezium · Kafka Connect · PostgreSQL · /examples/shop/oms/connectors/oms-cdc.yaml'
       technology 'Debezium · Kafka Connect · PostgreSQL'
       style { color ctx3 }
     }
     pricing = service 'Pricing' {
-      description 'github.com/shortlink-org/portolan/examples/shop/pricing'
+      description 'Owns what things cost.'
       technology 'Go · PostgreSQL · Docker · gRPC'
       style { color ctx3 }
       price_list = aggregate 'PriceList' {
@@ -208,7 +211,7 @@ the bus too, to ask for that money itself.'
     description 'Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither.'
     style { color ctx4 }
     core = service 'Delivery Core' {
-      description 'github.com/shortlink-org/portolan/examples/shop/delivery/core'
+      description 'Owns the shipment: what is being carried, where it is, and which van is taking it there.'
       technology 'Node.js · Docker · gRPC'
       style { color ctx4 }
       route = aggregate 'Route' {
@@ -263,17 +266,17 @@ payment was captured, and what that means for a parcel is decided here.'
     description 'system · The tool that reads an architecture catalog from the code and specifications that already describe a software estate. It is documented here as the system that extracts, merges, validates and presents those facts.'
     style { color ctx5 }
     host = service 'Host' {
-      description 'cli · Node.js · github.com/shortlink-org/portolan/scripts'
+      description 'The side of portolan that runs.'
       technology 'Node.js'
       style { color ctx5 }
     }
     plugins = service 'Plugins' {
-      description 'cli · Go · TypeScript · Rust · Java · Python · github.com/shortlink-org/portolan/plugins'
+      description 'A generator turns the catalog into something else.'
       technology 'Go · TypeScript · Rust · Java · Python'
       style { color ctx5 }
     }
     site = service 'Site' {
-      description 'webapp · TypeScript · React · Vite · github.com/shortlink-org/portolan/src'
+      description 'The browser: a React single-page application that loads every source the manifest names, merges them, validates the union and renders the estate.'
       technology 'TypeScript · React · Vite'
       style { color ctx5 }
     }

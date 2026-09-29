@@ -86,6 +86,40 @@ const protocolOf = (source) => {
   return "";
 };
 
+// What a box says it does: the first sentence of the first paragraph of prose.
+// A README opens with a title and, often, a line saying which service it is -
+// "Service `cart` - bounded context shop. TypeScript on Node.js." - which names
+// the service by its code name and says nothing of what it does; that line is
+// passed over. Markdown is taken out, and a sentence past 200 characters is cut
+// at a word. Nothing is said when no paragraph qualifies.
+function ledeOf(markdown, slug = "") {
+  const paragraphs = String(markdown ?? "").replace(/\r/g, "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  for (const paragraph of paragraphs) {
+    if (/^(#|```|~~~|<|!\[|\||[-*+] |\d+\. |>)/.test(paragraph)) continue;
+    const words = paragraph.split(/\s+/).length;
+    if (words < 3) continue;
+    if (slug && paragraph.includes(`\`${slug}\``) && words < 25) continue;
+    return firstSentence(plainText(paragraph));
+  }
+  return "";
+}
+function plainText(markdown) {
+  return markdown
+    .replace(/\s+/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/(\*\*|__)(.+?)\1/g, "$2")
+    .replace(/(^|[\s(])[*_](\S(?:.*?\S)?)[*_](?=[\s.,;:!?)]|$)/g, "$1$2")
+    .trim();
+}
+function firstSentence(text) {
+  const sentence = /^(.+?[.!?])(?=\s|$)/.exec(text)?.[1] ?? text;
+  if (sentence.length <= 200) return sentence;
+  const cut = sentence.slice(0, 200);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : 200)}…`;
+}
+
 // What a container box says under its name at level 2: what the service is
 // built with when an extractor recorded it, and what it speaks, read off the
 // contracts it provides. Both are facts the catalog holds; neither is guessed.
@@ -307,9 +341,11 @@ model.push("model {");
 
 // A broker's line is rewritten once its hops are read, to say what it is.
 const brokerLine = new Map(); // participant id -> index in model
+const externalSummary = new Map((catalog.externals ?? []).map((external) => [external.id, external.summary]));
 for (const [id, meta] of rootParticipants) {
   if (meta.kind === "broker") brokerLine.set(id, model.length);
-  model.push(`  ${safeId(id)} = ${meta.kind} ${q(meta.label)}`);
+  const lede = meta.kind === "external" ? ledeOf(externalSummary.get(id)) : "";
+  model.push(`  ${safeId(id)} = ${meta.kind} ${q(meta.label)}${lede ? ` {\n    description ${q(lede)}\n  }` : ""}`);
 }
 model.push("");
 
@@ -321,9 +357,10 @@ for (const context of catalog.contexts) {
   model.push(`    style { color ${contextColorName(context.id)} }`);
   for (const service of context.services) {
     model.push(`    ${safeId(service.slug)} = service ${q(service.name)} {`);
-    model.push(
-      `      description ${q([service.kind, ...(service.technologies ?? []), `${service.repo}/${service.path}`].filter(Boolean).join(" · "))}`,
-    );
+    // What it does, not where it lives: the repository path is in the
+    // service's details, and its stack is the technology line below.
+    const lede = ledeOf(service.readme, service.slug);
+    if (lede) model.push(`      description ${q(lede)}`);
     const technology = technologyOf(service);
     if (technology) model.push(`      technology ${q(technology)}`);
     model.push(`      style { color ${contextColorName(context.id)} }`);
