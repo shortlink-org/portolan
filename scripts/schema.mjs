@@ -20,7 +20,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { describePlugin } from "./plugin-host.mjs";
-import { RULE_ID, SEVERITIES, SUBJECT_NAMES, SUBJECTS } from "../src/lib/problem-rules-cel.mjs";
+import { EXPECTATIONS, RULE_ID, SEVERITIES, SUBJECT_NAMES, SUBJECTS } from "../src/lib/problem-rules-cel.mjs";
 
 // The built-in problem rules, so the schema can say which ids are switches
 // and which must carry a whole rule.
@@ -515,11 +515,33 @@ function problemRuleSchema() {
       note: { type: "string", minLength: 1, description: "The short words on every row of the rule; the title when absent." },
       description: { type: "string", description: "What the rule checks and why it matters." },
       action: { type: "string", description: "What a reader does about a row." },
+      examples: {
+        type: "array",
+        description: "The rule's own tests: rows and what the rule should say about each. `check` fails when the rule disagrees with one.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "expect", "row"],
+          properties: {
+            name: { type: "string", minLength: 1, description: "What the example is, in a few words." },
+            expect: { enum: EXPECTATIONS, description: "`row` when the rule should produce a row for it, `none` when it should not." },
+            row: {
+              type: "object",
+              description: "The fields of the subject the rule reads; the ones left out are empty, zero or false.",
+            },
+            estate: {
+              type: "object",
+              description: "The estate lists the rule reads, when it reads any; the ones left out are empty.",
+              additionalProperties: { type: "array", items: { type: "string" } },
+            },
+          },
+        },
+      },
     },
     if: { properties: { id: { enum: builtinIds } } },
     then: {
       not: {
-        anyOf: ["over", "when", "message", "peer", "title", "note", "description", "action"].map((key) => ({
+        anyOf: ["over", "when", "message", "peer", "title", "note", "description", "action", "examples"].map((key) => ({
           required: [key],
         })),
       },

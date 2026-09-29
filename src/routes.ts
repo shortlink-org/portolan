@@ -73,6 +73,9 @@ export const paths = {
   settingsDelivery: () => "/settings/delivery",
   settingsRecordings: () => "/settings/recordings",
   settingsRules: () => "/settings/rules",
+  settingsRule: (id: string) => `/settings/rules/${encodeURIComponent(id)}`,
+  // `new` can never be a rule's id: the page refuses it.
+  settingsRuleNew: () => "/settings/rules/new",
   settingsIntegrations: () => "/settings/integrations",
   pluginSettings: (name: string) => `/plugins/${encodeURIComponent(name)}/settings`,
   settingsPreferences: () => "/settings/preferences",
@@ -449,6 +452,7 @@ const ROUTES: RegExp[] = [
   /^\/drafts\/[^/]+\/[^/]+$/,
   /^\/drafts\/[^/]+\/[^/]+\/e\/[^/]+$/,
   /^\/settings(?:\/(?:projects|pipeline|delivery|recordings|rules|integrations|preferences|about))?$/,
+  /^\/settings\/rules\/[^/]+$/,
   /^\/plugins\/[^/]+\/settings$/,
   /^\/externals\/[^/]+$/,
   /^\/map$/,

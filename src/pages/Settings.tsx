@@ -58,6 +58,7 @@ import { MachineDocs } from "../components/MachineDocs";
 import { DeliverySettings } from "./settings/DeliverySettings";
 import { RecordingSettings } from "./settings/RecordingSettings";
 import { RulesSettings } from "./settings/RulesSettings";
+import { RuleWorkbench } from "./settings/RuleWorkbench";
 import { PreferencesSettings } from "./settings/PreferencesSettings";
 import { AboutSettings } from "./settings/AboutSettings";
 import { IntegrationsSettings } from "./settings/IntegrationsSettings";
@@ -1229,6 +1230,7 @@ function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolea
             <Route path="delivery" element={<section><SectionTitle right={local ? "preview before writing" : "local mode required"}>Delivery presets</SectionTitle><DeliverySettings local={local} /></section>} />
             <Route path="recordings" element={<RecordingsRoute local={local} />} />
             <Route path="rules" element={<RulesSettings local={local} />} />
+            <Route path="rules/:id" element={<RuleWorkbench local={local} />} />
             <Route path="integrations" element={<IntegrationsSettings local={local} />} />
             <Route path="preferences" element={<PreferencesSettings />} />
             <Route path="about" element={<AboutSettings />} />

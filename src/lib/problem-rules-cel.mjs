@@ -384,13 +384,15 @@ export function problemRuleProblems(entries, builtinIds, path = "portolan.json")
       problems.push(`${at}/severity: must be one of ${SEVERITIES.join(", ")}`);
     }
     if (builtin.has(entry.id)) {
-      for (const key of ["over", "when", "message", "peer", "title", "note", "description", "action"]) {
+      for (const key of ["over", "when", "message", "peer", "title", "note", "description", "action", "examples"]) {
         if (entry[key] !== undefined) problems.push(`${at}/${key}: "${entry.id}" is a built-in rule; only enabled, severity and reason may be set`);
       }
       if (entry.enabled === false && !entry.reason) problems.push(`${at}/reason: a disabled rule needs a reason`);
       return;
     }
-    problems.push(...ruleExpressionProblems(entry, at));
+    const expressionProblems = ruleExpressionProblems(entry, at);
+    problems.push(...expressionProblems);
+    if (expressionProblems.length === 0) problems.push(...ruleExampleProblems(entry, at));
   });
   return problems;
 }
@@ -427,4 +429,110 @@ export function ruleExpressionProblems(rule, at = rule.id) {
 function firstLine(cause) {
   const message = cause instanceof Error ? cause.message : String(cause);
   return message.split("\n", 1)[0];
+}
+
+// ---------------------------------------------------------------------------
+// Examples: a rule's own tests.
+//
+// An example is a row the author wrote down, or kept from the catalog, and
+// what the rule should say about it: a row, or none. It carries only the
+// fields the rule reads; the rest of the subject is filled with zero values,
+// so a kept example does not copy a whole row into portolan.json. Beside the
+// row it may carry the estate lists the rule reads, for a rule that asks
+// `in estate.services`; the ones it leaves out are empty.
+//
+// The same function runs an example on the page and in the manifest check,
+// so an example the page shows as holding is one `check` accepts.
+
+export const EXPECTATIONS = ["row", "none"];
+
+/** The value a field has when an example leaves it out. */
+export function zeroOf(type) {
+  switch (type) {
+    case "int":
+      return 0n;
+    case "bool":
+      return false;
+    case "list<string>":
+      return [];
+    default:
+      return "";
+  }
+}
+
+/**
+ * A written row as the expression reads it: every field of the subject, in
+ * its CEL type. Refuses a field the subject does not have and a value of the
+ * wrong shape, because an example that cannot be the subject tests nothing.
+ */
+export function rowOfExample(schema, written = {}, at = "row") {
+  if (!written || typeof written !== "object" || Array.isArray(written)) throw new Error(`${at}: must be an object`);
+  for (const key of Object.keys(written)) {
+    if (!(key in schema)) throw new Error(`${at}/${key}: not a field of this subject`);
+  }
+  const row = {};
+  for (const [key, type] of Object.entries(schema)) {
+    const value = written[key];
+    if (value === undefined) {
+      row[key] = zeroOf(type);
+      continue;
+    }
+    const wrong = () => new Error(`${at}/${key}: must be ${{ int: "an int", bool: "a bool", "list<string>": "a list of strings" }[type] ?? "a string"}`);
+    if (type === "int") {
+      if (typeof value === "bigint") row[key] = value;
+      else if (typeof value === "number" && Number.isInteger(value)) row[key] = BigInt(value);
+      else throw wrong();
+    } else if (type === "bool") {
+      if (typeof value !== "boolean") throw wrong();
+      row[key] = value;
+    } else if (type === "list<string>") {
+      if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) throw wrong();
+      row[key] = value;
+    } else {
+      if (typeof value !== "string") throw wrong();
+      row[key] = value;
+    }
+  }
+  return row;
+}
+
+/** Whether the rule's condition holds for one example; throws when the example or the rule cannot run. */
+export function exampleMatches(over, when, example) {
+  const definition = SUBJECTS[over];
+  if (!definition) throw new Error(`unknown subject "${over}"`);
+  const row = rowOfExample(definition.schema, example?.row, "row");
+  const estate = rowOfExample(ESTATE_SCHEMA, example?.estate ?? {}, "estate");
+  return compileExpression(over, when, "bool")({ [over]: row, estate }) === true;
+}
+
+/** Lines for every example of a rule that is malformed or that the rule gets wrong. */
+export function ruleExampleProblems(rule, at = rule.id) {
+  const examples = rule.examples;
+  if (examples === undefined) return [];
+  if (!Array.isArray(examples)) return [`${at}/examples: must be an array`];
+  const problems = [];
+  const names = new Set();
+  examples.forEach((example, index) => {
+    const where = `${at}/examples/${index}`;
+    if (!example || typeof example !== "object") {
+      problems.push(`${where}: must be an object`);
+      return;
+    }
+    if (typeof example.name !== "string" || !example.name.trim()) problems.push(`${where}/name: required`);
+    else if (names.has(example.name)) problems.push(`${where}/name: "${example.name}" appears twice`);
+    else names.add(example.name);
+    if (!EXPECTATIONS.includes(example.expect)) {
+      problems.push(`${where}/expect: must be one of ${EXPECTATIONS.join(", ")}`);
+      return;
+    }
+    try {
+      const matched = exampleMatches(rule.over, rule.when, example);
+      if (matched !== (example.expect === "row")) {
+        problems.push(`${where}: "${example.name}" expects ${example.expect === "row" ? "a row" : "no row"}, the rule gives ${matched ? "a row" : "none"}`);
+      }
+    } catch (cause) {
+      problems.push(`${where}/${firstLine(cause)}`);
+    }
+  });
+  return problems;
 }

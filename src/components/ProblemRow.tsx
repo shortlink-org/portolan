@@ -176,7 +176,7 @@ export function ProblemRow({
         ) : null}
         {showRule ? (
           <Link
-            to={`${paths.settingsRules()}#rule-${problem.rule}`}
+            to={paths.settingsRule(problem.rule)}
             className="mono ml-auto max-w-[45%] truncate rounded-control text-muted hover:text-ink hover:underline"
             title={`rule ${problem.rule}${rule?.action ? ` — ${rule.action}` : ""}`}
           >

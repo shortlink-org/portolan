@@ -247,6 +247,14 @@ describe("routes", () => {
     expect(allCatalogPaths(catalog)).toContain(paths.settings());
   });
 
+  it("routes one rule's page and the page for a new rule", () => {
+    expect(paths.settingsRule("team.event-pii")).toBe("/settings/rules/team.event-pii");
+    expect(paths.settingsRuleNew()).toBe("/settings/rules/new");
+    expect(isRoutable(paths.settingsRule("team.event-pii"))).toBe(true);
+    expect(isRoutable(paths.settingsRuleNew())).toBe(true);
+    expect(isRoutable("/settings/rules/a/b")).toBe(false);
+  });
+
   it("routes the runtime catalog diff", () => {
     expect(paths.changes()).toBe("/changes");
     expect(isRoutable(`${paths.changes()}?base=main&head=feature`)).toBe(true);

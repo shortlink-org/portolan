@@ -29,6 +29,15 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/adrs")[0]).toEqual({ label: "decisions", to: "/adrs" });
   });
 
+  it("puts a rule's page under the rules section", () => {
+    expect(crumbsFor("/settings/rules/team.event-pii")).toEqual([
+      { label: "settings", to: "/settings" },
+      { label: "rules", to: "/settings/rules" },
+      { label: "team.event-pii", to: "/settings/rules/team.event-pii" },
+    ]);
+    expect(crumbsFor("/settings/rules/new").at(-1)).toEqual({ label: "new rule", to: "/settings/rules/new" });
+  });
+
   it("keeps the active settings section in the trail", () => {
     expect(crumbsFor("/settings/delivery")).toEqual([
       { label: "settings", to: "/settings" },

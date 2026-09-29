@@ -35,3 +35,4 @@
 | [portolan.0030](portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 | [portolan](../portolan/README.md) |
 | [portolan.0031](portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 | [portolan](../portolan/README.md) |
 | [portolan.0032](portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 | [portolan](../portolan/README.md) |
+| [portolan.0033](portolan.0033.md) | A rule carries its examples, and check holds it to them | accepted | 2026-09-29 | [portolan](../portolan/README.md) |
