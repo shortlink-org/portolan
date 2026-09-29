@@ -87,7 +87,9 @@ export function C4View({
         fitViewPadding={fitViewPadding}
         highlightNodes={containers ? [] : marked}
         extraCss={focus && selectedNode ? neighborhoodCss(focus, viewEdgeIds(viewId), selectedNode) : ""}
-        relationshipDetails={containers}
+        // Every picture folds relations into summaries now, so every one
+        // keeps the methods behind a summary one click away.
+        relationshipDetails
         model={containers ? layout?.model : undefined}
         onNode={onNode}
         onCanvas={onCanvas}
