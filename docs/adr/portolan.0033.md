@@ -6,6 +6,7 @@
 - **Date:** 2026-09-29
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0033-a-rule-carries-its-examples-and-check-holds-it-to-them.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0033-a-rule-carries-its-examples-and-check-holds-it-to-them.md)
+- **Committed:** Victor Login, 2026-09-30 (`9f80c56`)
 
 ### Context and Problem Statement
 
