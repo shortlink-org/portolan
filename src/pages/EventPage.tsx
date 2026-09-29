@@ -1044,9 +1044,13 @@ export function EventPage({
                     return (
                       <div
                         key={consumer.service}
-                        className="row items-start gap-2"
+                        className="row flex-wrap items-start gap-2"
                       >
-                        <div className="min-w-0 flex-1">
+                        {/* On a phone the name takes the whole first line and
+                            the status and actions drop under it: the actions
+                            keep their width while invisible, and beside them
+                            a service name had 69px and ran into the status. */}
+                        <div className="min-w-0 grow basis-full sm:basis-0">
                           {to ? (
                             <Link
                               to={to}
