@@ -2194,3 +2194,17 @@ h3 {
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
+
+/* A drawing given the whole screen (FullscreenButton). The browser sizes
+   it; what it cannot know is that the box was a card on a page - the
+   rounded corners and the hairline go, and the backdrop behind a
+   transparent canvas would otherwise be black. In the utilities layer, where
+   the selector outweighs the card's own `rounded-card` and `border`. */
+@layer utilities {
+  [data-fullscreen]:fullscreen {
+    background: var(--bg);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

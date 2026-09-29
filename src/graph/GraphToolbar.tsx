@@ -15,6 +15,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useToastStore } from "../app/toast";
+import { FullscreenButton } from "../components/FullscreenButton";
 import { saveCanvasImage, viewportOf } from "../lib/export-canvas";
 import type { ImageKind } from "../lib/export-canvas";
 import type { GraphMode } from "./dependency-layout";
@@ -138,7 +139,20 @@ export function ExportSeg({ name }: { name: string }) {
 }
 
 /**
- * Fit, out, in - the three viewport controls, as one segment.
+ * Full screen on its own, for a canvas whose only other control is its
+ * export: the map has no zoom buttons, but a big map still wants the room.
+ */
+export function FullscreenSeg() {
+  const flow = useReactFlow();
+  return (
+    <div className="seg seg-float">
+      <FullscreenButton onChange={() => void flow.fitView(FIT_OPTIONS)} />
+    </div>
+  );
+}
+
+/**
+ * Fit, out, in, full screen - the viewport controls, as one segment.
  *
  * It lives apart from the toolbar because it is the only part of it that is
  * about the canvas rather than about the graph, and every canvas has a
@@ -174,6 +188,7 @@ export function ViewportSeg() {
       >
         <Plus size={13} aria-hidden />
       </button>
+      <FullscreenButton onChange={() => void flow.fitView(FIT_OPTIONS)} />
     </div>
   );
 }

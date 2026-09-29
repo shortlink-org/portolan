@@ -725,7 +725,7 @@ export function FlowDetail({
           panelIds={panes.length > 0 ? ["document", "documents"] : ["document"]}
           className="h-full min-h-0 flex-1"
         >
-          <Panel id="document" minSize="30" className="flex h-full min-w-0 flex-col" onResize={settle}>
+          <Panel id="document" data-fullscreen="flow" minSize="30" className="flex h-full min-w-0 flex-col" onResize={settle}>
         {compact ? (
           <div className="pane min-w-0 flex-1 overflow-y-auto">
             <FlowTable

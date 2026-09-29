@@ -37,7 +37,7 @@ import "@xyflow/react/dist/style.css";
 import type { Catalog, Status } from "../catalog";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { layoutWithElk } from "../graph/elk";
-import { ExportSeg } from "../graph/GraphToolbar";
+import { ExportSeg, FullscreenSeg } from "../graph/GraphToolbar";
 import { EDGE_W, statusColor, statusDash } from "../graph/theme";
 import type { PortolanNode } from "../graph/nodes";
 import { PATTERN_LABEL } from "../lib/context-map";
@@ -297,6 +297,7 @@ export function ContextMapGraph({
   return (
     <div
       ref={canvasRef}
+      data-fullscreen
       className="canvas-motion relative h-full w-full"
     >
       {drawn.ready && hasSize ? (
@@ -321,13 +322,13 @@ export function ContextMapGraph({
           key={fitKey}
         >
           <Background gap={20} size={2} />
-          {/* The map has no modes to switch, so its only control is the way
-              out: the drawing as a file, for the page that explains it. */}
-          {showExport ? (
-            <Panel position="top-right">
-              <ExportSeg name="context-map" />
-            </Panel>
-          ) : null}
+          {/* The map has no modes to switch, so its only controls are the
+              ways out: the whole screen, and the drawing as a file for the
+              page that explains it. */}
+          <Panel position="top-right" className="flex items-center gap-2">
+            <FullscreenSeg />
+            {showExport ? <ExportSeg name="context-map" /> : null}
+          </Panel>
         </ReactFlow>
       ) : (
         <DiagramSkeleton />

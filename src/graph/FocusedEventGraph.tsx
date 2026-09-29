@@ -160,6 +160,7 @@ export function FocusedEventGraph({
 
   return (
     <div
+      data-fullscreen
       style={{ height: canvasHeight }}
       className="canvas-motion relative w-full overflow-hidden rounded-card border border-line shadow-xs"
     >

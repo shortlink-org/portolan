@@ -31,6 +31,7 @@ import {
 import type { ReactNode } from "react";
 import { STATUSES } from "../catalog";
 import type { Status } from "../catalog";
+import { FullscreenButton } from "../components/FullscreenButton";
 import { Ident } from "../components/Ident";
 import { Select } from "../components/Select";
 import { statusVar } from "../components/primitives";
@@ -368,6 +369,9 @@ export function FlowToolbar({
             <Maximize2 size={14} aria-hidden />
             fit
           </button>
+          {/* The toolbar sits above the drawing rather than in it, so it
+              names the box it enlarges: the rail and the canvas together. */}
+          <FullscreenButton target='[data-fullscreen="flow"]' onChange={onFit} size={14} label />
         </div>
 
         {/* Two ways out of the page with the flow in hand: the diagram as text,

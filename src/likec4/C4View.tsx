@@ -9,6 +9,7 @@ import { useSelectionStore } from "../selection/store";
 import { likec4model } from "./generated";
 import { layoutContainers } from "./container-layout";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
+import { FullscreenButton } from "../components/FullscreenButton";
 
 const layouts = new Map<string, Promise<LikeC4Model.Layouted>>();
 function containerModel(viewId: string) {
@@ -72,6 +73,7 @@ export function C4View({
 
   return (
     <div
+      data-fullscreen
       className="relative w-full overflow-hidden rounded-card border border-line bg-canvas shadow-xs"
       style={{ height }}
     >
@@ -87,6 +89,11 @@ export function C4View({
         onCanvas={onCanvas}
       />}
       {containers && layout?.id === viewId && layout.error ? <p className="absolute bottom-3 left-3 bg-canvas px-3 py-2 text-sm">Using the default layout; container routing is unavailable.</p> : null}
+      {/* LikeC4 refits on its own when the box changes size, so the button
+          needs no hook into the diagram. */}
+      <div className="seg seg-float absolute top-3 right-3 z-10">
+        <FullscreenButton />
+      </div>
       {focus ? <div className="absolute right-3 bottom-3 flex max-w-[calc(100%-4.5rem)] items-center gap-2 rounded-control border border-line bg-canvas px-3 py-2 shadow-xs">
         <span className="truncate text-sm">Focus: {selection?.id}</span>
         <button type="button" className="tbtn shrink-0" onClick={onCanvas}>Show all</button>

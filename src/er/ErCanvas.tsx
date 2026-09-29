@@ -26,6 +26,7 @@ import type { Store } from "../catalog";
 import { storeViews } from "../catalog";
 import { index } from "../data";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
+import { FullscreenButton } from "../components/FullscreenButton";
 import { useSelectionStore } from "../selection/store";
 import { TableNodeCard } from "./TableNode";
 import { ViewNodeCard } from "./ViewNode";
@@ -429,6 +430,7 @@ function Canvas({
        elk put first. */
     <div
       ref={wrapper}
+      data-fullscreen
       className="flex w-full flex-col overflow-hidden rounded-card border border-line"
       style={{ height }}
     >
@@ -706,6 +708,11 @@ function Toolbar({
       >
         <Maximize2 size={12} aria-hidden />
       </button>
+      <FullscreenButton
+        size={12}
+        onChange={() => void flow.fitView({ padding: 0.1 })}
+        className="rounded-control border p-1.5 border-line bg-canvas text-muted hover:text-ink"
+      />
       <button
         type="button"
         onClick={() => void exportImage("png")}
