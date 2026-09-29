@@ -61,10 +61,10 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `GetInvoice` | query | — |
-| `RaiseInvoice` | command | Raises one. |
+| Operation | Kind | Doc | Emits |
+| --- | --- | --- | --- |
+| `GetInvoice` | query | — | — |
+| `RaiseInvoice` | command | Raises one. | `InvoiceRaised` |
 
 ## Events
 
@@ -74,6 +74,8 @@ stateDiagram-v2
 `billing.invoices.invoice.InvoiceRaised`
 
 On the wire as `billing.InvoiceRaised`, on `billing_invoice`.
+
+Triggered by `RaiseInvoice` (command), `raise` (draft → raised).
 
 | Consumer | Status | Via | Note |
 | --- | --- | --- | --- |

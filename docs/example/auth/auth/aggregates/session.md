@@ -118,12 +118,12 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. |
-| `Login` | command | `login` | Turns credentials into a session. |
-| `Logout` | command | `logout` | Ends the session behind a token. |
-| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. | `SessionEnded` |
+| `Login` | command | `login` | Turns credentials into a session. | `SessionEnded`, `SessionStarted` |
+| `Logout` | command | `logout` | Ends the session behind a token. | `SessionEnded` |
+| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. | — |
 
 ## Events
 
@@ -133,6 +133,8 @@ stateDiagram-v2
 `auth.auth.session.SessionEnded`
 
 On the wire as `auth.SessionEnded`, on `auth_session`.
+
+Triggered by `EndAfterCredentialChange` (command), `Login` (command), `Logout` (command), `Revoke` (live → revoked).
 
 #### v1 — current
 
@@ -153,6 +155,8 @@ Source: [`examples/auth/internal/session/domain/event/session_ended.go`](https:/
 `auth.auth.session.SessionStarted`
 
 On the wire as `auth.SessionStarted`, on `auth_session`.
+
+Triggered by `Login` (command).
 
 #### v1 — current
 

@@ -328,39 +328,52 @@ export function openablePaths(
 }
 
 // ---------------------------------------------------------------------------
-// One version against the one before it.
+// One version against another - the one before it, unless the reader picks.
 // ---------------------------------------------------------------------------
 
 export type Change = "new" | "changed" | "removed";
 
 export interface FieldChange {
   change: Change;
-  /** The type the field had in the previous version, when it changed. */
+  /** The type the field had in the version compared against, when it changed. */
   from?: string;
   /**
-   * The rules the field had in the previous version, as the marks read -
-   * "required, ≤ 8 chars" - when this version changed them; "" when it had
-   * none. The row itself shows what they are now.
+   * The rules the field had in the version compared against, as the marks
+   * read - "required, ≤ 8 chars" - when they differ; "" when it had none.
+   * The row itself shows what they are now.
    */
   rulesFrom?: string;
 }
 
 /**
+ * The version a version is compared against when the reader has not picked
+ * one: the one before it. The first version has nothing before it.
+ */
+export function previousVersion(event: Event, version: string): string | null {
+  const i = event.versions.findIndex((v) => v.version === version);
+  return i > 0 ? (event.versions[i - 1]?.version ?? null) : null;
+}
+
+/**
  * What a version did to the schema: the fields it added, the ones whose
  * type or rules it changed, and - by name, since they are no longer in the
- * version's own list - the ones it dropped. The first version changes
- * nothing: there is nothing before it to differ from.
+ * version's own list - the ones it dropped. Against the version before it
+ * by default, so the first version changes nothing; `against` names any
+ * other version instead, older or newer - "what does a consumer still on
+ * v1 meet in v3" is the same question asked across more than one step.
+ * A version compared against itself, or against one the event does not
+ * have, changes nothing.
  */
 export function schemaChanges(
   event: Event,
   version: string,
+  against: string | null = previousVersion(event, version),
 ): { byField: Map<string, FieldChange>; removed: Field[] } {
   const byField = new Map<string, FieldChange>();
   const removed: Field[] = [];
-  const i = event.versions.findIndex((v) => v.version === version);
-  if (i <= 0) return { byField, removed };
-  const prev = event.versions[i - 1];
-  const current = event.versions[i];
+  if (against === null || against === version) return { byField, removed };
+  const prev = event.versions.find((v) => v.version === against);
+  const current = event.versions.find((v) => v.version === version);
   if (!prev || !current) return { byField, removed };
 
   const before = new Map(prev.fields.map((f) => [f.name, f]));
@@ -389,6 +402,9 @@ export function schemaChanges(
  */
 function sameRules(a: Field, b: Field): boolean {
   if (Boolean(a.required) !== Boolean(b.required)) return false;
+  // A field moved into a oneof, or out of one, now excludes its siblings or
+  // no longer does: a reader of the version has to know.
+  if ((a.oneof ?? "") !== (b.oneof ?? "")) return false;
   const key = (field: Field) =>
     (field.rules ?? []).map((r) => `${r.name}=${r.value ?? ""}`).sort().join("\n");
   return key(a) === key(b);

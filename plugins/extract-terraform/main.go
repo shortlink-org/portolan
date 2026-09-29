@@ -1,6 +1,7 @@
 // Package extractterraform is portolan-extract-terraform: a Terraform module
-// for AWS or Azure Event Grid in, its topics, functions, queues and stores out
-// - and the edges between them that only the infrastructure knows.
+// for AWS, Azure Event Grid or Azure Service Bus in, its topics, functions,
+// queues and stores out - and the edges between them that only the
+// infrastructure knows.
 package extractterraform
 
 import (

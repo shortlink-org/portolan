@@ -116,15 +116,15 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc | Input |
-| --- | --- | --- | --- | --- |
-| `AddItem` | command | `addItem` | Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002). | `basketId: string`, `sku: string`, `quantity: integer`, `unitPrice: money` |
-| `Checkout` | command | `checkout` | Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004). | `basketId: string` |
-| `CreateBasket` | command | `createBasket` | Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007). | — |
-| `ExpireIdleBaskets` | command | *internal* | The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute. | — |
-| `GetBasket` | query | `getBasket` | The basket as it stands, for whoever holds its token. | `basketId: string` |
-| `MergeBaskets` | command | `mergeBaskets` | Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged. | `basketId: string`, `fromBasketId: string`, `fromToken: string` |
-| `RemoveItem` | command | `removeItem` | Takes a line out of a basket outright. | `basketId: string`, `sku: string` |
+| Operation | Kind | Exposed by | Doc | Emits | Input |
+| --- | --- | --- | --- | --- | --- |
+| `AddItem` | command | `addItem` | Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002). | `BasketItemAdded` | `basketId: string`, `sku: string`, `quantity: integer`, `unitPrice: money` |
+| `Checkout` | command | `checkout` | Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004). | `BasketCheckedOut` | `basketId: string` |
+| `CreateBasket` | command | `createBasket` | Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007). | `BasketCreated` | — |
+| `ExpireIdleBaskets` | command | *internal* | The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute. | `BasketAbandoned` | — |
+| `GetBasket` | query | `getBasket` | The basket as it stands, for whoever holds its token. | — | `basketId: string` |
+| `MergeBaskets` | command | `mergeBaskets` | Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged. | `BasketCreated`, `BasketItemAdded`, `BasketMerged` | `basketId: string`, `fromBasketId: string`, `fromToken: string` |
+| `RemoveItem` | command | `removeItem` | Takes a line out of a basket outright. | `BasketItemRemoved` | `basketId: string`, `sku: string` |
 
 ## Events
 
@@ -134,6 +134,8 @@ stateDiagram-v2
 `shop.cart.basket.BasketAbandoned`
 
 On the wire as `cart.BasketAbandoned`, on `shop.cart.basket`.
+
+Triggered by `ExpireIdleBaskets` (command), `abandon` (open → abandoned).
 
 #### v1 — current
 
@@ -154,6 +156,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`](http
 `shop.cart.basket.BasketCheckedOut`
 
 On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
+
+Triggered by `Checkout` (command), `checkout` (open → checked-out).
 
 | Consumer | Status | Via | Note |
 | --- | --- | --- | --- |
@@ -183,6 +187,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`](ht
 
 On the wire as `cart.BasketCreated`, on `shop.cart.basket`.
 
+Triggered by `CreateBasket` (command), `MergeBaskets` (command).
+
 #### v1 — current
 
 A basket exists, for a visitor or for a customer.
@@ -201,6 +207,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-created.ts`](https:
 `shop.cart.basket.BasketItemAdded`
 
 On the wire as `cart.BasketItemAdded`, on `shop.cart.basket`.
+
+Triggered by `AddItem` (command), `MergeBaskets` (command).
 
 #### v1 — current
 
@@ -223,6 +231,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-item-added.ts`](htt
 
 On the wire as `cart.BasketItemRemoved`, on `shop.cart.basket`.
 
+Triggered by `RemoveItem` (command).
+
 #### v1 — current
 
 A line went out.
@@ -241,6 +251,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`](h
 `shop.cart.basket.BasketMerged`
 
 On the wire as `cart.BasketMerged`, on `shop.cart.basket`.
+
+Triggered by `MergeBaskets` (command), `mergeInto` (open → merged).
 
 #### v1 — current
 

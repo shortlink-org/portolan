@@ -166,6 +166,14 @@ or a private method it calls - calls `save`, `delete`, `create`, `update` or
 first paragraph, or the JSDoc above the class. `exposedBy` names the HTTP
 operations that run it, read from the handlers. What it takes in is what its
 handler parses, when the handler parses with a zod schema - see below.
+`emits` is every event of the aggregate the use case can publish, in the
+aggregate's order: those its own files construct with `new`, and those
+produced by the public root methods it calls (by name, on anything but
+`this`) and by the domain functions it imports. A root method or domain
+function produces the events its return type names - `[Basket,
+BasketCreated]` names one - and constructs, and whatever the root methods and
+domain functions it calls produce, private helpers included. Every branch
+counts: `dispatch` that loses a cancelled order's shipment emits both.
 
 **What a request must satisfy.** A handler that checks the request with zod -
 `addItemBody.parse(req.body)`, `basketParams.parse(req.params)` - has said what

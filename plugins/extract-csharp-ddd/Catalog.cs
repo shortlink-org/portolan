@@ -213,6 +213,9 @@ public sealed class Operation
     [JsonPropertyName("exposedBy")] public List<string>? ExposedBy { get; set; }
     /// The message's shape: what the caller hands in.
     [JsonPropertyName("fields")] public List<Field> Fields { get; set; } = new();
+    /// The aggregate's events running it can publish, by id, in the
+    /// aggregate's event order; null when it reaches none.
+    [JsonPropertyName("emits")] public List<string>? Emits { get; set; }
     /// The handler, `path:line`.
     [JsonPropertyName("source")] public string? Source { get; set; }
 }

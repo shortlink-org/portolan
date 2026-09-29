@@ -77,6 +77,10 @@ Check(meetings.GetProperty("enums")[0].GetProperty("values").EnumerateArray().An
 Check(Ids(meetings.GetProperty("operations")) == "cancel-meeting,create-meeting,get-meeting-details", "the handlers under Application/Meetings are its operations");
 Check(Operation(meetings, "create-meeting").GetProperty("exposedBy")[0].GetString() == "CreateNewMeeting", "the controller action that news the command up exposes it");
 Check(Operation(meetings, "create-meeting").GetProperty("fields").GetArrayLength() == 3, "a command's fields are its constructor's parameters");
+Check(Emits(Operation(meetings, "create-meeting")) == "meetings.module.meetings.MeetingAttendeeAddedDomainEvent,meetings.module.meetings.MeetingCreatedDomainEvent",
+    "Meeting.CreateNew raises MeetingCreated and, through AddAttendee, MeetingAttendeeAdded, in the aggregate's event order; got " + Emits(Operation(meetings, "create-meeting")));
+Check(Emits(Operation(meetings, "cancel-meeting")) == "meetings.module.meetings.MeetingCanceledDomainEvent", "an event held in a local before AddDomainEvent is still the method's");
+Check(!Operation(meetings, "get-meeting-details").TryGetProperty("emits", out _), "a query that calls no root method emits nothing, and the field is left out");
 var created = meetings.GetProperty("events").EnumerateArray().First(e => e.GetProperty("name").GetString() == "MeetingCreatedDomainEvent");
 Check(!created.TryGetProperty("wire", out _), "a domain event has no wire");
 Check(created.GetProperty("consumers")[0].GetProperty("note").GetString() == "MeetingCreatedEventHandler", "the INotificationHandler of the event is its consumer");
@@ -97,6 +101,7 @@ Check(countries.GetProperty("kind").GetString() == "model-group", "an applicatio
 var subscriptions = Aggregate(catalog, "payments.module.subscriptions");
 Check(subscriptions.GetProperty("root").GetString() == "Subscription", "a class extending the module's own AggregateRoot is a root");
 Check(FieldTypes(subscriptions.GetProperty("entities")[0]).StartsWith("id:Guid,version:int,", StringComparison.Ordinal), "the event-sourced base's Id and Version are fields of the root");
+Check(Emits(Operation(subscriptions, "expire-subscriptions")) == "payments.module.subscriptions.SubscriptionExpiredDomainEvent", "a root loaded from the event store and expired in a loop emits what Expire raises");
 
 var meetingsService = Service(catalog, "meetings.module");
 Check(meetingsService.GetProperty("channels").EnumerateArray().Any(c => c.GetProperty("address").GetString() == "meetings.internal-commands" && c.GetProperty("kind").GetString() == "job"), "a module that enqueues has an internal-commands job channel");
@@ -188,6 +193,9 @@ static JsonElement Column(JsonElement table, string name) =>
 static string Names(JsonElement blocks) => string.Join(",", blocks.EnumerateArray().Select(b => b.GetProperty("name").GetString()));
 
 static string Ids(JsonElement items) => string.Join(",", items.EnumerateArray().Select(b => b.GetProperty("id").GetString()));
+
+static string Emits(JsonElement operation) =>
+    operation.TryGetProperty("emits", out var emits) ? string.Join(",", emits.EnumerateArray().Select(e => e.GetString())) : "";
 
 static string FieldTypes(JsonElement block) => string.Join(",", block.GetProperty("fields").EnumerateArray().Select(f => $"{f.GetProperty("name").GetString()}:{f.GetProperty("type").GetString()}"));
 

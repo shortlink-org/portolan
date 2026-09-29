@@ -72,11 +72,22 @@ export function ruleMark(rule: FieldRule): RuleMark {
   return { text: of ? `${of} ${text}` : text, title };
 }
 
-/** Every mark a field wears: `required` first, then its rules as written. */
+/**
+ * Every mark a field wears: `required` first, then the oneof it is an
+ * alternative in, then its rules as written.
+ */
 export function ruleMarks(field: Field): RuleMark[] {
   const marks: RuleMark[] = [];
   if (field.required) {
     marks.push({ text: "required", title: "must be sent" });
+  }
+  // proto's own word, so the mark reads as the source wrote it; "one of"
+  // in words is already what an `in` rule says.
+  if (field.oneof) {
+    marks.push({
+      text: `oneof ${field.oneof}`,
+      title: `an alternative in oneof ${field.oneof}: at most one of its fields is set`,
+    });
   }
   for (const rule of field.rules ?? []) {
     marks.push(ruleMark(rule));

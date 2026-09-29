@@ -220,6 +220,10 @@
                   "doc": "Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.",
                   "exposedBy": [
                     "Authorize"
+                  ],
+                  "emits": [
+                    "payments.ledger.payment.PaymentAuthorized",
+                    "payments.ledger.payment.PaymentDeclined"
                   ]
                 },
                 {
@@ -228,6 +232,9 @@
                   "doc": "Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.",
                   "exposedBy": [
                     "Capture"
+                  ],
+                  "emits": [
+                    "payments.ledger.payment.PaymentCaptured"
                   ]
                 },
                 {
@@ -570,6 +577,9 @@
                   "doc": "Sends money back against a captured payment, in full or in part.",
                   "exposedBy": [
                     "IssueRefund"
+                  ],
+                  "emits": [
+                    "payments.ledger.refund.RefundIssued"
                   ]
                 },
                 {

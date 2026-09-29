@@ -131,6 +131,9 @@
                   "doc": "Ends the day, whatever is left undone.",
                   "exposedBy": [
                     "CloseRoute"
+                  ],
+                  "emits": [
+                    "delivery.core.route.RouteClosed"
                   ]
                 },
                 {
@@ -147,6 +150,9 @@
                   "doc": "Builds a van's day out of the shipments waiting to go out.",
                   "exposedBy": [
                     "PlanRoute"
+                  ],
+                  "emits": [
+                    "delivery.core.route.RoutePlanned"
                   ]
                 },
                 {
@@ -155,6 +161,9 @@
                   "doc": "The van is out.",
                   "exposedBy": [
                     "StartRoute"
+                  ],
+                  "emits": [
+                    "delivery.core.route.RouteStarted"
                   ]
                 }
               ],
@@ -472,7 +481,10 @@
                 {
                   "id": "CreateShipment",
                   "kind": "command",
-                  "doc": "Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003)."
+                  "doc": "Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003).",
+                  "emits": [
+                    "delivery.core.shipment.ShipmentCreated"
+                  ]
                 },
                 {
                   "id": "Dispatch",
@@ -480,6 +492,10 @@
                   "doc": "Hands a planned shipment to the carrier and says so.",
                   "exposedBy": [
                     "Dispatch"
+                  ],
+                  "emits": [
+                    "delivery.core.shipment.ShipmentDispatched",
+                    "delivery.core.shipment.ShipmentLost"
                   ]
                 },
                 {
@@ -497,6 +513,9 @@
                   "doc": "Ends a shipment at the door.",
                   "exposedBy": [
                     "RecordDelivery"
+                  ],
+                  "emits": [
+                    "delivery.core.shipment.ShipmentDelivered"
                   ]
                 },
                 {
@@ -505,12 +524,18 @@
                   "doc": "Writes down that a parcel was seen somewhere.",
                   "exposedBy": [
                     "RecordScan"
+                  ],
+                  "emits": [
+                    "delivery.core.shipment.ShipmentInTransit"
                   ]
                 },
                 {
                   "id": "ReleaseShipment",
                   "kind": "command",
-                  "doc": "Lets a shipment out of the waiting room once the money for its order moved."
+                  "doc": "Lets a shipment out of the waiting room once the money for its order moved.",
+                  "emits": [
+                    "delivery.core.shipment.ShipmentReleased"
+                  ]
                 },
                 {
                   "id": "TrackShipment",

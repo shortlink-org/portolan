@@ -178,13 +178,15 @@
                       "type": "Money",
                       "doc": "",
                       "ref": "Money",
-                      "number": 4
+                      "number": 4,
+                      "oneof": "settlement"
                     },
                     {
                       "name": "invoice_ref",
                       "type": "string",
                       "doc": "",
-                      "number": 5
+                      "number": 5,
+                      "oneof": "settlement"
                     },
                     {
                       "name": "channel",

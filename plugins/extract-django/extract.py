@@ -19,6 +19,7 @@ import clients as clients_module
 import contracts
 import database
 import domain
+import emits as emits_module
 import events as events_module
 import flows
 import lifecycle
@@ -81,12 +82,14 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     auth_registry = auth_module.Registry(project, opts.settings, b)
 
     known_events: Dict[str, Any] = {}
+    own_events: Dict[str, Dict[str, Any]] = {}
     use_cases: List[operations.UseCase] = []
     clients: List[clients_module.Client] = []
     for agg in aggregates:
         found, registry = events_module.read_events(agg, service, b)
         agg.aggregate["events"] = found
         known_events.update(registry)
+        own_events[agg.id] = registry
         use_cases += operations.read_use_cases(agg, b)
         clients += clients_module.read_clients(agg.app, dict(opts.peers), rel, b)
 
@@ -134,10 +137,12 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         life = lifecycle.read(agg, known_events, b)
         if life is not None:
             agg.aggregate["lifecycle"] = life
+        emitters = emits_module.for_aggregate(agg, own_events[agg.id])
         for use_case in use_cases:
             if use_case.app is not agg.app:
                 continue
-            agg.aggregate["operations"].append(operations.operation(use_case, exposed.get(use_case.key)))
+            emitted = emitters.of(use_case.node, use_case.module.functions(), use_case.module.imports)
+            agg.aggregate["operations"].append(operations.operation(use_case, exposed.get(use_case.key), emitted))
         agg.aggregate["operations"].sort(key=lambda o: o["id"])
         for event in agg.aggregate["events"]:
             if event["id"] not in reader.referenced:

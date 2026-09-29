@@ -75,7 +75,12 @@ without its suffix, `create-course` for `CreateCourseCommand`. The doc is the
 handler's, or the use case's it holds (`CourseCreator`), or the message's.
 Its `fields` are the message's constructor parameters, typed as written -
 what the caller hands in, and an empty list for a query that takes nothing;
-its `source` is the handler's `__invoke`. `exposedBy` names the routes of
+its `source` is the handler's `__invoke`. `emits` is what running it can
+publish, the operation's own aggregate's events in the aggregate's order: the
+handler is followed the way a flow is, through the use case it holds to the
+root's named constructor or method, and whatever that records - itself or
+through the root's own methods it calls - is emitted, `create-course` emitting
+`CourseCreated`. `exposedBy` names the routes of
 the operation's own service that dispatch or ask it; a route in another
 application is a call across contexts and lives in the flow instead. A
 class named `*CommandHandler` that implements neither interface is reported:

@@ -77,15 +77,23 @@ def declared_table(model: ModelDef, choices: Dict[str, Dict[str, str]]) -> Dict[
 def emits_of(node: ast.AST, events: Dict[str, object]) -> str:
     """The event a mover hands back, as its return annotation names it, by the
     id the catalog knows it under."""
+    found = annotated_events(node, events)
+    return found[-1] if found else ""
+
+
+def annotated_events(node: ast.AST, events: Dict[str, object]) -> List[str]:
+    """Every event a function's return annotation names, in the order written:
+    `-> "InvoiceIssued"`, `-> Optional[InvoicePaid]`. An operation reads the
+    same annotation to know what a model method it calls produces."""
     annotation = getattr(node, "returns", None)
     if annotation is None:
-        return ""
-    found = ""
+        return []
+    found = []
     for name in ast.walk(annotation):
         if isinstance(name, ast.Name) and name.id in events:
-            found = events[name.id].id
+            found.append(events[name.id].id)
         elif isinstance(name, ast.Constant) and isinstance(name.value, str) and name.value in events:
-            found = events[name.value].id
+            found.append(events[name.value].id)
     return found
 
 

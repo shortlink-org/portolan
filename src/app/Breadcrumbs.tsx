@@ -61,14 +61,17 @@ export function crumbsFor(pathname: string): Crumb[] {
       projects: "projects",
       pipeline: "pipeline",
       delivery: "delivery",
+      rules: "rules",
       integrations: "integrations",
       preferences: "preferences",
     };
+    const rule = subsection === "rules" && parts[2] ? decodeURIComponent(parts[2]) : null;
     return [
       { label: "settings", to: paths.settings() },
       ...(subsection && labels[subsection]
-        ? [{ label: labels[subsection], to: pathname }]
+        ? [{ label: labels[subsection], to: rule ? paths.settingsRules() : pathname }]
         : []),
+      ...(rule ? [{ label: rule === "new" ? "new rule" : rule, to: pathname }] : []),
     ];
   }
 

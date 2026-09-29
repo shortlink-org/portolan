@@ -54,3 +54,4 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0030](../adr/portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 |
 | [portolan.0031](../adr/portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 |
 | [portolan.0032](../adr/portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 |
+| [portolan.0033](../adr/portolan.0033.md) | A rule carries its examples, and check holds it to them | accepted | 2026-09-29 |

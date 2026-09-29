@@ -129,13 +129,15 @@ fn first_trait_bound(bounds: &syn::punctuated::Punctuated<syn::TypeParamBound, s
     })
 }
 
-/// The use case as an operation of its aggregate. `exposedBy` is filled by the transport reader.
+/// The use case as an operation of its aggregate. `exposedBy` is filled by the
+/// transport reader, `emits` by emits.rs.
 pub fn operation_of(uc: &UseCase) -> Operation {
     Operation {
         id: camel(&uc.name),
         kind: if is_command(uc) { "command".into() } else { "query".into() },
         doc: doc_of_use_case(uc),
         exposed_by: None,
+        emits: vec![],
         source: None,
     }
 }

@@ -97,11 +97,11 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `Check` | query | Answers whether an account accepts a password right now. |
-| `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. |
-| `RecordSuccess` | command | Clears the count of wrong passwords after a right one. |
+| Operation | Kind | Doc | Emits |
+| --- | --- | --- | --- |
+| `Check` | query | Answers whether an account accepts a password right now. | — |
+| `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. | `AccountLocked` |
+| `RecordSuccess` | command | Clears the count of wrong passwords after a right one. | — |
 
 ## Events
 
@@ -111,6 +111,8 @@ stateDiagram-v2
 `auth.auth.lockout.AccountLocked`
 
 On the wire as `auth.AccountLocked`, on `auth_lockout`.
+
+Triggered by `RecordFailure` (command), `Fail` (open → locked).
 
 #### v1 — current
 

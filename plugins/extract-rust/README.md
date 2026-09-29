@@ -77,7 +77,16 @@ when `handle` - or any other method of the struct - calls `save`, `delete`,
 `create`, `update`, `publish`, `remove`, `insert` or `upsert` on a port, else a
 query. The doc is the directory's `README.md` first paragraph, or the doc
 comment above the struct. `exposedBy` names the rpcs that run it, read from
-the handlers.
+the handlers. `emits` lists the aggregate's events the use case can publish,
+in the aggregate's order: a root method or a function of the aggregate's
+module produces the events its return type names by position - `(Order,
+OrderPlaced)` under a `Result` - and those it builds, `OrderPlaced { … }` or
+`OrderPlaced::new(…)`, and, to a fixpoint, what the domain functions and
+`self.` methods it calls produce; the use case emits what the root methods
+(`order.cancel(…)`, `Order::place(…)`) and the domain functions it calls
+through a `use` of the aggregate's module produce, and the events it builds
+itself. Matched by name; an enum of events in a return type is not read,
+only the variants a body builds.
 
 **Port.** A field of `UseCase`, typed with a trait: `orders: Arc<dyn Orders>`,
 `orders: O` under `O: Orders`, in the generics or a `where` clause. A field

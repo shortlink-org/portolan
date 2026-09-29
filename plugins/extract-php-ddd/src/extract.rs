@@ -740,6 +740,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                                 doc: uc.doc.clone(),
                                 exposed_by: if by.is_empty() { None } else { Some(by) },
                                 fields: uc.fields.clone(),
+                                emits: model.map(|m| emits_of(&tree, &scope, &uc.handler.fqn, &m.events)).unwrap_or_default(),
                                 source: format!("{}:{}", rel(&uc.file.path), uc.line),
                             });
                         }
@@ -1308,6 +1309,29 @@ fn follow(
     }
 }
 
+/// What running an operation can publish: the events `follow` reaches from
+/// its handler's `__invoke` that the operation's own aggregate declares, in
+/// the order the aggregate lists them.
+///
+/// It is the walk a flow draws, so the operation and the flow agree: the
+/// handler hands the work to the use case it holds, the use case calls the
+/// root's named constructor or a method on the root, and the root records -
+/// itself or through the same-class methods it calls, `record(new
+/// CourseCreatedDomainEvent(...))`. An event published straight from the
+/// handler counts the same. The domain names the event; the use case only
+/// decides whether to run what names it, so a branch not taken still emits.
+/// An event of another aggregate the walk passes is that aggregate's to
+/// claim, and a flow's to draw.
+fn emits_of(tree: &Tree, scope: &Scope, handler: &str, own: &[domain::EventDecl]) -> Vec<String> {
+    let mut effects = Vec::new();
+    follow(tree, scope, handler, "__invoke", 6, &mut BTreeSet::new(), &mut effects);
+    let reached = |fqn: &str| effects.iter().any(|e| matches!(e, Effect::Publish { event, .. } if event == fqn));
+    own.iter()
+        .filter(|decl| reached(&decl.class.fqn))
+        .filter_map(|decl| scope.events.get(&decl.class.fqn).map(|e| e.id.clone()))
+        .collect()
+}
+
 fn push_unique(out: &mut Vec<Effect>, effect: Effect) {
     let same = |a: &Effect| match (a, &effect) {
         (Effect::Publish { event: e1, file: f1, line: l1 }, Effect::Publish { event: e2, file: f2, line: l2 }) => e1 == e2 && f1 == f2 && l1 == l2,
@@ -1362,5 +1386,85 @@ mod tests {
         assert_eq!(openapi_name("openapi.{service}.yaml", "mooc-backend"), "openapi.mooc-backend.yaml");
         assert_eq!(openapi_name("openapi.inferred.yaml", "mooc-backend"), "openapi.inferred.mooc-backend.yaml");
         assert_eq!(openapi_name("contract", "x"), "contract.x");
+    }
+
+    #[test]
+    fn an_operation_emits_what_the_root_it_reaches_records() {
+        let event = |name: &str, doc: &str| {
+            (
+                format!("src/Shop/Orders/Domain/{name}DomainEvent.php"),
+                format!("<?php\nnamespace A\\Shop\\Orders\\Domain;\nuse A\\Shared\\Domain\\Bus\\Event\\DomainEvent;\n/** {doc} */\nfinal class {name}DomainEvent extends DomainEvent {{}}\n"),
+            )
+        };
+        let placed = event("OrderPlaced", "An order exists.");
+        let shipped = event("OrderShipped", "An order left.");
+        let cancelled = event("OrderCancelled", "An order is off.");
+        let tree = Tree::from_sources(&[
+            ("src/Shared/Domain/Aggregate/AggregateRoot.php", "<?php\nnamespace A\\Shared\\Domain\\Aggregate;\nabstract class AggregateRoot {}\n"),
+            ("src/Shared/Domain/Bus/Event/DomainEvent.php", "<?php\nnamespace A\\Shared\\Domain\\Bus\\Event;\nabstract class DomainEvent {}\n"),
+            // The aggregate's order is Placed, Shipped, Cancelled; `cancel`
+            // records through a private helper.
+            (placed.0.as_str(), placed.1.as_str()),
+            (shipped.0.as_str(), shipped.1.as_str()),
+            (cancelled.0.as_str(), cancelled.1.as_str()),
+            (
+                "src/Shop/Orders/Domain/Order.php",
+                "<?php\nnamespace A\\Shop\\Orders\\Domain;\nuse A\\Shared\\Domain\\Aggregate\\AggregateRoot;\nuse A\\Shop\\Invoices\\Domain\\Invoice;\nfinal class Order extends AggregateRoot {\n  public static function create(string $id): self { $order = new self(); $order->record(new OrderPlacedDomainEvent($id)); return $order; }\n  public function ship(): void { $this->record(new OrderShippedDomainEvent()); }\n  public function cancel(): void { $this->markCancelled(); Invoice::void(); }\n  private function markCancelled(): void { $this->record(new OrderCancelledDomainEvent()); }\n}\n",
+            ),
+            ("src/Shop/Orders/Domain/OrderRepository.php", "<?php\nnamespace A\\Shop\\Orders\\Domain;\ninterface OrderRepository { public function save(Order $order): void; public function search(string $id): Order; }\n"),
+            // Another aggregate's event, reached on the way: not the order's to claim.
+            (
+                "src/Shop/Invoices/Domain/Invoice.php",
+                "<?php\nnamespace A\\Shop\\Invoices\\Domain;\nuse A\\Shared\\Domain\\Aggregate\\AggregateRoot;\nfinal class Invoice extends AggregateRoot {\n  public static function void(): self { $i = new self(); $i->record(new InvoiceVoidedDomainEvent()); return $i; }\n}\n",
+            ),
+            ("src/Shop/Invoices/Domain/InvoiceVoidedDomainEvent.php", "<?php\nnamespace A\\Shop\\Invoices\\Domain;\nuse A\\Shared\\Domain\\Bus\\Event\\DomainEvent;\nfinal class InvoiceVoidedDomainEvent extends DomainEvent {}\n"),
+            // The handler hands the work to the use case it holds, which calls
+            // the named constructor.
+            (
+                "src/Shop/Orders/Application/Place/OrderPlacer.php",
+                "<?php\nnamespace A\\Shop\\Orders\\Application\\Place;\nuse A\\Shop\\Orders\\Domain\\Order;\nuse A\\Shop\\Orders\\Domain\\OrderRepository;\nfinal class OrderPlacer {\n  public function __construct(private OrderRepository $repository) {}\n  public function __invoke(string $id): void { $order = Order::create($id); $this->repository->save($order); }\n}\n",
+            ),
+            (
+                "src/Shop/Orders/Application/Place/PlaceOrderCommandHandler.php",
+                "<?php\nnamespace A\\Shop\\Orders\\Application\\Place;\nuse A\\Shared\\Domain\\Bus\\Command\\CommandHandler;\nfinal class PlaceOrderCommandHandler implements CommandHandler {\n  public function __construct(private OrderPlacer $placer) {}\n  public function __invoke(PlaceOrderCommand $command): void { $this->placer->__invoke($command->id()); }\n}\n",
+            ),
+            // Methods on a root the handler loads: cancel, then ship, listed in
+            // the aggregate's order.
+            (
+                "src/Shop/Orders/Application/Cancel/CancelOrderCommandHandler.php",
+                "<?php\nnamespace A\\Shop\\Orders\\Application\\Cancel;\nuse A\\Shared\\Domain\\Bus\\Command\\CommandHandler;\nuse A\\Shop\\Orders\\Domain\\OrderRepository;\nfinal class CancelOrderCommandHandler implements CommandHandler {\n  public function __construct(private OrderRepository $repository) {}\n  public function __invoke(CancelOrderCommand $command): void { $order = $this->repository->search($command->id()); $order->cancel(); $order->ship(); $this->repository->save($order); }\n}\n",
+            ),
+            (
+                "src/Shop/Orders/Application/Find/FindOrderQueryHandler.php",
+                "<?php\nnamespace A\\Shop\\Orders\\Application\\Find;\nuse A\\Shared\\Domain\\Bus\\Query\\QueryHandler;\nuse A\\Shop\\Orders\\Domain\\OrderRepository;\nfinal class FindOrderQueryHandler implements QueryHandler {\n  public function __construct(private OrderRepository $repository) {}\n  public function __invoke(FindOrderQuery $query): array { return [$this->repository->search($query->id())]; }\n}\n",
+            ),
+        ]);
+        let orders = domain::read(&tree, Path::new("src/Shop/Orders")).expect("the order root");
+        let invoices = domain::read(&tree, Path::new("src/Shop/Invoices")).expect("the invoice root");
+        let mut events = BTreeMap::new();
+        for decl in orders.events.iter().chain(&invoices.events) {
+            let name = decl.class.name.trim_end_matches("DomainEvent").to_string();
+            events.insert(
+                decl.class.fqn.clone(),
+                EventRef {
+                    id: format!("shop.{name}"),
+                    wire: String::new(),
+                    doc: String::new(),
+                    name,
+                },
+            );
+        }
+        let scope = Scope {
+            events: &events,
+            ports: &BTreeMap::new(),
+            module_roots: vec![
+                (PathBuf::from("src/Shop/Orders"), orders.root.fqn.clone()),
+                (PathBuf::from("src/Shop/Invoices"), invoices.root.fqn.clone()),
+            ],
+        };
+        let emits = |handler: &str| emits_of(&tree, &scope, handler, &orders.events);
+        assert_eq!(emits("A\\Shop\\Orders\\Application\\Place\\PlaceOrderCommandHandler"), ["shop.OrderPlaced"]);
+        assert_eq!(emits("A\\Shop\\Orders\\Application\\Cancel\\CancelOrderCommandHandler"), ["shop.OrderShipped", "shop.OrderCancelled"]);
+        assert!(emits("A\\Shop\\Orders\\Application\\Find\\FindOrderQueryHandler").is_empty(), "a query records nothing");
     }
 }

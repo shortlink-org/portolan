@@ -44,6 +44,21 @@ function fieldsFor(
   );
 }
 
+/**
+ * The fields a request sets: all of them, except that of each oneof only the
+ * first alternative - a body with two would be refused, or quietly keep the
+ * last one parsed.
+ */
+function settable(fields: readonly Field[]): Field[] {
+  const taken = new Set<string>();
+  return fields.filter((field) => {
+    if (!field.oneof) return true;
+    if (taken.has(field.oneof)) return false;
+    taken.add(field.oneof);
+    return true;
+  });
+}
+
 function valueFor(
   provided: RpcService,
   field: Field,
@@ -80,7 +95,7 @@ function valueFor(
 
   const next = new Set(visiting).add(parsed.base);
   return Object.fromEntries(
-    nested.map((child) => [child.name, valueFor(provided, child, defs, next)]),
+    settable(nested).map((child) => [child.name, valueFor(provided, child, defs, next)]),
   );
 }
 
@@ -96,7 +111,7 @@ export function grpcRequestJson(
 
   const visiting = new Set([method.request]);
   const value = Object.fromEntries(
-    fields.map((field) => [field.name, valueFor(provided, field, defs, visiting)]),
+    settable(fields).map((field) => [field.name, valueFor(provided, field, defs, visiting)]),
   );
   return JSON.stringify(value, null, 2);
 }

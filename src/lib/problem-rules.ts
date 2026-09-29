@@ -27,10 +27,11 @@ import manifestJson from "../../portolan.json";
 import type { Catalog, CatalogIndex } from "../catalog";
 import type { Problem } from "./derive";
 import { compileExpression, SUBJECT_NAMES } from "./problem-rules-cel.mjs";
-import type { RuleSeverity, RuleSubject } from "./problem-rules-cel.mjs";
+import type { RuleExample, RuleSeverity, RuleSubject } from "./problem-rules-cel.mjs";
 import { estateOf, subjectsOf } from "./problem-subjects";
+import type { Subject } from "./problem-subjects";
 
-export type { RuleSeverity, RuleSubject } from "./problem-rules-cel.mjs";
+export type { RuleExample, RuleSeverity, RuleSubject } from "./problem-rules-cel.mjs";
 export { SUBJECTS } from "./problem-rules-cel.mjs";
 export { estateOf, subjectsOf } from "./problem-subjects";
 export type { Subject } from "./problem-subjects";
@@ -70,6 +71,8 @@ export interface ProblemRuleEntry {
   note?: string;
   description?: string;
   action?: string;
+  /** The rule's own tests; `check` fails when the rule disagrees with one. */
+  examples?: RuleExample[];
 }
 
 /** A rule as the page shows it: passport, switch, and where it came from. */
@@ -79,6 +82,7 @@ export interface ProblemRule extends RulePassport {
   /** The severity the passport was written with, before the manifest re-graded it. */
   defaultSeverity: RuleSeverity;
   reason?: string;
+  examples?: RuleExample[];
 }
 
 export const BUILTIN_RULES: readonly RulePassport[] = builtinJson as RulePassport[];
@@ -123,6 +127,7 @@ export function resolveRules(entries: readonly ProblemRuleEntry[]): ProblemRule[
         when: entry.when ?? "",
         message: entry.message ?? "",
         ...(entry.peer ? { peer: entry.peer } : {}),
+        ...(entry.examples ? { examples: entry.examples } : {}),
         builtin: false,
         enabled: entry.enabled !== false,
         ...(entry.reason ? { reason: entry.reason } : {}),
@@ -196,6 +201,46 @@ export function runRule(
 
 /** `runRule`, by the name the Settings editor calls it: the draft is a rule like any other. */
 export const runCustomRule = runRule;
+
+/** One subject row, whether the rule's condition holds for it, and the note it would carry. */
+export interface RowVerdict {
+  subject: Subject;
+  matched: boolean;
+  /** The message, for a matched row when the rule has one. */
+  note?: string;
+}
+
+/**
+ * Every row of the rule's subject with its verdict, matched or not: the rule
+ * page lists the rows a condition leaves out as well as the ones it keeps,
+ * because an example that should not match is picked from the second list.
+ * A message that does not compile yet leaves the notes out, not the rows.
+ */
+export function evaluateRows(
+  rule: Pick<ProblemRule, "over" | "when"> & { message?: string },
+  catalog: Catalog,
+  index: CatalogIndex,
+  estate: Record<string, string[]> = estateOf(catalog),
+): { rows: RowVerdict[]; failure?: string } {
+  try {
+    if (!rule.when.trim()) throw new Error("a rule needs a condition");
+    const when = compileExpression(rule.over, rule.when, "bool");
+    let message: ((context: Record<string, unknown>) => unknown) | null = null;
+    try {
+      message = rule.message?.trim() ? compileExpression(rule.over, rule.message, "string") : null;
+    } catch {
+      message = null;
+    }
+    const rows = subjectsOf(catalog, index, rule.over).map((subject): RowVerdict => {
+      const context = { [rule.over]: subject.row, estate };
+      const matched = when(context) === true;
+      return matched && message ? { subject, matched, note: String(message(context)) } : { subject, matched };
+    });
+    return { rows };
+  } catch (cause) {
+    return { rows: [], failure: cause instanceof Error ? cause.message.split("\n", 1)[0]! : String(cause) };
+  }
+}
 
 /**
  * Every rule over the catalog. A switched-off rule is still run, so the page

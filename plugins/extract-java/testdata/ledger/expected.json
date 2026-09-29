@@ -247,6 +247,10 @@
                   "doc": "Reserves the money for an order, or records that the gateway refused.",
                   "exposedBy": [
                     "Authorize"
+                  ],
+                  "emits": [
+                    "payments.ledger.payment.PaymentAuthorized",
+                    "payments.ledger.payment.PaymentDeclined"
                   ]
                 },
                 {
@@ -255,6 +259,9 @@
                   "doc": "Moves the money the gateway was holding, and says so on the bus.",
                   "exposedBy": [
                     "Capture"
+                  ],
+                  "emits": [
+                    "payments.ledger.payment.PaymentCaptured"
                   ]
                 },
                 {

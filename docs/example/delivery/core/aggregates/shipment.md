@@ -174,15 +174,15 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `CreateShipment` | command | *internal* | Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003). |
-| `Dispatch` | command | `Dispatch` | Hands a planned shipment to the carrier and says so. |
-| `GetShipment` | query | `Dispatch`, `GetShipment` | One shipment, for whoever is asking about an order. |
-| `RecordDelivery` | command | `RecordDelivery` | Ends a shipment at the door. |
-| `RecordScan` | command | `RecordScan` | Writes down that a parcel was seen somewhere. |
-| `ReleaseShipment` | command | *internal* | Lets a shipment out of the waiting room once the money for its order moved. |
-| `TrackShipment` | query | `TrackShipment` | What the customer sees when they paste a tracking code. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `CreateShipment` | command | *internal* | Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003). | `ShipmentCreated` |
+| `Dispatch` | command | `Dispatch` | Hands a planned shipment to the carrier and says so. | `ShipmentDispatched`, `ShipmentLost` |
+| `GetShipment` | query | `Dispatch`, `GetShipment` | One shipment, for whoever is asking about an order. | — |
+| `RecordDelivery` | command | `RecordDelivery` | Ends a shipment at the door. | `ShipmentDelivered` |
+| `RecordScan` | command | `RecordScan` | Writes down that a parcel was seen somewhere. | `ShipmentInTransit` |
+| `ReleaseShipment` | command | *internal* | Lets a shipment out of the waiting room once the money for its order moved. | `ShipmentReleased` |
+| `TrackShipment` | query | `TrackShipment` | What the customer sees when they paste a tracking code. | — |
 
 ## Events
 
@@ -192,6 +192,8 @@ stateDiagram-v2
 `delivery.core.shipment.ShipmentCreated`
 
 On the wire as `delivery.ShipmentCreated`, on `delivery.core.shipment`.
+
+Triggered by `CreateShipment` (command).
 
 #### v1 — current
 
@@ -215,6 +217,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-create
 
 On the wire as `delivery.ShipmentDelivered`, on `delivery.core.shipment`.
 
+Triggered by `RecordDelivery` (command), `deliver` (dispatched → delivered), `deliver` (in-transit → delivered).
+
 #### v1 — current
 
 It arrived, and who signed. The order is finished from this service's side;
@@ -236,6 +240,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-delive
 `delivery.core.shipment.ShipmentDispatched`
 
 On the wire as `delivery.ShipmentDispatched`, on `delivery.core.shipment`.
+
+Triggered by `Dispatch` (command), `dispatch` (planned → dispatched).
 
 #### v1 — current
 
@@ -261,6 +267,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-dispat
 
 On the wire as `delivery.ShipmentInTransit`, on `delivery.core.shipment`.
 
+Triggered by `RecordScan` (command), `record` (dispatched → in-transit).
+
 #### v1 — current
 
 The first sighting after dispatch: the parcels are moving. Later scans add
@@ -283,6 +291,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-in-tra
 
 On the wire as `delivery.ShipmentLost`, on `delivery.core.shipment`.
 
+Triggered by `Dispatch` (command), `lose` (awaiting-payment → lost), `lose` (planned → lost), `lose` (dispatched → lost), `lose` (in-transit → lost).
+
 #### v1 — current
 
 Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts)
@@ -301,6 +311,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.t
 `delivery.core.shipment.ShipmentReleased`
 
 On the wire as `delivery.ShipmentReleased`, on `delivery.core.shipment`.
+
+Triggered by `ReleaseShipment` (command), `release` (awaiting-payment → planned).
 
 #### v1 — current
 

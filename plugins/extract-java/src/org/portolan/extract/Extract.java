@@ -90,6 +90,7 @@ final class Extract {
 
         for (Domain.Aggregate aggregate : aggregates) {
             List<Object> operations = new ArrayList<>();
+            Emits emits = Emits.of(aggregate);
             for (Operations.UseCase useCase : useCases) {
                 if (!belongs(useCase, aggregate)) {
                     continue;
@@ -98,7 +99,7 @@ final class Extract {
                 if (by != null) {
                     by.sort(String::compareTo);
                 }
-                operations.add(Catalog.operation(useCase.id, useCase.kind, useCase.doc, by));
+                operations.add(Catalog.operation(useCase.id, useCase.kind, useCase.doc, by, emits.of(useCase)));
             }
             aggregate.object.put("operations", operations);
 

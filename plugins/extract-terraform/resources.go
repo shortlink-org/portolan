@@ -38,6 +38,10 @@ const (
 	typeAzureServiceBusQueue        = "azurerm_servicebus_queue"
 	typeAzureServiceBusTopic        = "azurerm_servicebus_topic"
 	typeAzureStorageQueue           = "azurerm_storage_queue"
+	typeServiceBusNamespace         = "azurerm_servicebus_namespace"
+	typeServiceBusSubscription      = "azurerm_servicebus_subscription"
+	typeServiceBusRule              = "azurerm_servicebus_subscription_rule"
+	typeRoleAssignment              = "azurerm_role_assignment"
 )
 
 var notYet = map[string]string{
@@ -68,6 +72,7 @@ type infra struct {
 	eventGrid     []*eventGridTopic
 	eventGridSubs []*eventGridSubscription
 	azureChannels []*azureDestination
+	bus           busFound
 }
 
 type queue struct {
@@ -267,9 +272,29 @@ func read(t *tree, b *plugin.Builder) *infra {
 			if subscription := readEventGridSubscription(r, b); subscription != nil {
 				in.eventGridSubs = append(in.eventGridSubs, subscription)
 			}
-		case typeAzureEventHub, typeAzureServiceBusQueue, typeAzureServiceBusTopic, typeAzureStorageQueue:
+		case typeAzureEventHub, typeAzureStorageQueue:
 			if destination := readAzureDestination(r, b); destination != nil {
 				in.azureChannels = append(in.azureChannels, destination)
+			}
+		case typeServiceBusNamespace:
+			if ns := readBusNamespace(r, b); ns != nil {
+				in.bus.namespaces = append(in.bus.namespaces, ns)
+			}
+		case typeAzureServiceBusQueue, typeAzureServiceBusTopic:
+			if e := readBusEntity(r, b); e != nil {
+				in.bus.entities = append(in.bus.entities, e)
+			}
+		case typeServiceBusSubscription:
+			if sub := readBusSubscription(r, b); sub != nil {
+				in.bus.subscriptions = append(in.bus.subscriptions, sub)
+			}
+		case typeServiceBusRule:
+			if rule := readBusRule(r, b); rule != nil {
+				in.bus.rules = append(in.bus.rules, rule)
+			}
+		case typeRoleAssignment:
+			if grant := readBusGrant(r, b); grant != nil {
+				in.bus.grants = append(in.bus.grants, grant)
 			}
 		case typeMapping:
 			m := &mapping{r: r}
@@ -340,6 +365,7 @@ func read(t *tree, b *plugin.Builder) *infra {
 			}
 		}
 	}
+	readBusBindings(in, &in.bus, b)
 	return in
 }
 

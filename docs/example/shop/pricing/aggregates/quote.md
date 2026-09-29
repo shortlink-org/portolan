@@ -52,11 +52,11 @@ Money never rounds: everything is an integer of minor units, and two amounts are
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `ExpireQuote` | command | *internal* | Package expire_quote lets promises lapse. |
-| `GetQuote` | query | `GetQuote` | Package get_quote reads one quote. |
-| `IssueQuote` | command | `IssueQuote` | Package issue_quote prices a basket and promises the price for a while. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `ExpireQuote` | command | *internal* | Package expire_quote lets promises lapse. | `QuoteExpired` |
+| `GetQuote` | query | `GetQuote` | Package get_quote reads one quote. | — |
+| `IssueQuote` | command | `IssueQuote` | Package issue_quote prices a basket and promises the price for a while. | `QuoteIssued` |
 
 ## Events
 
@@ -66,6 +66,8 @@ Money never rounds: everything is an integer of minor units, and two amounts are
 `shop.pricing.quote.QuoteExpired`
 
 On the wire as `pricing.QuoteExpired`, on `shop.pricing.quote`.
+
+Triggered by `ExpireQuote` (command).
 
 #### v1 — current
 
@@ -85,6 +87,8 @@ Source: [`examples/shop/pricing/internal/domain/quote/event/quote_expired.go`](h
 `shop.pricing.quote.QuoteIssued`
 
 On the wire as `pricing.QuoteIssued`, on `shop.pricing.quote`.
+
+Triggered by `IssueQuote` (command).
 
 #### v1 — current
 

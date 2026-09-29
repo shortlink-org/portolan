@@ -58,12 +58,22 @@ def version(doc: str, source: str, fields: List[Dict[str, Any]], name: str = "v1
     return {"version": name, "doc": doc, "source": source, "fields": fields}
 
 
-def operation(id_: str, kind: str, doc: str = "", exposed_by: Optional[List[str]] = None) -> Dict[str, Any]:
+def operation(
+    id_: str,
+    kind: str,
+    doc: str = "",
+    exposed_by: Optional[List[str]] = None,
+    emits: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """An operation. `emits` is written only when there are any, and in the
+    order given - the aggregate's event order, which the caller knows."""
     out: Dict[str, Any] = {"id": id_, "kind": kind}
     if doc:
         out["doc"] = doc
     if exposed_by:
         out["exposedBy"] = sorted(exposed_by)
+    if emits:
+        out["emits"] = list(emits)
     return out
 
 

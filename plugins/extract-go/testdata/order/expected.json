@@ -47,7 +47,10 @@
                 {
                   "id": "Place",
                   "kind": "command",
-                  "doc": "Package place places a draft order."
+                  "doc": "Package place places a draft order.",
+                  "emits": [
+                    "shop.order.order.Placed"
+                  ]
                 }
               ],
               "events": [

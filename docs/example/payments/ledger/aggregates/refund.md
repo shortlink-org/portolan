@@ -54,11 +54,11 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. |
-| `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. |
-| `RefundCancelledOrder` | query | *internal* | Sends back what was captured for an order that was cancelled. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. | `RefundIssued` |
+| `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. | — |
+| `RefundCancelledOrder` | query | *internal* | Sends back what was captured for an order that was cancelled. | — |
 
 ## Events
 
@@ -68,6 +68,8 @@ stateDiagram-v2
 `payments.ledger.refund.RefundIssued`
 
 On the wire as `ledger.RefundIssued`, on `payments.ledger.refund`.
+
+Triggered by `IssueRefund` (command), `issue` (REQUESTED → ISSUED).
 
 #### v1 — current
 

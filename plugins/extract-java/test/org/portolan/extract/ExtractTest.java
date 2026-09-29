@@ -52,6 +52,7 @@ public final class ExtractTest {
         golden(cwd.resolve("plugins/extract-java/testdata/ledger/expected.json"), fragment);
         claims(Json.object(Json.parse(fragment)), b.warnings());
         fetched(cwd, options, fragment);
+        emits(cwd);
 
         if (FAILURES.isEmpty()) {
             System.out.println("extract-java: every claim holds");
@@ -130,6 +131,11 @@ public final class ExtractTest {
                 "[AuthorizePayment=[Authorize], CapturePayment=[Capture], GetPayment=[GetPayment]]",
                 pairs(aggregate.get("operations"), "id", "exposedBy"));
 
+        is("an operation emits what the root methods it calls hand back, in the aggregate's event order",
+                "[AuthorizePayment=[payments.ledger.payment.PaymentAuthorized, payments.ledger.payment.PaymentDeclined], "
+                        + "CapturePayment=[payments.ledger.payment.PaymentCaptured], GetPayment=[]]",
+                pairs(aggregate.get("operations"), "id", "emits"));
+
         is("an event carries the name it travels under",
                 "[PaymentAuthorized=ledger.PaymentAuthorized, PaymentCaptured=ledger.PaymentCaptured, PaymentDeclined=ledger.PaymentDeclined]",
                 wires(aggregate.get("events")));
@@ -172,6 +178,68 @@ public final class ExtractTest {
         is("the lane says the far end is outside the estate", "external", kindOf(authorize.get("participants"), "stripe"));
 
         is("what it reports beside the fragment", 2, warnings.size());
+    }
+
+    /**
+     * What each use case emits, over a domain that reaches its events every
+     * way the rule allows: a return type, an event built and recorded, a
+     * private helper, a constructor, and a static factory of another class.
+     */
+    private static void emits(Path cwd) throws Exception {
+        Path root = Files.createTempDirectory("extract-java-emits");
+        try {
+            Path java = root.resolve("src/main/java/org/auth");
+            Map<String, String> sources = new java.util.LinkedHashMap<>();
+            sources.put("domain/lockout/event/Opened.java", "package org.auth.domain.lockout.event; public record Opened(String id) {}");
+            sources.put("domain/lockout/event/AccountLocked.java", "package org.auth.domain.lockout.event; public record AccountLocked() {}");
+            sources.put("domain/lockout/event/Unlocked.java", "package org.auth.domain.lockout.event; public record Unlocked() {}");
+            sources.put("domain/lockout/Lockout.java", """
+                    package org.auth.domain.lockout;
+                    import org.auth.domain.lockout.event.*;
+                    public class Lockout {
+                        public Lockout(String id) { registerEvent(new Opened(id)); }
+                        public static Lockout open(String id) { return new Lockout(id); }
+                        public AccountLocked fail() { return null; }
+                        public void succeed() { this.unlock(); }
+                        private void unlock() { registerEvent(new Unlocked()); }
+                        public boolean allows() { return true; }
+                        private void registerEvent(Object event) {}
+                    }
+                    """);
+            sources.put("domain/lockout/Escalation.java", """
+                    package org.auth.domain.lockout;
+                    public final class Escalation {
+                        public static Lockout lockFor(String id) { var lockout = Lockout.open(id); lockout.fail(); return lockout; }
+                    }
+                    """);
+            String useCase = "package org.auth.application.lockout.usecase; import org.auth.domain.lockout.*; import org.auth.domain.lockout.event.*; ";
+            sources.put("application/lockout/usecase/Register.java", useCase + "public class Register { public void handle(String id) { Lockout.open(id); } }");
+            sources.put("application/lockout/usecase/Fail.java", useCase + "public class Fail { public void handle(Lockout l) { if (l.allows()) { l.fail(); } } }");
+            sources.put("application/lockout/usecase/Succeed.java", useCase + "public class Succeed { public void handle(Lockout l) { l.succeed(); } }");
+            sources.put("application/lockout/usecase/Check.java", useCase + "public class Check { public boolean handle(Lockout l) { return l.allows(); } }");
+            sources.put("application/lockout/usecase/Escalate.java", useCase + "public class Escalate { public void handle(String id) { Escalation.lockFor(id); } }");
+            sources.put("application/lockout/usecase/Announce.java", useCase + "public class Announce { public Object handle() { return new Unlocked(); } }");
+            sources.put("application/lockout/usecase/Create.java", useCase + "public class Create { public Object handle(String id) { return new Lockout(id); } }");
+            for (Map.Entry<String, String> source : sources.entrySet()) {
+                Path file = java.resolve(source.getKey());
+                Files.createDirectories(file.getParent());
+                Files.writeString(file, source.getValue());
+            }
+
+            Protocol.Builder b = new Protocol.Builder();
+            Extract.run(new Protocol.Input(root.toString()), Protocol.Options.of(Json.parse("{\"context\": \"auth\", \"service\": \"lockout\"}")), b, cwd);
+            Map<String, Object> fragment = Json.object(Json.parse(String.valueOf(((Map<?, ?>) ((List<?>) b.response().get("files")).get(0)).get("contents"))));
+            Map<String, Object> service = Json.object(Json.array(Json.object(Json.array(fragment.get("contexts")).get(0)).get("services")).get(0));
+            Map<String, Object> aggregate = Json.object(Json.array(service.get("aggregates")).get(0));
+            String prefix = "auth.lockout.lockout.";
+            is("a use case emits what it reaches: a return type, a helper, a constructor, a static factory of another class, and an event it builds itself",
+                    "[Announce=[Unlocked], Check=[], Create=[Opened], Escalate=[AccountLocked, Opened], Fail=[AccountLocked], Register=[Opened], Succeed=[Unlocked]]",
+                    pairs(aggregate.get("operations"), "id", "emits").replace(prefix, ""));
+        } finally {
+            try (var walk = Files.walk(root)) {
+                walk.sorted(java.util.Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
+            }
+        }
     }
 
     /** "[name: type required rule=bound …]": each field with what it must satisfy. */

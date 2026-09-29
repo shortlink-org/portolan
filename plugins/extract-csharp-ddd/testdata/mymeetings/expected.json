@@ -235,6 +235,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.meetings.MeetingCanceledDomainEvent"
+                  ],
                   "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/CancelMeeting/CancelMeetingCommandHandler.cs:16"
                 },
                 {
@@ -260,6 +263,10 @@
                       "type": "DateTime",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "meetings.module.meetings.MeetingAttendeeAddedDomainEvent",
+                    "meetings.module.meetings.MeetingCreatedDomainEvent"
                   ],
                   "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Meetings/CreateMeeting/CreateMeetingCommandHandler.cs:16"
                 },
@@ -494,6 +501,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.members.MemberCreatedDomainEvent"
+                  ],
                   "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Meetings/Application/Members/CreateMember/CreateMemberCommandHandler.cs:15"
                 }
               ],
@@ -665,6 +675,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "payments.module.subscriptions.SubscriptionCreatedDomainEvent"
+                  ],
                   "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/CreateSubscription/CreateSubscriptionCommandHandler.cs:16"
                 },
                 {
@@ -672,6 +685,9 @@
                   "kind": "command",
                   "doc": "",
                   "fields": [],
+                  "emits": [
+                    "payments.module.subscriptions.SubscriptionExpiredDomainEvent"
+                  ],
                   "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Payments/Application/Subscriptions/ExpireSubscriptions/ExpireSubscriptionsCommandHandler.cs:19"
                 }
               ],
@@ -860,6 +876,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "registrations.module.user-registrations.UserRegistrationConfirmedDomainEvent"
+                  ],
                   "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/ConfirmUserRegistration/ConfirmUserRegistrationCommandHandler.cs:15"
                 },
                 {
@@ -880,6 +899,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "registrations.module.user-registrations.NewUserRegisteredDomainEvent"
                   ],
                   "source": "plugins/extract-csharp-ddd/testdata/mymeetings/src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/RegisterNewUserCommandHandler.cs:15"
                 }

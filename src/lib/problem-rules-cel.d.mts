@@ -42,3 +42,23 @@ export function ruleExpressionProblems(
   rule: { id: string; over?: string; title?: string; when?: string; message?: string; peer?: string },
   at?: string,
 ): string[];
+
+/** A row the author wrote down, and what the rule should say about it. */
+export interface RuleExample {
+  name: string;
+  expect: "row" | "none";
+  /** Only the fields the rule reads; the rest are zero values. Ints are plain numbers. */
+  row: Record<string, unknown>;
+  /** The estate lists the rule reads, when it reads any; the rest are empty. */
+  estate?: Record<string, string[]>;
+}
+
+export const EXPECTATIONS: RuleExample["expect"][];
+
+export function zeroOf(type: FieldType): unknown;
+
+export function rowOfExample(schema: Record<string, FieldType>, written?: unknown, at?: string): Record<string, unknown>;
+
+export function exampleMatches(over: RuleSubject, when: string, example: Pick<RuleExample, "row" | "estate">): boolean;
+
+export function ruleExampleProblems(rule: { id: string; over?: string; when?: string; examples?: unknown }, at?: string): string[];

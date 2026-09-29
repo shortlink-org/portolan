@@ -56,6 +56,7 @@
 | [portolan.0030](adr/portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 |
 | [portolan.0031](adr/portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 |
 | [portolan.0032](adr/portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 |
+| [portolan.0033](adr/portolan.0033.md) | A rule carries its examples, and check holds it to them | accepted | 2026-09-29 |
 
 <!-- portolan/README.md -->
 
@@ -115,6 +116,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0030](../adr/portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 |
 | [portolan.0031](../adr/portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 |
 | [portolan.0032](../adr/portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 |
+| [portolan.0033](../adr/portolan.0033.md) | A rule carries its examples, and check holds it to them | accepted | 2026-09-29 |
 
 <!-- portolan/glossary.md -->
 
@@ -633,9 +635,10 @@ are `event` channels. `azurerm_eventgrid_event_subscription` and
 `azurerm_eventgrid_system_topic_event_subscription` connect those channels to
 Azure Functions, Event Hubs, Service Bus queues or topics, Storage queues,
 Relay hybrid connections and webhooks. Included event types become received
-messages on a function. Event Hubs, Service Bus queues and topics, and Storage
-queues declared in the same module also become first-class `message` channels,
-with the subscription and source Event Grid channel recorded on the destination;
+messages on a function. Event Hubs and Storage queues declared in the same
+module also become first-class `message` channels, and Service Bus queues and
+topics the channels described below, with the subscription and source Event
+Grid channel recorded on the destination;
 subject filters, the count of advanced filters,
 delivery schema, retry policy and the dead-letter blob container stay on the
 channel as declared routing facts. A subscription scoped directly to an Azure
@@ -643,6 +646,26 @@ resource is kept as a system-event source even when no explicit system-topic
 resource exists. Webhook URLs are deliberately omitted because their query
 string may carry a validation or access token. Provider state, credentials and
 observed delivery attempts remain outside the extractor.
+
+For Azure Service Bus, an `azurerm_servicebus_queue` is a `message` channel and
+an `azurerm_servicebus_topic` an `event` channel, addressed by the entity's
+name; the namespace and its SKU, partitioning, sessions, duplicate detection,
+the delivery count before dead-lettering, `forward_to` and
+`forward_dead_lettered_messages_to` are facts in the doc, said on the
+forwarding entity and on its target. An `azurerm_servicebus_subscription` is
+not a channel: it is a sentence on its topic with its rules - a correlation
+filter by its label and the names of the fields it matches, a SQL filter by
+the properties it names, never the values either compares with. An Azure
+Function's `config_json`, written with `jsonencode()` or as JSON text, is read
+for its `serviceBusTrigger` and `serviceBus` bindings: the queue, or the topic
+and subscription, goes on the function as received or sent. A binding that
+names an app setting (`%ORDERS_QUEUE%`) is followed to the function app's
+`app_settings` and taken only when the setting reaches a queue or topic
+declared here; the connection setting is never read. An `azurerm_role_assignment`
+of a Service Bus data role (Sender, Receiver, Owner, by name or built-in id)
+says who may send or receive on the entity, the subscription's topic, or every
+entity of the namespace - by the resource whose identity it is, or the
+variable that gives the id, never an id written out.
 
 `extract-python-kafka` is the framework-independent Kafka enrichment for
 Python. It recognizes confluent-kafka, kafka-python and aiokafka by their
@@ -2182,6 +2205,7 @@ sequenceDiagram
 | [portolan.0030](portolan.0030.md) | Two changes to one entity conflict only when they touch the same thing | accepted | 2026-09-17 | [portolan](../portolan/README.md) |
 | [portolan.0031](portolan.0031.md) | A verifier is handed the flows as declared, not as enriched | accepted | 2026-09-18 | [portolan](../portolan/README.md) |
 | [portolan.0032](portolan.0032.md) | A gRPC call outside the estate is named by the manifest and described by the copy | accepted | 2026-09-18 | [portolan](../portolan/README.md) |
+| [portolan.0033](portolan.0033.md) | A rule carries its examples, and check holds it to them | accepted | 2026-09-29 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
@@ -5107,3 +5131,79 @@ an external without a manifest line.
   resolve when they do not.
 - Neutral: an HTTP client still falls back to the document's title; a gRPC
   client has no such fallback and stays unresolved until the manifest speaks.
+
+<!-- adr/portolan.0033.md -->
+
+# portolan.0033 — A rule carries its examples, and check holds it to them
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-29
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0033-a-rule-carries-its-examples-and-check-holds-it-to-them.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0033-a-rule-carries-its-examples-and-check-holds-it-to-them.md)
+- **Committed:** Victor Login, 2026-09-30 (`9f80c56`)
+
+### Context and Problem Statement
+
+A rule of the estate's own is one CEL condition over one subject
+(portolan.0016, portolan.0017). The editor ran it over the catalog as it was
+typed and showed the first rows it matched, which answers "what does it
+match today". It did not answer "does it say what I meant", and nothing
+kept the answer once the rule was saved: a later edit that widened a regular
+expression, or a catalog that stopped carrying the row that motivated the
+rule, changed what the rule meant without anyone being told.
+
+The rule page now lists every row of the subject, matched or not, and shows
+for an opened row which field decided it. That is the moment an author knows
+the rule is right about a row - and the moment to write that down.
+
+### Decision Drivers
+
+- The claim "this row should match, that one should not" belongs to the
+  rule, next to its condition, in the file the rule lives in.
+- The page and `check` must agree about an example, so they run the same
+  function.
+- portolan.json stays readable: an example must not copy a whole row.
+- A shipped rule is not the estate's to change.
+
+### Considered Options
+
+1. **Examples on the rule's manifest entry.** `problemRules[].examples` is a
+   list of `{ name, expect: row | none, row, estate? }`. `row` holds only the
+   fields the condition reads, plus the id; every other field is its zero
+   value. `estate` holds the estate lists the condition reads, when it reads
+   any. The manifest check runs each example after the expressions
+   type-check and fails, naming the example, when the rule disagrees.
+2. **Examples as files beside the manifest.** Tests in their own files keep
+   the manifest short, but split a rule across two places and need a loader,
+   a naming convention and a second write path from the page.
+3. **Snapshot the rule's matches.** Store the ids a rule matched when it was
+   saved and report any change. It catches every drift and explains none:
+   the catalog changes daily, and a snapshot cannot tell a wrong rule from a
+   new service.
+
+### Decision Outcome
+
+Option 1.
+
+An example is kept from the rule page - open a row, keep it as an example
+that should or should not match - or written by hand. `exampleMatches` in
+`problem-rules-cel.mjs` fills the missing fields, checks the written ones
+against the subject's schema, and runs the condition; the page and
+`problemRuleProblems` both call it. A shipped rule's entry may not carry
+examples, like any other field of a rule's body.
+
+### Consequences
+
+- Save is refused while an example disagrees with the rule: the server
+  writes through the same check. The page says which example and offers to
+  remove it.
+- An example is evaluated with zero values for the fields it leaves out, so
+  a condition that reads a field the example did not keep sees `""`, `0`,
+  `false` or `[]`. Keeping an example again after the condition starts
+  reading a new field is the author's step.
+- A field removed from a subject's projection now also breaks the examples
+  that name it, in the same way it breaks the expressions (portolan.0017).
+- An example does not depend on the catalog: it is about the rule, not the
+  estate, and gives the same answer on the page, in `check` and in CI.

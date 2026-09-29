@@ -3,10 +3,11 @@
 // Every row is one rule: the built-in readers with their passports from
 // rules/builtin.json, then the estate's own, written in CEL in portolan.json.
 // A reader sees what each checks, how many rows it produces right now, and
-// what to do about one; in local mode they switch a rule off with a reason,
-// re-grade it, or write a new one and watch it run over the catalog before
-// it is saved. Nothing is written until the server has type-checked every
-// expression against the same module the page checked it with.
+// what to do about one; in local mode they switch a rule off with a reason
+// or re-grade it here. A rule is written on its own page (RuleWorkbench.tsx),
+// where it runs over the catalog before it is saved. Nothing is written until
+// the server has type-checked every expression against the same module the
+// page checked it with.
 //
 // The page is laid out like the pipeline's plugin list - one bordered card,
 // a muted group header, rows that open in place - so a reader who knows one
@@ -14,26 +15,19 @@
 // asks: is it on, what is it about, what is it called, how bad is a hit, how
 // many hits are there now.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { Switch } from "@headlessui/react";
 import { Link } from "react-router";
-import { ChevronDown, Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { catalog, index } from "../../data";
-import { useToastStore } from "../../app/toast";
+import { ArrowRight, ChevronDown, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { KindIcon } from "../../components/kind";
 import { ICON_OF } from "../../components/ProblemRow";
 import { SectionTitle } from "../../components/PageHeader";
 import { plural } from "../../lib/format";
-import { problemRules as readProblemRules, saveProblemRules } from "../../lib/local-api";
-import {
-  runCustomRule,
-  SUBJECTS,
-  useProblemRules,
-  useRuleEntries,
-} from "../../lib/problem-rules";
+import { SUBJECTS, useProblemRules } from "../../lib/problem-rules";
 import type { ProblemRule, ProblemRuleEntry, RuleSeverity, RuleSubject } from "../../lib/problem-rules";
 import { regraded, switched } from "../../lib/rule-entries";
 import { useProblemEvaluation } from "../../lib/use-problems";
+import { useRuleFile } from "../../lib/use-rule-file";
 import { paths } from "../../routes";
 
 const FIELD = "mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
@@ -48,48 +42,10 @@ const SEVERITY_CHIP: Record<RuleSeverity, string> = {
 };
 
 export function RulesSettings({ local }: { local: boolean }) {
-  const say = useToastStore((s) => s.say);
   const rules = useProblemRules();
   const { matches, failures } = useProblemEvaluation();
-  const entries = useRuleEntries((s) => s.entries);
-  const setEntries = useRuleEntries((s) => s.setEntries);
-  const [revision, setRevision] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<"new" | string | null>(null);
-
-  // The file on disk is the truth in local mode: the bundle's copy of the
-  // manifest may be older than the server's, and a save must quote the
-  // revision it read.
-  useEffect(() => {
-    if (!local) return;
-    let cancelled = false;
-    readProblemRules()
-      .then((state) => {
-        if (cancelled) return;
-        setRevision(state.revision);
-        setEntries(state.rules);
-      })
-      .catch((cause) => say(cause instanceof Error ? cause.message : String(cause)));
-    return () => {
-      cancelled = true;
-    };
-  }, [local, setEntries, say]);
-
-  async function write(next: ProblemRuleEntry[], done: string) {
-    if (!revision) return;
-    setBusy(true);
-    try {
-      const saved = await saveProblemRules(revision, next);
-      setRevision(saved.revision);
-      setEntries(saved.rules);
-      setEditing(null);
-      say(done);
-    } catch (cause) {
-      say(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { entries, revision, busy, write: writeFile } = useRuleFile(local);
+  const write = (next: ProblemRuleEntry[], done: string) => void writeFile(next, done);
 
   // The filters narrow what is listed, never what is in force: a rule hidden
   // here still runs. They are the page's own state and are not written
@@ -133,14 +89,9 @@ export function RulesSettings({ local }: { local: boolean }) {
       count={matches.get(rule.id) ?? 0}
       failure={failures.find((failure) => failure.rule === rule.id)?.message}
       canWrite={canWrite}
-      onToggle={(enabled, reason) => void write(switched(entries, rule, enabled, reason), enabled ? `${rule.id} is on` : `${rule.id} is off`)}
-      onSeverity={(next) => void write(regraded(entries, rule, next), `${rule.id} is now ${next}`)}
-      {...(rule.builtin
-        ? {}
-        : {
-            onEdit: () => setEditing(rule.id),
-            onRemove: () => void write(entries.filter((entry) => entry.id !== rule.id), `${rule.id} is removed`),
-          })}
+      onToggle={(enabled, reason) => write(switched(entries, rule, enabled, reason), enabled ? `${rule.id} is on` : `${rule.id} is off`)}
+      onSeverity={(next) => write(regraded(entries, rule, next), `${rule.id} is now ${next}`)}
+      {...(rule.builtin ? {} : { onRemove: () => write(entries.filter((entry) => entry.id !== rule.id), `${rule.id} is removed`) })}
     />
   );
 
@@ -243,22 +194,12 @@ export function RulesSettings({ local }: { local: boolean }) {
             yours
             <span className="text-muted/70">{customTotal}</span>
             {local ? (
-              <button type="button" className="tbtn ml-auto normal-case" onClick={() => setEditing("new")} disabled={!canWrite || editing === "new"}>
+              <Link to={paths.settingsRuleNew()} className="tbtn ml-auto normal-case">
                 <Plus size={13} aria-hidden /> Add rule
-              </button>
+              </Link>
             ) : null}
           </h3>
-          {editing === "new" ? (
-            <div className="border-t border-line">
-              <RuleEditor
-                taken={new Set(rules.map((rule) => rule.id))}
-                busy={busy}
-                onCancel={() => setEditing(null)}
-                onSave={(entry) => void write([...entries, entry], `${entry.id} is saved`)}
-              />
-            </div>
-          ) : null}
-          {custom.length === 0 && editing !== "new" ? (
+          {custom.length === 0 ? (
             <p className="border-t border-line px-3 py-3 text-muted">
               {customTotal > 0
                 ? "No rule of yours matches the filter."
@@ -267,21 +208,7 @@ export function RulesSettings({ local }: { local: boolean }) {
                   : "portolan.json declares no rules of its own."}
             </p>
           ) : null}
-          {custom.map((rule) =>
-            editing === rule.id ? (
-              <div key={rule.id} className="border-t border-line">
-                <RuleEditor
-                  initial={entries.find((entry) => entry.id === rule.id)}
-                  taken={new Set(rules.filter((other) => other.id !== rule.id).map((other) => other.id))}
-                  busy={busy}
-                  onCancel={() => setEditing(null)}
-                  onSave={(entry) => void write(entries.map((existing) => (existing.id === rule.id ? entry : existing)), `${entry.id} is saved`)}
-                />
-              </div>
-            ) : (
-              row(rule)
-            ),
-          )}
+          {custom.map(row)}
         </section>
       </div>
 
@@ -341,7 +268,6 @@ function RuleRow({
   canWrite,
   onToggle,
   onSeverity,
-  onEdit,
   onRemove,
 }: {
   rule: ProblemRule;
@@ -350,7 +276,6 @@ function RuleRow({
   canWrite: boolean;
   onToggle: (enabled: boolean, reason: string) => void;
   onSeverity: (severity: RuleSeverity) => void;
-  onEdit?: () => void;
   onRemove?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -500,23 +425,26 @@ function RuleRow({
               ) : null}
               <dt>written in</dt>
               <dd className="text-ink">{rule.builtin ? "rules/builtin.json, shipped with Portolan" : "portolan.json → problemRules"}</dd>
-              {onEdit || onRemove ? (
-                <>
-                  <dt />
-                  <dd className="flex flex-wrap gap-2">
-                    {onEdit ? (
-                      <button type="button" className="tbtn" onClick={onEdit} disabled={!canWrite}>
-                        <Pencil size={13} aria-hidden /> Edit
-                      </button>
-                    ) : null}
-                    {onRemove ? (
-                      <button type="button" className="tbtn text-unresolved" onClick={onRemove} disabled={!canWrite}>
-                        <Trash2 size={13} aria-hidden /> Remove
-                      </button>
-                    ) : null}
-                  </dd>
-                </>
-              ) : null}
+              <dt />
+              <dd className="flex flex-wrap gap-2">
+                {/* The rule's page lists its rows with why each matched; a rule of your own is edited there. */}
+                <Link to={paths.settingsRule(rule.id)} className="tbtn">
+                  {rule.builtin || !canWrite ? (
+                    <>
+                      Rows and why <ArrowRight size={13} aria-hidden />
+                    </>
+                  ) : (
+                    <>
+                      <Pencil size={13} aria-hidden /> Edit
+                    </>
+                  )}
+                </Link>
+                {onRemove ? (
+                  <button type="button" className="tbtn text-unresolved" onClick={onRemove} disabled={!canWrite}>
+                    <Trash2 size={13} aria-hidden /> Remove
+                  </button>
+                ) : null}
+              </dd>
             </dl>
           </div>
         </div>
@@ -531,252 +459,6 @@ function Expression({ label, source }: { label: string; source: string }) {
       <div className="label mb-1.5">{label}</div>
       <pre className="mono overflow-x-auto rounded-control border border-line bg-canvas px-3 py-2 whitespace-pre-wrap text-ink">{source}</pre>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Writing a rule, with the catalog answering as you type.
-
-const RULE_ID = /^[a-z0-9]+(?:[-.][a-z0-9]+)*$/;
-
-function RuleEditor({
-  initial,
-  taken,
-  busy,
-  onCancel,
-  onSave,
-}: {
-  initial?: ProblemRuleEntry;
-  taken: Set<string>;
-  busy: boolean;
-  onCancel: () => void;
-  onSave: (entry: ProblemRuleEntry) => void;
-}) {
-  const [draft, setDraft] = useState<ProblemRuleEntry>(() => ({
-    id: initial?.id ?? "",
-    title: initial?.title ?? "",
-    over: initial?.over ?? "service",
-    severity: initial?.severity ?? "warning",
-    when: initial?.when ?? "",
-    message: initial?.message ?? "",
-    peer: initial?.peer ?? "",
-    note: initial?.note ?? "",
-    action: initial?.action ?? "",
-    reason: initial?.reason ?? "",
-    ...(initial?.enabled === false ? { enabled: false } : {}),
-  }));
-  const set = <K extends keyof ProblemRuleEntry>(key: K, value: ProblemRuleEntry[K]) => setDraft((prev) => ({ ...prev, [key]: value }));
-  const whenBox = useRef<HTMLTextAreaElement | null>(null);
-  const subject = draft.over ?? "service";
-
-  // A field chip drops `subject.field` where the cursor is in the condition,
-  // which is how a reader learns the vocabulary without leaving the box.
-  function insertField(field: string) {
-    const box = whenBox.current;
-    const text = draft.when ?? "";
-    const token = `${subject}.${field}`;
-    if (!box) {
-      set("when", text ? `${text} ${token}` : token);
-      return;
-    }
-    const start = box.selectionStart ?? text.length;
-    const end = box.selectionEnd ?? text.length;
-    const before = text.slice(0, start);
-    const after = text.slice(end);
-    const next = `${before}${before && !/\s$/.test(before) ? " " : ""}${token}${after && !/^\s/.test(after) ? " " : ""}${after}`;
-    set("when", next);
-    requestAnimationFrame(() => {
-      box.focus();
-      const at = next.length - after.length - (after && !/^\s/.test(after) ? 1 : 0);
-      box.setSelectionRange(at, at);
-    });
-  }
-
-  // The draft, run over the catalog on every keystroke: the count and the
-  // first rows are how a reader learns whether the expression says what they
-  // meant, before it is a rule.
-  const preview = useMemo(() => {
-    if (!draft.when?.trim() || !draft.message?.trim()) return null;
-    const rule: ProblemRule = {
-      id: draft.id || "draft",
-      over: subject,
-      severity: draft.severity ?? "warning",
-      defaultSeverity: draft.severity ?? "warning",
-      title: draft.title ?? "",
-      note: draft.note ?? "",
-      description: "",
-      action: "",
-      builtin: false,
-      enabled: true,
-      when: draft.when,
-      message: draft.message,
-      ...(draft.peer?.trim() ? { peer: draft.peer } : {}),
-    };
-    return runCustomRule(rule, catalog, index);
-  }, [draft, subject]);
-
-  const idProblem = !draft.id ? "required" : !RULE_ID.test(draft.id) ? "lower-case words joined by - or ." : taken.has(draft.id) ? "already a rule" : null;
-  const ready = !idProblem && draft.title?.trim() && draft.when?.trim() && draft.message?.trim() && preview && !preview.failure;
-  const fields = Object.entries(SUBJECTS[subject].schema);
-
-  function save() {
-    if (!ready) return;
-    const entry: ProblemRuleEntry = {
-      id: draft.id,
-      over: subject,
-      severity: draft.severity,
-      title: draft.title!.trim(),
-      when: draft.when!.trim(),
-      message: draft.message!.trim(),
-    };
-    if (draft.peer?.trim()) entry.peer = draft.peer.trim();
-    if (draft.note?.trim()) entry.note = draft.note.trim();
-    if (draft.action?.trim()) entry.action = draft.action.trim();
-    if (draft.reason?.trim()) entry.reason = draft.reason.trim();
-    if (draft.enabled === false) entry.enabled = false;
-    onSave(entry);
-  }
-
-  return (
-    <form
-      className="bg-surface/50 px-4 py-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        save();
-      }}
-    >
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <div className="font-medium text-ink">{initial ? `Edit ${initial.id}` : "A rule of your own"}</div>
-        <span className="mono text-muted">one subject · a condition · a message</span>
-      </div>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,1fr)]">
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="label mb-1.5 block">id</span>
-              <input className={FIELD} value={draft.id} onChange={(event) => set("id", event.target.value)} placeholder="team.event-without-consumer" disabled={Boolean(initial)} spellCheck={false} />
-              {idProblem && draft.id ? <span className="mono mt-1 block text-unresolved">{idProblem}</span> : null}
-            </label>
-            <label className="block">
-              <span className="label mb-1.5 block">title</span>
-              <input className={FIELD} value={draft.title ?? ""} onChange={(event) => set("title", event.target.value)} placeholder="Event nobody consumes" />
-            </label>
-            <label className="block">
-              <span className="label mb-1.5 block">over</span>
-              <select className={FIELD} value={subject} onChange={(event) => set("over", event.target.value as RuleSubject)}>
-                {SUBJECT_NAMES.map((name) => (
-                  <option key={name} value={name}>
-                    {name} — {SUBJECTS[name].description}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="label mb-1.5 block">severity</span>
-              <select className={FIELD} value={draft.severity} onChange={(event) => set("severity", event.target.value as RuleSeverity)}>
-                <option value="error">error</option>
-                <option value="warning">warning</option>
-              </select>
-            </label>
-          </div>
-          <label className="block">
-            <span className="label mb-1.5 flex items-baseline justify-between">
-              <span>when · CEL returning bool</span>
-              <span className="normal-case text-faint">a row for every {subject} where this holds</span>
-            </span>
-            <textarea ref={whenBox} className={`${FIELD} min-h-20 resize-y`} value={draft.when ?? ""} onChange={(event) => set("when", event.target.value)} placeholder={`size(${subject}.consumers) == 0`} spellCheck={false} />
-          </label>
-          <div>
-            <div className="label mb-1.5">fields of {subject} · click to insert</div>
-            <div className="flex flex-wrap gap-1">
-              {fields.map(([name, type]) => (
-                <button key={name} type="button" className="chip border-line-strong text-muted hover:border-accent hover:text-accent" onClick={() => insertField(name)} title={type}>
-                  {name}
-                  <span className="text-faint">{type.replace("list<string>", "[]")}</span>
-                </button>
-              ))}
-              <span className="chip border-transparent text-faint">estate.services · contexts · stores · channels · externals</span>
-            </div>
-          </div>
-          <label className="block">
-            <span className="label mb-1.5 flex items-baseline justify-between">
-              <span>message · CEL returning string</span>
-              <span className="normal-case text-faint">the note on the row</span>
-            </span>
-            <textarea className={`${FIELD} min-h-12 resize-y`} value={draft.message ?? ""} onChange={(event) => set("message", event.target.value)} placeholder={`'nothing consumes ' + ${subject}.id`} spellCheck={false} />
-          </label>
-          <details className="group">
-            <summary className="label flex cursor-pointer list-none items-center gap-1.5">
-              <ChevronDown size={13} aria-hidden className="transition-transform group-open:rotate-180" /> more · peer, note, what to do, reason
-            </summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="label mb-1.5 block">peer · CEL returning string</span>
-                <input className={FIELD} value={draft.peer ?? ""} onChange={(event) => set("peer", event.target.value)} placeholder={`${subject}.service`} spellCheck={false} />
-              </label>
-              <label className="block">
-                <span className="label mb-1.5 block">note · on every row</span>
-                <input className={FIELD} value={draft.note ?? ""} onChange={(event) => set("note", event.target.value)} placeholder="an event with no consumer" />
-              </label>
-              <label className="block">
-                <span className="label mb-1.5 block">what to do</span>
-                <input className={FIELD} value={draft.action ?? ""} onChange={(event) => set("action", event.target.value)} placeholder="Subscribe a consumer or retire the event." />
-              </label>
-              <label className="block">
-                <span className="label mb-1.5 block">reason · why the estate holds this rule</span>
-                <input className={FIELD} value={draft.reason ?? ""} onChange={(event) => set("reason", event.target.value)} placeholder="every event should have a reader by the end of the quarter" />
-              </label>
-            </div>
-          </details>
-        </div>
-
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          <div className={`rounded-control border px-3 py-3 ${preview?.failure ? "border-unresolved" : "border-line"} bg-canvas`}>
-            <div className="label mb-2">what the catalog answers</div>
-            {preview ? (
-              preview.failure ? (
-                <p className="mono text-unresolved">{preview.failure.message}</p>
-              ) : (
-                <>
-                  <div className="flex items-baseline gap-2">
-                    <span className="tnum text-lg leading-none text-ink">{preview.problems.length}</span>
-                    <span className="mono text-muted">{plural(preview.problems.length, "row")} right now</span>
-                  </div>
-                  {preview.problems.length > 0 ? (
-                    <ul className="mt-3 space-y-2 border-t border-line pt-3">
-                      {preview.problems.slice(0, 6).map((problem) => (
-                        <li key={problem.id} className="min-w-0">
-                          <div className="mono truncate text-ink" title={problem.id}>
-                            {problem.id}
-                            {problem.peer ? <span className="text-muted"> → {problem.peer}</span> : null}
-                          </div>
-                          <div className="truncate text-muted" title={problem.note}>
-                            {problem.note}
-                          </div>
-                        </li>
-                      ))}
-                      {preview.problems.length > 6 ? <li className="mono text-faint">+ {preview.problems.length - 6} more</li> : null}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-muted">Nothing in the catalog matches. That may be the point, or the condition may be too tight.</p>
-                  )}
-                </>
-              )
-            ) : (
-              <p className="text-muted">Write a condition and a message, and the rows they would produce appear here before anything is saved.</p>
-            )}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="submit" className="product-primary" disabled={!ready || busy}>
-              {initial ? "Save rule" : "Add rule"}
-            </button>
-            <button type="button" className="tbtn py-1.5" onClick={onCancel} disabled={busy}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </form>
   );
 }
 

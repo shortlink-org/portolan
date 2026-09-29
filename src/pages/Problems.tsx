@@ -125,7 +125,7 @@ export function Problems() {
           <ul className="mono mt-1 space-y-0.5 text-muted">
             {failures.map((failure) => (
               <li key={failure.rule}>
-                <Link to={`${paths.settingsRules()}#rule-${failure.rule}`} className="text-accent hover:underline">
+                <Link to={paths.settingsRule(failure.rule)} className="text-accent hover:underline">
                   {failure.rule}
                 </Link>{" "}
                 — {failure.message}
@@ -284,7 +284,7 @@ function RuleGroup({ id, rule, rows }: { id: string; rule: ProblemRule | undefin
           </span>
           <span className="ml-auto flex items-center gap-2">
             <SwitchOff rule={rule} asking={asking} onAsk={setAsking} />
-            <Link to={`${paths.settingsRules()}#rule-${id}`} className="mono rounded-control text-muted hover:text-ink hover:underline" title="The rule on the Settings page">
+            <Link to={paths.settingsRule(id)} className="mono rounded-control text-muted hover:text-ink hover:underline" title="The rule, its rows and why each matched">
               {id} →
             </Link>
           </span>

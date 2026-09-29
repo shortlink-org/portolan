@@ -692,6 +692,11 @@ type Operation struct {
 	// as the message class declares it. Nil when the extractor does not read
 	// messages; an empty list is a message that carries nothing.
 	Fields []Field `json:"fields,omitempty"`
+	// Emits is what running the operation can publish, by Event.ID, in the
+	// aggregate's event order: the events the domain calls it makes hand back
+	// or record. Only the service's own events. Empty when the extractor found
+	// none or does not read it.
+	Emits []string `json:"emits,omitempty"`
 	// Source is where the handler is, "path:line".
 	Source string `json:"source,omitempty"`
 }
@@ -870,6 +875,10 @@ type Field struct {
 	// Rules is what the source says a value must satisfy, in the order it
 	// said it.
 	Rules []FieldRule `json:"rules,omitempty"`
+	// Oneof names the protobuf oneof the field belongs to. The fields of a
+	// message that carry the same name are alternatives: at most one of them
+	// is set on the wire. Empty for a field in no oneof.
+	Oneof string `json:"oneof,omitempty"`
 }
 
 // FieldRule is one constraint on a field's value, in the catalog's own

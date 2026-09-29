@@ -67,6 +67,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		if aggregate.Operations == nil {
 			aggregate.Operations = []catalog.Operation{}
 		}
+		linkEmits(root, aggregateName, layout, &aggregate)
 
 		service.Aggregates = append(service.Aggregates, aggregate)
 	}

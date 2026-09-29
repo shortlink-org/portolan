@@ -7,6 +7,7 @@ import {
   usagesOfEnum,
   openablePaths,
   parseType,
+  previousVersion,
   resolveShape,
   schemaChanges,
   scopeOf,
@@ -211,6 +212,22 @@ describe("schemaChanges", () => {
     expect(removed.map((f) => f.name)).toEqual(["gone"]);
   });
 
+  it("compares against any version the reader picks, newer ones too", () => {
+    expect(previousVersion(event, "v2")).toBe("v1");
+    expect(previousVersion(event, "v1")).toBeNull();
+    // v1 read against v2: what a consumer on v2 would meet going back.
+    const { byField, removed } = schemaChanges(event, "v1", "v2");
+    expect(byField.get("b")).toEqual({ change: "changed", from: "int64" });
+    expect(byField.get("gone")).toEqual({ change: "new" });
+    expect(removed.map((f) => f.name)).toEqual(["c"]);
+  });
+
+  it("changes nothing against itself or a version the event lacks", () => {
+    expect(schemaChanges(event, "v2", "v2").byField.size).toBe(0);
+    expect(schemaChanges(event, "v2", "v9").removed).toEqual([]);
+    expect(schemaChanges(event, "v2", null).byField.size).toBe(0);
+  });
+
   it("a field whose rules moved is changed, with the rules it had", () => {
     const rules = {
       id: "x.y.R",
@@ -241,6 +258,18 @@ describe("schemaChanges", () => {
     expect(byField.get("who")).toEqual({ change: "changed", rulesFrom: "" });
     expect(byField.get("same")).toBeUndefined();
     expect(byField.get("both")).toEqual({ change: "changed", from: "int32", rulesFrom: "required" });
+  });
+
+  it("a field moved into a oneof is changed, with what it was before", () => {
+    const moved = {
+      id: "x.y.M",
+      versions: [
+        { version: "v1", fields: [{ name: "card", type: "Card", doc: "" }] },
+        { version: "v2", fields: [{ name: "card", type: "Card", doc: "", oneof: "method" }] },
+      ],
+    } as unknown as Event;
+    expect(schemaChanges(moved, "v2").byField.get("card")).toEqual({ change: "changed", rulesFrom: "" });
+    expect(schemaChanges(moved, "v1", "v2").byField.get("card")).toEqual({ change: "changed", rulesFrom: "oneof method" });
   });
 
   it("agrees with the fixture: OrderPlaced v2 added channel", () => {

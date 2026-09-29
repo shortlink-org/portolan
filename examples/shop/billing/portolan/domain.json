@@ -293,12 +293,18 @@
                   "doc": "Confirms the session, freezes the invoice and asks the customer to pay.",
                   "exposedBy": [
                     "invoice_issue"
+                  ],
+                  "emits": [
+                    "shop.billing.invoice.InvoiceIssued"
                   ]
                 },
                 {
                   "id": "PayInvoice",
                   "kind": "command",
-                  "doc": "Closes an issued invoice against the money the ledger says arrived."
+                  "doc": "Closes an issued invoice against the money the ledger says arrived.",
+                  "emits": [
+                    "shop.billing.invoice.InvoicePaid"
+                  ]
                 },
                 {
                   "id": "VoidInvoice",
@@ -306,6 +312,9 @@
                   "doc": "Ends an invoice nobody is going to pay.",
                   "exposedBy": [
                     "invoice_destroy"
+                  ],
+                  "emits": [
+                    "shop.billing.invoice.InvoiceVoided"
                   ]
                 }
               ],

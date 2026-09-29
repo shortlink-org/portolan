@@ -223,6 +223,9 @@ pub struct Operation {
     pub exposed_by: Option<Vec<String>>,
     /// The message's shape: what the caller hands in.
     pub fields: Vec<Field>,
+    /// What running it can publish, by event id, in the aggregate's order.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub emits: Vec<String>,
     /// The handler, `path:line`.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub source: String,

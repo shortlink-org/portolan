@@ -30,6 +30,7 @@ import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
+import { EventChip } from "../components/EventChip";
 import {
   AGGREGATE_ANCHOR,
   AGGREGATE_SECTION,
@@ -317,6 +318,10 @@ function OperationList({
     [op.id, commandChain(catalog, service, aggregate, op)],
   )), [operations, service, aggregate]);
 
+  // Whether any row names its source: the file column then keeps its width on
+  // every row, so the events beside it stand on one vertical line.
+  const sourced = operations.some((op) => op.source);
+
   return (
     <ul className="flex flex-col gap-1">
       {operations.map((op) => {
@@ -347,7 +352,7 @@ function OperationList({
               <Ident block value={op.id} className={op.deprecated ? "line-through" : undefined} />
               {summary ? (
                 <span className="mono text-muted" title="Unique events and downstream services linked in flows; not a guarantee of complete coverage">
-                  {summary.unknown ? "consequences unknown" : `${summary.events} ${plural(summary.events, "event")} · ${summary.services} ${plural(summary.services, "downstream service")}${summary.incomplete ? " · partial" : ""}`}
+                  {summary.unknown ? (op.emits?.length ? "no flow linked" : "consequences unknown") : `${summary.events} ${plural(summary.events, "event")} · ${summary.services} ${plural(summary.services, "downstream service")}${summary.incomplete ? " · partial" : ""}`}
                 </span>
               ) : null}
               {op.kind === "command" ? <CommandLink id={op.id} /> : null}
@@ -364,12 +369,26 @@ function OperationList({
                   deprecated
                 </span>
               ) : null}
-              {op.source ? (
-                <SourcePreviewLink location={location} className="mono ml-auto text-muted hover:text-ink">
-                  {splitLine(op.source).path.split("/").pop()}
-                  {splitLine(op.source).line ? `:${splitLine(op.source).line}` : ""}
-                </SourcePreviewLink>
-              ) : null}
+              {/* What the handler's code can publish, read by the extractor:
+                  one of these per run, not all of them, and not what the
+                  flows show happening afterwards - that is "Then what". */}
+              <span className="ml-auto flex items-center gap-2">
+                {op.emits?.length ? (
+                  <span className="flex flex-wrap justify-end gap-1" aria-label={`${op.id} emits`}>
+                    {op.emits.map((id) => (
+                      <EventChip key={id} id={id} title="read from the handler's code: an event this operation can publish" />
+                    ))}
+                  </span>
+                ) : null}
+                {op.source ? (
+                  <SourcePreviewLink location={location} className="mono w-32 shrink-0 truncate text-right text-muted hover:text-ink">
+                    {splitLine(op.source).path.split("/").pop()}
+                    {splitLine(op.source).line ? `:${splitLine(op.source).line}` : ""}
+                  </SourcePreviewLink>
+                ) : sourced ? (
+                  <span aria-hidden className="w-32 shrink-0" />
+                ) : null}
+              </span>
             </span>
             {op.doc ? <p className="mt-0.5 max-w-prose text-muted">{op.doc}</p> : null}
             {kind === "command" ? (

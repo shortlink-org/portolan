@@ -118,6 +118,14 @@ func reflectFiles(a, b map[string]string) bool {
 	return true
 }
 
+func TestFieldRulesNameTheOneof(t *testing.T) {
+	field := catalog.Field{Name: "card", Type: "Card", Required: true, Oneof: "method",
+		Rules: []catalog.FieldRule{{Name: "unique"}}}
+	if got, want := fieldRules(&field), "`required`, `oneof method`, `unique`"; got != want {
+		t.Errorf("fieldRules = %q, want %q", got, want)
+	}
+}
+
 func TestSemanticFieldsAndImmutableSourcesAreRendered(t *testing.T) {
 	repo := "https://github.com/example/billing/blob/main"
 	cat := fixtureCatalog(t)

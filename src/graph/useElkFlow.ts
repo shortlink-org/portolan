@@ -23,6 +23,8 @@ export interface FlowSpec {
   }[];
   direction?: "RIGHT" | "DOWN";
   layerSpacing?: number;
+  /** Keep nodes of one layer in the order the spec lists them. */
+  considerModelOrder?: boolean;
 }
 
 export interface FlowState {
@@ -56,6 +58,7 @@ export function useElkFlow(spec: FlowSpec): FlowState {
         })),
         ...(spec.direction ? { direction: spec.direction } : {}),
         ...(spec.layerSpacing ? { layerSpacing: spec.layerSpacing } : {}),
+        ...(spec.considerModelOrder ? { considerModelOrder: true } : {}),
       });
       if (cancelled) return;
 

@@ -193,7 +193,10 @@
                 {
                   "id": "RaiseInvoice",
                   "kind": "command",
-                  "doc": "Raises one."
+                  "doc": "Raises one.",
+                  "emits": [
+                    "billing.invoices.invoice.InvoiceRaised"
+                  ]
                 },
                 {
                   "id": "GetInvoice",

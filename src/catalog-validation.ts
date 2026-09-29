@@ -502,8 +502,21 @@ export function validateCatalog(catalog: Catalog): Catalog {
         `service "${service.id}"`,
         "aggregate",
       );
+      // An operation publishes its own service's events; one it names that the
+      // service does not declare is a link into nothing.
+      const ownEvents = new Set(
+        service.aggregates.flatMap((aggregate) => aggregate.events.map((event) => event.id)),
+      );
       for (const aggregate of service.aggregates) {
         for (const operation of aggregate.operations) {
+          for (const event of operation.emits ?? []) {
+            if (!ownEvents.has(event)) {
+              fail(
+                `operation "${operation.id}" of aggregate "${aggregate.id}" says it emits "${event}", which is not an event of service "${service.id}"`,
+                `aggregate ${aggregate.id} / operation ${operation.id}`,
+              );
+            }
+          }
           for (const method of operation.exposedBy ?? []) {
             if (!methods.has(method)) {
               fail(
