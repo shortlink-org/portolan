@@ -633,9 +633,10 @@ are `event` channels. `azurerm_eventgrid_event_subscription` and
 `azurerm_eventgrid_system_topic_event_subscription` connect those channels to
 Azure Functions, Event Hubs, Service Bus queues or topics, Storage queues,
 Relay hybrid connections and webhooks. Included event types become received
-messages on a function. Event Hubs, Service Bus queues and topics, and Storage
-queues declared in the same module also become first-class `message` channels,
-with the subscription and source Event Grid channel recorded on the destination;
+messages on a function. Event Hubs and Storage queues declared in the same
+module also become first-class `message` channels, and Service Bus queues and
+topics the channels described below, with the subscription and source Event
+Grid channel recorded on the destination;
 subject filters, the count of advanced filters,
 delivery schema, retry policy and the dead-letter blob container stay on the
 channel as declared routing facts. A subscription scoped directly to an Azure
@@ -643,6 +644,26 @@ resource is kept as a system-event source even when no explicit system-topic
 resource exists. Webhook URLs are deliberately omitted because their query
 string may carry a validation or access token. Provider state, credentials and
 observed delivery attempts remain outside the extractor.
+
+For Azure Service Bus, an `azurerm_servicebus_queue` is a `message` channel and
+an `azurerm_servicebus_topic` an `event` channel, addressed by the entity's
+name; the namespace and its SKU, partitioning, sessions, duplicate detection,
+the delivery count before dead-lettering, `forward_to` and
+`forward_dead_lettered_messages_to` are facts in the doc, said on the
+forwarding entity and on its target. An `azurerm_servicebus_subscription` is
+not a channel: it is a sentence on its topic with its rules - a correlation
+filter by its label and the names of the fields it matches, a SQL filter by
+the properties it names, never the values either compares with. An Azure
+Function's `config_json`, written with `jsonencode()` or as JSON text, is read
+for its `serviceBusTrigger` and `serviceBus` bindings: the queue, or the topic
+and subscription, goes on the function as received or sent. A binding that
+names an app setting (`%ORDERS_QUEUE%`) is followed to the function app's
+`app_settings` and taken only when the setting reaches a queue or topic
+declared here; the connection setting is never read. An `azurerm_role_assignment`
+of a Service Bus data role (Sender, Receiver, Owner, by name or built-in id)
+says who may send or receive on the entity, the subscription's topic, or every
+entity of the namespace - by the resource whose identity it is, or the
+variable that gives the id, never an id written out.
 
 `extract-python-kafka` is the framework-independent Kafka enrichment for
 Python. It recognizes confluent-kafka, kafka-python and aiokafka by their

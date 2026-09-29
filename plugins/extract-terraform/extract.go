@@ -23,7 +23,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		return plugin.Response{}, err
 	}
 	found := read(t, b)
-	if len(found.queues)+len(found.topics)+len(found.functions)+len(found.stores)+len(found.eventGrid)+len(found.eventGridSubs)+len(found.azureChannels) == 0 {
+	if len(found.queues)+len(found.topics)+len(found.functions)+len(found.stores)+len(found.eventGrid)+len(found.eventGridSubs)+len(found.azureChannels)+len(found.bus.namespaces)+len(found.bus.entities)+len(found.bus.bindings) == 0 {
 		b.Warn(filepath.ToSlash(filepath.Join(in.Root, dir)), "no AWS or Azure resource this reader knows was found")
 	}
 
@@ -243,7 +243,9 @@ func assemble(found *infra, opts Options) catalog.Catalog {
 		functionNames[fn.r] = fn.name
 	}
 
-	assembleEventGrid(found, base, components)
+	bus := newBusState(&found.bus)
+	assembleEventGrid(found, bus, base, components)
+	bus.assemble(base, components)
 
 	queueBase := func(q *queue) catalog.Channel {
 		doc := "Declared in Terraform as " + q.r.Address() + "."

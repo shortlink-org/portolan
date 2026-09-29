@@ -59,10 +59,8 @@ func readAzureDestination(r *resource, b *plugin.Builder) *azureDestination {
 		return nil
 	}
 	title := map[string]string{
-		typeAzureEventHub:        "Azure Event Hub",
-		typeAzureServiceBusQueue: "Azure Service Bus queue",
-		typeAzureServiceBusTopic: "Azure Service Bus topic",
-		typeAzureStorageQueue:    "Azure Storage queue",
+		typeAzureEventHub:     "Azure Event Hub",
+		typeAzureStorageQueue: "Azure Storage queue",
 	}[r.Type]
 	return &azureDestination{r: r, name: name, title: title}
 }
@@ -275,7 +273,7 @@ func (sub *eventGridSubscription) note(destination string) string {
 	return note
 }
 
-func assembleEventGrid(found *infra, base *component, components map[*resource]*component) {
+func assembleEventGrid(found *infra, bus *busState, base *component, components map[*resource]*component) {
 	byResource := map[*resource]*eventGridTopic{}
 	bySource := map[*resource]*eventGridTopic{}
 	for _, topic := range found.eventGrid {
@@ -320,13 +318,15 @@ func assembleEventGrid(found *infra, base *component, components map[*resource]*
 				destination = "an unresolved destination"
 			}
 			base.note(channel.Address, channel, sub.note(destination))
+			filled := "Filled by Event Grid subscription `" + sub.name + "` from `" + channel.Address + "`."
+			if len(sub.eventTypes) > 0 {
+				filled += " Includes event types `" + strings.Join(sub.eventTypes, "`, `") + "`."
+			}
 			if target := destinations[sub.endpoint]; target != nil {
-				note := "Filled by Event Grid subscription `" + sub.name + "` from `" + channel.Address + "`."
-				if len(sub.eventTypes) > 0 {
-					note += " Includes event types `" + strings.Join(sub.eventTypes, "`, `") + "`."
-				}
-				base.note(target.name, target.base(), note)
+				base.note(target.name, target.base(), filled)
 				claimedDestinations[target.r] = true
+			} else if entity := bus.byResource[sub.endpoint]; entity != nil {
+				entity.fact(filled)
 			}
 		}
 		if _, declared := byResource[topic.r]; declared {

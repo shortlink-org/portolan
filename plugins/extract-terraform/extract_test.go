@@ -494,13 +494,16 @@ resource "azurerm_eventgrid_event_subscription" "analytics" {
 		t.Fatalf("warnings: %v", got)
 	}
 	base := service(t, out, "shop.fulfillment")
-	for address, title := range map[string]string{
-		"orders-audit":     "Azure Event Hub",
-		"billing-commands": "Azure Service Bus queue",
-		"orders-analytics": "Azure Service Bus topic",
+	for address, want := range map[string]struct {
+		title string
+		kind  catalog.ChannelKind
+	}{
+		"orders-audit":     {"Azure Event Hub", catalog.ChannelKindMessage},
+		"billing-commands": {"Azure Service Bus queue", catalog.ChannelKindMessage},
+		"orders-analytics": {"Azure Service Bus topic", catalog.ChannelKindEvent},
 	} {
 		got := channel(t, base, address)
-		if got.Title != title || got.Kind != catalog.ChannelKindMessage || !strings.Contains(got.Doc, "Filled by Event Grid subscription") || !strings.Contains(got.Doc, "from `orders-events`.") {
+		if got.Title != want.title || got.Kind != want.kind || !strings.Contains(got.Doc, "Filled by Event Grid subscription") || !strings.Contains(got.Doc, "from `orders-events`.") {
 			t.Errorf("destination %s: %+v", address, got)
 		}
 	}
