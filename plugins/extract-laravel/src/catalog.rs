@@ -53,6 +53,10 @@ pub struct Channel {
     pub doc: String,
     pub messages: Vec<ChannelMessage>,
     pub source: String,
+    /// The transport the channel lives on, lowercased as AsyncAPI spells a
+    /// server protocol; absent when the source does not settle one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

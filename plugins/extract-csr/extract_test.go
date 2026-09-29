@@ -187,6 +187,9 @@ func TestDirectionIsToldPerSubject(t *testing.T) {
 	fragment, _ := fragmentFrom(t, opts)
 
 	for _, channel := range channelsOf(t, fragment) {
+		if channel.Protocol != "kafka" {
+			t.Errorf("%s protocol = %q, want kafka: a registry subject names a Kafka topic", channel.Address, channel.Protocol)
+		}
 		want := catalog.ChannelSend
 		if channel.Address == "shop.oms.shipment" {
 			want = catalog.ChannelReceive

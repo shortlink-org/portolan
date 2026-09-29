@@ -152,7 +152,7 @@ public static class Flows
             Label = ie.Type.Name,
             Ref = ie.Id,
             Line = tree.Line(handler.Handle),
-            Handoff = new Handoff { Kind = "message", Transport = "in-memory", Channel = Extract.BusAddress(tree, ie.Type), Message = ie.Type.Name, Direction = "receive" },
+            Handoff = new Handoff { Kind = "message", Transport = Extract.BusTransport, Channel = Extract.BusAddress(tree, ie.Type), Message = ie.Type.Name, Direction = "receive" },
         });
         b.Follow(module, handler.Handle, 1);
         return b.Flow;
@@ -179,7 +179,7 @@ public static class Flows
             Ref = handler.Ref,
             Note = "the ProcessInternalCommands job reads the row and hands the command to its handler",
             Line = tree.Line(handler.Handle),
-            Handoff = new Handoff { Kind = "job", Transport = "internal-commands", Channel = $"{module.Slug}.internal-commands", Message = handler.Message.Name, Direction = "receive" },
+            Handoff = new Handoff { Kind = "job", Transport = Extract.QueueTransport, Channel = $"{module.Slug}.internal-commands", Message = handler.Message.Name, Direction = "receive" },
         });
         b.Follow(module, handler.Handle, 1);
         return b.Flow;
@@ -327,7 +327,7 @@ public sealed class FlowBuilder
                     Label = eventType.Name,
                     Ref = ie.Id,
                     Line = tree.Line(invocation),
-                    Handoff = new Handoff { Kind = "message", Transport = "in-memory", Channel = Extract.BusAddress(tree, eventType), Message = eventType.Name, Direction = "send" },
+                    Handoff = new Handoff { Kind = "message", Transport = Extract.BusTransport, Channel = Extract.BusAddress(tree, eventType), Message = eventType.Name, Direction = "send" },
                 });
             }
             return;
@@ -349,7 +349,7 @@ public sealed class FlowBuilder
                         ? $"a row in InternalCommands, in the same transaction; a Quartz job picks it up and runs {handler.OpId}"
                         : "a row in InternalCommands, in the same transaction; a Quartz job picks it up",
                     Line = tree.Line(invocation),
-                    Handoff = new Handoff { Kind = "job", Transport = "internal-commands", Channel = $"{module.Slug}.internal-commands", Message = command.Name, Direction = "send" },
+                    Handoff = new Handoff { Kind = "job", Transport = Extract.QueueTransport, Channel = $"{module.Slug}.internal-commands", Message = command.Name, Direction = "send" },
                 });
             }
             return;

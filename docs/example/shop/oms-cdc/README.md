@@ -13,7 +13,7 @@
 
 ### shop.oms.public.order_lines
 
-`message stream`
+`message stream` · `kafka`
 
 **Kafka topic**
 
@@ -27,7 +27,7 @@ Source: [`examples/shop/oms/connectors/oms-cdc.yaml:1`](https://github.com/short
 
 ### shop.oms.public.orders
 
-`message stream`
+`message stream` · `kafka`
 
 **Kafka topic**
 

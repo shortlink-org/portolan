@@ -50,7 +50,8 @@
                   "direction": "receive"
                 }
               ],
-              "source": "testdata/mooc/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:11"
+              "source": "testdata/mooc/src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:11",
+              "protocol": "rabbitmq"
             }
           ]
         }
@@ -180,7 +181,8 @@
                   "direction": "receive"
                 }
               ],
-              "source": "testdata/mooc/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:10"
+              "source": "testdata/mooc/src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:10",
+              "protocol": "rabbitmq"
             }
           ]
         },
@@ -674,7 +676,8 @@
                   "direction": "send"
                 }
               ],
-              "source": "testdata/mooc/src/Mooc/Courses/Domain/Course.php:21"
+              "source": "testdata/mooc/src/Mooc/Courses/Domain/Course.php:21",
+              "protocol": "rabbitmq"
             },
             {
               "address": "acme.mooc.courses_counter.increment_courses_counter_on_course_created",
@@ -689,7 +692,8 @@
                   "direction": "receive"
                 }
               ],
-              "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:13"
+              "source": "testdata/mooc/src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:13",
+              "protocol": "rabbitmq"
             }
           ]
         }

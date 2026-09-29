@@ -162,7 +162,7 @@ celery -A config worker -Q billing,billing.mail
 
 ### billing
 
-`work queue`
+`work queue` · `celery`
 
 **Celery · billing**
 
@@ -177,7 +177,7 @@ Source: [`examples/shop/billing/invoices/services.py:50`](https://github.com/sho
 
 ### billing.mail
 
-`work queue`
+`work queue` · `celery`
 
 **Celery · billing.mail**
 

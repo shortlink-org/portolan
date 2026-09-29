@@ -535,6 +535,7 @@
             {
               "address": "integration-events.MeetingAttendeeAddedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting attendee added",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -550,6 +551,7 @@
             {
               "address": "integration-events.NewUserRegisteredIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · New user registered",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -565,6 +567,7 @@
             {
               "address": "meetings.internal-commands",
               "kind": "job",
+              "protocol": "internal-commands",
               "title": "Internal commands · Meetings",
               "doc": "The module's own queue: a command written to its InternalCommands table in the same transaction as the change that asked for it, read by the ProcessInternalCommands job and handed to its handler.",
               "messages": [
@@ -1010,6 +1013,7 @@
             {
               "address": "integration-events.NewUserRegisteredIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · New user registered",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [

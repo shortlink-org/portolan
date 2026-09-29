@@ -28,6 +28,7 @@
             {
               "address": "fulfillment-events-{account_id}",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.per_account. Nothing in the module receives from it or is configured with it.",
               "messages": [],
@@ -36,6 +37,7 @@
             {
               "address": "fulfillment-orders-dlq",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.orders_dlq. Dead-letter queue of `fulfillment-orders`.",
               "messages": [],
@@ -44,6 +46,7 @@
             {
               "address": "legacy",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.legacy. Dead letters go to `legacy-dlq` after 10 receives. Nothing in the module receives from it or is configured with it.",
               "messages": [],
@@ -52,6 +55,7 @@
             {
               "address": "legacy-dlq",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.legacy_dlq. Dead-letter queue of `legacy`.",
               "messages": [],
@@ -81,6 +85,7 @@
             {
               "address": "fulfillment-order-events",
               "kind": "event",
+              "protocol": "sns",
               "title": "SNS topic",
               "doc": "Declared in Terraform as aws_sns_topic.order_events. Received by `fulfillment-notify` through an SNS subscription.",
               "messages": [],
@@ -131,6 +136,7 @@
             {
               "address": "fulfillment-audit.fifo",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.audit. FIFO. Filled by S3 bucket `fulfillment-labels` on s3:ObjectRemoved:*. Handed to `fulfillment-ship` as `AUDIT_QUEUE_URL`; which way messages go is not said here.",
               "messages": [],
@@ -139,6 +145,7 @@
             {
               "address": "fulfillment-order-events",
               "kind": "event",
+              "protocol": "sns",
               "title": "SNS topic",
               "doc": "Declared in Terraform as aws_sns_topic.order_events. Received by `fulfillment-ship` through SQS queue `fulfillment-orders`.",
               "messages": [],
@@ -147,6 +154,7 @@
             {
               "address": "fulfillment-orders",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as aws_sqs_queue.orders. Dead letters go to `fulfillment-orders-dlq` after 4 receives. Received by `fulfillment-ship` through an event source mapping. Subscribed to SNS topic `fulfillment-order-events`.",
               "messages": [],

@@ -314,5 +314,27 @@
     "action": "Add a README at the service's root saying what it does and what it does not, and regenerate the catalog.",
     "when": "!service.hasReadme",
     "message": "service.name + ' has no README, so nothing in the catalog says what it does.'"
+  },
+  {
+    "id": "channel-transport-unknown",
+    "over": "channel",
+    "severity": "warning",
+    "title": "Channel does not say what it travels on",
+    "note": "no transport recorded",
+    "description": "An arrow through a broker on a C4 diagram names its transport, so a reader knows whether a message crosses NATS, Kafka or a queue in a database. The catalog takes it from the channel's declaration: an AsyncAPI server's protocol, or the plugin that read the client library. This channel has neither, here or in any other service's declaration of the same address, so its arrows say nothing about what carries them.",
+    "action": "Declare the channel in an AsyncAPI document with a server and its protocol, or run the plugin that reads the service's messaging library over it.",
+    "when": "channel.protocol == ''",
+    "message": "channel.address + ' names no transport.'"
+  },
+  {
+    "id": "service-abbreviation-unexplained",
+    "over": "service",
+    "severity": "warning",
+    "title": "Service name uses an abbreviation nothing explains",
+    "note": "abbreviation missing from the glossary",
+    "description": "A reader of a diagram should understand every abbreviation on it. A service's name appears on every picture it is in; an abbreviation in it that the estate's glossary does not define, and that is not a common technical one, is a word the reader has to ask about.",
+    "action": "Define the abbreviation in the context's glossary, or spell it out in the service's name.",
+    "when": "size(service.unexplainedAbbreviations) > 0",
+    "message": "service.name + ' uses ' + service.unexplainedAbbreviations.join(', ') + ', which the glossary does not define.'"
   }
 ]

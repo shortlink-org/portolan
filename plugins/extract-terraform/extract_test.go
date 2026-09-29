@@ -369,7 +369,7 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "thumbnails" {
 		t.Errorf("Azure function: %+v", project)
 	}
 	orders := channel(t, project, "orders-events")
-	if orders.Title != "Azure Event Grid topic" || orders.Kind != catalog.ChannelKindEvent || orders.Source != "event-grid.tf:2" {
+	if orders.Title != "Azure Event Grid topic" || orders.Kind != catalog.ChannelKindEvent || orders.Protocol != "eventgrid" || orders.Source != "event-grid.tf:2" {
 		t.Errorf("orders topic: %+v", orders)
 	}
 	var messages []string
@@ -401,7 +401,7 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "thumbnails" {
 		t.Errorf("system subscription: %s", assets.Doc)
 	}
 	thumbnails := channel(t, base, "thumbnails")
-	if thumbnails.Title != "Azure Storage queue" || thumbnails.Kind != catalog.ChannelKindMessage || thumbnails.Source != "event-grid.tf:58" {
+	if thumbnails.Title != "Azure Storage queue" || thumbnails.Kind != catalog.ChannelKindMessage || thumbnails.Protocol != "storagequeue" || thumbnails.Source != "event-grid.tf:58" {
 		t.Errorf("storage destination: %+v", thumbnails)
 	}
 	if !strings.Contains(thumbnails.Doc, "Filled by Event Grid subscription `create-thumbnails` from `assets-system`.") || !strings.Contains(thumbnails.Doc, "Includes event types `Microsoft.Storage.BlobCreated`.") {

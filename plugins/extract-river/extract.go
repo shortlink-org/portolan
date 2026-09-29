@@ -566,6 +566,7 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 		channel := catalog.Channel{
 			Address:  queue,
 			Kind:     catalog.ChannelKindJob,
+			Protocol: "river",
 			Title:    "River work queue",
 			Doc:      "Jobs inserted and handled through github.com/riverqueue/river.",
 			Messages: []catalog.ChannelMessage{},

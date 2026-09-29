@@ -24,6 +24,7 @@
             {
               "address": "orders-inbox-dlq",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as module.queue.dlq. Dead-letter queue of `orders-inbox`. Filled by S3 bucket `orders-uploads` on s3:ObjectRemoved:*.",
               "messages": [],
@@ -53,6 +54,7 @@
             {
               "address": "orders-events",
               "kind": "event",
+              "protocol": "sns",
               "title": "SNS topic",
               "doc": "Declared in Terraform as module.events. Received by `orders-audit` through an SNS subscription.",
               "messages": [],
@@ -83,6 +85,7 @@
             {
               "address": "orders-events",
               "kind": "event",
+              "protocol": "sns",
               "title": "SNS topic",
               "doc": "Declared in Terraform as module.events. Received by `orders-ingest` through SQS queue `orders-inbox`.",
               "messages": [],
@@ -91,6 +94,7 @@
             {
               "address": "orders-inbox",
               "kind": "message",
+              "protocol": "sqs",
               "title": "SQS queue",
               "doc": "Declared in Terraform as module.queue. Dead letters go to `orders-inbox-dlq` after 5 receives. Received by `orders-ingest` through an event source mapping. Subscribed to SNS topic `orders-events`.",
               "messages": [],

@@ -45,6 +45,9 @@ public sealed class Channel
 {
     [JsonPropertyName("address")] public string Address { get; set; } = "";
     [JsonPropertyName("kind")] public string Kind { get; set; } = "";
+    /// The transport the channel lives on, spelled as the flows' handoffs
+    /// spell it; null, and left out, when the source does not settle one.
+    [JsonPropertyName("protocol")] public string? Protocol { get; set; }
     [JsonPropertyName("title")] public string Title { get; set; } = "";
     [JsonPropertyName("doc")] public string Doc { get; set; } = "";
     [JsonPropertyName("messages")] public List<ChannelMessage> Messages { get; set; } = new();

@@ -38,7 +38,7 @@ func serviceParts(id string) (string, string) {
 func (s *serviceState) channel(address string, kind catalog.ChannelKind, source, doc string) *channelState {
 	state := s.channels[address]
 	if state == nil {
-		state = &channelState{channel: catalog.Channel{Address: address, Kind: kind, Title: "Kafka topic", Doc: doc, Messages: []catalog.ChannelMessage{}, Source: source}, messages: map[string]catalog.ChannelMessage{}}
+		state = &channelState{channel: catalog.Channel{Address: address, Kind: kind, Protocol: "kafka", Title: "Kafka topic", Doc: doc, Messages: []catalog.ChannelMessage{}, Source: source}, messages: map[string]catalog.ChannelMessage{}}
 		s.channels[address] = state
 	}
 	return state

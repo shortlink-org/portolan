@@ -450,6 +450,7 @@ func (bus *busState) base(e *busEntity) catalog.Channel {
 		return catalog.Channel{
 			Address:  e.name,
 			Kind:     kind,
+			Protocol: "servicebus",
 			Title:    title,
 			Doc:      "Named by a Service Bus binding of " + e.origin.Address() + "; not declared in this module.",
 			Messages: []catalog.ChannelMessage{},
@@ -478,6 +479,7 @@ func (bus *busState) base(e *busEntity) catalog.Channel {
 	return catalog.Channel{
 		Address:  e.name,
 		Kind:     kind,
+		Protocol: "servicebus",
 		Title:    title,
 		Doc:      doc,
 		Messages: []catalog.ChannelMessage{},

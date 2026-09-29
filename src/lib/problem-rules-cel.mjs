@@ -34,6 +34,8 @@ export const SUBJECTS = {
       path: "string",
       technologies: "list<string>",
       hasReadme: "bool",
+      abbreviations: "list<string>",
+      unexplainedAbbreviations: "list<string>",
       owners: "list<string>",
       provides: "int",
       methods: "int",
@@ -115,6 +117,7 @@ export const SUBJECTS = {
     schema: {
       address: "string",
       kind: "string",
+      protocol: "string",
       title: "string",
       service: "string",
       context: "string",

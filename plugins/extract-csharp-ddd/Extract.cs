@@ -216,12 +216,19 @@ public static class Extract
         return aggregate;
     }
 
+    /// The transports, as a channel's protocol and a flow's handoff both
+    /// name them: the in-process bus integration events cross modules on, and
+    /// a module's own InternalCommands queue.
+    public const string BusTransport = "in-memory";
+    public const string QueueTransport = "internal-commands";
+
     public static string BusAddress(Tree tree, INamedTypeSymbol eventType) => $"{tree.Options.Bus}.{eventType.Name}";
 
     private static Channel BusChannel(Tree tree, INamedTypeSymbol eventType, string direction, string source) => new()
     {
         Address = BusAddress(tree, eventType),
         Kind = "event",
+        Protocol = BusTransport,
         Title = "Bus · " + Names.Sentence(Names.Strip(eventType.Name, "IntegrationEvent")),
         Doc = "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
         Messages = { new ChannelMessage { Name = eventType.Name, Title = Names.Sentence(Names.Strip(eventType.Name, "IntegrationEvent")), Doc = tree.Doc(eventType), Direction = direction } },
@@ -264,6 +271,7 @@ public static class Extract
             {
                 Address = $"{module.Slug}.internal-commands",
                 Kind = "job",
+                Protocol = QueueTransport,
                 Title = "Internal commands · " + Names.Title(module.Name),
                 Doc = "The module's own queue: a command written to its InternalCommands table in the same transaction as the change that asked for it, read by the ProcessInternalCommands job and handed to its handler.",
                 Messages = jobs,

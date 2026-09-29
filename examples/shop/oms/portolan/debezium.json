@@ -29,6 +29,7 @@
             {
               "address": "shop.oms.public.order_lines",
               "kind": "message",
+              "protocol": "kafka",
               "title": "Kafka topic",
               "doc": "Debezium change-data-capture topic.",
               "messages": [
@@ -45,6 +46,7 @@
             {
               "address": "shop.oms.public.orders",
               "kind": "message",
+              "protocol": "kafka",
               "title": "Kafka topic",
               "doc": "Debezium change-data-capture topic.",
               "messages": [

@@ -65,10 +65,19 @@ func readAzureDestination(r *resource, b *plugin.Builder) *azureDestination {
 	return &azureDestination{r: r, name: name, title: title}
 }
 
+// protocol is the transport of a destination, by the resource that declares it.
+func (destination *azureDestination) protocol() string {
+	return map[string]string{
+		typeAzureEventHub:     "eventhub",
+		typeAzureStorageQueue: "storagequeue",
+	}[destination.r.Type]
+}
+
 func (destination *azureDestination) base() catalog.Channel {
 	return catalog.Channel{
 		Address:  destination.name,
 		Kind:     catalog.ChannelKindMessage,
+		Protocol: destination.protocol(),
 		Title:    destination.title,
 		Doc:      "Declared in Terraform as " + destination.r.Address() + ".",
 		Messages: []catalog.ChannelMessage{},
@@ -225,6 +234,7 @@ func (topic *eventGridTopic) base() catalog.Channel {
 	return catalog.Channel{
 		Address:  topic.address(),
 		Kind:     catalog.ChannelKindEvent,
+		Protocol: "eventgrid",
 		Title:    title,
 		Doc:      doc,
 		Messages: []catalog.ChannelMessage{},

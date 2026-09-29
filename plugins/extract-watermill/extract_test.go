@@ -44,6 +44,10 @@ func TestExtractsConfiguredHandlerAndHelperPublications(t *testing.T) {
 	byAddress := map[string]catalog.Channel{}
 	for _, channel := range service.Channels {
 		byAddress[channel.Address] = channel
+		// No Pub/Sub is imported here, and Watermill alone names no transport.
+		if channel.Protocol != "" {
+			t.Errorf("%s protocol = %q, want none", channel.Address, channel.Protocol)
+		}
 	}
 	if got := byAddress["mail.input"].Messages[0]; got.Direction != catalog.ChannelReceive || got.Name != "Input" || !strings.Contains(got.Doc, "id string") {
 		t.Fatalf("input = %+v", got)

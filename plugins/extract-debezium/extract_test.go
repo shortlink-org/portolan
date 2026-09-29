@@ -63,7 +63,7 @@ func TestPostgresCDCBecomesADataPipelineWithTopicsAndFlows(t *testing.T) {
 	if len(service.Stores) != 1 || service.Stores[0] != "shop.orders.pg" {
 		t.Fatalf("stores: %v", service.Stores)
 	}
-	if len(service.Channels) != 2 || service.Channels[0].Address != "shop.public.order_lines" || service.Channels[1].Address != "shop.public.orders" {
+	if len(service.Channels) != 2 || service.Channels[0].Address != "shop.public.order_lines" || service.Channels[1].Address != "shop.public.orders" || service.Channels[1].Protocol != "kafka" {
 		t.Fatalf("channels: %+v", service.Channels)
 	}
 	message := service.Channels[1].Messages[0]

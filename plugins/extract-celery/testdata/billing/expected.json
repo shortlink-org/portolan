@@ -20,6 +20,7 @@
             {
               "address": "billing",
               "kind": "job",
+              "protocol": "celery",
               "title": "Celery · billing",
               "doc": "Tasks enqueued and worked through Celery over redis.",
               "messages": [
@@ -53,6 +54,7 @@
             {
               "address": "billing.mail",
               "kind": "job",
+              "protocol": "celery",
               "title": "Celery · billing.mail",
               "doc": "Tasks enqueued and worked through Celery over redis.",
               "messages": [
@@ -74,6 +76,7 @@
             {
               "address": "billing.slow",
               "kind": "job",
+              "protocol": "celery",
               "title": "Celery · billing.slow",
               "doc": "Tasks enqueued and worked through Celery over redis.",
               "messages": [

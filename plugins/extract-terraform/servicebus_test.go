@@ -157,7 +157,7 @@ func TestServiceBusQueuesTopicsSubscriptionsAndBindings(t *testing.T) {
 
 	fulfil := service(t, out, "shop.fulfil-order")
 	orders := channel(t, fulfil, "orders")
-	if orders.Title != "Azure Service Bus queue" || orders.Kind != catalog.ChannelKindMessage || orders.Source != "bus.tf:7" {
+	if orders.Title != "Azure Service Bus queue" || orders.Kind != catalog.ChannelKindMessage || orders.Protocol != "servicebus" || orders.Source != "bus.tf:7" {
 		t.Errorf("orders: %+v", orders)
 	}
 	for _, want := range []string{

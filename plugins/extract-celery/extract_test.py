@@ -72,6 +72,7 @@ class Billing(unittest.TestCase):
         self.assertEqual(sorted(self.channels), ["billing", "billing.mail", "billing.slow"])
         mail = self.channels["billing.mail"]
         self.assertEqual(mail["kind"], "job")
+        self.assertEqual(mail["protocol"], "celery")
         self.assertEqual([(m["name"], m["direction"]) for m in mail["messages"]], [("invoices.tasks.send_invoice_email", "send"), ("invoices.tasks.send_invoice_email", "receive")])
         self.assertIn("over redis", mail["doc"])
 

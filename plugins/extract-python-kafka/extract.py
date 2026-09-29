@@ -116,7 +116,7 @@ def channel(topic: str, sends: List[kafka.Publish], receives: List[kafka.Subscri
             clients.append(note)
     doc = "Kafka message stream. " + ". ".join(clients) + ". Broker-side partitions, replication and retention are not declared by client code."
     source = (sends[0].line if sends else receives[0].line) if sends or receives else ""
-    return catalog.channel(topic, MESSAGE, "Kafka · " + topic, doc, messages, source)
+    return catalog.channel(topic, MESSAGE, "Kafka · " + topic, doc, messages, source, protocol="kafka")
 
 
 def message_doc(item: kafka.Publish) -> str:

@@ -76,7 +76,7 @@ func setup(workers *river.Workers, client interface { Insert(context.Context, ri
 		t.Fatalf("channels = %+v", service.Channels)
 	}
 	channel := service.Channels[0]
-	if channel.Address != "critical_mail" || channel.Kind != catalog.ChannelKindJob {
+	if channel.Address != "critical_mail" || channel.Kind != catalog.ChannelKindJob || channel.Protocol != "river" {
 		t.Fatalf("channel = %+v", channel)
 	}
 	if len(channel.Messages) != 2 || channel.Messages[0].Direction != catalog.ChannelSend || channel.Messages[1].Direction != catalog.ChannelReceive {

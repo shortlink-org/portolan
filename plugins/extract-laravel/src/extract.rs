@@ -627,6 +627,10 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             doc: format!("Jobs queued and worked through Laravel's queue over {queue_driver}."),
             messages,
             source,
+            // `QUEUE_CONNECTION`'s default in config/queue.php is only a
+            // fallback the deployment's .env overrides, and it names a
+            // connection rather than its driver: the transport stays unsaid.
+            protocol: None,
         });
     }
 

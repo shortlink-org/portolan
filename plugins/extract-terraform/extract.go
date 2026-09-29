@@ -252,14 +252,14 @@ func assemble(found *infra, opts Options) catalog.Catalog {
 		if q.fifo {
 			doc += " FIFO."
 		}
-		return catalog.Channel{Address: q.name, Kind: catalog.ChannelKindMessage, Title: "SQS queue", Doc: doc, Messages: []catalog.ChannelMessage{}, Source: q.r.Source}
+		return catalog.Channel{Address: q.name, Kind: catalog.ChannelKindMessage, Protocol: "sqs", Title: "SQS queue", Doc: doc, Messages: []catalog.ChannelMessage{}, Source: q.r.Source}
 	}
 	topicBase := func(tp *topic) catalog.Channel {
 		doc := "Declared in Terraform as " + tp.r.Address() + "."
 		if tp.fifo {
 			doc += " FIFO."
 		}
-		return catalog.Channel{Address: tp.name, Kind: catalog.ChannelKindEvent, Title: "SNS topic", Doc: doc, Messages: []catalog.ChannelMessage{}, Source: tp.r.Source}
+		return catalog.Channel{Address: tp.name, Kind: catalog.ChannelKindEvent, Protocol: "sns", Title: "SNS topic", Doc: doc, Messages: []catalog.ChannelMessage{}, Source: tp.r.Source}
 	}
 	queueByResource := map[*resource]*queue{}
 	for _, q := range found.queues {

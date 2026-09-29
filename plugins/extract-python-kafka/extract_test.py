@@ -50,6 +50,7 @@ class PythonKafka(unittest.TestCase):
         channels = {item["address"]: item for item in self.service["channels"]}
         self.assertEqual(sorted(channels), ["audit.records", "inventory.snapshots", "orders.created", "payments.accepted"])
         self.assertTrue(all(item["kind"] == "message" for item in channels.values()))
+        self.assertTrue(all(item["protocol"] == "kafka" for item in channels.values()))
         self.assertEqual(
             [message["direction"] for message in channels["orders.created"]["messages"]],
             ["send", "receive"],

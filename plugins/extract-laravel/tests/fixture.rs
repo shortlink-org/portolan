@@ -341,6 +341,10 @@ fn puts_jobs_on_their_queues_and_works_them() {
     );
     assert_eq!(channels[0]["kind"], "job");
     assert_eq!(channels[0]["doc"], "Jobs queued and worked through Laravel's queue over redis.");
+    assert!(
+        channels.iter().all(|c| c.get("protocol").is_none()),
+        "QUEUE_CONNECTION's config default is overridable and names a connection, so no channel claims a transport"
+    );
 
     let flows = fragment["flows"].as_array().unwrap();
     let worker = flows.iter().find(|f| f["slug"] == "shop-job-index-order").expect("a flow per job");

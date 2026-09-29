@@ -697,6 +697,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             doc: format!("{}'s own queue, bound to the `{exchange}` exchange for what it subscribes to; the consumer command works it.", s.class.name),
             messages,
             source: format!("{}:{}", rel(&s.file.path), s.class.line),
+            protocol: Some("rabbitmq".into()),
         });
         let flow_slug = unique(&mut flow_slugs, format!("{}-{}", layout.contexts[ci].slug, slug(&s.class.name)));
         flows.push(Flow {
@@ -859,6 +860,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
                         })
                         .collect(),
                     source: sent.values().map(|(_, _, s)| s.clone()).min().unwrap_or_default(),
+                    protocol: Some("rabbitmq".into()),
                 });
             }
             channels.extend(queues.remove(&si).unwrap_or_default());

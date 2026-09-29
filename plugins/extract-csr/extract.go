@@ -294,7 +294,9 @@ func (c *channelSet) add(topic string, message catalog.ChannelMessage, source st
 	held, known := c.byTopic[topic]
 	if !known {
 		held = &catalog.Channel{
-			Address:  topic,
+			Address: topic,
+			// A registry subject names a Kafka topic.
+			Protocol: "kafka",
 			Messages: []catalog.ChannelMessage{},
 			Source:   source,
 		}

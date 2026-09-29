@@ -929,7 +929,9 @@ func (s *scanner) catalog(serviceID, owner string) ([]catalog.Channel, []catalog
 		if value.env != "" {
 			doc += " Configured by `" + value.env + "`; extracted address is its source default."
 		}
-		found = &channelState{channel: catalog.Channel{Address: value.address, Title: title, Doc: doc, Messages: []catalog.ChannelMessage{}, Source: s.source(value.at)}, seen: map[string]bool{}}
+		// The transport is said only when the imported Pub/Sub says it; Watermill
+		// alone is a library, not a transport.
+		found = &channelState{channel: catalog.Channel{Address: value.address, Protocol: strings.ToLower(s.transport), Title: title, Doc: doc, Messages: []catalog.ChannelMessage{}, Source: s.source(value.at)}, seen: map[string]bool{}}
 		channels[value.address] = found
 		return found
 	}

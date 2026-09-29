@@ -209,7 +209,7 @@ def channel_of(q: Queue, cfg: conf.Config) -> Dict[str, Any]:
             source = source or task.line
     doc = "Tasks enqueued and worked through Celery"
     doc += " over %s." % cfg.broker_scheme if cfg.broker_scheme else "."
-    return catalog.channel(q.address, JOB, "Celery · " + q.address, doc, messages, source)
+    return catalog.channel(q.address, JOB, "Celery · " + q.address, doc, messages, source, protocol="celery")
 
 
 def flow_of(svc_id: str, context: str, service: str, q: Queue, wire: str, task: Task, queues: Dict[str, Queue]) -> Dict[str, Any]:

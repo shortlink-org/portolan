@@ -100,10 +100,20 @@ def transition(from_: str, to: str, on: str, emits: str, source: str) -> Dict[st
     return out
 
 
-def channel(address: str, kind: str, title: str, doc: str, messages: List[Dict[str, Any]], source: str = "") -> Dict[str, Any]:
+def channel(
+    address: str,
+    kind: str,
+    title: str,
+    doc: str,
+    messages: List[Dict[str, Any]],
+    source: str = "",
+    protocol: str = "",
+) -> Dict[str, Any]:
     out: Dict[str, Any] = {"address": address}
     if kind:
         out["kind"] = kind
+    if protocol:
+        out["protocol"] = protocol
     if title:
         out["title"] = title
     if doc:

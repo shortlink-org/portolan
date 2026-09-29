@@ -105,6 +105,8 @@ Check(Emits(Operation(subscriptions, "expire-subscriptions")) == "payments.modul
 
 var meetingsService = Service(catalog, "meetings.module");
 Check(meetingsService.GetProperty("channels").EnumerateArray().Any(c => c.GetProperty("address").GetString() == "meetings.internal-commands" && c.GetProperty("kind").GetString() == "job"), "a module that enqueues has an internal-commands job channel");
+Check(meetingsService.GetProperty("channels").EnumerateArray().All(c => c.GetProperty("protocol").GetString() == (c.GetProperty("kind").GetString() == "job" ? "internal-commands" : "in-memory")),
+    "a bus channel lives on the in-memory bus and the job channel on internal-commands, as the flows' handoffs name them");
 Check(meetingsService.GetProperty("provides").GetArrayLength() == 2, "two controllers under Modules/Meetings: two interfaces");
 
 var flows = catalog.GetProperty("flows").EnumerateArray().ToDictionary(f => f.GetProperty("slug").GetString()!, f => f);

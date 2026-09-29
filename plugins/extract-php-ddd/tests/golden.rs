@@ -30,6 +30,20 @@ fn every_flow_names_the_source_backed_trigger() {
 }
 
 #[test]
+fn every_channel_lives_on_rabbitmq_as_the_flows_say() {
+    let fragment = common::fragment();
+    let channels: Vec<&serde_json::Value> = fragment["contexts"]
+        .as_array()
+        .expect("contexts is an array")
+        .iter()
+        .flat_map(|c| c["services"].as_array().into_iter().flatten())
+        .flat_map(|s| s["channels"].as_array().into_iter().flatten())
+        .collect();
+    assert!(!channels.is_empty(), "the fixture has an exchange and subscriber queues");
+    assert!(channels.iter().all(|c| c["protocol"] == "rabbitmq"), "the channel's protocol matches the handoffs' transport");
+}
+
+#[test]
 fn reads_the_mappings_into_the_golden_store_fragment() {
     let got = common::stores();
     let want: serde_json::Value = serde_json::from_str(include_str!("../testdata/mooc/expected-stores.json")).expect("the golden is JSON");

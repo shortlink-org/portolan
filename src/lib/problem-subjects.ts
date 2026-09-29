@@ -46,6 +46,7 @@ import {
   viewReads,
   walkSteps,
 } from "../catalog";
+import { abbreviationsIn, explain } from "./abbreviations";
 import { payloadColumn, typesDisagree } from "./data-model";
 import { driftLines } from "./deployment-drift";
 import type { RuleSubject } from "./problem-rules-cel.mjs";
@@ -124,7 +125,10 @@ export function estateOf(catalog: Catalog): Record<string, string[]> {
 // Services and calls.
 
 function serviceSubjects(catalog: Catalog): Subject[] {
-  return servicesOf(catalog).map(({ context, service }) => ({
+  const terms = catalog.terms ?? [];
+  return servicesOf(catalog).map(({ context, service }) => {
+    const abbreviations = abbreviationsIn(service.name);
+    return {
     id: service.id,
     context,
     service: service.id,
@@ -140,6 +144,10 @@ function serviceSubjects(catalog: Catalog): Subject[] {
       technologies: service.technologies ?? [],
       // The README is the service's description on its page and on a C4 box.
       hasReadme: service.readme.trim() !== "",
+      // Read off the name a diagram shows; explained by the glossary, or as
+      // one of the common technical abbreviations.
+      abbreviations,
+      unexplainedAbbreviations: abbreviations.filter((word) => explain(word, terms).from === "none"),
       owners: service.owners ?? [],
       provides: int(service.provides.length),
       methods: int(service.provides.reduce((n, provided) => n + provided.methods.length, 0)),
@@ -152,7 +160,8 @@ function serviceSubjects(catalog: Catalog): Subject[] {
       hosts: service.hosts ?? [],
       dials: service.dials ?? [],
     },
-  }));
+    };
+  });
 }
 
 function callSubjects(catalog: Catalog, index: CatalogIndex): Subject[] {
@@ -414,6 +423,14 @@ function channelSubjects(catalog: Catalog): Subject[] {
     return Boolean(channel && (!channel.kind || channel.kind === "event") && channel.messages.some((message) => message.direction === "send"));
   };
 
+  // What a channel travels on: its own declaration's protocol, or else the one
+  // every other declaration of the address agrees on.
+  const protocolOf = (address: string, own: Channel | undefined): string => {
+    if (own?.protocol) return own.protocol;
+    const said = new Set((byAddress.get(address) ?? []).flatMap((entry) => (entry.declared?.protocol ? [entry.declared.protocol] : [])));
+    return said.size === 1 ? [...said][0]! : "";
+  };
+
   return rows.map(({ address, publishing }): Subject => {
     const channel = publishing.declared;
     const others = (byAddress.get(address) ?? []).filter((other) => other !== publishing && publishes(other));
@@ -427,6 +444,7 @@ function channelSubjects(catalog: Catalog): Subject[] {
       row: {
         address,
         kind: channel?.kind ?? "event",
+        protocol: protocolOf(address, channel),
         title: channel?.title ?? "",
         service: publishing.service.id,
         context: publishing.context,
