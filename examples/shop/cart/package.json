@@ -19,7 +19,7 @@
     "generate:pricing": "buf generate"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.15.0",
+    "@bufbuild/protobuf": "^2.16.0",
     "@connectrpc/connect": "^2.2.0",
     "@connectrpc/connect-node": "^2.2.0",
     "@nats-io/jetstream": "^3.4.0",
@@ -41,12 +41,12 @@
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.73.0",
-    "@bufbuild/protoc-gen-es": "^2.15.0",
-    "@testcontainers/postgresql": "^12.1.0",
+    "@bufbuild/protoc-gen-es": "^2.16.0",
+    "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^26.6.1",
     "@types/pg": "^8.15.0",
     "openapi-typescript": "^7.13.0",
-    "testcontainers": "^12.1.0",
+    "testcontainers": "^12.2.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   }

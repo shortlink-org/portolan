@@ -13,17 +13,17 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.15.0",
+    "@bufbuild/protobuf": "^2.16.0",
     "@connectrpc/connect": "^2.2.0",
     "@connectrpc/connect-node": "^2.2.0",
     "nats": "^2.29.3",
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "^12.1.0",
+    "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^26.6.1",
     "@types/pg": "^8.15.6",
-    "testcontainers": "^12.1.0",
+    "testcontainers": "^12.2.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   }
