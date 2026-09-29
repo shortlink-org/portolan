@@ -475,10 +475,13 @@ describe("the LikeC4 generator", () => {
     expect(model).toContain("shop.cart -[owns]-> shop._store_shop_cart_pg 'owns'");
     expect(views).toContain("autoLayout LeftRight 100 70");
     expect(views).toContain("include shop.cart with { description '' }");
-    // The neighbours view keeps every method as its own relation.
-    expect(views).toMatch(
-      /view svc_shop_oms of shop\.oms \{\n    title[^\n]*\n    include \*, -> \*, \* ->\n  \}/,
-    );
+    // The neighbours view keeps every method as its own relation: LikeC4
+    // folds them, and the fold is only named, never regrouped.
+    const neighbours = views.slice(views.indexOf("view svc_shop_oms of shop.oms {"));
+    expect(neighbours).toMatch(/^view svc_shop_oms of shop\.oms \{\n    title[^\n]*\n    include \*, -> \*, \* ->\n/);
+    // The service is spelled by its own name, a sibling from the root.
+    expect(neighbours).toContain("    include oms -> shop.cart with { title 'calls 2 methods'  notes 'calls checkout\ncalls getBasket' }");
+    expect(neighbours.slice(0, neighbours.indexOf("\n  }"))).not.toContain("multiple");
     const engine = await LikeC4.fromSource(spec + model + views, { logger: false });
     try {
       const computed = await engine.computedModel();
@@ -577,6 +580,44 @@ describe("the LikeC4 generator", () => {
       const hop = containers.edges.find((edge) => edge.source === "pay.ledger" && edge.target === "bus");
       expect([hop?.label, hop?.technology]).toEqual(["publishes PaymentCaptured", "NATS"]);
       expect(containers.nodes.find((node) => node.id === "bus")?.technology).toBe("NATS");
+    } finally { await engine.dispose(); }
+  });
+
+  it("labels a service's own folded arrows in its neighbours view, spelled the way the scope reads them", async () => {
+    const service = (id, slug, consumes = []) => ({
+      id, slug, name: slug, repo: "example/demo", path: slug, readme: "",
+      provides: [], consumes, aggregates: [],
+    });
+    const call = (peer, method) => ({ id: `${peer}.v1/${method}`, peer, status: "declared", source: "api.proto" });
+    const { spec, model, views } = generate({
+      contexts: [
+        // The service is named like its context: inside `view … of auth.auth`
+        // the name `auth.auth` would mean `auth.auth.auth`.
+        { id: "auth", slug: "auth", name: "Auth", summary: "", services: [
+          service("auth.auth", "auth", [call("shop.oms", "GetOrder"), call("shop.oms", "ListOrders")]),
+        ] },
+        { id: "shop", slug: "shop", name: "Shop", summary: "", services: [
+          service("shop.cart", "cart", [call("auth.auth", "Login"), call("auth.auth", "Logout")]),
+          service("shop.oms", "oms"),
+        ] },
+      ],
+      stores: [{ id: "auth.auth.pg", slug: "pg", name: "Auth database", kind: "postgres", owner: "auth.auth", tables: [] }],
+      flows: [],
+    });
+    expect(views).toContain("    include auth -> shop with { title 'calls 2 methods'  notes 'calls GetOrder\ncalls ListOrders' }");
+    expect(views).toContain("    include shop -> auth with { title 'calls 2 methods'  notes 'calls Login\ncalls Logout' }");
+
+    const engine = await LikeC4.fromSource(spec + model + views, { logger: false });
+    try {
+      const view = (await engine.computedModel()).view("svc_auth_auth").$view;
+      // The labels name boxes the view already draws; they add none.
+      expect(view.nodes.map((node) => node.id).sort()).toEqual(["auth._store_auth_auth_pg", "auth.auth", "shop"]);
+      const labels = Object.fromEntries(view.edges.map((edge) => [`${edge.source} -> ${edge.target}`, edge.label]));
+      expect(labels).toEqual({
+        "auth.auth -> shop": "calls 2 methods",
+        "shop -> auth.auth": "calls 2 methods",
+        "auth.auth -> auth._store_auth_auth_pg": "owns",
+      });
     } finally { await engine.dispose(); }
   });
 

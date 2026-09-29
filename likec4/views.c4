@@ -430,6 +430,15 @@ PaymentDeclined' }
     title 'Authentication & Sessions — neighbours'
     include *, -> *, * ->
     exclude lockout, session, user
+    include auth -> risk with { title 'calls Assess' }
+    include storefront -> auth with { title 'calls validateSession' }
+    include shop -> auth with { title 'calls validateSession' }
+    include client -> auth with { title 'starts 6 flows'  notes 'starts Change password
+starts Get user
+starts Login
+starts Logout
+starts Register user
+starts Validate session' }
   }
   view svc_auth_auth_inside {
     title 'Authentication & Sessions — inside'
@@ -447,6 +456,23 @@ PaymentDeclined' }
   view svc_storefront_bff of storefront.bff {
     title 'Storefront BFF — neighbours'
     include *, -> *, * ->
+    include bff -> auth with { title 'calls validateSession' }
+    include bff -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
+calls GetOrder
+calls addItem
+calls checkout
+calls getBasket
+calls removeItem' }
+    include bff -> delivery with { title 'calls GetShipment' }
+    include client -> bff with { title 'starts 9 flows'  notes 'starts Mutation add item
+starts Mutation cancel order
+starts Mutation checkout
+starts Mutation remove item
+starts Query basket
+starts Query order
+starts Query shipment
+starts Query viewer
+starts Subscription order status' }
   }
   view svc_storefront_bff_inside {
     title 'Storefront BFF — inside'
@@ -466,6 +492,22 @@ PaymentDeclined' }
     title 'Ledger — neighbours'
     include *, -> *, * ->
     exclude payment, refund
+    include ledger -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
+publishes PaymentAuthorized
+publishes PaymentCaptured
+publishes PaymentDeclined' }
+    include ledger -> delivery with { title 'publishes PaymentCaptured' }
+    include ledger -> stripe with { title 'calls 4 methods'  notes 'calls PostPaymentIntents
+calls PostPaymentIntentsIntentCancel
+calls PostPaymentIntentsIntentCapture
+calls PostRefunds' }
+    include ledger -> payments._store_payments_ledger_pg with { title 'owns Ledger database · persists 3 shapes'  notes 'owns Ledger database
+persists payments
+persists postings
+persists refunds' }
+    include shop -> ledger with { title 'calls Authorize · publishes OrderCancelled'  notes 'calls Authorize
+publishes OrderCancelled' }
+    include delivery -> ledger with { title 'calls Capture' }
   }
   view svc_payments_ledger_inside {
     title 'Ledger — inside'
@@ -495,6 +537,18 @@ PaymentDeclined' }
     title 'Billing — neighbours'
     include *, -> *, * ->
     exclude invoice
+    include payments -> billing with { title 'publishes PaymentCaptured' }
+    include billing -> auth with { title 'calls validateSession' }
+    include billing -> shop._store_shop_billing_pg with { title 'owns Billing database · persists 2 shapes'  notes 'owns Billing database
+persists invoice_lines
+persists invoices' }
+    include client -> billing with { title 'starts 7 flows'  notes 'starts Invoice create
+starts Invoice destroy
+starts Invoice issue
+starts Invoice list
+starts Invoice partial update
+starts Invoice retrieve
+starts Invoice update' }
   }
   view svc_shop_billing_inside {
     title 'Billing — inside'
@@ -505,6 +559,23 @@ PaymentDeclined' }
     title 'Shopping Cart — neighbours'
     include *, -> *, * ->
     exclude basket
+    include storefront -> cart with { title 'calls 4 methods'  notes 'calls addItem
+calls checkout
+calls getBasket
+calls removeItem' }
+    include cart -> shop.oms with { title 'publishes BasketCheckedOut' }
+    include cart -> shop.pricing with { title 'calls GetQuote · publishes BasketCheckedOut'  notes 'calls GetQuote
+publishes BasketCheckedOut' }
+    include cart -> auth with { title 'calls validateSession' }
+    include cart -> shop._store_shop_cart_pg with { title 'owns Cart database · persists 2 shapes'  notes 'owns Cart database
+persists basket_items
+persists baskets' }
+    include client -> cart with { title 'starts 6 flows'  notes 'starts Add item
+starts Checkout
+starts Create basket
+starts Get basket
+starts Merge baskets
+starts Remove item' }
   }
   view svc_shop_cart_inside {
     title 'Shopping Cart — inside'
@@ -515,6 +586,21 @@ PaymentDeclined' }
     title 'Order Management — neighbours'
     include *, -> *, * ->
     exclude _order
+    include storefront -> oms with { title 'calls 2 methods'  notes 'calls CancelOrder
+calls GetOrder' }
+    include payments -> oms with { title 'calls GetOrder · publishes 2 events'  notes 'calls GetOrder
+publishes PaymentAuthorized
+publishes PaymentDeclined' }
+    include shop.cart -> oms with { title 'publishes BasketCheckedOut' }
+    include oms -> payments with { title 'calls Authorize · publishes OrderCancelled'  notes 'calls Authorize
+publishes OrderCancelled' }
+    include oms -> delivery with { title 'publishes OrderConfirmed' }
+    include oms -> shop._store_shop_oms_pg with { title 'owns Order database · persists 2 shapes'  notes 'owns Order database
+persists order_lines
+persists orders' }
+    include delivery -> oms with { title 'calls GetOrder' }
+    include client -> oms with { title 'starts 2 flows'  notes 'starts Cancel order
+starts Get order' }
   }
   view svc_shop_oms_inside {
     title 'Order Management — inside'
@@ -524,6 +610,7 @@ PaymentDeclined' }
   view svc_shop_oms_cdc of shop.oms_cdc {
     title 'oms-cdc — neighbours'
     include *, -> *, * ->
+    include oms_cdc -> shop._store_shop_oms_pg with { title 'reads Order database' }
   }
   view svc_shop_oms_cdc_inside {
     title 'oms-cdc — inside'
@@ -534,6 +621,13 @@ PaymentDeclined' }
     title 'Pricing — neighbours'
     include *, -> *, * ->
     exclude price_list, quote
+    include shop.cart -> pricing with { title 'calls GetQuote · publishes BasketCheckedOut'  notes 'calls GetQuote
+publishes BasketCheckedOut' }
+    include pricing -> shop._store_shop_pricing_pg with { title 'owns Pricing database · persists 4 shapes'  notes 'owns Pricing database
+persists price_lists
+persists price_rows
+persists quote_lines
+persists quotes' }
   }
   view svc_shop_pricing_inside {
     title 'Pricing — inside'
@@ -553,6 +647,17 @@ PaymentDeclined' }
     title 'Delivery Core — neighbours'
     include *, -> *, * ->
     exclude route, shipment
+    include storefront -> core with { title 'calls GetShipment' }
+    include payments -> core with { title 'publishes PaymentCaptured' }
+    include shop -> core with { title 'publishes OrderConfirmed' }
+    include core -> payments with { title 'calls Capture' }
+    include core -> shop with { title 'calls GetOrder' }
+    include core -> delivery._store_delivery_core_pg with { title 'owns Delivery database · persists 5 shapes'  notes 'owns Delivery database
+persists packages
+persists parcels
+persists route_stops
+persists routes
+persists scans' }
   }
   view svc_delivery_core_inside {
     title 'Delivery Core — inside'
@@ -572,6 +677,7 @@ PaymentDeclined' }
   view svc_portolan_host of portolan.host {
     title 'Host — neighbours'
     include *, -> *, * ->
+    include developer -> host with { title 'npm run gen' }
   }
   view svc_portolan_host_inside {
     title 'Host — inside'
