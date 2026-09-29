@@ -61,7 +61,7 @@ func fieldOf(f *Field, typ string) catalog.Field {
 
 	return catalog.Field{
 		Name: f.Name, Type: typ, Doc: f.Doc, Number: f.Number,
-		Required: required, Rules: rules,
+		Required: required, Rules: rules, Oneof: f.Oneof,
 	}
 }
 

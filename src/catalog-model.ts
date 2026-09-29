@@ -1038,6 +1038,11 @@ export interface Field {
   required?: boolean;
   /** What the source says a value must satisfy, in the order it said it. */
   rules?: FieldRule[];
+  /**
+   * The protobuf oneof the field belongs to. Fields of one message with the
+   * same name here are alternatives: at most one of them is set on the wire.
+   */
+  oneof?: string;
 } // ref -> defs key
 /**
  * One constraint on a field's value, in the catalog's own vocabulary so a

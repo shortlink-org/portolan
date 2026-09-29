@@ -66,6 +66,24 @@ describe("gRPC reference examples", () => {
     expect(command).toContain(`"quantity": "0"`);
   });
 
+  it("sets one alternative of a oneof, not all of them", () => {
+    const pay: RpcMethod = { name: "Pay", request: "PayRequest" };
+    const withOneof: RpcService = {
+      ...provided,
+      messages: [
+        {
+          name: "PayRequest",
+          fields: [
+            { name: "card", type: "string", doc: "", oneof: "method" },
+            { name: "iban", type: "string", doc: "", oneof: "method" },
+            { name: "amount", type: "int32", doc: "" },
+          ],
+        },
+      ],
+    };
+    expect(Object.keys(JSON.parse(grpcRequestJson(withOneof, pay, {})))).toEqual(["card", "amount"]);
+  });
+
   it("falls back to an empty body when no request shape was extracted", () => {
     expect(grpcRequestJson(provided, { name: "Ping" }, {})).toBe("{}");
   });

@@ -45,6 +45,12 @@ describe("ruleMarks", () => {
     expect(marks[0]?.title).toBe("must be sent");
   });
 
+  it("names the oneof a field is an alternative in, after required", () => {
+    const marks = ruleMarks(field({ required: true, oneof: "method", rules: [{ name: "unique" }] }));
+    expect(marks.map((m) => m.text)).toEqual(["required", "oneof method", "unique"]);
+    expect(marks[1]?.title).toContain("at most one");
+  });
+
   it("is empty for a field the source says nothing about", () => {
     expect(ruleMarks(field({}))).toEqual([]);
   });

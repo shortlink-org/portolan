@@ -402,6 +402,9 @@ export function schemaChanges(
  */
 function sameRules(a: Field, b: Field): boolean {
   if (Boolean(a.required) !== Boolean(b.required)) return false;
+  // A field moved into a oneof, or out of one, now excludes its siblings or
+  // no longer does: a reader of the version has to know.
+  if ((a.oneof ?? "") !== (b.oneof ?? "")) return false;
   const key = (field: Field) =>
     (field.rules ?? []).map((r) => `${r.name}=${r.value ?? ""}`).sort().join("\n");
   return key(a) === key(b);

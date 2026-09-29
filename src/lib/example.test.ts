@@ -83,6 +83,21 @@ describe("exampleOf", () => {
     expect(one(f("string enum(pending | paid)"))).toBe("pending");
   });
 
+  it("sets one alternative of each oneof, as a sender would", () => {
+    const example = exampleOf(
+      catalog,
+      [
+        f("string", { name: "id" }),
+        f("string", { name: "card", oneof: "method" }),
+        f("string", { name: "iban", oneof: "method" }),
+        f("string", { name: "email", oneof: "contact" }),
+        f("string", { name: "phone", oneof: "contact" }),
+      ],
+      nowhere,
+    );
+    expect(Object.keys(example)).toEqual(["id", "card", "email"]);
+  });
+
   it("marks a type the catalog has no shape for instead of guessing", () => {
     expect(one(f("TrackingCode"))).toBe("<TrackingCode>");
   });

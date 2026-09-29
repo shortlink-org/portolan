@@ -260,6 +260,18 @@ describe("schemaChanges", () => {
     expect(byField.get("both")).toEqual({ change: "changed", from: "int32", rulesFrom: "required" });
   });
 
+  it("a field moved into a oneof is changed, with what it was before", () => {
+    const moved = {
+      id: "x.y.M",
+      versions: [
+        { version: "v1", fields: [{ name: "card", type: "Card", doc: "" }] },
+        { version: "v2", fields: [{ name: "card", type: "Card", doc: "", oneof: "method" }] },
+      ],
+    } as unknown as Event;
+    expect(schemaChanges(moved, "v2").byField.get("card")).toEqual({ change: "changed", rulesFrom: "" });
+    expect(schemaChanges(moved, "v1", "v2").byField.get("card")).toEqual({ change: "changed", rulesFrom: "oneof method" });
+  });
+
   it("agrees with the fixture: OrderPlaced v2 added channel", () => {
     const placed = eventById("shop.oms.order.OrderPlaced");
     const { byField, removed } = schemaChanges(placed, "v2");

@@ -361,11 +361,15 @@ func (s *site) fieldTable(from string, fields []catalog.Field) string {
 }
 
 // fieldRules is what the source says the value must satisfy, `required`
-// first, then each rule as `name value`, the way the fragment carries them.
+// first, then the oneof the field is an alternative in, then each rule as
+// `name value`, the way the fragment carries them.
 func fieldRules(field *catalog.Field) string {
 	var parts []string
 	if field.Required {
 		parts = append(parts, code("required"))
+	}
+	if field.Oneof != "" {
+		parts = append(parts, code("oneof "+field.Oneof))
 	}
 	for _, rule := range field.Rules {
 		if rule.Value == "" {

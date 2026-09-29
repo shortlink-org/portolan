@@ -263,13 +263,23 @@ function valueOf(field: Field, walk: Walk): unknown {
 }
 
 function fieldsExample(fields: readonly Field[], walk: Walk): Record<string, unknown> {
-  return Object.fromEntries(fields.map((field) => [field.name, valueOf(field, walk)]));
+  // A oneof's fields are alternatives, and a message that set two of them
+  // would be one no sender can produce: the first of each group stands in.
+  const taken = new Set<string>();
+  const shown = fields.filter((field) => {
+    if (!field.oneof) return true;
+    if (taken.has(field.oneof)) return false;
+    taken.add(field.oneof);
+    return true;
+  });
+  return Object.fromEntries(shown.map((field) => [field.name, valueOf(field, walk)]));
 }
 
 /**
  * An example of a message with these fields, as a JSON value: every field
- * present, nested shapes opened as far as the catalog has them, lists with
- * one member unless a rule asks for more. Field names are the schema's own.
+ * present except the other alternatives of a oneof, nested shapes opened as
+ * far as the catalog has them, lists with one member unless a rule asks for
+ * more. Field names are the schema's own.
  */
 export function exampleOf(
   catalog: Catalog,

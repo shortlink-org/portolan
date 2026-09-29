@@ -872,6 +872,10 @@ type Field struct {
 	// Rules is what the source says a value must satisfy, in the order it
 	// said it.
 	Rules []FieldRule `json:"rules,omitempty"`
+	// Oneof names the protobuf oneof the field belongs to. The fields of a
+	// message that carry the same name are alternatives: at most one of them
+	// is set on the wire. Empty for a field in no oneof.
+	Oneof string `json:"oneof,omitempty"`
 }
 
 // FieldRule is one constraint on a field's value, in the catalog's own

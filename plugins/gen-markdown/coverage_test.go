@@ -52,7 +52,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.EventConsumer{}):        "service status note via",
 	reflect.TypeOf(catalog.EventVersion{}):         "version doc source fields schema",
 	reflect.TypeOf(catalog.EventSchemaRef{}):       "module message",
-	reflect.TypeOf(catalog.Field{}):                "name type doc ref number required rules",
+	reflect.TypeOf(catalog.Field{}):                "name type doc ref number required rules oneof",
 	reflect.TypeOf(catalog.FieldRule{}):            "name value",
 	reflect.TypeOf(catalog.TypeDef{}):              "fields",
 	reflect.TypeOf(catalog.Store{}):                "id slug name kind owner tables views keyspaces source",
