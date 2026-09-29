@@ -1,0 +1,46 @@
+# What pricing puts on the bus. The outbox relay hands each row to the NATS
+# adapter beside this file, which publishes it on the row's topic with its wire
+# name in the `event_name` header. The topic comes from the row, so the code
+# alone cannot say the subject; this does.
+asyncapi: 3.0.0
+info:
+  title: pricing
+  version: 1.0.0
+  description: >-
+    Every promise of a price, and the moment it lapses. Published over NATS
+    JetStream when NATS_URL names a server, and logged when it does not.
+
+servers:
+  jetstream:
+    host: "nats:4222"
+    protocol: nats
+    description: The estate's JetStream cluster.
+
+channels:
+  quote:
+    address: shop.pricing.quote
+    title: Quote
+    description: One subject for the quote aggregate.
+    messages:
+      QuoteIssued:
+        $ref: "#/components/messages/QuoteIssued"
+      QuoteExpired:
+        $ref: "#/components/messages/QuoteExpired"
+
+operations:
+  publishQuote:
+    action: send
+    channel:
+      $ref: "#/channels/quote"
+    summary: A quote issued, and a quote that lapsed.
+
+components:
+  messages:
+    QuoteIssued:
+      name: pricing.QuoteIssued
+      title: Quote issued
+      summary: A basket has a price, and for how long.
+    QuoteExpired:
+      name: pricing.QuoteExpired
+      title: Quote expired
+      summary: The price is no longer promised.

@@ -1,0 +1,69 @@
+# What the ledger puts on the bus. The events are the domain's; this says how
+# they leave: NatsBus publishes each on the subject its channel names, with its
+# wire name in the `event_name` header. The catalog reads both, from here and
+# from the code, and holds the two against each other.
+asyncapi: 3.0.0
+info:
+  title: ledger
+  version: 1.0.0
+  description: >-
+    Every movement of money, said once it is recorded. Published over NATS
+    JetStream when NATS_URL names a server, and written to the log when it
+    does not.
+
+servers:
+  jetstream:
+    host: "nats:4222"
+    protocol: nats
+    description: The estate's JetStream cluster.
+
+channels:
+  payment:
+    address: payments.ledger.payment
+    title: Payment
+    description: One subject for the payment aggregate.
+    messages:
+      PaymentAuthorized:
+        $ref: "#/components/messages/PaymentAuthorized"
+      PaymentCaptured:
+        $ref: "#/components/messages/PaymentCaptured"
+      PaymentDeclined:
+        $ref: "#/components/messages/PaymentDeclined"
+  refund:
+    address: payments.ledger.refund
+    title: Refund
+    description: One subject for the refund aggregate.
+    messages:
+      RefundIssued:
+        $ref: "#/components/messages/RefundIssued"
+
+operations:
+  publishPayment:
+    action: send
+    channel:
+      $ref: "#/channels/payment"
+    summary: What happened to the money held for an order.
+  publishRefund:
+    action: send
+    channel:
+      $ref: "#/channels/refund"
+    summary: Money sent back against a captured payment.
+
+components:
+  messages:
+    PaymentAuthorized:
+      name: ledger.PaymentAuthorized
+      title: Payment authorized
+      summary: The gateway agreed to hold the money. Nothing has moved yet.
+    PaymentCaptured:
+      name: ledger.PaymentCaptured
+      title: Payment captured
+      summary: The money moved.
+    PaymentDeclined:
+      name: ledger.PaymentDeclined
+      title: Payment declined
+      summary: The money was not held, for one of a closed set of reasons.
+    RefundIssued:
+      name: ledger.RefundIssued
+      title: Refund issued
+      summary: Money went back to the customer, against a captured payment.

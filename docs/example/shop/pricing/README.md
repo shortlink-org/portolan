@@ -256,6 +256,21 @@ Source: [`examples/shop/pricing/internal/di/app.go:67`](https://github.com/short
 | --- | --- | --- |
 | receive | [`cart.BasketCheckedOut`](../cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) | cart.BasketCheckedOut |
 
+### shop.pricing.quote
+
+`nats`
+
+**Quote**
+
+One subject for the quote aggregate.
+
+Source: [`examples/shop/pricing/internal/infrastructure/bus/asyncapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/bus/asyncapi.yaml)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | [`pricing.QuoteIssued`](aggregates/quote.md#event-shop-pricing-quote-quoteissued) | Quote issued | A basket has a price, and for how long. |
+| send | [`pricing.QuoteExpired`](aggregates/quote.md#event-shop-pricing-quote-quoteexpired) | Quote expired | The price is no longer promised. |
+
 ## Schema modules
 
 | Module | Access | Packages |

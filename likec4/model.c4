@@ -473,6 +473,7 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color verified  line solid  head onormal }
   }
   payments.ledger -[bus]-> bus 'publishes 4 events' {
+    technology 'NATS'
     style { color declared  line dashed  head onormal }
   }
   bus -[bus]-> payments.ledger 'delivers OrderCancelled' {
@@ -500,6 +501,7 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color declared  line dashed  head onormal }
   }
   bus -[bus]-> shop.billing 'delivers PaymentCaptured' {
+    technology 'NATS'
     style { color declared  line dashed  head onormal }
   }
   shop.cart -[bus]-> bus 'publishes 6 events' {
@@ -526,6 +528,7 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color verified  line solid  head onormal }
   }
   shop.pricing -[bus]-> bus 'publishes 2 events' {
+    technology 'NATS'
     style { color declared  line dashed  head onormal }
   }
   bus -[bus]-> shop.pricing 'delivers BasketCheckedOut' {

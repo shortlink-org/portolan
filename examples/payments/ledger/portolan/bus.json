@@ -1,0 +1,70 @@
+{
+  "contexts": [
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "payments.ledger.payment",
+              "protocol": "nats",
+              "title": "Payment",
+              "doc": "One subject for the payment aggregate.",
+              "messages": [
+                {
+                  "name": "ledger.PaymentAuthorized",
+                  "title": "Payment authorized",
+                  "doc": "The gateway agreed to hold the money. Nothing has moved yet.",
+                  "direction": "send"
+                },
+                {
+                  "name": "ledger.PaymentCaptured",
+                  "title": "Payment captured",
+                  "doc": "The money moved.",
+                  "direction": "send"
+                },
+                {
+                  "name": "ledger.PaymentDeclined",
+                  "title": "Payment declined",
+                  "doc": "The money was not held, for one of a closed set of reasons.",
+                  "direction": "send"
+                }
+              ],
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/bus/asyncapi.yaml"
+            },
+            {
+              "address": "payments.ledger.refund",
+              "protocol": "nats",
+              "title": "Refund",
+              "doc": "One subject for the refund aggregate.",
+              "messages": [
+                {
+                  "name": "ledger.RefundIssued",
+                  "title": "Refund issued",
+                  "doc": "Money went back to the customer, against a captured payment.",
+                  "direction": "send"
+                }
+              ],
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/bus/asyncapi.yaml"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

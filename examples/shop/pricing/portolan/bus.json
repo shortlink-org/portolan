@@ -1,0 +1,49 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "shop.pricing.quote",
+              "protocol": "nats",
+              "title": "Quote",
+              "doc": "One subject for the quote aggregate.",
+              "messages": [
+                {
+                  "name": "pricing.QuoteIssued",
+                  "title": "Quote issued",
+                  "doc": "A basket has a price, and for how long.",
+                  "direction": "send"
+                },
+                {
+                  "name": "pricing.QuoteExpired",
+                  "title": "Quote expired",
+                  "doc": "The price is no longer promised.",
+                  "direction": "send"
+                }
+              ],
+              "source": "examples/shop/pricing/internal/infrastructure/bus/asyncapi.yaml"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

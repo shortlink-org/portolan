@@ -302,6 +302,38 @@ consumer/provider protobuf subsets and the authorization event payload.
 | [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [`RefundIssued`](aggregates/refund.md#event-payments-ledger-refund-refundissued) | v1 | — |
 
+## Channels
+
+### payments.ledger.payment
+
+`nats`
+
+**Payment**
+
+One subject for the payment aggregate.
+
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/bus/asyncapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/bus/asyncapi.yaml)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | [`ledger.PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | Payment authorized | The gateway agreed to hold the money. Nothing has moved yet. |
+| send | [`ledger.PaymentCaptured`](aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) | Payment captured | The money moved. |
+| send | [`ledger.PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | Payment declined | The money was not held, for one of a closed set of reasons. |
+
+### payments.ledger.refund
+
+`nats`
+
+**Refund**
+
+One subject for the refund aggregate.
+
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/bus/asyncapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/bus/asyncapi.yaml)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | [`ledger.RefundIssued`](aggregates/refund.md#event-payments-ledger-refund-refundissued) | Refund issued | Money went back to the customer, against a captured payment. |
+
 ## Schema modules
 
 | Module | Access | Packages |

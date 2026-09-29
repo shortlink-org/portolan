@@ -787,6 +787,17 @@
       }
     },
     {
+      "plugin": "asyncapi",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "spec": "internal/infrastructure/bus/asyncapi.yaml",
+        "out": "bus.json"
+      }
+    },
+    {
       "plugin": "proto",
       "in": "examples/shop/pricing",
       "out": "examples/shop/pricing/portolan",
@@ -980,6 +991,17 @@
         "group": "payments",
         "component": "ledger",
         "stackOnly": true
+      }
+    },
+    {
+      "plugin": "asyncapi",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "context": "payments",
+        "service": "ledger",
+        "spec": "src/main/java/org/portolan/payments/ledger/infrastructure/bus/asyncapi.yaml",
+        "out": "bus.json"
       }
     },
     {

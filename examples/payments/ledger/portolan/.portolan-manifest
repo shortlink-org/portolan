@@ -22,5 +22,8 @@
   ],
   "project": [
     "stack.json"
+  ],
+  "asyncapi": [
+    "bus.json"
   ]
 }
