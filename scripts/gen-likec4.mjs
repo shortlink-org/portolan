@@ -1054,6 +1054,22 @@ function neighbourLabels(service, context, indent = "    ") {
   return foldLabels(box, indent, (reference) => spellIn(self, reference), (from, to) => from === self || to === self);
 }
 
+/**
+ * A context's own L2 view opens the context and folds every other one. The
+ * arrows between the two sides are labelled here; the ones inside are the
+ * folded call pairs `containerPredicates` already names.
+ */
+function contextLabels(context, indent = "    ") {
+  const home = safeId(context.id);
+  const inside = (box) => box.startsWith(`${home}.`);
+  const box = (reference) => {
+    const segments = reference.split(".");
+    if (segments.length === 1) return reference;
+    return segments[0] === home ? segments.slice(0, 2).join(".") : segments[0];
+  };
+  return foldLabels(box, indent, (reference) => spellIn(home, reference), (from, to) => inside(from) !== inside(to));
+}
+
 /** A top-level box stands for everything nested in it. */
 function landscapeLabels(roots, indent = "    ") {
   const visible = new Set(roots);
@@ -1262,6 +1278,7 @@ for (const context of catalog.contexts) {
   views.push(`    title ${q(context.name)}`);
   views.push(`    include ${include}`);
   views.push(...containerCards(context.services));
+  views.push(...contextLabels(context));
   views.push(
     ...containerPredicates(pairs, carriedByBus.filter(inside), "    "),
   );

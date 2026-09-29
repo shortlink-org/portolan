@@ -567,6 +567,7 @@ describe("the LikeC4 generator", () => {
     // Between two contexts, the fold says what crosses rather than `[...]`.
     expect(views).toContain("include shop -> pay with { title 'calls 2 methods'  notes 'calls Charge\ncalls Refund' }");
     expect(views).toContain("include pay -> shop with { title 'publishes PaymentCaptured'");
+    expect(views).toContain("    include cart -> pay with { title 'calls 2 methods'  notes 'calls Charge\ncalls Refund' }");
 
     const engine = await LikeC4.fromSource(spec + model + views, { logger: false });
     try {
@@ -580,6 +581,9 @@ describe("the LikeC4 generator", () => {
       const hop = containers.edges.find((edge) => edge.source === "pay.ledger" && edge.target === "bus");
       expect([hop?.label, hop?.technology]).toEqual(["publishes PaymentCaptured", "NATS"]);
       expect(containers.nodes.find((node) => node.id === "bus")?.technology).toBe("NATS");
+      // A context's own view names its arrows into the contexts it folds.
+      const shop = computed.view("ctx_shop").$view;
+      expect(shop.edges.find((edge) => edge.source === "shop.cart" && edge.target === "pay")?.label).toBe("calls 2 methods");
     } finally { await engine.dispose(); }
   });
 

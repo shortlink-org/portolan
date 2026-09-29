@@ -422,6 +422,15 @@ PaymentDeclined' }
     include *, auth._store_auth_auth_pg
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
+    include auth.auth -> risk with { title 'calls Assess' }
+    include storefront -> auth.auth with { title 'calls validateSession' }
+    include shop -> auth.auth with { title 'calls validateSession' }
+    include client -> auth.auth with { title 'starts 6 flows'  notes 'starts Change password
+starts Get user
+starts Login
+starts Logout
+starts Register user
+starts Validate session' }
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -449,6 +458,23 @@ starts Validate session' }
     title 'Storefront'
     include *
     include storefront.bff with { description '' }
+    include bff -> auth with { title 'calls validateSession' }
+    include bff -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
+calls GetOrder
+calls addItem
+calls checkout
+calls getBasket
+calls removeItem' }
+    include bff -> delivery with { title 'calls GetShipment' }
+    include client -> bff with { title 'starts 9 flows'  notes 'starts Mutation add item
+starts Mutation cancel order
+starts Mutation checkout
+starts Mutation remove item
+starts Query basket
+starts Query order
+starts Query shipment
+starts Query viewer
+starts Subscription order status' }
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -484,6 +510,18 @@ starts Subscription order status' }
     include *, payments._store_payments_ledger_pg
     include payments.ledger with { description '' }
     include payments._store_payments_ledger_pg with { description '' }
+    include ledger -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
+publishes PaymentAuthorized
+publishes PaymentCaptured
+publishes PaymentDeclined' }
+    include ledger -> delivery with { title 'publishes PaymentCaptured' }
+    include ledger -> stripe with { title 'calls 4 methods'  notes 'calls PostPaymentIntents
+calls PostPaymentIntentsIntentCancel
+calls PostPaymentIntentsIntentCapture
+calls PostRefunds' }
+    include shop -> ledger with { title 'calls Authorize · publishes OrderCancelled'  notes 'calls Authorize
+publishes OrderCancelled' }
+    include delivery -> ledger with { title 'calls Capture' }
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -526,6 +564,37 @@ publishes OrderCancelled' }
     include shop.oms_cdc with { description '' }
     include shop.pricing with { description '' }
     include shop._store_shop_pricing_pg with { description '' }
+    include storefront -> cart with { title 'calls 4 methods'  notes 'calls addItem
+calls checkout
+calls getBasket
+calls removeItem' }
+    include storefront -> oms with { title 'calls 2 methods'  notes 'calls CancelOrder
+calls GetOrder' }
+    include payments -> oms with { title 'calls GetOrder · publishes 2 events'  notes 'calls GetOrder
+publishes PaymentAuthorized
+publishes PaymentDeclined' }
+    include payments -> billing with { title 'publishes PaymentCaptured' }
+    include billing -> auth with { title 'calls validateSession' }
+    include cart -> auth with { title 'calls validateSession' }
+    include oms -> payments with { title 'calls Authorize · publishes OrderCancelled'  notes 'calls Authorize
+publishes OrderCancelled' }
+    include oms -> delivery with { title 'publishes OrderConfirmed' }
+    include delivery -> oms with { title 'calls GetOrder' }
+    include client -> billing with { title 'starts 7 flows'  notes 'starts Invoice create
+starts Invoice destroy
+starts Invoice issue
+starts Invoice list
+starts Invoice partial update
+starts Invoice retrieve
+starts Invoice update' }
+    include client -> cart with { title 'starts 6 flows'  notes 'starts Add item
+starts Checkout
+starts Create basket
+starts Get basket
+starts Merge baskets
+starts Remove item' }
+    include client -> oms with { title 'starts 2 flows'  notes 'starts Cancel order
+starts Get order' }
     include shop.cart -> shop.pricing where kind is calls with { title 'calls GetQuote'  technology 'gRPC'  color declared  line dashed }
     exclude shop.cart -> shop.oms where kind is publishes_to
     exclude shop.cart -> shop.pricing where kind is publishes_to
@@ -639,6 +708,11 @@ persists quotes' }
     include *, delivery._store_delivery_core_pg
     include delivery.core with { description '' }
     include delivery._store_delivery_core_pg with { description '' }
+    include storefront -> core with { title 'calls GetShipment' }
+    include payments -> core with { title 'publishes PaymentCaptured' }
+    include shop -> core with { title 'publishes OrderConfirmed' }
+    include core -> payments with { title 'calls Capture' }
+    include core -> shop with { title 'calls GetOrder' }
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
@@ -670,6 +744,7 @@ persists scans' }
     include portolan.host with { description '' }
     include portolan.plugins with { description '' }
     include portolan.site with { description '' }
+    include developer -> host with { title 'npm run gen' }
     autoLayout LeftRight 100 70
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
