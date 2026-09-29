@@ -8,6 +8,9 @@ import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { statusColor, statusDash } from "../graph/theme";
+import { allTerms } from "../catalog";
+import { catalog } from "../data";
+import { explain } from "../lib/abbreviations";
 import type { ArrowEntry, BoxEntry, EvidenceEntry, Head, Legend } from "./legend";
 
 const W = 32;
@@ -167,6 +170,19 @@ export function LegendPanel({ id, legend, onClose }: { id: string; legend: Legen
           {legend.evidence.map((entry) => (
             <Row key={entry.status} mark={evidenceMark(entry)} name={entry.name} note={entry.note} />
           ))}
+        </Section>
+      ) : null}
+      {legend.abbreviations.length ? (
+        <Section title="Abbreviations">
+          {legend.abbreviations.map((abbreviation) => {
+            const { meaning } = explain(abbreviation, allTerms(catalog));
+            return (
+              <li key={abbreviation} className="grid grid-cols-[3rem_1fr] items-start gap-x-3 py-1">
+                <span className="mono text-sm text-ink">{abbreviation}</span>
+                <span className="text-sm text-muted">{meaning || "Not in the glossary, and not a common abbreviation."}</span>
+              </li>
+            );
+          })}
         </Section>
       ) : null}
     </div>

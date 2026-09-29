@@ -8,6 +8,7 @@
 // from, and cannot drift from the picture on screen.
 
 import { likec4model } from "./generated";
+import { abbreviationsIn } from "../lib/abbreviations";
 
 export type Status = "verified" | "declared" | "unresolved";
 export type Head = "normal" | "onormal" | "none";
@@ -46,6 +47,8 @@ export interface Legend {
   contexts: number[];
   arrows: ArrowEntry[];
   evidence: EvidenceEntry[];
+  /** Abbreviations in the picture's names and technologies, in order of first use. */
+  abbreviations: string[];
 }
 
 // One entry per element and deployment-node kind in the generated
@@ -103,12 +106,15 @@ interface NodeLike {
   kind: string;
   color: string;
   children?: readonly unknown[];
+  title?: string | null;
+  technology?: string | null;
 }
 
 interface EdgeLike {
   kind?: string | null;
   color?: string | null;
   head?: string | null;
+  technology?: string | null;
 }
 
 /** Only the entries a picture with these nodes and edges needs. */
@@ -141,9 +147,15 @@ export function legendFrom(nodes: readonly NodeLike[], edges: readonly EdgeLike[
     else if (color !== "muted") statuses.add("mixed");
   }
 
+  const words = [
+    ...nodes.flatMap((n) => [n.title ?? "", n.technology ?? ""]),
+    ...edges.map((e) => e.technology ?? ""),
+  ].join(" \n ");
+
   return {
     boxes,
     contexts,
+    abbreviations: abbreviationsIn(words),
     // Table order, not the order the edges happen to arrive in: the same key
     // should read the same way on every picture.
     arrows: [...arrows.values()].sort((a, b) => ARROW_ORDER.indexOf(a.key) - ARROW_ORDER.indexOf(b.key)),

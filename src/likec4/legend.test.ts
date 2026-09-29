@@ -40,4 +40,12 @@ describe("C4 legend", () => {
     expect(legend.arrows.map((arrow) => [arrow.name, arrow.head])).toEqual([["Event", "onormal"], ["Call or use", "normal"]]);
     expect(legend.evidence.map((entry) => entry.status)).toEqual(["verified", "mixed"]);
   });
+
+  it("gathers the abbreviations of names and technologies, once each", () => {
+    const legend = legendFrom(
+      [{ kind: "service", color: "ctx0", title: "Storefront BFF", technology: "Node.js · GraphQL" }, { kind: "broker", color: "muted", title: "bus", technology: "NATS" }],
+      [{ kind: "calls", color: "declared", head: "normal", technology: "HTTP" }, { kind: "calls", color: "declared", head: "normal", technology: "HTTP" }],
+    );
+    expect(legend.abbreviations).toEqual(["BFF", "NATS", "HTTP"]);
+  });
 });
