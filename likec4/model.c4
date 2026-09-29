@@ -32,7 +32,7 @@ model {
     style { color ctx0 }
     auth = service 'Authentication & Sessions' {
       description 'github.com/shortlink-org/portolan/examples/auth'
-      technology 'HTTP'
+      technology 'Go · PostgreSQL · OpenTelemetry · Watermill · Docker · HTTP'
       style { color ctx0 }
       lockout = aggregate 'Lockout' {
         AccountLocked = event 'AccountLocked' {
@@ -66,7 +66,7 @@ model {
     style { color ctx1 }
     bff = service 'Storefront BFF' {
       description 'github.com/shortlink-org/portolan/examples/bff'
-      technology 'GraphQL'
+      technology 'Node.js · Docker · GraphQL'
       style { color ctx1 }
     }
   }
@@ -75,7 +75,7 @@ model {
     style { color ctx2 }
     ledger = service 'Ledger' {
       description 'github.com/shortlink-org/portolan/examples/payments/ledger'
-      technology 'gRPC'
+      technology 'Java · Docker · gRPC'
       style { color ctx2 }
       payment = aggregate 'Payment' {
         PaymentAuthorized = event 'PaymentAuthorized' {
@@ -104,7 +104,7 @@ model {
     style { color ctx3 }
     billing = service 'Billing' {
       description 'github.com/shortlink-org/portolan/examples/shop/billing'
-      technology 'HTTP'
+      technology 'Python · Docker · HTTP'
       style { color ctx3 }
       invoice = aggregate 'Invoice' {
         InvoiceIssued = event 'InvoiceIssued' {
@@ -120,7 +120,7 @@ model {
     }
     cart = service 'Shopping Cart' {
       description 'github.com/shortlink-org/portolan/examples/shop/cart'
-      technology 'HTTP'
+      technology 'Node.js · Docker · HTTP'
       style { color ctx3 }
       basket = aggregate 'Basket' {
         BasketAbandoned = event 'BasketAbandoned' {
@@ -148,7 +148,7 @@ that now holds everything.'
     }
     oms = service 'Order Management' {
       description 'github.com/shortlink-org/portolan/examples/shop/oms'
-      technology 'gRPC'
+      technology 'Rust · Docker · gRPC'
       style { color ctx3 }
       _order = aggregate 'Order' {
         OrderCancelled = event 'OrderCancelled' {
@@ -174,7 +174,7 @@ the bus too, to ask for that money itself.'
     }
     pricing = service 'Pricing' {
       description 'github.com/shortlink-org/portolan/examples/shop/pricing'
-      technology 'gRPC'
+      technology 'Go · PostgreSQL · Docker · gRPC'
       style { color ctx3 }
       price_list = aggregate 'PriceList' {
       }
@@ -209,7 +209,7 @@ the bus too, to ask for that money itself.'
     style { color ctx4 }
     core = service 'Delivery Core' {
       description 'github.com/shortlink-org/portolan/examples/shop/delivery/core'
-      technology 'gRPC'
+      technology 'Node.js · Docker · gRPC'
       style { color ctx4 }
       route = aggregate 'Route' {
         RouteClosed = event 'RouteClosed' {

@@ -1,0 +1,30 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "technologies": [
+            "Node.js",
+            "Docker"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

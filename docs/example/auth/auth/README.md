@@ -6,6 +6,7 @@
 - **Context:** [Authentication](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/auth/`](https://github.com/shortlink-org/portolan/tree/main/examples/auth)
+- **Technologies:** Go, PostgreSQL, OpenTelemetry, Watermill, Docker
 - **Owners:** `@shortlink-org/identity`
 
 Service `auth` — bounded context **auth**.

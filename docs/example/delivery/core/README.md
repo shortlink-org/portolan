@@ -6,6 +6,7 @@
 - **Context:** [Delivery](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/delivery/core/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core)
+- **Technologies:** Node.js, Docker
 - **Owners:** `@shortlink-org/delivery`
 
 Service `core` — bounded context **delivery**. TypeScript on Node.

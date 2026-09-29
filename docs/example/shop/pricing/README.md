@@ -6,6 +6,7 @@
 - **Context:** [Shop](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/pricing/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing)
+- **Technologies:** Go, PostgreSQL, Docker
 - **Owners:** `@shortlink-org/shop`
 - **Hosts:** `api.example.com`, `pricing`, `pricing.shop`, `pricing.shop.svc`, `pricing.shop.svc.cluster.local`, `shop.example.com`
 - **Dials:** `nats.shop.svc`, `otel-collector.observability.svc`

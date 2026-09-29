@@ -541,6 +541,16 @@
       }
     },
     {
+      "plugin": "project",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "group": "auth",
+        "component": "auth",
+        "stackOnly": true
+      }
+    },
+    {
       "plugin": "openapi",
       "in": "examples/auth",
       "out": "examples/auth/portolan",
@@ -635,6 +645,16 @@
       }
     },
     {
+      "plugin": "project",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "group": "shop",
+        "component": "cart",
+        "stackOnly": true
+      }
+    },
+    {
       "plugin": "openapi",
       "in": "examples/shop/cart",
       "out": "examples/shop/cart/portolan",
@@ -697,6 +717,16 @@
       }
     },
     {
+      "plugin": "project",
+      "in": "examples/shop/billing",
+      "out": "examples/shop/billing/portolan",
+      "options": {
+        "group": "shop",
+        "component": "billing",
+        "stackOnly": true
+      }
+    },
+    {
       "plugin": "openapi",
       "in": "examples/shop/billing",
       "out": "examples/shop/billing/portolan",
@@ -744,6 +774,16 @@
           "github.com/shortlink-org/portolan/examples/shop/pricing/internal/infrastructure/cart": "shop.cart.basket"
         },
         "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "group": "shop",
+        "component": "pricing",
+        "stackOnly": true
       }
     },
     {
@@ -842,6 +882,16 @@
       }
     },
     {
+      "plugin": "project",
+      "in": "examples/shop/delivery/core",
+      "out": "examples/shop/delivery/core/portolan",
+      "options": {
+        "group": "delivery",
+        "component": "core",
+        "stackOnly": true
+      }
+    },
+    {
       "plugin": "proto",
       "in": "examples/shop/delivery/core",
       "out": "examples/shop/delivery/core/portolan",
@@ -920,6 +970,16 @@
           "org.portolan.payments.ledger.application.oms": "shop.oms.order"
         },
         "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "group": "payments",
+        "component": "ledger",
+        "stackOnly": true
       }
     },
     {
@@ -1060,6 +1120,16 @@
       }
     },
     {
+      "plugin": "project",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "group": "shop",
+        "component": "oms",
+        "stackOnly": true
+      }
+    },
+    {
       "plugin": "sql",
       "in": "examples/shop/oms",
       "out": "examples/shop/oms/portolan",
@@ -1135,6 +1205,16 @@
           "delivery.v1": "delivery.core"
         },
         "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "group": "storefront",
+        "component": "bff",
+        "stackOnly": true
       }
     },
     {

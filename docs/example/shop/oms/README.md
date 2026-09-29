@@ -6,6 +6,7 @@
 - **Context:** [Shop](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/oms/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms)
+- **Technologies:** Rust, Docker
 - **Owners:** `@shortlink-org/shop-oms`, `@shortlink-org/platform`
 
 Service `oms` — bounded context **shop**. Rust on Tokio.

@@ -181,3 +181,35 @@ func mustWrite(t *testing.T, path, contents string) {
 		t.Fatal(err)
 	}
 }
+
+// A service a domain extractor already reads takes only its stack from here:
+// everything else is left empty for the merge to take from that extractor.
+func TestStackOnlyWritesTheStackAndNothingElse(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "README.md"), "# Shopping Cart\n\nOwns the basket.\n")
+	mustWrite(t, filepath.Join(root, "package.json"), `{"name": "cart", "scripts": {"test": "vitest"}}`)
+	mustWrite(t, filepath.Join(root, "Dockerfile"), "FROM node\n")
+
+	response, err := extract(plugin.Input{Root: root}, Options{Group: "shop", Component: "cart", StackOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Files[0].Name != "stack.json" {
+		t.Errorf("file = %q, want stack.json", response.Files[0].Name)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(response.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	group := got.Contexts[0]
+	if group.ID != "shop" || group.Name != "" || group.Kind != "" || group.Summary != "" {
+		t.Errorf("the context says more than its id: %+v", group)
+	}
+	service := group.Services[0]
+	if service.ID != "shop.cart" || service.Name != "" || service.Readme != "" || service.Kind != "" || service.Repo != "" || len(service.Commands) != 0 {
+		t.Errorf("the service says more than its stack: %+v", service)
+	}
+	if len(service.Technologies) != 2 || service.Technologies[0] != "Node.js" || service.Technologies[1] != "Docker" {
+		t.Errorf("technologies = %v", service.Technologies)
+	}
+}

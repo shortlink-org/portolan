@@ -1,0 +1,31 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "technologies": [
+            "Go",
+            "PostgreSQL",
+            "Docker"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

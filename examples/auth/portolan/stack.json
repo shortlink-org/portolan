@@ -1,0 +1,33 @@
+{
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "technologies": [
+            "Go",
+            "PostgreSQL",
+            "OpenTelemetry",
+            "Watermill",
+            "Docker"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

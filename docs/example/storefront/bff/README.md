@@ -6,6 +6,7 @@
 - **Context:** [Storefront](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/bff/`](https://github.com/shortlink-org/portolan/tree/main/examples/bff)
+- **Technologies:** Node.js, Docker
 - **Owners:** `@shortlink-org/platform`
 
 Service `bff` — bounded context **storefront**. TypeScript on Node, GraphQL

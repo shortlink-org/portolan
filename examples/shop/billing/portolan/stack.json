@@ -1,0 +1,30 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "technologies": [
+            "Python",
+            "Docker"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

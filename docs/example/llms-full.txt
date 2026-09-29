@@ -1089,6 +1089,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Context:** [Authentication](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/auth/`](https://github.com/shortlink-org/portolan/tree/main/examples/auth)
+- **Technologies:** Go, PostgreSQL, OpenTelemetry, Watermill, Docker
 - **Owners:** `@shortlink-org/identity`
 
 Service `auth` — bounded context **auth**.
@@ -1821,6 +1822,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Context:** [Delivery](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/delivery/core/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core)
+- **Technologies:** Node.js, Docker
 - **Owners:** `@shortlink-org/delivery`
 
 Service `core` — bounded context **delivery**. TypeScript on Node.
@@ -2799,6 +2801,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Context:** [Payments](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/payments/ledger/`](https://github.com/shortlink-org/portolan/tree/main/examples/payments/ledger)
+- **Technologies:** Java, Docker
 - **Owners:** `@shortlink-org/platform`
 
 Service `ledger` — bounded context **payments**. Java on Spring Boot.
@@ -3481,6 +3484,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Context:** [Shop](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/billing/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/billing)
+- **Technologies:** Python, Docker
 - **Owners:** `@shortlink-org/shop`
 
 Service `billing` — bounded context **shop**. Python on Django.
@@ -3853,6 +3857,7 @@ Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlin
 - **Context:** [Shop](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/cart/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/cart)
+- **Technologies:** Node.js, Docker
 - **Owners:** `@shortlink-org/shop`
 - **Hosts:** `cart`, `cart.shop`, `cart.shop.svc`, `cart.shop.svc.cluster.local`, `shop.example.com`
 - **Dials:** `auth.auth.svc`, `nats.shop.svc`, `pricing.shop.svc`
@@ -4373,6 +4378,7 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-merged.ts`](https:/
 - **Context:** [Shop](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/oms/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms)
+- **Technologies:** Rust, Docker
 - **Owners:** `@shortlink-org/shop-oms`, `@shortlink-org/platform`
 
 Service `oms` — bounded context **shop**. Rust on Tokio.
@@ -4844,6 +4850,7 @@ Source: [`examples/shop/oms/connectors/oms-cdc.yaml:1`](https://github.com/short
 - **Context:** [Shop](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/shop/pricing/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing)
+- **Technologies:** Go, PostgreSQL, Docker
 - **Owners:** `@shortlink-org/shop`
 - **Hosts:** `api.example.com`, `pricing`, `pricing.shop`, `pricing.shop.svc`, `pricing.shop.svc.cluster.local`, `shop.example.com`
 - **Dials:** `nats.shop.svc`, `otel-collector.observability.svc`
@@ -5343,6 +5350,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Context:** [Storefront](../README.md)
 - **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
 - **Path:** [`examples/bff/`](https://github.com/shortlink-org/portolan/tree/main/examples/bff)
+- **Technologies:** Node.js, Docker
 - **Owners:** `@shortlink-org/platform`
 
 Service `bff` — bounded context **storefront**. TypeScript on Node, GraphQL

@@ -19,5 +19,8 @@
   ],
   "proto": [
     "risk.json"
+  ],
+  "project": [
+    "stack.json"
   ]
 }

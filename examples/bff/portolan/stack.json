@@ -1,0 +1,30 @@
+{
+  "contexts": [
+    {
+      "id": "storefront",
+      "slug": "storefront",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "storefront.bff",
+          "slug": "bff",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "technologies": [
+            "Node.js",
+            "Docker"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

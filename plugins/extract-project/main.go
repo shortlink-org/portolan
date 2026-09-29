@@ -16,13 +16,16 @@ type Options struct {
 	GroupKind      string `json:"groupKind,omitempty"`
 	Classification string `json:"classification,omitempty"`
 
-	Component     string             `json:"component,omitempty"`
-	ComponentName string             `json:"componentName,omitempty"`
-	ComponentKind string             `json:"componentKind,omitempty"`
-	Technologies  []string           `json:"technologies,omitempty"`
-	Repo          string             `json:"repo,omitempty"`
-	Components    []ComponentOptions `json:"components,omitempty"`
-	Out           string             `json:"out,omitempty"`
+	Component     string   `json:"component,omitempty"`
+	ComponentName string   `json:"componentName,omitempty"`
+	ComponentKind string   `json:"componentKind,omitempty"`
+	Technologies  []string `json:"technologies,omitempty"`
+	// StackOnly writes the component's languages and frameworks and nothing
+	// else, for a service another extractor already describes.
+	StackOnly  bool               `json:"stackOnly,omitempty"`
+	Repo       string             `json:"repo,omitempty"`
+	Components []ComponentOptions `json:"components,omitempty"`
+	Out        string             `json:"out,omitempty"`
 }
 
 // ComponentOptions names one independently deployable runtime found inside a

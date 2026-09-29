@@ -20,8 +20,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	base := slug(filepath.Base(root))
 	group := firstNonEmpty(slug(opts.Group), base, "project")
 	component := firstNonEmpty(slug(opts.Component), base, "component")
-	readme := read(filepath.Join(root, "README.md"))
 	b := &plugin.Builder{}
+	if opts.StackOnly {
+		return stackOnly(root, group, component, opts, b)
+	}
+	readme := read(filepath.Join(root, "README.md"))
 	cmds, warnings := commands.Read(root)
 	// Read from the workspace, written from the repository: a vendored copy's
 	// Makefile is `Makefile` upstream, whatever directory holds it here.
@@ -83,6 +86,41 @@ func sharedTechnologies(root string) []string {
 		}
 	}
 	return out
+}
+
+// stackOnly is the fragment for a service a domain extractor already reads:
+// the languages and frameworks at its root, and every other field left empty
+// so that the merge takes it from the extractor that knows it. The context is
+// named by id alone for the same reason - its kind and summary are not this
+// plugin's to say.
+func stackOnly(root, group, component string, opts Options, b *plugin.Builder) (plugin.Response, error) {
+	technologies := stated(opts.Technologies, technologies(root))
+	if len(technologies) == 0 {
+		b.Warn(root, "no go.mod, package.json, Cargo.toml, pom.xml or pyproject.toml at the root, so nothing says what "+group+"."+component+" is built with")
+	}
+	fragment := catalog.Catalog{
+		Contexts: []catalog.BoundedContext{{
+			ID:   group,
+			Slug: group,
+			Services: []catalog.Service{{
+				ID:           group + "." + component,
+				Slug:         component,
+				Technologies: technologies,
+				Provides:     []catalog.RpcService{},
+				Consumes:     []catalog.RpcCall{},
+				Aggregates:   []catalog.Aggregate{},
+			}},
+		}},
+		Defs:  map[string]catalog.TypeDef{},
+		Flows: []catalog.Flow{},
+		Adrs:  []catalog.Adr{},
+	}
+	encoded, err := json.MarshalIndent(fragment, "", "  ")
+	if err != nil {
+		return plugin.Response{}, err
+	}
+	b.File(firstNonEmpty(opts.Out, "stack.json"), string(encoded)+"\n")
+	return b.Response(), nil
 }
 
 func projectService(root, path, group, component, name, kind, repo, readme string, statedTechnologies []string, cmds []catalog.Command) catalog.Service {

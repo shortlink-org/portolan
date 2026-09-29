@@ -1,0 +1,30 @@
+{
+  "contexts": [
+    {
+      "id": "delivery",
+      "slug": "delivery",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "delivery.core",
+          "slug": "core",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "technologies": [
+            "Node.js",
+            "Docker"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

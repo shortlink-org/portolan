@@ -12,5 +12,8 @@
   ],
   "celery": [
     "celery.json"
+  ],
+  "project": [
+    "stack.json"
   ]
 }

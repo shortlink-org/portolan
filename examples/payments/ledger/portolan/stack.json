@@ -1,0 +1,30 @@
+{
+  "contexts": [
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "technologies": [
+            "Java",
+            "Docker"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

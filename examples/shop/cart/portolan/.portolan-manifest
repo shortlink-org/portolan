@@ -22,5 +22,8 @@
   ],
   "k8s": [
     "k8s.json"
+  ],
+  "project": [
+    "stack.json"
   ]
 }
