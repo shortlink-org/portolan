@@ -120,12 +120,18 @@
                   "exposedBy": [
                     "CancelOrder"
                   ],
+                  "emits": [
+                    "shop.oms.order.OrderCancelled"
+                  ],
                   "source": "testdata/oms/src/application/order/usecases/cancel_order/mod.rs:15"
                 },
                 {
                   "id": "ConfirmOrder",
                   "kind": "command",
                   "doc": "Confirms an order once its payment is authorised, and says so.",
+                  "emits": [
+                    "shop.oms.order.OrderConfirmed"
+                  ],
                   "source": "testdata/oms/src/application/order/usecases/confirm_order/mod.rs:25"
                 },
                 {
@@ -141,6 +147,9 @@
                   "id": "PlaceOrder",
                   "kind": "command",
                   "doc": "Places an order from a checked-out basket, once: a second BasketCheckedOut for the same basket places nothing.",
+                  "emits": [
+                    "shop.oms.order.OrderPlaced"
+                  ],
                   "source": "testdata/oms/src/application/order/usecases/place_order/mod.rs:22"
                 }
               ],

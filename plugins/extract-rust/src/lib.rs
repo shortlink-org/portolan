@@ -6,6 +6,7 @@
 pub mod catalog;
 pub mod clients;
 pub mod domain;
+pub mod emits;
 pub mod enums;
 pub mod extract;
 pub mod flows;

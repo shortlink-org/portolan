@@ -90,7 +90,13 @@ second event.
 in PascalCase: `issue_invoice` → `IssueInvoice`. It is a command when it saves,
 creates, deletes, updates or publishes — or opens a transaction — and a query
 when it does not. The doc is the function's docstring, first paragraph.
-`exposedBy` names the endpoints that run it.
+`exposedBy` names the endpoints that run it. `emits` is what it can publish,
+in the aggregate's event order: the events the model methods it calls produce
+(matched by name) and the models module's functions it calls through their
+import, plus any event it constructs or signal it sends itself — and the same
+through the services module's own helpers it calls. A model method produces
+the event its return annotation names, the events it constructs or sends, and
+whatever the methods and functions of the models it calls produce.
 
 **Endpoint and inferred HTTP contract.** The root URLConf is found through
 `DJANGO_SETTINGS_MODULE` and `ROOT_URLCONF`; nested `include()` prefixes,

@@ -828,6 +828,20 @@ export interface Operation {
    * carries nothing, `FindCoursesCounterQuery`.
    */
   fields?: Field[];
+  /**
+   * The events running the operation can publish, by `Event.id`, in the
+   * aggregate's event order: what the domain calls it makes hand back or
+   * record, read from the handler's code. A command that fails its guards
+   * publishes nothing, and one that takes several branches publishes one of
+   * these rather than all of them - the list is what can come out, not what
+   * always does.
+   *
+   * Only the service's own events: an operation changes its own aggregates,
+   * and a fact another service publishes is that service's to say. Absent
+   * when the extractor found none or does not read it: silence here is not a
+   * claim that the operation publishes nothing.
+   */
+  emits?: string[];
   /** Where the handler is, `path:line`, for the reader who wants the code. */
   source?: string;
 }

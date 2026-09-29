@@ -74,12 +74,12 @@ Hash is an opaque, immutable stored password hash. Hashing and verification are 
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. |
-| `CheckCredentials` | query | *internal* | Checks an address and a password, and says which user they belong to. |
-| `Get` | query | `getUser` | Reads a user by id. |
-| `Register` | command | `registerUser` | Creates a user from an email address and a password. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. | `PasswordChanged` |
+| `CheckCredentials` | query | *internal* | Checks an address and a password, and says which user they belong to. | — |
+| `Get` | query | `getUser` | Reads a user by id. | — |
+| `Register` | command | `registerUser` | Creates a user from an email address and a password. | `UserRegistered` |
 
 ## Events
 
@@ -89,6 +89,8 @@ Hash is an opaque, immutable stored password hash. Hashing and verification are 
 `auth.auth.user.PasswordChanged`
 
 On the wire as `auth.PasswordChanged`, on `auth_user`.
+
+Triggered by `ChangePassword` (command).
 
 | Consumer | Status | Note |
 | --- | --- | --- |
@@ -112,6 +114,8 @@ Source: [`examples/auth/internal/user/domain/event/password_changed.go`](https:/
 `auth.auth.user.UserRegistered`
 
 On the wire as `auth.UserRegistered`, on `auth_user`.
+
+Triggered by `Register` (command).
 
 #### v1 — current
 

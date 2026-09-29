@@ -77,13 +77,16 @@ final class Catalog {
         return out;
     }
 
-    static Map<String, Object> operation(String id, String kind, String doc, List<String> exposedBy) {
+    static Map<String, Object> operation(String id, String kind, String doc, List<String> exposedBy, List<String> emits) {
         Map<String, Object> out = map("id", id, "kind", kind);
         if (!doc.isEmpty()) {
             out.put("doc", doc);
         }
         if (exposedBy != null && !exposedBy.isEmpty()) {
             out.put("exposedBy", exposedBy);
+        }
+        if (!emits.isEmpty()) {
+            out.put("emits", emits);
         }
         return out;
     }

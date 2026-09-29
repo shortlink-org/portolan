@@ -62,6 +62,19 @@ describe("validateCatalog", () => {
     expect(() => validateCatalog(bad)).toThrow(/exposed by "notAMethod"/);
   });
 
+  it("rejects an operation emitting an event its service does not declare", () => {
+    const bad = clone();
+    const service = bad.contexts[0]?.services[0];
+    const operation = service?.aggregates[0]?.operations[0];
+    const own = service?.aggregates.flatMap((aggregate) => aggregate.events)[0];
+    if (!operation || !own) throw new Error("nothing to emit");
+    operation.emits = [own.id];
+    expect(() => validateCatalog(bad)).not.toThrow();
+
+    operation.emits = ["elsewhere.agg.Nothing"];
+    expect(() => validateCatalog(bad)).toThrow(/emits "elsewhere\.agg\.Nothing"/);
+  });
+
   // The pairing is the whole point of the field, so the shipped catalog is
   // held to it rather than only the hand-made counterexample above.
   it("accepts an operation exposed by a method its service really declares", () => {

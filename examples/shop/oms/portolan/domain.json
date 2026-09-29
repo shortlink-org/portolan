@@ -130,12 +130,18 @@
                   "exposedBy": [
                     "CancelOrder"
                   ],
+                  "emits": [
+                    "shop.oms.order.OrderCancelled"
+                  ],
                   "source": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:34"
                 },
                 {
                   "id": "ConfirmOrder",
                   "kind": "command",
                   "doc": "Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation.",
+                  "emits": [
+                    "shop.oms.order.OrderConfirmed"
+                  ],
                   "source": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25"
                 },
                 {
@@ -152,6 +158,9 @@
                   "id": "PlaceOrder",
                   "kind": "command",
                   "doc": "Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced.",
+                  "emits": [
+                    "shop.oms.order.OrderPlaced"
+                  ],
                   "source": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26"
                 },
                 {

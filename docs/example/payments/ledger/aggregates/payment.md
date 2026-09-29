@@ -111,12 +111,12 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
-| `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
-| `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. |
-| `VoidPayment` | command | *internal* | Gives back a hold nobody is going to be charged for. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. | `PaymentAuthorized`, `PaymentDeclined` |
+| `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. | `PaymentCaptured` |
+| `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. | — |
+| `VoidPayment` | command | *internal* | Gives back a hold nobody is going to be charged for. | — |
 
 ## Events
 
@@ -126,6 +126,8 @@ stateDiagram-v2
 `payments.ledger.payment.PaymentAuthorized`
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
+
+Triggered by `AuthorizePayment` (command), `authorize` (PENDING → AUTHORIZED).
 
 | Consumer | Status | Via |
 | --- | --- | --- |
@@ -151,6 +153,8 @@ Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/do
 
 On the wire as `ledger.PaymentCaptured`, on `payments.ledger.payment`.
 
+Triggered by `CapturePayment` (command), `capture` (AUTHORIZED → CAPTURED).
+
 | Consumer | Status | Via |
 | --- | --- | --- |
 | [shop.billing](../../../shop/billing/README.md) | declared | `billing-close-invoice-on-payment#s1` |
@@ -175,6 +179,8 @@ Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/do
 `payments.ledger.payment.PaymentDeclined`
 
 On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
+
+Triggered by `AuthorizePayment` (command), `decline` (PENDING → DECLINED).
 
 | Consumer | Status | Via |
 | --- | --- | --- |

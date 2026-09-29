@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use crate::catalog::{Catalog, Context, Service};
 use crate::domain::read_aggregates;
+use crate::emits::Emitters;
 use crate::flows::{FlowOptions, FlowReader};
 use crate::ids::{service_id, title};
 use crate::operations::{operation_of, read_use_cases};
@@ -51,6 +52,10 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             exposed_by.entry(key.clone()).or_default().push(endpoint.id.clone());
         }
     }
+    let emitters: BTreeMap<String, Emitters> = aggregates
+        .iter()
+        .map(|a| (a.aggregate.slug.clone(), Emitters::read(&krate, &a.dir, &a.aggregate.root, &a.aggregate.events)))
+        .collect();
     for uc in &use_cases {
         let Some(agg) = aggregates.iter_mut().find(|a| a.aggregate.slug == uc.aggregate) else {
             b.warn(
@@ -66,6 +71,9 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         let mut op = operation_of(uc);
         op.source = uc.source.method("UseCase", "handle")
             .map(|handle| uc.source.at(crate::source::span_of(&handle.sig), &rel));
+        if let Some(e) = emitters.get(&uc.aggregate) {
+            op.emits = e.use_case_emits(&krate.under(&uc.dir));
+        }
         if let Some(routes) = exposed_by.get(&uc.key) {
             let mut routes = routes.clone();
             routes.sort();

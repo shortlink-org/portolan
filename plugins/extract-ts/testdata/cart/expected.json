@@ -179,6 +179,9 @@
                       "doc": "",
                       "required": true
                     }
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketItemAdded"
                   ]
                 },
                 {
@@ -187,6 +190,9 @@
                   "doc": "Freezes the basket and hands it on: the session is confirmed with auth, the total with pricing, then BasketCheckedOut is written in the same transaction.",
                   "exposedBy": [
                     "checkout"
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketCheckedOut"
                   ]
                 },
                 {
@@ -195,6 +201,9 @@
                   "doc": "Abandons every basket nobody has touched for a day.",
                   "exposedBy": [
                     "expireIdleBaskets"
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketAbandoned"
                   ]
                 },
                 {
@@ -230,6 +239,10 @@
                         }
                       ]
                     }
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketCreated",
+                    "shop.cart.basket.BasketItemAdded"
                   ]
                 }
               ],

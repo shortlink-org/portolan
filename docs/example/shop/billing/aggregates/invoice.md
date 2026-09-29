@@ -78,13 +78,13 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `DrawUpInvoice` | command | `invoice_create` | Draws up a draft invoice for an order, with a line for each thing sold. |
-| `GetInvoice` | query | `invoice_retrieve` | Reads one invoice and the lines it is made of. |
-| `IssueInvoice` | command | `invoice_issue` | Confirms the session, freezes the invoice and asks the customer to pay. |
-| `PayInvoice` | command | *internal* | Closes an issued invoice against the money the ledger says arrived. |
-| `VoidInvoice` | command | `invoice_destroy` | Ends an invoice nobody is going to pay. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `DrawUpInvoice` | command | `invoice_create` | Draws up a draft invoice for an order, with a line for each thing sold. | — |
+| `GetInvoice` | query | `invoice_retrieve` | Reads one invoice and the lines it is made of. | — |
+| `IssueInvoice` | command | `invoice_issue` | Confirms the session, freezes the invoice and asks the customer to pay. | `InvoiceIssued` |
+| `PayInvoice` | command | *internal* | Closes an issued invoice against the money the ledger says arrived. | `InvoicePaid` |
+| `VoidInvoice` | command | `invoice_destroy` | Ends an invoice nobody is going to pay. | `InvoiceVoided` |
 
 ## Events
 
@@ -94,6 +94,8 @@ stateDiagram-v2
 `shop.billing.invoice.InvoiceIssued`
 
 On the wire as `billing.InvoiceIssued`, on `shop.billing.invoice`.
+
+Triggered by `IssueInvoice` (command), `issue` (draft → issued).
 
 #### v1 — current
 
@@ -116,6 +118,8 @@ Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlin
 
 On the wire as `billing.InvoicePaid`, on `shop.billing.invoice`.
 
+Triggered by `PayInvoice` (command), `pay` (issued → paid).
+
 #### v1 — current
 
 The money arrived and the invoice is closed. Nothing is owed on the order.
@@ -134,6 +138,8 @@ Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlin
 `shop.billing.invoice.InvoiceVoided`
 
 On the wire as `billing.InvoiceVoided`, on `shop.billing.invoice`.
+
+Triggered by `VoidInvoice` (command), `void` (draft → void), `void` (issued → void).
 
 #### v1 — current
 

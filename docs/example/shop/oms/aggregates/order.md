@@ -103,13 +103,13 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc | Source |
-| --- | --- | --- | --- | --- |
-| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L34) |
-| `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. | [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L25) |
-| `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. | [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L41) |
-| `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. | [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L26) |
-| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L48) |
+| Operation | Kind | Exposed by | Doc | Emits | Source |
+| --- | --- | --- | --- | --- | --- |
+| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | `OrderCancelled` | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L34) |
+| `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. | `OrderConfirmed` | [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L25) |
+| `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. | — | [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L41) |
+| `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. | `OrderPlaced` | [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L26) |
+| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | — | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L48) |
 
 ## Events
 
@@ -119,6 +119,8 @@ stateDiagram-v2
 `shop.oms.order.OrderCancelled`
 
 On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
+
+Triggered by `CancelOrder` (command), `cancel` (placed → cancelled), `cancel` (confirmed → cancelled).
 
 | Consumer | Status | Via |
 | --- | --- | --- |
@@ -145,6 +147,8 @@ Source: [`examples/shop/oms/src/domain/order/event/order_cancelled.rs`](https://
 
 On the wire as `oms.OrderConfirmed`, on `shop.oms.order`.
 
+Triggered by `ConfirmOrder` (command), `confirm` (placed → confirmed).
+
 | Consumer | Status | Via |
 | --- | --- | --- |
 | [delivery.core](../../../delivery/core/README.md) | declared | `core-create-shipment-on-order-confirmed#s1` |
@@ -168,6 +172,8 @@ Source: [`examples/shop/oms/src/domain/order/event/order_confirmed.rs`](https://
 `shop.oms.order.OrderPlaced`
 
 On the wire as `oms.OrderPlaced`, on `shop.oms.order`.
+
+Triggered by `PlaceOrder` (command).
 
 | Consumer | Status | Via |
 | --- | --- | --- |

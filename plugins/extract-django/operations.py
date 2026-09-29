@@ -92,5 +92,5 @@ def read_use_cases(agg: Aggregate, b) -> List[UseCase]:
     return sorted(out, key=lambda u: u.id)
 
 
-def operation(use_case: UseCase, exposed_by: Optional[List[str]] = None) -> Dict[str, object]:
-    return catalog.operation(use_case.id, use_case.kind, use_case.doc, exposed_by)
+def operation(use_case: UseCase, exposed_by: Optional[List[str]] = None, emits: Optional[List[str]] = None) -> Dict[str, object]:
+    return catalog.operation(use_case.id, use_case.kind, use_case.doc, exposed_by, emits)

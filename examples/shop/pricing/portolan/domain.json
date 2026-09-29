@@ -207,7 +207,10 @@
                 {
                   "id": "ExpireQuote",
                   "kind": "command",
-                  "doc": "Package expire_quote lets promises lapse."
+                  "doc": "Package expire_quote lets promises lapse.",
+                  "emits": [
+                    "shop.pricing.quote.QuoteExpired"
+                  ]
                 },
                 {
                   "id": "GetQuote",
@@ -223,6 +226,9 @@
                   "doc": "Package issue_quote prices a basket and promises the price for a while.",
                   "exposedBy": [
                     "IssueQuote"
+                  ],
+                  "emits": [
+                    "shop.pricing.quote.QuoteIssued"
                   ]
                 }
               ],

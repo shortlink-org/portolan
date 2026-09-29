@@ -692,6 +692,11 @@ type Operation struct {
 	// as the message class declares it. Nil when the extractor does not read
 	// messages; an empty list is a message that carries nothing.
 	Fields []Field `json:"fields,omitempty"`
+	// Emits is what running the operation can publish, by Event.ID, in the
+	// aggregate's event order: the events the domain calls it makes hand back
+	// or record. Only the service's own events. Empty when the extractor found
+	// none or does not read it.
+	Emits []string `json:"emits,omitempty"`
 	// Source is where the handler is, "path:line".
 	Source string `json:"source,omitempty"`
 }

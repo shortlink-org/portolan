@@ -132,7 +132,13 @@ the job channel; one implementing `IRecurringCommand` runs on a Quartz
 schedule. A handler under `Infrastructure/` is plumbing - `ProcessOutboxCommandHandler`
 - and is not read. `exposedBy` names the actions of the module's own
 controllers that new the message up; an action in another module's
-controller is a call across contexts and lives in the flow.
+controller is a call across contexts and lives in the flow. `emits` is what
+the handler class can publish, in the aggregate's event order: the events the
+root's methods, constructors and static factories it calls produce - those
+they new up, `AddDomainEvent(new X(...))`, those their return type names, and
+what the root's own members they call produce - plus the aggregate's events
+it news up itself. A call is matched by symbol, and by name when its receiver
+did not bind, `Meeting.CreateNew(...)` as the static factory.
 
 **Store.** One per schema of the database project, owned by the module
 whose EF configurations `ToTable("X", "schema")` into it, else the module

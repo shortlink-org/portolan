@@ -42,7 +42,10 @@
                 {
                   "id": "ExpireIdleBaskets",
                   "kind": "command",
-                  "doc": "Abandons every basket nobody has touched for a day."
+                  "doc": "Abandons every basket nobody has touched for a day.",
+                  "emits": [
+                    "shop.cart.basket.BasketAbandoned"
+                  ]
                 }
               ],
               "events": [

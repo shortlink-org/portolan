@@ -1,6 +1,7 @@
 package genmarkdown
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -220,6 +221,17 @@ func (s *site) operationsTable(from string, svc *catalog.Service, agg *catalog.A
 		}
 	}
 
+	// Whether any operation says what it publishes; the column appears only
+	// then, for the same reason.
+	emitting := false
+	for i := range agg.Operations {
+		if len(agg.Operations[i].Emits) > 0 {
+			emitting = true
+
+			break
+		}
+	}
+
 	rows := make([][]string, 0, len(agg.Operations))
 	for i := range agg.Operations {
 		op := &agg.Operations[i]
@@ -237,6 +249,13 @@ func (s *site) operationsTable(from string, svc *catalog.Service, agg *catalog.A
 		}
 
 		row := []string{code(op.ID), string(op.Kind), exposed, op.Doc}
+		if emitting {
+			events := make([]string, 0, len(op.Emits))
+			for _, id := range op.Emits {
+				events = append(events, s.ref(from, id, id[strings.LastIndex(id, ".")+1:]))
+			}
+			row = append(row, strings.Join(events, ", "))
+		}
 		if shaped {
 			input := make([]string, 0, len(op.Fields))
 			for _, field := range op.Fields {
@@ -248,6 +267,9 @@ func (s *site) operationsTable(from string, svc *catalog.Service, agg *catalog.A
 	}
 
 	header := []string{"Operation", "Kind", "Exposed by", "Doc"}
+	if emitting {
+		header = append(header, "Emits")
+	}
 	if shaped {
 		header = append(header, "Input", "Source")
 	}
@@ -275,6 +297,10 @@ func (s *site) eventsBlock(from string, svc *catalog.Service, agg *catalog.Aggre
 				line += ", on " + code(event.Wire.Channel)
 			}
 			b.WriteString("\n" + line + ".\n")
+		}
+
+		if triggers := triggeredBy(svc, event.ID); len(triggers) > 0 {
+			b.WriteString("\nTriggered by " + strings.Join(triggers, ", ") + ".\n")
 		}
 
 		if len(event.Versions) == 0 {
@@ -412,4 +438,28 @@ func plural(n int, word string, irregular ...string) string {
 	}
 
 	return strconv.Itoa(n) + " " + word + "s"
+}
+
+// triggeredBy names what in the service publishes an event: the operations
+// that say they emit it and the lifecycle moves that hand it back.
+func triggeredBy(svc *catalog.Service, eventID string) []string {
+	var out []string
+	for i := range svc.Aggregates {
+		agg := &svc.Aggregates[i]
+		for _, op := range agg.Operations {
+			if slices.Contains(op.Emits, eventID) {
+				out = append(out, code(op.ID)+" ("+string(op.Kind)+")")
+			}
+		}
+		if agg.Lifecycle == nil {
+			continue
+		}
+		for _, t := range agg.Lifecycle.Transitions {
+			if t.Emits == eventID {
+				out = append(out, code(t.On)+" ("+t.From+" → "+t.To+")")
+			}
+		}
+	}
+
+	return out
 }

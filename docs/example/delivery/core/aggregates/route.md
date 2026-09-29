@@ -97,12 +97,12 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `CloseRoute` | command | `CloseRoute` | Ends the day, whatever is left undone. |
-| `GetRoute` | query | `GetRoute` | One route, as the depot reads it. |
-| `PlanRoute` | command | `PlanRoute` | Builds a van's day out of the shipments waiting to go out. |
-| `StartRoute` | command | `StartRoute` | The van is out. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `CloseRoute` | command | `CloseRoute` | Ends the day, whatever is left undone. | `RouteClosed` |
+| `GetRoute` | query | `GetRoute` | One route, as the depot reads it. | — |
+| `PlanRoute` | command | `PlanRoute` | Builds a van's day out of the shipments waiting to go out. | `RoutePlanned` |
+| `StartRoute` | command | `StartRoute` | The van is out. | `RouteStarted` |
 
 ## Events
 
@@ -112,6 +112,8 @@ stateDiagram-v2
 `delivery.core.route.RouteClosed`
 
 On the wire as `delivery.RouteClosed`, on `delivery.core.route`.
+
+Triggered by `CloseRoute` (command), `close` (planned → closed), `close` (driving → closed).
 
 #### v1 — current
 
@@ -136,6 +138,8 @@ Source: [`examples/shop/delivery/core/src/domain/route/events/route-closed.ts`](
 
 On the wire as `delivery.RoutePlanned`, on `delivery.core.route`.
 
+Triggered by `PlanRoute` (command).
+
 #### v1 — current
 
 A van has a day's work. The stops are not on the event: whoever cares reads
@@ -157,6 +161,8 @@ Source: [`examples/shop/delivery/core/src/domain/route/events/route-planned.ts`]
 `delivery.core.route.RouteStarted`
 
 On the wire as `delivery.RouteStarted`, on `delivery.core.route`.
+
+Triggered by `StartRoute` (command), `start` (planned → driving).
 
 #### v1 — current
 

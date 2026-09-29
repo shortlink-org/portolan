@@ -10,6 +10,7 @@ import type { Catalog, Field, Service } from "../../src/catalog.ts";
 type Fragment = Omit<Catalog, "generatedAt" | "commit">;
 import { readAggregates, type WarningSink } from "./domain.ts";
 import { operationOf, readUseCases } from "./operations.ts";
+import { domainEmitters, useCaseEmits, type Emitters } from "./emits.ts";
 import { readBindings } from "./wiring.ts";
 import { readGrpcTransport, readJobs, readTransport } from "./transport.ts";
 import { readResolvers } from "./graphql.ts";
@@ -120,6 +121,9 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     if (said && JSON.stringify(said) !== JSON.stringify(endpoint.request)) disagree.add(key);
     else handedIn.set(key, endpoint.request);
   }
+  // What each aggregate's domain says its functions emit, read once for all
+  // of its use cases.
+  const emitters = new Map<string, Emitters>();
   for (const uc of useCases) {
     const agg = aggregates.find((a) => a.aggregate.slug === uc.aggregate);
     if (!agg) {
@@ -131,6 +135,10 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     if (routes) op.exposedBy = [...routes].sort();
     const fields = disagree.has(uc.key) ? undefined : handedIn.get(uc.key);
     if (fields) op.fields = fields;
+    let domain = emitters.get(agg.aggregate.id);
+    if (!domain) emitters.set(agg.aggregate.id, (domain = domainEmitters(agg.dir, agg.aggregate.root, agg.aggregate.events)));
+    const emits = useCaseEmits(domain, uc.dir);
+    if (emits.length > 0) op.emits = emits;
     agg.aggregate.operations.push(op);
   }
   for (const agg of aggregates) agg.aggregate.operations.sort((a, c) => a.id.localeCompare(c.id));

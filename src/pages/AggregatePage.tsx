@@ -35,6 +35,7 @@ import {
   AGGREGATE_SECTION,
   EVENT_ANCHOR,
   LINKS_HERE,
+  eventPath,
   paths,
   servicePath,
   tablePath,
@@ -347,7 +348,7 @@ function OperationList({
               <Ident block value={op.id} className={op.deprecated ? "line-through" : undefined} />
               {summary ? (
                 <span className="mono text-muted" title="Unique events and downstream services linked in flows; not a guarantee of complete coverage">
-                  {summary.unknown ? "consequences unknown" : `${summary.events} ${plural(summary.events, "event")} · ${summary.services} ${plural(summary.services, "downstream service")}${summary.incomplete ? " · partial" : ""}`}
+                  {summary.unknown ? (op.emits?.length ? `${op.emits.length} ${plural(op.emits.length, "event")} · no flow linked` : "consequences unknown") : `${summary.events} ${plural(summary.events, "event")} · ${summary.services} ${plural(summary.services, "downstream service")}${summary.incomplete ? " · partial" : ""}`}
                 </span>
               ) : null}
               {op.kind === "command" ? <CommandLink id={op.id} /> : null}
@@ -372,6 +373,31 @@ function OperationList({
               ) : null}
             </span>
             {op.doc ? <p className="mt-0.5 max-w-prose text-muted">{op.doc}</p> : null}
+            {/* What the handler's code can publish, read by the extractor -
+                one of these per run, not all of them, and not what the flows
+                show happening afterwards (that is "Then what" below). */}
+            {op.emits?.length ? (
+              <p className="mono mt-1 flex flex-wrap items-center gap-x-2 text-muted">
+                <span>emits</span>
+                {op.emits.map((id) => {
+                  const event = index.eventById.get(id);
+                  const target = eventPath(id);
+                  const name = event?.name ?? id.slice(id.lastIndexOf(".") + 1);
+                  return target ? (
+                    <Link
+                      key={id}
+                      to={target}
+                      className="rounded-control text-accent hover:text-ink"
+                      title="read from the handler's code: an event the operation can publish"
+                    >
+                      {name}
+                    </Link>
+                  ) : (
+                    <span key={id}>{name}</span>
+                  );
+                })}
+              </p>
+            ) : null}
             {kind === "command" ? (
               <CommandConsequences catalog={catalog} service={service} operation={op} chain={chain!} />
             ) : null}

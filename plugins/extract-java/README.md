@@ -109,7 +109,12 @@ and that is reported. A record's components are the payload.
 **Operation.** A class saying `@Service` — jMolecules' one — or a class under
 `application/**/usecase`. Its entry is `handle`, `execute`, or the single public
 method it has. It is a command when it saves, deletes, publishes or sends, and
-a query when it does not. `exposedBy` names the rpcs that run it.
+a query when it does not. `exposedBy` names the rpcs that run it. `emits` is
+what running it can publish: the aggregate's events that the root methods it
+calls (matched by name), the root's constructors and the static factories of
+the aggregate's package it calls produce — the events their return type names
+or they build with `new`, and what the methods of their own class they call
+produce — plus any event it builds itself, in the aggregate's event order.
 
 **Endpoint.** A method of a `@GrpcService` whose name is an rpc of the contract
 vendored beside it — `getOrder` and `GetOrder` are one name. The endpoint's id

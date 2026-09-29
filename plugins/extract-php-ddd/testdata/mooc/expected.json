@@ -378,6 +378,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "mooc.backend.courses.CourseCreated"
+                  ],
                   "source": "testdata/mooc/src/Mooc/Courses/Application/Create/CreateCourseCommandHandler.php:16"
                 }
               ],

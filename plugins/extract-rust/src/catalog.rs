@@ -108,6 +108,10 @@ pub struct Operation {
     pub doc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exposed_by: Option<Vec<String>>,
+    /// Event ids running the operation can publish, in the aggregate's event
+    /// order. See emits.rs.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub emits: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }

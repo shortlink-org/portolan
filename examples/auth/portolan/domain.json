@@ -70,7 +70,10 @@
                 {
                   "id": "RecordFailure",
                   "kind": "command",
-                  "doc": "Counts a wrong password against an account, and locks the account when the count reaches the threshold."
+                  "doc": "Counts a wrong password against an account, and locks the account when the count reaches the threshold.",
+                  "emits": [
+                    "auth.auth.lockout.AccountLocked"
+                  ]
                 },
                 {
                   "id": "RecordSuccess",
@@ -212,7 +215,10 @@
                 {
                   "id": "EndAfterCredentialChange",
                   "kind": "command",
-                  "doc": "Ends the sessions a credential change invalidates."
+                  "doc": "Ends the sessions a credential change invalidates.",
+                  "emits": [
+                    "auth.auth.session.SessionEnded"
+                  ]
                 },
                 {
                   "id": "Login",
@@ -220,6 +226,10 @@
                   "doc": "Turns credentials into a session.",
                   "exposedBy": [
                     "login"
+                  ],
+                  "emits": [
+                    "auth.auth.session.SessionEnded",
+                    "auth.auth.session.SessionStarted"
                   ]
                 },
                 {
@@ -228,6 +238,9 @@
                   "doc": "Ends the session behind a token.",
                   "exposedBy": [
                     "logout"
+                  ],
+                  "emits": [
+                    "auth.auth.session.SessionEnded"
                   ]
                 },
                 {
@@ -438,6 +451,9 @@
                   "doc": "Replaces the password of a user, given the current one.",
                   "exposedBy": [
                     "changePassword"
+                  ],
+                  "emits": [
+                    "auth.auth.user.PasswordChanged"
                   ]
                 },
                 {
@@ -459,6 +475,9 @@
                   "doc": "Creates a user from an email address and a password.",
                   "exposedBy": [
                     "registerUser"
+                  ],
+                  "emits": [
+                    "auth.auth.user.UserRegistered"
                   ]
                 }
               ],

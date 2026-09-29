@@ -233,6 +233,9 @@
                       "doc": "",
                       "required": true
                     }
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketItemAdded"
                   ]
                 },
                 {
@@ -255,6 +258,9 @@
                         }
                       ]
                     }
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketCheckedOut"
                   ]
                 },
                 {
@@ -263,12 +269,18 @@
                   "doc": "Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007).",
                   "exposedBy": [
                     "createBasket"
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketCreated"
                   ]
                 },
                 {
                   "id": "ExpireIdleBaskets",
                   "kind": "command",
-                  "doc": "The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute."
+                  "doc": "The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute.",
+                  "emits": [
+                    "shop.cart.basket.BasketAbandoned"
+                  ]
                 },
                 {
                   "id": "GetBasket",
@@ -336,6 +348,11 @@
                         }
                       ]
                     }
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketCreated",
+                    "shop.cart.basket.BasketItemAdded",
+                    "shop.cart.basket.BasketMerged"
                   ]
                 },
                 {
@@ -370,6 +387,9 @@
                         }
                       ]
                     }
+                  ],
+                  "emits": [
+                    "shop.cart.basket.BasketItemRemoved"
                   ]
                 }
               ],

@@ -26,6 +26,7 @@ import {
 } from "../lib/shape";
 import type { Change, Scope } from "../lib/shape";
 import {
+  AGGREGATE_ANCHOR,
   EVENT_ANCHOR,
   LINKS_HERE,
   messageAnchor,
@@ -49,6 +50,8 @@ import { NotFound } from "./NotFound";
 import { FocusedEventGraphPane } from "../graph/FocusedEventGraph";
 import { eventChain } from "../flow/chain";
 import { ChainList } from "../flow/ChainList";
+import { commandAnchor } from "../flow/command-info";
+import { triggersOf } from "../lib/triggers";
 
 /**
  * One row of the schema table: a field of the version shown, or a field the
@@ -454,6 +457,7 @@ export function EventPage({
     return <NotFound kind="Event" id={eventSlug} />;
   }
 
+  const triggers = triggersOf(service, event.id);
   const outbox = outboxOfService(index, service.id);
   const outboxTo = outbox ? tablePath(outbox.table.id) : null;
   const schemaModule = selected.schema
@@ -481,6 +485,7 @@ export function EventPage({
   const toc: TocItem[] = [
     { id: EVENT_ANCHOR.schema, label: "Schema" },
     { id: EVENT_ANCHOR.versions, label: "Versions" },
+    { id: EVENT_ANCHOR.triggers, label: "Triggered by" },
     { id: EVENT_ANCHOR.consumers, label: "Consumers" },
     { id: EVENT_ANCHOR.then, label: "Then what" },
     { id: LINKS_HERE, label: "What links here" },
@@ -782,6 +787,70 @@ export function EventPage({
                 );
               })}
             </div>
+          </section>
+
+          {/* --- Triggered by ------------------------------------------ */}
+          {/* The producing side, read from the aggregates: the operations
+              whose handlers can hand this event back, and the lifecycle
+              moves that announce it. The consumers below are the other end. */}
+          <section id={EVENT_ANCHOR.triggers} className="mt-section max-w-table">
+            <SectionTitle anchor={EVENT_ANCHOR.triggers}>Triggered by</SectionTitle>
+            {triggers.length === 0 ? (
+              <Empty>no operation or lifecycle move of {service.id} says it publishes this event</Empty>
+            ) : (
+              <div className="flex flex-col gap-1.5" data-nav-list>
+                {triggers.map((trigger) => {
+                  const at = paths.aggregate(context.id, service.slug, trigger.aggregate.slug);
+                  const elsewhere = trigger.aggregate.id !== aggregate.id;
+                  if (trigger.kind === "operation") {
+                    const { operation } = trigger;
+                    const hash =
+                      operation.kind === "command"
+                        ? encodeURIComponent(commandAnchor(operation.id))
+                        : AGGREGATE_ANCHOR.queries;
+                    return (
+                      <div key={`op:${trigger.aggregate.id}/${operation.id}`} className="row items-baseline gap-2">
+                        <Link
+                          to={`${at}#${hash}`}
+                          data-nav-item
+                          className="mono rounded-control text-accent"
+                        >
+                          {operation.id}
+                        </Link>
+                        <span className="mono text-muted">
+                          {operation.kind}
+                          {elsewhere ? ` on ${trigger.aggregate.name}` : ""}
+                        </span>
+                        {operation.doc ? (
+                          <span className="min-w-0 flex-1 truncate text-muted" title={operation.doc}>
+                            {operation.doc}
+                          </span>
+                        ) : null}
+                      </div>
+                    );
+                  }
+                  const { transition } = trigger;
+                  return (
+                    <div
+                      key={`move:${trigger.aggregate.id}/${transition.from}/${transition.to}/${transition.on}`}
+                      className="row items-baseline gap-2"
+                    >
+                      <Link
+                        to={`${at}#${AGGREGATE_ANCHOR.lifecycle}`}
+                        data-nav-item
+                        className="mono rounded-control text-accent"
+                      >
+                        {transition.on}
+                      </Link>
+                      <span className="mono text-muted">
+                        {transition.from} → {transition.to}
+                        {elsewhere ? ` on ${trigger.aggregate.name}` : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           {/* --- Consumers ---------------------------------------------- */}

@@ -40,7 +40,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.EnumValue{}):            "name doc deprecated",
 	reflect.TypeOf(catalog.Lifecycle{}):            "states transitions",
 	reflect.TypeOf(catalog.Transition{}):           "from to on emits source",
-	reflect.TypeOf(catalog.Operation{}):            "id kind doc exposedBy fields source",
+	reflect.TypeOf(catalog.Operation{}):            "id kind doc exposedBy fields emits source",
 	reflect.TypeOf(catalog.Block{}):                "id slug name doc ref fields",
 	reflect.TypeOf(catalog.Event{}):                "id slug name versions consumers wire",
 	reflect.TypeOf(catalog.EventWire{}):            "name channel",

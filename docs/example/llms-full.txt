@@ -1423,11 +1423,11 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `Check` | query | Answers whether an account accepts a password right now. |
-| `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. |
-| `RecordSuccess` | command | Clears the count of wrong passwords after a right one. |
+| Operation | Kind | Doc | Emits |
+| --- | --- | --- | --- |
+| `Check` | query | Answers whether an account accepts a password right now. | — |
+| `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. | `AccountLocked` |
+| `RecordSuccess` | command | Clears the count of wrong passwords after a right one. | — |
 
 ## Events
 
@@ -1437,6 +1437,8 @@ stateDiagram-v2
 `auth.auth.lockout.AccountLocked`
 
 On the wire as `auth.AccountLocked`, on `auth_lockout`.
+
+Triggered by `RecordFailure` (command), `Fail` (open → locked).
 
 #### v1 — current
 
@@ -1572,12 +1574,12 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. |
-| `Login` | command | `login` | Turns credentials into a session. |
-| `Logout` | command | `logout` | Ends the session behind a token. |
-| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. | `SessionEnded` |
+| `Login` | command | `login` | Turns credentials into a session. | `SessionEnded`, `SessionStarted` |
+| `Logout` | command | `logout` | Ends the session behind a token. | `SessionEnded` |
+| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. | — |
 
 ## Events
 
@@ -1587,6 +1589,8 @@ stateDiagram-v2
 `auth.auth.session.SessionEnded`
 
 On the wire as `auth.SessionEnded`, on `auth_session`.
+
+Triggered by `EndAfterCredentialChange` (command), `Login` (command), `Logout` (command), `Revoke` (live → revoked).
 
 #### v1 — current
 
@@ -1607,6 +1611,8 @@ Source: [`examples/auth/internal/session/domain/event/session_ended.go`](https:/
 `auth.auth.session.SessionStarted`
 
 On the wire as `auth.SessionStarted`, on `auth_session`.
+
+Triggered by `Login` (command).
 
 #### v1 — current
 
@@ -1699,12 +1705,12 @@ Hash is an opaque, immutable stored password hash. Hashing and verification are 
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. |
-| `CheckCredentials` | query | *internal* | Checks an address and a password, and says which user they belong to. |
-| `Get` | query | `getUser` | Reads a user by id. |
-| `Register` | command | `registerUser` | Creates a user from an email address and a password. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. | `PasswordChanged` |
+| `CheckCredentials` | query | *internal* | Checks an address and a password, and says which user they belong to. | — |
+| `Get` | query | `getUser` | Reads a user by id. | — |
+| `Register` | command | `registerUser` | Creates a user from an email address and a password. | `UserRegistered` |
 
 ## Events
 
@@ -1714,6 +1720,8 @@ Hash is an opaque, immutable stored password hash. Hashing and verification are 
 `auth.auth.user.PasswordChanged`
 
 On the wire as `auth.PasswordChanged`, on `auth_user`.
+
+Triggered by `ChangePassword` (command).
 
 | Consumer | Status | Note |
 | --- | --- | --- |
@@ -1737,6 +1745,8 @@ Source: [`examples/auth/internal/user/domain/event/password_changed.go`](https:/
 `auth.auth.user.UserRegistered`
 
 On the wire as `auth.UserRegistered`, on `auth_user`.
+
+Triggered by `Register` (command).
 
 #### v1 — current
 
@@ -2312,12 +2322,12 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `CloseRoute` | command | `CloseRoute` | Ends the day, whatever is left undone. |
-| `GetRoute` | query | `GetRoute` | One route, as the depot reads it. |
-| `PlanRoute` | command | `PlanRoute` | Builds a van's day out of the shipments waiting to go out. |
-| `StartRoute` | command | `StartRoute` | The van is out. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `CloseRoute` | command | `CloseRoute` | Ends the day, whatever is left undone. | `RouteClosed` |
+| `GetRoute` | query | `GetRoute` | One route, as the depot reads it. | — |
+| `PlanRoute` | command | `PlanRoute` | Builds a van's day out of the shipments waiting to go out. | `RoutePlanned` |
+| `StartRoute` | command | `StartRoute` | The van is out. | `RouteStarted` |
 
 ## Events
 
@@ -2327,6 +2337,8 @@ stateDiagram-v2
 `delivery.core.route.RouteClosed`
 
 On the wire as `delivery.RouteClosed`, on `delivery.core.route`.
+
+Triggered by `CloseRoute` (command), `close` (planned → closed), `close` (driving → closed).
 
 #### v1 — current
 
@@ -2351,6 +2363,8 @@ Source: [`examples/shop/delivery/core/src/domain/route/events/route-closed.ts`](
 
 On the wire as `delivery.RoutePlanned`, on `delivery.core.route`.
 
+Triggered by `PlanRoute` (command).
+
 #### v1 — current
 
 A van has a day's work. The stops are not on the event: whoever cares reads
@@ -2372,6 +2386,8 @@ Source: [`examples/shop/delivery/core/src/domain/route/events/route-planned.ts`]
 `delivery.core.route.RouteStarted`
 
 On the wire as `delivery.RouteStarted`, on `delivery.core.route`.
+
+Triggered by `StartRoute` (command), `start` (planned → driving).
 
 #### v1 — current
 
@@ -2564,15 +2580,15 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `CreateShipment` | command | *internal* | Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003). |
-| `Dispatch` | command | `Dispatch` | Hands a planned shipment to the carrier and says so. |
-| `GetShipment` | query | `Dispatch`, `GetShipment` | One shipment, for whoever is asking about an order. |
-| `RecordDelivery` | command | `RecordDelivery` | Ends a shipment at the door. |
-| `RecordScan` | command | `RecordScan` | Writes down that a parcel was seen somewhere. |
-| `ReleaseShipment` | command | *internal* | Lets a shipment out of the waiting room once the money for its order moved. |
-| `TrackShipment` | query | `TrackShipment` | What the customer sees when they paste a tracking code. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `CreateShipment` | command | *internal* | Turns a confirmed order into a shipment waiting for the money, and asks the ledger to move the money (ADR core.0003). | `ShipmentCreated` |
+| `Dispatch` | command | `Dispatch` | Hands a planned shipment to the carrier and says so. | `ShipmentDispatched`, `ShipmentLost` |
+| `GetShipment` | query | `Dispatch`, `GetShipment` | One shipment, for whoever is asking about an order. | — |
+| `RecordDelivery` | command | `RecordDelivery` | Ends a shipment at the door. | `ShipmentDelivered` |
+| `RecordScan` | command | `RecordScan` | Writes down that a parcel was seen somewhere. | `ShipmentInTransit` |
+| `ReleaseShipment` | command | *internal* | Lets a shipment out of the waiting room once the money for its order moved. | `ShipmentReleased` |
+| `TrackShipment` | query | `TrackShipment` | What the customer sees when they paste a tracking code. | — |
 
 ## Events
 
@@ -2582,6 +2598,8 @@ stateDiagram-v2
 `delivery.core.shipment.ShipmentCreated`
 
 On the wire as `delivery.ShipmentCreated`, on `delivery.core.shipment`.
+
+Triggered by `CreateShipment` (command).
 
 #### v1 — current
 
@@ -2605,6 +2623,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-create
 
 On the wire as `delivery.ShipmentDelivered`, on `delivery.core.shipment`.
 
+Triggered by `RecordDelivery` (command), `deliver` (dispatched → delivered), `deliver` (in-transit → delivered).
+
 #### v1 — current
 
 It arrived, and who signed. The order is finished from this service's side;
@@ -2626,6 +2646,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-delive
 `delivery.core.shipment.ShipmentDispatched`
 
 On the wire as `delivery.ShipmentDispatched`, on `delivery.core.shipment`.
+
+Triggered by `Dispatch` (command), `dispatch` (planned → dispatched).
 
 #### v1 — current
 
@@ -2651,6 +2673,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-dispat
 
 On the wire as `delivery.ShipmentInTransit`, on `delivery.core.shipment`.
 
+Triggered by `RecordScan` (command), `record` (dispatched → in-transit).
+
 #### v1 — current
 
 The first sighting after dispatch: the parcels are moving. Later scans add
@@ -2673,6 +2697,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-in-tra
 
 On the wire as `delivery.ShipmentLost`, on `delivery.core.shipment`.
 
+Triggered by `Dispatch` (command), `lose` (awaiting-payment → lost), `lose` (planned → lost), `lose` (dispatched → lost), `lose` (in-transit → lost).
+
 #### v1 — current
 
 Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts)
@@ -2691,6 +2717,8 @@ Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.t
 `delivery.core.shipment.ShipmentReleased`
 
 On the wire as `delivery.ShipmentReleased`, on `delivery.core.shipment`.
+
+Triggered by `ReleaseShipment` (command), `release` (awaiting-payment → planned).
 
 #### v1 — current
 
@@ -3213,12 +3241,12 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
-| `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
-| `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. |
-| `VoidPayment` | command | *internal* | Gives back a hold nobody is going to be charged for. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. | `PaymentAuthorized`, `PaymentDeclined` |
+| `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. | `PaymentCaptured` |
+| `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. | — |
+| `VoidPayment` | command | *internal* | Gives back a hold nobody is going to be charged for. | — |
 
 ## Events
 
@@ -3228,6 +3256,8 @@ stateDiagram-v2
 `payments.ledger.payment.PaymentAuthorized`
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
+
+Triggered by `AuthorizePayment` (command), `authorize` (PENDING → AUTHORIZED).
 
 | Consumer | Status | Via |
 | --- | --- | --- |
@@ -3253,6 +3283,8 @@ Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/do
 
 On the wire as `ledger.PaymentCaptured`, on `payments.ledger.payment`.
 
+Triggered by `CapturePayment` (command), `capture` (AUTHORIZED → CAPTURED).
+
 | Consumer | Status | Via |
 | --- | --- | --- |
 | [shop.billing](../../../shop/billing/README.md) | declared | `billing-close-invoice-on-payment#s1` |
@@ -3277,6 +3309,8 @@ Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/do
 `payments.ledger.payment.PaymentDeclined`
 
 On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
+
+Triggered by `AuthorizePayment` (command), `decline` (PENDING → DECLINED).
 
 | Consumer | Status | Via |
 | --- | --- | --- |
@@ -3353,11 +3387,11 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. |
-| `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. |
-| `RefundCancelledOrder` | query | *internal* | Sends back what was captured for an order that was cancelled. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. | `RefundIssued` |
+| `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. | — |
+| `RefundCancelledOrder` | query | *internal* | Sends back what was captured for an order that was cancelled. | — |
 
 ## Events
 
@@ -3367,6 +3401,8 @@ stateDiagram-v2
 `payments.ledger.refund.RefundIssued`
 
 On the wire as `ledger.RefundIssued`, on `payments.ledger.refund`.
+
+Triggered by `IssueRefund` (command), `issue` (REQUESTED → ISSUED).
 
 #### v1 — current
 
@@ -3730,13 +3766,13 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `DrawUpInvoice` | command | `invoice_create` | Draws up a draft invoice for an order, with a line for each thing sold. |
-| `GetInvoice` | query | `invoice_retrieve` | Reads one invoice and the lines it is made of. |
-| `IssueInvoice` | command | `invoice_issue` | Confirms the session, freezes the invoice and asks the customer to pay. |
-| `PayInvoice` | command | *internal* | Closes an issued invoice against the money the ledger says arrived. |
-| `VoidInvoice` | command | `invoice_destroy` | Ends an invoice nobody is going to pay. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `DrawUpInvoice` | command | `invoice_create` | Draws up a draft invoice for an order, with a line for each thing sold. | — |
+| `GetInvoice` | query | `invoice_retrieve` | Reads one invoice and the lines it is made of. | — |
+| `IssueInvoice` | command | `invoice_issue` | Confirms the session, freezes the invoice and asks the customer to pay. | `InvoiceIssued` |
+| `PayInvoice` | command | *internal* | Closes an issued invoice against the money the ledger says arrived. | `InvoicePaid` |
+| `VoidInvoice` | command | `invoice_destroy` | Ends an invoice nobody is going to pay. | `InvoiceVoided` |
 
 ## Events
 
@@ -3746,6 +3782,8 @@ stateDiagram-v2
 `shop.billing.invoice.InvoiceIssued`
 
 On the wire as `billing.InvoiceIssued`, on `shop.billing.invoice`.
+
+Triggered by `IssueInvoice` (command), `issue` (draft → issued).
 
 #### v1 — current
 
@@ -3768,6 +3806,8 @@ Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlin
 
 On the wire as `billing.InvoicePaid`, on `shop.billing.invoice`.
 
+Triggered by `PayInvoice` (command), `pay` (issued → paid).
+
 #### v1 — current
 
 The money arrived and the invoice is closed. Nothing is owed on the order.
@@ -3786,6 +3826,8 @@ Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlin
 `shop.billing.invoice.InvoiceVoided`
 
 On the wire as `billing.InvoiceVoided`, on `shop.billing.invoice`.
+
+Triggered by `VoidInvoice` (command), `void` (draft → void), `void` (issued → void).
 
 #### v1 — current
 
@@ -4164,15 +4206,15 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc | Input |
-| --- | --- | --- | --- | --- |
-| `AddItem` | command | `addItem` | Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002). | `basketId: string`, `sku: string`, `quantity: integer`, `unitPrice: money` |
-| `Checkout` | command | `checkout` | Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004). | `basketId: string` |
-| `CreateBasket` | command | `createBasket` | Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007). | — |
-| `ExpireIdleBaskets` | command | *internal* | The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute. | — |
-| `GetBasket` | query | `getBasket` | The basket as it stands, for whoever holds its token. | `basketId: string` |
-| `MergeBaskets` | command | `mergeBaskets` | Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged. | `basketId: string`, `fromBasketId: string`, `fromToken: string` |
-| `RemoveItem` | command | `removeItem` | Takes a line out of a basket outright. | `basketId: string`, `sku: string` |
+| Operation | Kind | Exposed by | Doc | Emits | Input |
+| --- | --- | --- | --- | --- | --- |
+| `AddItem` | command | `addItem` | Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002). | `BasketItemAdded` | `basketId: string`, `sku: string`, `quantity: integer`, `unitPrice: money` |
+| `Checkout` | command | `checkout` | Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004). | `BasketCheckedOut` | `basketId: string` |
+| `CreateBasket` | command | `createBasket` | Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007). | `BasketCreated` | — |
+| `ExpireIdleBaskets` | command | *internal* | The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the `expire-idle-baskets` job runs it once a minute. | `BasketAbandoned` | — |
+| `GetBasket` | query | `getBasket` | The basket as it stands, for whoever holds its token. | — | `basketId: string` |
+| `MergeBaskets` | command | `mergeBaskets` | Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged. | `BasketCreated`, `BasketItemAdded`, `BasketMerged` | `basketId: string`, `fromBasketId: string`, `fromToken: string` |
+| `RemoveItem` | command | `removeItem` | Takes a line out of a basket outright. | `BasketItemRemoved` | `basketId: string`, `sku: string` |
 
 ## Events
 
@@ -4182,6 +4224,8 @@ stateDiagram-v2
 `shop.cart.basket.BasketAbandoned`
 
 On the wire as `cart.BasketAbandoned`, on `shop.cart.basket`.
+
+Triggered by `ExpireIdleBaskets` (command), `abandon` (open → abandoned).
 
 #### v1 — current
 
@@ -4202,6 +4246,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`](http
 `shop.cart.basket.BasketCheckedOut`
 
 On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
+
+Triggered by `Checkout` (command), `checkout` (open → checked-out).
 
 | Consumer | Status | Via | Note |
 | --- | --- | --- | --- |
@@ -4231,6 +4277,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`](ht
 
 On the wire as `cart.BasketCreated`, on `shop.cart.basket`.
 
+Triggered by `CreateBasket` (command), `MergeBaskets` (command).
+
 #### v1 — current
 
 A basket exists, for a visitor or for a customer.
@@ -4249,6 +4297,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-created.ts`](https:
 `shop.cart.basket.BasketItemAdded`
 
 On the wire as `cart.BasketItemAdded`, on `shop.cart.basket`.
+
+Triggered by `AddItem` (command), `MergeBaskets` (command).
 
 #### v1 — current
 
@@ -4271,6 +4321,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-item-added.ts`](htt
 
 On the wire as `cart.BasketItemRemoved`, on `shop.cart.basket`.
 
+Triggered by `RemoveItem` (command).
+
 #### v1 — current
 
 A line went out.
@@ -4289,6 +4341,8 @@ Source: [`examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`](h
 `shop.cart.basket.BasketMerged`
 
 On the wire as `cart.BasketMerged`, on `shop.cart.basket`.
+
+Triggered by `MergeBaskets` (command), `mergeInto` (open → merged).
 
 #### v1 — current
 
@@ -4635,13 +4689,13 @@ stateDiagram-v2
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc | Source |
-| --- | --- | --- | --- | --- |
-| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L34) |
-| `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. | [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L25) |
-| `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. | [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L41) |
-| `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. | [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L26) |
-| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L48) |
+| Operation | Kind | Exposed by | Doc | Emits | Source |
+| --- | --- | --- | --- | --- | --- |
+| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. | `OrderCancelled` | [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L34) |
+| `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. | `OrderConfirmed` | [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L25) |
+| `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. | — | [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L41) |
+| `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. | `OrderPlaced` | [`examples/shop/oms/src/application/order/usecases/place_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/place_order/mod.rs#L26) |
+| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. | — | [`examples/shop/oms/src/application/order/usecases/request_payment/mod.rs:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/request_payment/mod.rs#L48) |
 
 ## Events
 
@@ -4651,6 +4705,8 @@ stateDiagram-v2
 `shop.oms.order.OrderCancelled`
 
 On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
+
+Triggered by `CancelOrder` (command), `cancel` (placed → cancelled), `cancel` (confirmed → cancelled).
 
 | Consumer | Status | Via |
 | --- | --- | --- |
@@ -4677,6 +4733,8 @@ Source: [`examples/shop/oms/src/domain/order/event/order_cancelled.rs`](https://
 
 On the wire as `oms.OrderConfirmed`, on `shop.oms.order`.
 
+Triggered by `ConfirmOrder` (command), `confirm` (placed → confirmed).
+
 | Consumer | Status | Via |
 | --- | --- | --- |
 | [delivery.core](../../../delivery/core/README.md) | declared | `core-create-shipment-on-order-confirmed#s1` |
@@ -4700,6 +4758,8 @@ Source: [`examples/shop/oms/src/domain/order/event/order_confirmed.rs`](https://
 `shop.oms.order.OrderPlaced`
 
 On the wire as `oms.OrderPlaced`, on `shop.oms.order`.
+
+Triggered by `PlaceOrder` (command).
 
 | Consumer | Status | Via |
 | --- | --- | --- |
@@ -5165,11 +5225,11 @@ Money never rounds: everything is an integer of minor units, and two amounts are
 
 ## Operations
 
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `ExpireQuote` | command | *internal* | Package expire_quote lets promises lapse. |
-| `GetQuote` | query | `GetQuote` | Package get_quote reads one quote. |
-| `IssueQuote` | command | `IssueQuote` | Package issue_quote prices a basket and promises the price for a while. |
+| Operation | Kind | Exposed by | Doc | Emits |
+| --- | --- | --- | --- | --- |
+| `ExpireQuote` | command | *internal* | Package expire_quote lets promises lapse. | `QuoteExpired` |
+| `GetQuote` | query | `GetQuote` | Package get_quote reads one quote. | — |
+| `IssueQuote` | command | `IssueQuote` | Package issue_quote prices a basket and promises the price for a while. | `QuoteIssued` |
 
 ## Events
 
@@ -5179,6 +5239,8 @@ Money never rounds: everything is an integer of minor units, and two amounts are
 `shop.pricing.quote.QuoteExpired`
 
 On the wire as `pricing.QuoteExpired`, on `shop.pricing.quote`.
+
+Triggered by `ExpireQuote` (command).
 
 #### v1 — current
 
@@ -5198,6 +5260,8 @@ Source: [`examples/shop/pricing/internal/domain/quote/event/quote_expired.go`](h
 `shop.pricing.quote.QuoteIssued`
 
 On the wire as `pricing.QuoteIssued`, on `shop.pricing.quote`.
+
+Triggered by `IssueQuote` (command).
 
 #### v1 — current
 

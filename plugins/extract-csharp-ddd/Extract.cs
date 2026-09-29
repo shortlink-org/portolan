@@ -134,7 +134,8 @@ public static class Extract
                 Fields = fields,
             });
         }
-        foreach (var handler in info.Operations.OrderBy(h => h.OpId, StringComparer.Ordinal).ThenBy(h => h.Kind, StringComparer.Ordinal))
+        var operations = info.Operations.OrderBy(h => h.OpId, StringComparer.Ordinal).ThenBy(h => h.Kind, StringComparer.Ordinal).ToList();
+        foreach (var handler in operations)
         {
             var doc = tree.Doc(handler.Handler);
             if (doc == "") doc = tree.Doc(handler.Message);
@@ -200,6 +201,11 @@ public static class Extract
                 Wire = ie.Publisher != null ? new Wire { Name = ie.Type.Name, Channel = BusAddress(tree, ie.Type) } : null,
             });
         }
+        // What an operation emits is read once the events are written, since
+        // it is said in their order.
+        var emitters = new Emitters(tree, info, aggregate.Events);
+        for (var i = 0; i < operations.Count; i++) aggregate.Operations[i].Emits = emitters.Of(operations[i]);
+
         var enums = info.Enums.OrderBy(e => e.Name, StringComparer.Ordinal).Select(e => Model.ReadEnum(tree, info, e)).ToList();
         if (enums.Count > 0) aggregate.Enums = enums;
 
