@@ -98,7 +98,7 @@ func Direct(ctx context.Context, cfg aws.Config) error {
 	}
 
 	orders := got["orders"]
-	if orders.Title != "SQS queue" || orders.Kind != catalog.ChannelKindMessage {
+	if orders.Title != "SQS queue" || orders.Kind != catalog.ChannelKindMessage || orders.Protocol != "sqs" {
 		t.Errorf("orders: %+v", orders)
 	}
 	if orders.Source != "app/app.go:17" {

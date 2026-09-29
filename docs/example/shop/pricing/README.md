@@ -243,6 +243,8 @@ log, and nothing arrives.
 
 ### shop.cart.basket
 
+`nats`
+
 **JetStream subject**
 
 Read through github.com/nats-io/nats.go. Subscribed by `NATS.Subscribe` over JetStream.

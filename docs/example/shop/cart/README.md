@@ -187,6 +187,8 @@ Docker the tests that need Postgres or NATS are skipped.
 
 ### shop.cart.basket
 
+`nats`
+
 **Basket**
 
 One subject per aggregate, dotted the way a NATS subject is. The subject is the topic the outbox row held, and the event's name is on the message metadata, so a subscriber dispatches without parsing the payload.

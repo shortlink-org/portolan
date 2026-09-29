@@ -335,6 +335,8 @@ schema. `npm run generate` reproduces them.
 
 ### shop.oms.order
 
+`nats`
+
 **Order moves**
 
 Every move an order makes, published by the order service.

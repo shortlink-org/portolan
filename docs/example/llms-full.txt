@@ -3630,6 +3630,8 @@ Source: [`examples/shop/billing/invoices/services.py:49`](https://github.com/sho
 
 ### shop.billing.invoice
 
+`nats`
+
 **Invoice**
 
 The subject every invoice event leaves on. The event's name is on the message metadata, so a subscriber dispatches without parsing the payload.
@@ -3989,6 +3991,8 @@ Docker the tests that need Postgres or NATS are skipped.
 ## Channels
 
 ### shop.cart.basket
+
+`nats`
 
 **Basket**
 
@@ -5017,6 +5021,8 @@ log, and nothing arrives.
 
 ### shop.cart.basket
 
+`nats`
+
 **JetStream subject**
 
 Read through github.com/nats-io/nats.go. Subscribed by `NATS.Subscribe` over JetStream.
@@ -5601,6 +5607,8 @@ schema. `npm run generate` reproduces them.
 ## Channels
 
 ### shop.oms.order
+
+`nats`
 
 **Order moves**
 

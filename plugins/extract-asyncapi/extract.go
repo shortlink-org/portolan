@@ -117,6 +117,7 @@ func channelsV3(doc *document, source, service string, b *plugin.Builder) []cata
 		drafts[c.key] = &draft{
 			channel: catalog.Channel{
 				Address:  address,
+				Protocol: doc.protocolOf(c.value),
 				Title:    text(child(c.value, "title")),
 				Doc:      text(child(c.value, "description")),
 				Messages: []catalog.ChannelMessage{},
@@ -189,6 +190,7 @@ func channelsV2(doc *document, source, service string, b *plugin.Builder) []cata
 		d := &draft{
 			channel: catalog.Channel{
 				Address:  c.key,
+				Protocol: doc.protocolOf(c.value),
 				Doc:      text(child(c.value, "description")),
 				Messages: []catalog.ChannelMessage{},
 				Source:   source,

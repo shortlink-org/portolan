@@ -305,7 +305,10 @@ spec.push("}");
 const model = [];
 model.push("model {");
 
+// A broker's line is rewritten once its hops are read, to say what it is.
+const brokerLine = new Map(); // participant id -> index in model
 for (const [id, meta] of rootParticipants) {
+  if (meta.kind === "broker") brokerLine.set(id, model.length);
   model.push(`  ${safeId(id)} = ${meta.kind} ${q(meta.label)}`);
 }
 model.push("");
@@ -471,7 +474,59 @@ const brokerIds = new Set(
     .filter(([, meta]) => meta.kind === "broker")
     .map(([id]) => id),
 );
-const busEdges = new Map(); // "from|to" -> { from, to, kind, labels:Set, status }
+const busEdges = new Map(); // "from|to" -> { from, to, kind, labels:Set, status, transports:Set }
+
+// --- what a hop through a broker travels on ---------------------------------
+// A step that hands off says so itself (`handoff.transport`: celery, kafka,
+// river). A domain event does not: the extractor that found it knows the bus
+// only as `bus`. Its wire channel does - AsyncAPI names the server's protocol,
+// a go-nats scan knows it read NATS - so the event is followed to its channel
+// and the channel to its protocol. Nothing is said when the two disagree.
+const TRANSPORT_NAMES = {
+  amqp: "AMQP",
+  celery: "Celery",
+  eventgrid: "Event Grid",
+  "googlepubsub": "Pub/Sub",
+  "google-pubsub": "Pub/Sub",
+  kafka: "Kafka",
+  mqtt: "MQTT",
+  nats: "NATS",
+  rabbitmq: "RabbitMQ",
+  redis: "Redis",
+  river: "River",
+  sns: "SNS",
+  sql: "SQL",
+  sqs: "SQS",
+  watermill: "Watermill",
+};
+const transportName = (id) => TRANSPORT_NAMES[id.toLowerCase()] ?? id;
+const channelProtocols = new Map(); // address -> Set of protocols
+const eventChannels = new Map(); // "service|event" and "|event" -> Set of wire channels
+const addTo = (map, key, value) => map.set(key, (map.get(key) ?? new Set()).add(value));
+for (const context of catalog.contexts) {
+  for (const service of context.services) {
+    for (const channel of service.channels ?? []) {
+      if (channel.protocol) addTo(channelProtocols, channel.address, channel.protocol.toLowerCase());
+    }
+    for (const aggregate of service.aggregates) {
+      for (const event of aggregate.events) {
+        if (!event.wire?.channel) continue;
+        addTo(eventChannels, `${service.id}|${event.name}`, event.wire.channel);
+        addTo(eventChannels, `|${event.name}`, event.wire.channel);
+      }
+    }
+  }
+}
+function stepTransport(step) {
+  if (step.handoff?.transport) return step.handoff.transport.toLowerCase();
+  if (step.kind !== "event" || !step.label) return null;
+  // Onto the broker the publisher is known; off it, any service that
+  // publishes an event of that name is asked.
+  const publisher = brokerIds.has(step.to) ? step.from : null;
+  const channels = eventChannels.get(`${publisher ?? ""}|${step.label}`) ?? eventChannels.get(`|${step.label}`);
+  const protocols = new Set([...(channels ?? [])].flatMap((address) => [...(channelProtocols.get(address) ?? [])]));
+  return protocols.size === 1 ? [...protocols][0] : null;
+}
 // A hop onto a broker is sent — an event published, a job enqueued — and a hop
 // off it is delivered. A job is a message like an event is, so it takes the
 // hollow head too: a sequence diagram's headless in-process call would leave
@@ -495,19 +550,37 @@ for (const flow of catalog.flows) {
       kind: step.kind,
       labels: new Set(),
       status: "unresolved",
+      transports: new Set(),
     };
     if (step.label) edge.labels.add(step.label);
+    const transport = stepTransport(step);
+    if (transport) edge.transports.add(transportName(transport));
     if (STATUS_RANK[step.status] < STATUS_RANK[edge.status])
       edge.status = step.status;
     busEdges.set(key, edge);
   });
 }
+const busTechnology = (transports) => [...transports].sort().join(" · ");
+const brokerTransports = new Map(); // broker id -> Set of transport names
 for (const edge of busEdges.values()) {
+  const broker = brokerIds.has(edge.to) ? edge.to : edge.from;
+  for (const transport of edge.transports) addTo(brokerTransports, broker, transport);
+  const technology = busTechnology(edge.transports);
   relations.push(
     `  ${participantRef(edge.from)} -[bus]-> ${participantRef(edge.to)} ${q(busLabel(edge))} {\n` +
+      (technology ? `    technology ${q(technology)}\n` : "") +
       `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head ${busHead(edge)} }\n` +
       `  }`,
   );
+}
+
+// The box says what it is only when every hop agrees. One broker id can stand
+// for two estates' buses - `bus` is NATS in one and RabbitMQ in the next - and
+// a box that said both would be describing neither; the arrows still say theirs.
+for (const [broker, transports] of brokerTransports) {
+  const index = brokerLine.get(broker);
+  if (index === undefined || transports.size !== 1) continue;
+  model[index] = `${model[index]} {\n    technology ${q(busTechnology(transports))}\n  }`;
 }
 
 // An actor is the one participant nothing else in the catalog can place: no

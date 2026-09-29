@@ -44,7 +44,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.Block{}):                "id slug name doc ref fields",
 	reflect.TypeOf(catalog.Event{}):                "id slug name versions consumers wire",
 	reflect.TypeOf(catalog.EventWire{}):            "name channel",
-	reflect.TypeOf(catalog.Channel{}):              "address kind title doc messages source",
+	reflect.TypeOf(catalog.Channel{}):              "address kind protocol title doc messages source",
 	reflect.TypeOf(catalog.ChannelMessage{}):       "name title doc direction encoding contentType schema",
 	reflect.TypeOf(catalog.SchemaRegistration{}):   "registry subject version id type compatibility versions",
 	reflect.TypeOf(catalog.SchemaVersion{}):        "version id type fields",

@@ -20,6 +20,7 @@
             {
               "address": "shop.cart.basket",
               "kind": "event",
+              "protocol": "nats",
               "title": "JetStream subject",
               "doc": "Read through github.com/nats-io/nats.go. Subscribed by `NATS.Subscribe` over JetStream.",
               "messages": [

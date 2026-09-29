@@ -700,14 +700,19 @@ function mergeService(
       incoming.channels.map(copyChannel),
       (c) => c.address,
       (mine, theirs) => {
-        if (!mine.kind && theirs.kind) {
-          mine.kind = theirs.kind;
-        } else if (mine.kind && theirs.kind && mine.kind !== theirs.kind) {
-          conflicts.push({
-            path,
-            where: incoming.id,
-            message: `channel "${mine.address}" of service "${incoming.id}" has kind ${theirs.kind} here and ${mine.kind} in ${owner}; the first one is used`,
-          });
+        // A document that says nothing about the kind or the transport
+        // leaves room for one that does: AsyncAPI names the protocol, a
+        // go-nats scan knows it is NATS.
+        for (const field of ["kind", "protocol"] as const) {
+          if (!mine[field] && theirs[field]) {
+            (mine as Record<typeof field, string | undefined>)[field] = theirs[field];
+          } else if (mine[field] && theirs[field] && mine[field] !== theirs[field]) {
+            conflicts.push({
+              path,
+              where: incoming.id,
+              message: `channel "${mine.address}" of service "${incoming.id}" has ${field} ${theirs[field]} here and ${mine[field]} in ${owner}; the first one is used`,
+            });
+          }
         }
         appendNew(
           mine.messages,

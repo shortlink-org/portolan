@@ -191,6 +191,8 @@ Source: [`examples/shop/billing/invoices/services.py:49`](https://github.com/sho
 
 ### shop.billing.invoice
 
+`nats`
+
 **Invoice**
 
 The subject every invoice event leaves on. The event's name is on the message metadata, so a subscriber dispatches without parsing the payload.

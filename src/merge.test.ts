@@ -849,6 +849,25 @@ describe("mergeCatalogs: schema modules", () => {
     expect(merged.conflicts.map((conflict) => conflict.message).join(" ")).toMatch(/contentType application\/json.*application\/msgpack/);
   });
 
+  it("takes a channel's protocol from the source that knows it and reports two that disagree", () => {
+    const declared = context("shop", ["shop.cart"]);
+    declared.services[0]!.channels = [{ address: "shop.cart.basket", messages: [] }];
+    const scanned = context("shop", ["shop.cart"]);
+    scanned.services[0]!.channels = [{ address: "shop.cart.basket", protocol: "nats", messages: [] }];
+    const other = context("shop", ["shop.cart"]);
+    other.services[0]!.channels = [{ address: "shop.cart.basket", protocol: "kafka", messages: [] }];
+
+    const merged = mergeCatalogs([
+      source("a-asyncapi.json", { contexts: [declared] }),
+      source("b-nats.json", { contexts: [scanned] }),
+      source("c-kafka.json", { contexts: [other] }),
+    ]);
+    expect(merged.catalog.contexts[0]!.services[0]!.channels![0]!.protocol).toBe("nats");
+    expect(merged.conflicts.map((conflict) => conflict.message)).toEqual([
+      expect.stringMatching(/channel "shop.cart.basket" .* has protocol kafka here and nats in/),
+    ]);
+  });
+
   it("adds a schema registration to a declared message and reports a competing pin", () => {
     const declared = context("shop", ["shop.cart"]);
     declared.services[0]!.channels = [

@@ -19,6 +19,7 @@
           "channels": [
             {
               "address": "shop.oms.order",
+              "protocol": "nats",
               "title": "Order moves",
               "doc": "Every move an order makes, published by the order service.",
               "messages": [

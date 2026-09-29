@@ -92,7 +92,7 @@ func Direct(nc *nats.Conn) error {
 	}
 
 	orders := got["orders.placed"]
-	if orders.Title != "NATS subject" || orders.Kind != catalog.ChannelKindEvent {
+	if orders.Title != "NATS subject" || orders.Kind != catalog.ChannelKindEvent || orders.Protocol != "nats" {
 		t.Errorf("orders.placed: %+v", orders)
 	}
 	if orders.Source != "app/app.go:14" {

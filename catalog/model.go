@@ -749,6 +749,9 @@ type Channel struct {
 	// Kind distinguishes domain-event channels, work queues, and generic message
 	// streams. Only event channels are checked against the domain event model.
 	Kind ChannelKind `json:"kind,omitempty"`
+	// Protocol is the transport the channel lives on, as the source names it:
+	// "nats", "kafka", "sqs". Empty when the source does not settle one.
+	Protocol string `json:"protocol,omitempty"`
 
 	Title string `json:"title,omitempty"`
 	Doc   string `json:"doc,omitempty"`

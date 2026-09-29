@@ -121,6 +121,7 @@ func (s *scanner) catalog(sites []site, b *plugin.Builder) []catalog.Channel {
 		out = append(out, catalog.Channel{
 			Address:  address,
 			Kind:     catalog.ChannelKindMessage,
+			Protocol: "sqs",
 			Title:    "SQS queue",
 			Doc:      "Read through " + sqsPkg + ". " + strings.Join(notes, " "),
 			Messages: messages,

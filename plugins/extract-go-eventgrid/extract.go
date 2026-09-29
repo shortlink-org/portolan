@@ -111,7 +111,7 @@ func (s *scanner) catalog(sites []site, domains []string, b *plugin.Builder) []c
 			messages = append(messages, state.messages[name])
 		}
 		out = append(out, catalog.Channel{
-			Address: address, Kind: catalog.ChannelKindEvent, Title: state.config.title,
+			Address: address, Kind: catalog.ChannelKindEvent, Protocol: "eventgrid", Title: state.config.title,
 			Doc:      "Published through " + state.config.packageName + ". " + strings.Join(notes, " "),
 			Messages: messages, Source: state.sources[0],
 		})

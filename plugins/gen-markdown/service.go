@@ -361,10 +361,18 @@ func (s *site) channelsBlock(from string, svc *catalog.Service) string {
 	for i := range svc.Channels {
 		channel := &svc.Channels[i]
 		b.WriteString("### " + channel.Address + "\n\n")
+		// What sort of channel it is and what it travels on, as one line of tags.
+		var tags []string
 		if channel.Kind == catalog.ChannelKindJob {
-			b.WriteString("`work queue`\n\n")
+			tags = append(tags, "`work queue`")
 		} else if channel.Kind == catalog.ChannelKindMessage {
-			b.WriteString("`message stream`\n\n")
+			tags = append(tags, "`message stream`")
+		}
+		if channel.Protocol != "" {
+			tags = append(tags, "`"+channel.Protocol+"`")
+		}
+		if len(tags) > 0 {
+			b.WriteString(strings.Join(tags, " · ") + "\n\n")
 		}
 		if channel.Title != "" {
 			b.WriteString("**" + channel.Title + "**\n\n")

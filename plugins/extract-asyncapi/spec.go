@@ -149,3 +149,41 @@ func refKey(ref string) string {
 
 	return strings.ReplaceAll(strings.ReplaceAll(ref[at+1:], "~1", "/"), "~0", "~")
 }
+
+// protocolOf is the transport a channel lives on, read off the servers the
+// document declares. A channel that names its servers is on those - by $ref in
+// 3.x, by name in 2.x - and one that names none is on every server there is.
+// Only a single protocol settles it: a channel reachable over nats and kafka at
+// once is not something one word can say, so it says nothing.
+func (d *document) protocolOf(channel *yaml.Node) string {
+	servers := child(d.root, "servers")
+	var named []*yaml.Node
+	for _, ref := range items(child(channel, "servers")) {
+		if d.major == 2 {
+			named = append(named, child(servers, text(ref)))
+
+			continue
+		}
+		node, _ := d.deref(ref)
+		named = append(named, node)
+	}
+	if len(named) == 0 {
+		for _, e := range entries(servers) {
+			named = append(named, e.value)
+		}
+	}
+
+	found := ""
+	for _, server := range named {
+		protocol := strings.ToLower(text(child(server, "protocol")))
+		switch {
+		case protocol == "":
+		case found == "":
+			found = protocol
+		case found != protocol:
+			return ""
+		}
+	}
+
+	return found
+}

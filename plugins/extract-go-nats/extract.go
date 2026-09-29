@@ -128,6 +128,7 @@ func (s *scanner) catalog(sites []site, b *plugin.Builder) []catalog.Channel {
 		out = append(out, catalog.Channel{
 			Address:  address,
 			Kind:     catalog.ChannelKindEvent,
+			Protocol: "nats",
 			Title:    state.api + " subject",
 			Doc:      "Read through " + natsPkg + ". " + strings.Join(notes, " "),
 			Messages: messages,

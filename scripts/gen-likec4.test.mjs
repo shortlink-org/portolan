@@ -516,12 +516,14 @@ describe("the LikeC4 generator", () => {
         {
           id: "pay", slug: "pay", name: "Pay", summary: "",
           services: [service("pay.ledger", "ledger", {
+            channels: [{ address: "pay.ledger.payment", protocol: "nats", messages: [] }],
             aggregates: [{
               id: "pay.ledger.payment", slug: "payment", name: "Payment", root: "Payment",
               entities: [{ id: "pay.ledger.payment.payment", slug: "payment", name: "Payment", fields: [{ name: "id", type: "string" }] }], valueObjects: [], operations: [],
               events: [{
                 id: "pay.ledger.payment.PaymentCaptured", slug: "payment-captured", name: "PaymentCaptured",
                 versions: [{ version: "v1", doc: "", source: "payment.go:2", fields: [] }],
+                wire: { name: "ledger.PaymentCaptured", channel: "pay.ledger.payment" },
                 consumers: [{ service: "shop.cart", status: "declared" }],
               }],
             }],
@@ -533,10 +535,16 @@ describe("the LikeC4 generator", () => {
         participants: [
           { id: "pay.ledger", kind: "service", context: "pay" },
           { id: "mailq", kind: "broker", context: null },
+          { id: "bus", kind: "broker", context: null },
+          { id: "shop.cart", kind: "service", context: "shop" },
         ],
         steps: [
-          { type: "step", id: "s1", from: "pay.ledger", to: "mailq", kind: "call", label: "send_receipt", status: "declared" },
-          { type: "step", id: "s2", from: "mailq", to: "pay.ledger", kind: "call", label: "send_receipt", status: "declared" },
+          { type: "step", id: "s1", from: "pay.ledger", to: "mailq", kind: "call", label: "send_receipt", status: "declared",
+            handoff: { kind: "job", transport: "celery", channel: "mail", message: "send_receipt", direction: "send" } },
+          { type: "step", id: "s2", from: "mailq", to: "pay.ledger", kind: "call", label: "send_receipt", status: "declared",
+            handoff: { kind: "job", transport: "celery", channel: "mail", message: "send_receipt", direction: "receive" } },
+          { type: "step", id: "s3", from: "pay.ledger", to: "bus", kind: "event", label: "PaymentCaptured", status: "declared" },
+          { type: "step", id: "s4", from: "bus", to: "shop.cart", kind: "event", label: "PaymentCaptured", status: "declared" },
         ],
       }],
     });
@@ -545,8 +553,14 @@ describe("the LikeC4 generator", () => {
     expect(model).toContain("shop.cart -[calls]-> pay.ledger 'calls Charge'");
     expect(model).toContain("pay.ledger -[publishes_to]-> shop.cart 'publishes PaymentCaptured'");
     // A job is sent onto the queue and delivered off it, and keeps a head.
-    expect(model).toContain("pay.ledger -[bus]-> mailq 'enqueues send_receipt' {\n    style { color declared  line dashed  head onormal }");
-    expect(model).toContain("mailq -[bus]-> pay.ledger 'delivers send_receipt' {\n    style { color declared  line dashed  head onormal }");
+    expect(model).toContain("pay.ledger -[bus]-> mailq 'enqueues send_receipt' {\n    technology 'Celery'\n    style { color declared  line dashed  head onormal }");
+    expect(model).toContain("mailq -[bus]-> pay.ledger 'delivers send_receipt' {\n    technology 'Celery'\n    style { color declared  line dashed  head onormal }");
+    // An event says what it travels on through its wire channel's protocol,
+    // both onto the bus and off it; the broker is what its hops travel on.
+    expect(model).toContain("pay.ledger -[bus]-> bus 'publishes PaymentCaptured' {\n    technology 'NATS'");
+    expect(model).toContain("bus -[bus]-> shop.cart 'delivers PaymentCaptured' {\n    technology 'NATS'");
+    expect(model).toContain("  bus = broker 'bus' {\n    technology 'NATS'\n  }");
+    expect(model).toContain("  mailq = broker 'mailq' {\n    technology 'Celery'\n  }");
     // Between two contexts, the fold says what crosses rather than `[...]`.
     expect(views).toContain("include shop -> pay with { title 'calls 2 methods'  notes 'calls Charge\ncalls Refund' }");
     expect(views).toContain("include pay -> shop with { title 'publishes PaymentCaptured'");
@@ -558,7 +572,38 @@ describe("the LikeC4 generator", () => {
       const label = (from, to) => landscape.edges.find((edge) => edge.source === from && edge.target === to)?.label;
       expect(label("shop", "pay")).toBe("calls 2 methods");
       expect(label("pay", "shop")).toBe("publishes PaymentCaptured");
+      // The container view relabels a bus hop; its technology stays.
+      const containers = computed.view("containers").$view;
+      const hop = containers.edges.find((edge) => edge.source === "pay.ledger" && edge.target === "bus");
+      expect([hop?.label, hop?.technology]).toEqual(["publishes PaymentCaptured", "NATS"]);
+      expect(containers.nodes.find((node) => node.id === "bus")?.technology).toBe("NATS");
     } finally { await engine.dispose(); }
+  });
+
+  it("names a broker's transport only when every hop through it agrees", () => {
+    const service = (id, slug) => ({
+      id, slug, name: slug, repo: "example/demo", path: slug, readme: "",
+      provides: [], consumes: [], aggregates: [],
+    });
+    const hop = (id, from, to, transport) => ({
+      type: "step", id, from, to, kind: "call", label: `run_${id}`, status: "declared",
+      handoff: { kind: "job", transport, channel: "work", message: `run_${id}`, direction: from === "bus" ? "receive" : "send" },
+    });
+    const { model } = generate({
+      contexts: [{ id: "demo", slug: "demo", name: "Demo", summary: "", services: [service("demo.a", "a"), service("demo.b", "b")] }],
+      flows: [{
+        id: "flow.jobs", slug: "jobs", name: "Jobs", summary: "", source: "jobs.go:1", owner: "demo",
+        participants: [
+          { id: "demo.a", kind: "service", context: "demo" },
+          { id: "demo.b", kind: "service", context: "demo" },
+          { id: "bus", kind: "broker", context: null },
+        ],
+        steps: [hop("s1", "demo.a", "bus", "nats"), hop("s2", "demo.b", "bus", "rabbitmq")],
+      }],
+    });
+    expect(model).toContain("demo.a -[bus]-> bus 'enqueues run_s1' {\n    technology 'NATS'");
+    expect(model).toContain("demo.b -[bus]-> bus 'enqueues run_s2' {\n    technology 'RabbitMQ'");
+    expect(model).toContain("  bus = broker 'bus'\n");
   });
 
   it("places every deployed service in its environment, cluster and namespace, and draws the frames by name", () => {

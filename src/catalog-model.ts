@@ -931,6 +931,11 @@ export interface Channel {
   address: string;
   /** Domain event by default; jobs are work queues and messages are generic streams. */
   kind?: "event" | "job" | "message";
+  /**
+   * The transport the channel lives on, as the source names it: "nats",
+   * "kafka", "sqs". Absent when the source does not settle one.
+   */
+  protocol?: string;
   title?: string;
   doc?: string;
   messages: ChannelMessage[];

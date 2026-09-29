@@ -148,7 +148,7 @@ func Cloud(ctx context.Context, credential *azeventgrid.AzureKeyCredential) erro
 		t.Fatalf("warnings: %v", got)
 	}
 	orders := channels(out)["orders"]
-	if orders.Title != "Azure Event Grid topic" || orders.Kind != catalog.ChannelKindEvent || orders.Source != "publisher/publisher.go:18" {
+	if orders.Title != "Azure Event Grid topic" || orders.Kind != catalog.ChannelKindEvent || orders.Protocol != "eventgrid" || orders.Source != "publisher/publisher.go:18" {
 		t.Errorf("orders: %+v", orders)
 	}
 	if !strings.Contains(orders.Doc, eventGridPkg) || !strings.Contains(orders.Doc, "Event Grid schema") || !strings.Contains(orders.Doc, "CloudEvents 1.0") {

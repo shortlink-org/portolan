@@ -253,3 +253,70 @@ func TestFragmentName(t *testing.T) {
 		t.Errorf("name = %q", resp.Files[0].Name)
 	}
 }
+
+func protocols(t *testing.T, document string) map[string]string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "asyncapi.yaml"), []byte(document), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]string{}
+	for _, channel := range channelsOf(t, run3(t, root, Options{Context: "shop", Service: "cart"})) {
+		out[channel.Address] = channel.Protocol
+	}
+
+	return out
+}
+
+// A channel lives on the servers it names, and on every server when it names
+// none; the transport is said only when those servers agree on one.
+func TestProtocolIsReadOffTheServers(t *testing.T) {
+	got := protocols(t, `asyncapi: 3.0.0
+servers:
+  jetstream: { host: "nats:4222", protocol: NATS }
+  kafka: { host: "kafka:9092", protocol: kafka }
+channels:
+  basket:
+    address: shop.cart.basket
+    servers: [{ $ref: "#/servers/jetstream" }]
+  audit:
+    address: shop.cart.audit
+operations:
+  sendBasket: { action: send, channel: { $ref: "#/channels/basket" } }
+  sendAudit: { action: send, channel: { $ref: "#/channels/audit" } }
+`)
+	if got["shop.cart.basket"] != "nats" {
+		t.Errorf("a channel on one named server is on its protocol, lowercased; got %q", got["shop.cart.basket"])
+	}
+	if got["shop.cart.audit"] != "" {
+		t.Errorf("a channel on servers of two protocols says none; got %q", got["shop.cart.audit"])
+	}
+
+	one := protocols(t, `asyncapi: 3.0.0
+servers:
+  jetstream: { host: "nats:4222", protocol: nats }
+channels:
+  basket: { address: shop.cart.basket }
+operations:
+  sendBasket: { action: send, channel: { $ref: "#/channels/basket" } }
+`)
+	if one["shop.cart.basket"] != "nats" {
+		t.Errorf("a channel naming no server is on the document's only one; got %q", one["shop.cart.basket"])
+	}
+}
+
+// 2.x names a channel's servers by key rather than by $ref.
+func TestVersionTwoNamesServersByKey(t *testing.T) {
+	got := protocols(t, `asyncapi: 2.6.0
+servers:
+  jetstream: { url: "nats:4222", protocol: nats }
+  kafka: { url: "kafka:9092", protocol: kafka }
+channels:
+  shop.cart.basket:
+    servers: [kafka]
+    subscribe: { message: { name: cart.BasketCreated } }
+`)
+	if got["shop.cart.basket"] != "kafka" {
+		t.Errorf("protocol = %q, want kafka", got["shop.cart.basket"])
+	}
+}
