@@ -33,6 +33,7 @@ export const SUBJECTS = {
       repo: "string",
       path: "string",
       technologies: "list<string>",
+      hasReadme: "bool",
       owners: "list<string>",
       provides: "int",
       methods: "int",

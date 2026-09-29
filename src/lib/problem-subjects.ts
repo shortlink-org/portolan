@@ -138,6 +138,8 @@ function serviceSubjects(catalog: Catalog): Subject[] {
       repo: service.repo,
       path: service.path,
       technologies: service.technologies ?? [],
+      // The README is the service's description on its page and on a C4 box.
+      hasReadme: service.readme.trim() !== "",
       owners: service.owners ?? [],
       provides: int(service.provides.length),
       methods: int(service.provides.reduce((n, provided) => n + provided.methods.length, 0)),

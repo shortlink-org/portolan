@@ -292,5 +292,27 @@
     "when": "size(operation.ruleDifferences) > 0",
     "message": "operation.ruleDifferences.join('; ') + '. The caller reads ' + operation.contract + '/' + operation.method + '.'",
     "peer": "operation.contract"
+  },
+  {
+    "id": "service-stack-unknown",
+    "over": "service",
+    "severity": "warning",
+    "title": "Service does not say what it is built with",
+    "note": "no language or runtime recorded",
+    "description": "A container on a C4 diagram names its technology, so a reader knows what runs there. The catalog reads a service's protocols off its contracts, but its languages and frameworks only when an extractor records them; without them the box says gRPC and nothing about the process behind it.",
+    "action": "Run the project plugin over the service's root, which reads go.mod, package.json, Cargo.toml and the like there, or state technologies in its options when those files sit above the root.",
+    "when": "size(service.technologies) == 0",
+    "message": "service.name + ' records no language or runtime.'"
+  },
+  {
+    "id": "service-undescribed",
+    "over": "service",
+    "severity": "warning",
+    "title": "Service has no README",
+    "note": "nothing says what it does",
+    "description": "A reader of a diagram should understand what every element does. The catalog shows a service's README as its description on the service's page; with none, nothing in the catalog says what the service does, and its page and its box on a diagram give a name and a repository path.",
+    "action": "Add a README at the service's root saying what it does and what it does not, and regenerate the catalog.",
+    "when": "!service.hasReadme",
+    "message": "service.name + ' has no README, so nothing in the catalog says what it does.'"
   }
 ]
