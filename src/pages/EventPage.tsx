@@ -21,9 +21,11 @@ import { ctxStyle } from "../lib/context-color";
 import {
   eventScope,
   openablePaths,
+  previousVersion,
   resolveShape,
   schemaChanges,
 } from "../lib/shape";
+import { exampleOf } from "../lib/example";
 import type { Change, Scope } from "../lib/shape";
 import {
   AGGREGATE_ANCHOR,
@@ -39,6 +41,7 @@ import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { ShapeBody, TypeCell } from "../components/FieldTree";
 import { RowActions } from "../components/RowActions";
+import { CopyButton } from "../components/CopyButton";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
 import { Toc } from "../components/Toc";
@@ -61,46 +64,56 @@ import { triggersOf } from "../lib/triggers";
  */
 interface SchemaRow extends Field {
   change?: Change;
-  /** The type the previous version gave the field, when this one changed it. */
+  /** The type the version compared against gave the field, when it differs. */
   from?: string;
-  /** The rules the previous version gave the field, when this one changed them; "" for none. */
+  /** The rules the version compared against gave the field, when they differ; "" for none. */
   rulesFrom?: string;
 }
 
-/** What the change column says, and in what colour. */
-const CHANGE: Record<Change, { label: string; className: string; title: string }> = {
+/**
+ * What the change column says, and in what colour. The titles name the
+ * version compared against - "v2", or "main" for a branch - and read the
+ * same whether that version is older or newer than the one shown.
+ */
+const CHANGE: Record<
+  Change,
+  { label: string; className: string; title: (against: string) => string }
+> = {
   new: {
     label: "new",
     className: "text-verified",
-    title: "added in this version",
+    title: (against) => `not in ${against}`,
   },
   changed: {
     label: "changed",
     className: "text-declared",
-    title: "changed in this version",
+    title: (against) => `differs from ${against}`,
   },
   removed: {
     label: "removed",
     className: "text-unresolved",
-    title: "dropped by this version — shown as the previous version had it",
+    title: (against) =>
+      `in ${against}, not in this version — shown as ${against} had it`,
   },
 };
 
 /**
- * What the previous version had, for the tooltip of a changed row: the type
- * when it moved, the rules when they did. What the row has now is the row.
+ * What the version compared against had, for the tooltip of a changed row:
+ * the type when it moved, the rules when they did. What the row has now is
+ * the row.
  */
-function wasBefore(row: SchemaRow): string | null {
+function wasBefore(row: SchemaRow, against: string): string | null {
   const parts: string[] = [];
   if (row.from) parts.push(`was ${row.from}`);
   if (row.rulesFrom !== undefined) parts.push(`rules were ${row.rulesFrom || "none"}`);
-  return parts.length ? `${parts.join(", ")} in the previous version` : null;
+  return parts.length ? `${parts.join(", ")} in ${against}` : null;
 }
 
-function ChangeMark({ row }: { row: SchemaRow }) {
+function ChangeMark({ row, against }: { row: SchemaRow; against: string }) {
   if (!row.change) return null;
   const mark = CHANGE[row.change];
-  const title = (row.change === "changed" && wasBefore(row)) || mark.title;
+  const title =
+    (row.change === "changed" && wasBefore(row, against)) || mark.title(against);
   return (
     <span
       className={`mono inline-flex items-center gap-1 ${mark.className}`}
@@ -127,6 +140,7 @@ function schemaColumns(
   scope: Scope,
   open: ReadonlySet<string>,
   onToggle: (path: string) => void,
+  against: string,
 ): ColumnSpec<SchemaRow>[] {
   const columns: ColumnSpec<SchemaRow>[] = [
     {
@@ -139,7 +153,7 @@ function schemaColumns(
         const struck = row.deprecated || row.change === "removed";
         const nameClass = `mono${struck ? " line-through" : ""}${row.change === "removed" ? " text-muted" : ""}`;
         const title = row.change === "removed"
-          ? "removed in this version"
+          ? `in ${against}, not in this version`
           : row.deprecated
             ? "deprecated"
             : undefined;
@@ -198,7 +212,7 @@ function schemaColumns(
       // Sortable and filterable like any other column: "show me what this
       // version did" is a question about the schema, not a decoration.
       value: (row) => row.change,
-      cell: (row) => <ChangeMark row={row} />,
+      cell: (row) => <ChangeMark row={row} against={against} />,
       facet: true,
       enableHiding: false,
       size: 88,
@@ -222,25 +236,51 @@ function changeSummary(rows: SchemaRow[]): string {
     .join("");
 }
 
-/** A compact version picker whose menu has room to explain each choice. */
+/** The small tag a version wears in a picker: "latest", "previous". */
+function VersionBadge({ children }: { children: string | null }) {
+  if (!children) return null;
+  return (
+    <span className="rounded-control bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * A compact version picker whose menu has room to explain each choice. The
+ * page has two: the version shown, and the version it is compared against.
+ */
 function VersionPicker({
   versions,
   value,
-  latest,
+  badge,
+  label,
+  title,
+  none,
   onChange,
 }: {
   versions: readonly EventVersion[];
-  value: string;
-  latest: string;
+  /** Null when nothing is picked: a first version has nothing before it. */
+  value: string | null;
+  badge: (version: string) => string | null;
+  label: string;
+  title: string;
+  /** What the button says while nothing is picked. */
+  none?: string;
   onChange: (value: string) => void;
 }) {
   const current = versions.find((item) => item.version === value);
 
   return (
-    <Listbox value={value} onChange={onChange}>
+    <Listbox
+      value={value}
+      onChange={(next: string | null) => {
+        if (next !== null) onChange(next);
+      }}
+    >
       <ListboxButton
-        aria-label="Schema version"
-        title="Which version of this event's schema the page shows"
+        aria-label={label}
+        title={title}
         className={({ open }) =>
           `group flex min-w-28 items-center justify-between gap-2 rounded-control border bg-canvas px-2 py-1 shadow-xs outline-none transition-colors ${
             open
@@ -252,12 +292,8 @@ function VersionPicker({
         {({ open }) => (
           <>
             <span className="flex min-w-0 items-center gap-2">
-              <span className="text-ink">{current?.version ?? value}</span>
-              {value === latest ? (
-                <span className="rounded-control bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                  latest
-                </span>
-              ) : null}
+              <span className="text-ink">{current?.version ?? value ?? none}</span>
+              <VersionBadge>{value === null ? null : badge(value)}</VersionBadge>
             </span>
             <ChevronDown
               size={13}
@@ -270,7 +306,7 @@ function VersionPicker({
       </ListboxButton>
 
       <ListboxOptions
-        aria-label="Schema version"
+        aria-label={label}
         anchor={{ to: "bottom end", gap: 6, padding: 8 }}
         className="palette-in z-50 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-card border bg-canvas p-1.5 border-line-strong shadow-md focus:outline-none"
       >
@@ -305,11 +341,7 @@ function VersionPicker({
                     <span className={on ? "text-accent" : "text-ink"}>
                       {item.version}
                     </span>
-                    {item.version === latest ? (
-                      <span className="rounded-control bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                        latest
-                      </span>
-                    ) : null}
+                    <VersionBadge>{badge(item.version)}</VersionBadge>
                   </span>
                   {item.doc ? (
                     <span className="mt-0.5 block whitespace-normal text-muted">
@@ -373,6 +405,8 @@ export function EventPage({
           const updated = new URLSearchParams(current);
           if (next === latest) updated.delete("version");
           else updated.set("version", next);
+          // A version compared against itself says nothing.
+          if (updated.get("from") === next) updated.delete("from");
           return updated;
         },
         { replace: true },
@@ -390,28 +424,61 @@ export function EventPage({
       event?.versions.find((v) => v.version === version) ?? event?.versions[0],
     [event, version],
   );
-  // The version's rows, with what it did to each against the one before.
+  // What the change column compares against: the version before, unless
+  // `?from=` names another. A branch's latest version is compared with
+  // main's instead, and an event only a branch has with nothing at all.
+  const onMainOnly = !onlyInBranch && !(branch && selected === event?.versions.at(-1));
+  const previous = event && selected ? previousVersion(event, selected.version) : null;
+  const requestedAgainst = params.get("from");
+  const against =
+    requestedAgainst !== selected?.version &&
+    event?.versions.some((item) => item.version === requestedAgainst)
+      ? requestedAgainst
+      : previous;
+  const againstLabel = onMainOnly ? (against ?? "") : "main";
+  const setAgainst = useCallback(
+    (next: string) => {
+      setParams(
+        (current) => {
+          const updated = new URLSearchParams(current);
+          if (next === previous) updated.delete("from");
+          else updated.set("from", next);
+          return updated;
+        },
+        { replace: true },
+      );
+    },
+    [previous, setParams],
+  );
+  // The version's rows, with what it did to each against that version.
   const rows = useMemo<SchemaRow[]>(() => {
     if (!event || !selected) return [];
-    // A branch's latest version is compared with main's,
-    // not with the version before it.
     if (onlyInBranch) return selected.fields.map((field) => ({ ...field, change: "new" as const }));
-    if (branch && selected === event.versions[event.versions.length - 1]) {
+    if (!onMainOnly && branch) {
       return [
         ...selected.fields.map((field) => ({ ...field, ...branch.marks.get(field.name) })),
         ...branch.removed.map((field) => ({ ...field, change: "removed" as const })),
       ];
     }
-    const { byField, removed } = schemaChanges(event, selected.version);
+    const { byField, removed } = schemaChanges(event, selected.version, against);
     return [
       ...selected.fields.map((field) => ({ ...field, ...byField.get(field.name) })),
       ...removed.map((field) => ({ ...field, change: "removed" as const })),
     ];
-  }, [event, selected, branch, onlyInBranch]);
+  }, [event, selected, branch, onlyInBranch, onMainOnly, against]);
   const scope = useMemo<Scope>(
     () =>
       event ? eventScope(index, event) : { aggregate: null, service: null },
     [event],
+  );
+  // The schema as one message, for a reader who has to write one: a test
+  // fixture, a publish from the command line.
+  const example = useMemo(
+    () =>
+      selected
+        ? JSON.stringify(exampleOf(catalog, selected.fields, scope), null, 2)
+        : "",
+    [selected, scope],
   );
   // Everything the tree could open under this version, for "expand all".
   const openable = useMemo(
@@ -435,8 +502,8 @@ export function EventPage({
   // Above the not-found return, with every other hook: the columns are built
   // once per render of a schema, and a hook cannot sit behind a branch.
   const schema = useMemo(
-    () => schemaColumns(scope, open, toggle),
-    [scope, open, toggle],
+    () => schemaColumns(scope, open, toggle, againstLabel),
+    [scope, open, toggle, againstLabel],
   );
   // What follows this event, as far as the flows say; and, for a consumer no
   // source declared, the number of the step it was read from.
@@ -484,6 +551,7 @@ export function EventPage({
   // what else in the estate names it.
   const toc: TocItem[] = [
     { id: EVENT_ANCHOR.schema, label: "Schema" },
+    { id: EVENT_ANCHOR.example, label: "Example" },
     { id: EVENT_ANCHOR.versions, label: "Versions" },
     { id: EVENT_ANCHOR.triggers, label: "Triggered by" },
     { id: EVENT_ANCHOR.consumers, label: "Consumers" },
@@ -539,7 +607,9 @@ export function EventPage({
             <VersionPicker
               versions={event.versions}
               value={selected.version}
-              latest={latest}
+              badge={(v) => (v === latest ? "latest" : null)}
+              label="Schema version"
+              title="Which version of this event's schema the page shows"
               onChange={setVersion}
             />
           </span>
@@ -651,12 +721,12 @@ export function EventPage({
             <SectionTitle
               anchor={EVENT_ANCHOR.schema}
               right={
-                <span className="flex items-center gap-x-3">
+                <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
                   {/* Both offered while anything is open: a reader who
                       opened three of eight shapes wants "the rest" as much
                       as "none", and either word alone guesses which. */}
                   {openable.length > 0 ? (
-                    <span className="mono flex items-center gap-x-2">
+                    <span className="mono flex items-center gap-x-2 whitespace-nowrap">
                       {openable.some((path) => !open.has(path)) ? (
                         <button
                           type="button"
@@ -678,11 +748,35 @@ export function EventPage({
                       ) : null}
                     </span>
                   ) : null}
-                  <span>
-                    {selected.fields.length}{" "}
-                    {plural(selected.fields.length, "field")}
-                    {changeSummary(rows)} ·{" "}
-                    <span className="mono">{selected.version}</span>
+                  <span className="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
+                    <span className="whitespace-nowrap">
+                      {selected.fields.length}{" "}
+                      {plural(selected.fields.length, "field")}
+                      {changeSummary(rows)} ·{" "}
+                      <span className="mono">{selected.version}</span>
+                    </span>
+                    {/* The change column's other side, pickable: "what does a
+                        consumer still on v1 meet here" is one step or three. */}
+                    {onMainOnly && event.versions.length > 1 ? (
+                      <>
+                        <span>against</span>
+                        <VersionPicker
+                          versions={event.versions.filter(
+                            (item) => item.version !== selected.version,
+                          )}
+                          value={against}
+                          badge={(v) => (v === previous ? "previous" : null)}
+                          label="Compared with"
+                          title="Which version the change column compares this one against"
+                          none="nothing"
+                          onChange={setAgainst}
+                        />
+                      </>
+                    ) : onMainOnly ? null : (
+                      <span>
+                        against <span className="mono">main</span>
+                      </span>
+                    )}
                   </span>
                 </span>
               }
@@ -705,7 +799,7 @@ export function EventPage({
                 }
                 rowMotionKey={(row) =>
                   row.change
-                    ? `${selected.version}:${row.name}:${row.change}`
+                    ? `${selected.version}:${againstLabel}:${row.name}:${row.change}`
                     : undefined
                 }
                 subRow={(row) => {
@@ -732,6 +826,42 @@ export function EventPage({
                 )}
               />
             </div>
+          </section>
+
+          {/* --- Example ------------------------------------------------ */}
+          {/* The schema above, written as one message. Built, not recorded:
+              a payload from a running system can carry what the catalog
+              must never hold, and the rules already say what a valid one
+              looks like. */}
+          <section id={EVENT_ANCHOR.example} className="mt-section max-w-table">
+            <SectionTitle
+              anchor={EVENT_ANCHOR.example}
+              right={
+                selected.fields.length > 0 ? (
+                  <CopyButton
+                    value={example}
+                    label={`example ${event.name} ${selected.version}`}
+                  />
+                ) : null
+              }
+            >
+              Example
+            </SectionTitle>
+            {selected.fields.length === 0 ? (
+              <Empty>{selected.version} declares no fields</Empty>
+            ) : (
+              <>
+                <p className="mb-2 max-w-prose text-muted">
+                  Built from the types and rules of{" "}
+                  <span className="mono">{selected.version}</span>, not
+                  recorded from a running system. Where no rule pins a value,
+                  it is a placeholder.
+                </p>
+                <pre className="mono max-h-96 max-w-prose overflow-auto whitespace-pre rounded-control border border-line bg-canvas p-3 text-muted">
+                  {example}
+                </pre>
+              </>
+            )}
           </section>
 
           {/* --- Versions ----------------------------------------------- */}

@@ -1,47 +1,11 @@
-import { Check, Copy, Terminal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Terminal } from "lucide-react";
 import type { RpcMethod, RpcService } from "../catalog";
 import { catalog } from "../data";
-import { toClipboard } from "../lib/clipboard";
+import { CopyButton } from "./CopyButton";
 import {
   grpcRequestJson,
   grpcurlCommand,
 } from "../lib/grpc-reference";
-
-const SHOWN_MS = 1000;
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  const copy = () => {
-    void toClipboard(value).then((ok) => {
-      setCopied(ok);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), SHOWN_MS);
-    });
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      className="row-action opacity-100"
-      aria-label={`Copy ${label}`}
-      title={`Copy ${label}`}
-    >
-      {copied ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
-      {copied ? "copied" : "copy"}
-    </button>
-  );
-}
 
 /** The executable-looking part of a protobuf reference, collapsed per method. */
 export function GrpcMethodReference({

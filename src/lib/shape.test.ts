@@ -7,6 +7,7 @@ import {
   usagesOfEnum,
   openablePaths,
   parseType,
+  previousVersion,
   resolveShape,
   schemaChanges,
   scopeOf,
@@ -209,6 +210,22 @@ describe("schemaChanges", () => {
     expect(byField.get("b")).toEqual({ change: "changed", from: "int32" });
     expect(byField.get("c")).toEqual({ change: "new" });
     expect(removed.map((f) => f.name)).toEqual(["gone"]);
+  });
+
+  it("compares against any version the reader picks, newer ones too", () => {
+    expect(previousVersion(event, "v2")).toBe("v1");
+    expect(previousVersion(event, "v1")).toBeNull();
+    // v1 read against v2: what a consumer on v2 would meet going back.
+    const { byField, removed } = schemaChanges(event, "v1", "v2");
+    expect(byField.get("b")).toEqual({ change: "changed", from: "int64" });
+    expect(byField.get("gone")).toEqual({ change: "new" });
+    expect(removed.map((f) => f.name)).toEqual(["c"]);
+  });
+
+  it("changes nothing against itself or a version the event lacks", () => {
+    expect(schemaChanges(event, "v2", "v2").byField.size).toBe(0);
+    expect(schemaChanges(event, "v2", "v9").removed).toEqual([]);
+    expect(schemaChanges(event, "v2", null).byField.size).toBe(0);
   });
 
   it("a field whose rules moved is changed, with the rules it had", () => {

@@ -162,6 +162,7 @@ export const AGGREGATE_ANCHOR = {
 /** The section anchors on an event page, in the order the TOC lists them. */
 export const EVENT_ANCHOR = {
   schema: "ev-schema",
+  example: "ev-example",
   versions: "ev-versions",
   triggers: "ev-triggers",
   consumers: "ev-consumers",
