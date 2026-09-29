@@ -20,7 +20,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/home.yaml:1"
+      x-portolan-source: "apps/backoffice/frontend/config/routes/home.yaml:1"
       x-portolan-route: home_get
   /api/courses:
     get:
@@ -32,7 +32,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/api_courses.yaml:1"
+      x-portolan-source: "apps/backoffice/frontend/config/routes/api_courses.yaml:1"
       x-portolan-route: api_courses_get
   /courses:
     get:
@@ -44,7 +44,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml:1"
+      x-portolan-source: "apps/backoffice/frontend/config/routes/courses.yaml:1"
       x-portolan-route: courses_get
     post:
       operationId: courses_post
@@ -55,7 +55,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/courses.yaml:6"
+      x-portolan-source: "apps/backoffice/frontend/config/routes/courses.yaml:6"
       x-portolan-route: courses_post
   /health-check:
     get:
@@ -67,7 +67,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/health-check.yaml:1"
+      x-portolan-source: "apps/backoffice/frontend/config/routes/health-check.yaml:1"
       x-portolan-route: health-check_get
   /metrics:
     get:
@@ -79,7 +79,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/backoffice/frontend/config/routes/metrics.yaml:1"
+      x-portolan-source: "apps/backoffice/frontend/config/routes/metrics.yaml:1"
       x-portolan-route: metrics_get
 x-portolan-inferred: true
 x-portolan-generator: extract-php-ddd

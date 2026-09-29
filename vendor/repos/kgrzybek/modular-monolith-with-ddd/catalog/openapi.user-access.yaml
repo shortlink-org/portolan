@@ -19,7 +19,7 @@ paths:
           description: UserDto
           x-portolan-type: UserDto
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/AuthenticatedUserController.cs:22
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/UserAccess/AuthenticatedUserController.cs:22
       x-portolan-controller: AuthenticatedUserController
   /api/userAccess/authenticatedUser/permissions:
     get:
@@ -32,7 +32,7 @@ paths:
           description: List<UserPermissionDto>
           x-portolan-type: List<UserPermissionDto>
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/AuthenticatedUserController.cs:32
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/UserAccess/AuthenticatedUserController.cs:32
       x-portolan-controller: AuthenticatedUserController
   /api/userAccess/emails:
     get:
@@ -44,7 +44,7 @@ paths:
         default:
           description: Response schema and status are not available from static controller analysis.
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/EmailsController.cs:20
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/UserAccess/EmailsController.cs:20
       x-portolan-controller: EmailsController
   /userAccess/UserRegistrations:
     post:
@@ -76,7 +76,7 @@ paths:
         "200":
           description: Declared by the action.
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/UserRegistrationsController.cs:22
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/UserAccess/UserRegistrationsController.cs:22
       x-portolan-controller: UserRegistrationsController
   /userAccess/UserRegistrations/{userRegistrationId}/confirm:
     patch:
@@ -95,5 +95,5 @@ paths:
         "200":
           description: Declared by the action.
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/UserAccess/UserRegistrationsController.cs:39
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/UserAccess/UserRegistrationsController.cs:39
       x-portolan-controller: UserRegistrationsController

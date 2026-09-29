@@ -35,7 +35,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.administration.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.administration.yaml"
             }
           ],
           "consumes": [],
@@ -185,6 +185,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "administration.module.meeting-group-proposals.MeetingGroupProposalAcceptedDomainEvent"
+                  ],
                   "source": "src/Modules/Administration/Application/MeetingGroupProposals/AcceptMeetingGroupProposal/AcceptMeetingGroupProposalCommandHandler.cs:18"
                 },
                 {
@@ -255,6 +258,9 @@
                       "type": "DateTime",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "administration.module.meeting-group-proposals.MeetingGroupProposalVerificationRequestedDomainEvent"
                   ],
                   "source": "src/Modules/Administration/Application/MeetingGroupProposals/RequestMeetingGroupProposalVerification/RequestMeetingGroupProposalVerificationCommandHandler.cs:17"
                 }
@@ -471,6 +477,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "administration.module.members.MemberCreatedDomainEvent"
+                  ],
                   "source": "src/Modules/Administration/Application/Members/CreateMember/CreateMemberCommandHandler.cs:15"
                 },
                 {
@@ -515,6 +524,7 @@
             {
               "address": "integration-events.MeetingGroupProposalAcceptedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting group proposal accepted",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -530,6 +540,7 @@
             {
               "address": "integration-events.MeetingGroupProposedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting group proposed",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -545,6 +556,7 @@
             {
               "address": "integration-events.NewUserRegisteredIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · New user registered",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -560,6 +572,7 @@
             {
               "address": "administration.internal-commands",
               "kind": "job",
+              "protocol": "internal-commands",
               "title": "Internal commands · Administration",
               "doc": "The module's own queue: a command written to its InternalCommands table in the same transaction as the change that asked for it, read by the ProcessInternalCommands job and handed to its handler.",
               "messages": [
@@ -624,7 +637,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.meetings.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.meetings.yaml"
             },
             {
               "id": "meetings.module.meeting-commenting-configuration",
@@ -646,7 +659,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.meetings.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.meetings.yaml"
             },
             {
               "id": "meetings.module.meeting-comments",
@@ -700,7 +713,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.meetings.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.meetings.yaml"
             },
             {
               "id": "meetings.module.meeting-group-proposals",
@@ -730,7 +743,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.meetings.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.meetings.yaml"
             },
             {
               "id": "meetings.module.meeting-groups",
@@ -784,7 +797,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.meetings.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.meetings.yaml"
             },
             {
               "id": "meetings.module.meetings",
@@ -902,7 +915,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.meetings.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.meetings.yaml"
             }
           ],
           "consumes": [],
@@ -1030,6 +1043,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.meeting-commenting-configurations.MeetingCommentingDisabledDomainEvent"
+                  ],
                   "source": "src/Modules/Meetings/Application/MeetingCommentingConfigurations/DisableMeetingCommentingConfiguration/DisableMeetingCommentingConfigurationCommandHandler.cs:29"
                 },
                 {
@@ -1045,6 +1061,9 @@
                       "type": "Guid",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "meetings.module.meeting-commenting-configurations.MeetingCommentingEnabledDomainEvent"
                   ],
                   "source": "src/Modules/Meetings/Application/MeetingCommentingConfigurations/EnableMeetingCommentingConfiguration/EnableMeetingCommentingConfigurationCommandHandler.cs:29"
                 },
@@ -1263,6 +1282,10 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.meeting-comments.MeetingCommentAddedDomainEvent",
+                    "meetings.module.meeting-comments.ReplyToMeetingCommentAddedDomainEvent"
+                  ],
                   "source": "src/Modules/Meetings/Application/MeetingComments/AddMeetingCommentReply/AddReplyToMeetingCommentCommandHandler.cs:28"
                 },
                 {
@@ -1283,6 +1306,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "meetings.module.meeting-comments.MeetingCommentEditedDomainEvent"
                   ],
                   "source": "src/Modules/Meetings/Application/MeetingComments/EditMeetingComment/EditMeetingCommentCommandHandler.cs:25"
                 },
@@ -1330,6 +1356,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "meetings.module.meeting-comments.MeetingCommentRemovedDomainEvent"
                   ],
                   "source": "src/Modules/Meetings/Application/MeetingComments/RemoveMeetingComment/RemoveMeetingCommentCommandHandler.cs:25"
                 },
@@ -1554,6 +1583,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.meeting-group-proposals.MeetingGroupProposalAcceptedDomainEvent"
+                  ],
                   "source": "src/Modules/Meetings/Application/MeetingGroupProposals/AcceptMeetingGroupProposal/AcceptMeetingGroupProposalCommandHandler.cs:15"
                 },
                 {
@@ -1628,6 +1660,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "meetings.module.meeting-group-proposals.MeetingGroupProposedDomainEvent"
                   ],
                   "source": "src/Modules/Meetings/Application/MeetingGroupProposals/ProposeMeetingGroup/ProposeMeetingGroupCommandHandler.cs:21"
                 }
@@ -1955,6 +1990,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.meeting-groups.MeetingGroupGeneralAttributesEditedDomainEvent"
+                  ],
                   "source": "src/Modules/Meetings/Application/MeetingGroups/EditMeetingGroupGeneralAttributes/EditMeetingGroupGeneralAttributesCommandHandler.cs:18"
                 },
                 {
@@ -2068,6 +2106,9 @@
                       "type": "DateTime",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "meetings.module.meeting-groups.MeetingGroupPaymentInfoUpdatedDomainEvent"
                   ],
                   "source": "src/Modules/Meetings/Application/MeetingGroups/SetMeetingGroupExpirationDate/SetMeetingGroupExpirationDateCommandHandler.cs:15"
                 }
@@ -2783,6 +2824,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.meetings.MeetingCanceledDomainEvent"
+                  ],
                   "source": "src/Modules/Meetings/Application/Meetings/CancelMeeting/CancelMeetingCommandHandler.cs:18"
                 },
                 {
@@ -2868,6 +2912,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "meetings.module.meetings.MeetingMainAttributesChangedDomainEvent"
                   ],
                   "source": "src/Modules/Meetings/Application/Meetings/ChangeMeetingMainAttributes/ChangeMeetingMainAttributesCommandHandler.cs:18"
                 },
@@ -3620,6 +3667,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.member-subscriptions.MemberSubscriptionExpirationDateChangedDomainEvent"
+                  ],
                   "source": "src/Modules/Meetings/Application/MemberSubscriptions/ChangeSubscriptionExpirationDateForMember/ChangeSubscriptionExpirationDateForMemberCommandHandler.cs:15"
                 }
               ],
@@ -3765,6 +3815,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "meetings.module.members.MemberCreatedDomainEvent"
+                  ],
                   "source": "src/Modules/Meetings/Application/Members/CreateMember/CreateMemberCommandHandler.cs:15"
                 }
               ],
@@ -3796,6 +3849,7 @@
             {
               "address": "integration-events.MeetingAttendeeAddedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting attendee added",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -3811,6 +3865,7 @@
             {
               "address": "integration-events.MeetingGroupProposedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting group proposed",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -3826,6 +3881,7 @@
             {
               "address": "integration-events.MeetingFeePaidIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting fee paid",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -3841,6 +3897,7 @@
             {
               "address": "integration-events.MeetingGroupProposalAcceptedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting group proposal accepted",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -3856,6 +3913,7 @@
             {
               "address": "integration-events.NewUserRegisteredIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · New user registered",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -3871,6 +3929,7 @@
             {
               "address": "integration-events.SubscriptionExpirationDateChangedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Subscription expiration date changed",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -3886,6 +3945,7 @@
             {
               "address": "meetings.internal-commands",
               "kind": "job",
+              "protocol": "internal-commands",
               "title": "Internal commands · Meetings",
               "doc": "The module's own queue: a command written to its InternalCommands table in the same transaction as the change that asked for it, read by the ProcessInternalCommands job and handed to its handler.",
               "messages": [
@@ -4030,7 +4090,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.payments.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.payments.yaml"
             },
             {
               "id": "payments.module.payers",
@@ -4044,7 +4104,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.payments.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.payments.yaml"
             },
             {
               "id": "payments.module.price-list-items",
@@ -4090,7 +4150,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.payments.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.payments.yaml"
             },
             {
               "id": "payments.module.subscription-payments",
@@ -4104,7 +4164,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.payments.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.payments.yaml"
             },
             {
               "id": "payments.module.subscription-renewals",
@@ -4118,7 +4178,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.payments.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.payments.yaml"
             },
             {
               "id": "payments.module.subscriptions",
@@ -4140,7 +4200,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.payments.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.payments.yaml"
             }
           ],
           "consumes": [],
@@ -4418,6 +4478,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "payments.module.meeting-fees.MeetingFeeCreatedDomainEvent"
+                  ],
                   "source": "src/Modules/Payments/Application/MeetingFees/CreateMeetingFee/CreateMeetingFeeCommandHandler.cs:18"
                 },
                 {
@@ -4459,6 +4522,9 @@
                       "type": "Guid",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "payments.module.meeting-fees.MeetingFeePaidDomainEvent"
                   ],
                   "source": "src/Modules/Payments/Application/MeetingFees/MarkMeetingFeeAsPaid/MarkMeetingFeeAsPaidCommandHandler.cs:16"
                 },
@@ -4756,6 +4822,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "payments.module.payers.PayerCreatedDomainEvent"
+                  ],
                   "source": "src/Modules/Payments/Application/Payers/CreatePayer/CreatePayerCommandHandler.cs:16"
                 },
                 {
@@ -4932,6 +5001,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "payments.module.price-list-items.PriceListItemActivatedDomainEvent"
+                  ],
                   "source": "src/Modules/Payments/Application/PriceListItems/ActivatePriceListItem/ActivatePriceListItemCommandHandler.cs:17"
                 },
                 {
@@ -4973,6 +5045,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "payments.module.price-list-items.PriceListItemAttributesChangedDomainEvent"
+                  ],
                   "source": "src/Modules/Payments/Application/PriceListItems/ChangePriceListItemAttributes/ChangePriceListItemAttributesCommandHandler.cs:18"
                 },
                 {
@@ -5009,6 +5084,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "payments.module.price-list-items.PriceListItemCreatedDomainEvent"
+                  ],
                   "source": "src/Modules/Payments/Application/PriceListItems/CreatePriceListItem/CreatePriceListItemCommandHandler.cs:17"
                 },
                 {
@@ -5024,6 +5102,9 @@
                       "type": "Guid",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "payments.module.price-list-items.PriceListItemDeactivatedDomainEvent"
                   ],
                   "source": "src/Modules/Payments/Application/PriceListItems/DeactivatePriceListItem/DeactivatePriceListItemCommandHandler.cs:17"
                 },
@@ -5743,6 +5824,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "payments.module.subscriptions.SubscriptionCreatedDomainEvent"
+                  ],
                   "source": "src/Modules/Payments/Application/Subscriptions/CreateSubscription/CreateSubscriptionCommandHandler.cs:18"
                 },
                 {
@@ -5760,6 +5844,9 @@
                       "type": "Guid",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "payments.module.subscriptions.SubscriptionExpiredDomainEvent"
                   ],
                   "source": "src/Modules/Payments/Application/Subscriptions/ExpireSubscription/ExpireSubscriptionCommandHandler.cs:16"
                 },
@@ -5878,6 +5965,9 @@
                       "type": "Guid",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "payments.module.subscriptions.SubscriptionRenewedDomainEvent"
                   ],
                   "source": "src/Modules/Payments/Application/Subscriptions/RenewSubscription/RenewSubscriptionCommandHandler.cs:18"
                 },
@@ -6108,6 +6198,7 @@
             {
               "address": "integration-events.MeetingFeePaidIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting fee paid",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -6123,6 +6214,7 @@
             {
               "address": "integration-events.SubscriptionExpirationDateChangedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Subscription expiration date changed",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -6138,6 +6230,7 @@
             {
               "address": "integration-events.MeetingAttendeeAddedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting attendee added",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -6153,6 +6246,7 @@
             {
               "address": "integration-events.MeetingGroupProposalAcceptedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Meeting group proposal accepted",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -6168,6 +6262,7 @@
             {
               "address": "integration-events.NewUserRegisteredIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · New user registered",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -6183,6 +6278,7 @@
             {
               "address": "payments.internal-commands",
               "kind": "job",
+              "protocol": "internal-commands",
               "title": "Internal commands · Payments",
               "doc": "The module's own queue: a command written to its InternalCommands table in the same transaction as the change that asked for it, read by the ProcessInternalCommands job and handed to its handler.",
               "messages": [
@@ -6427,6 +6523,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "registrations.module.user-registrations.UserRegistrationConfirmedDomainEvent"
+                  ],
                   "source": "src/Modules/Registrations/Application/UserRegistrations/ConfirmUserRegistration/ConfirmUserRegistrationCommandHandler.cs:15"
                 },
                 {
@@ -6477,6 +6576,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "registrations.module.user-registrations.NewUserRegisteredDomainEvent"
                   ],
                   "source": "src/Modules/Registrations/Application/UserRegistrations/RegisterNewUser/RegisterNewUserCommandHandler.cs:19"
                 },
@@ -6694,6 +6796,7 @@
             {
               "address": "integration-events.NewUserRegisteredIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · New user registered",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [
@@ -6709,6 +6812,7 @@
             {
               "address": "registrations.internal-commands",
               "kind": "job",
+              "protocol": "internal-commands",
               "title": "Internal commands · Registrations",
               "doc": "The module's own queue: a command written to its InternalCommands table in the same transaction as the change that asked for it, read by the ProcessInternalCommands job and handed to its handler.",
               "messages": [
@@ -6769,7 +6873,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.user-access.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.user-access.yaml"
             },
             {
               "id": "user-access.module.emails",
@@ -6783,7 +6887,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.user-access.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.user-access.yaml"
             },
             {
               "id": "user-access.module.user-registrations",
@@ -6805,7 +6909,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.user-access.yaml"
+              "source": "vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog/openapi.user-access.yaml"
             }
           ],
           "consumes": [],
@@ -7026,6 +7130,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "user-access.module.users.UserCreatedDomainEvent"
+                  ],
                   "source": "src/Modules/UserAccess/Application/Users/AddAdminUser/AddAdminUserCommandHandler.cs:17"
                 },
                 {
@@ -7063,6 +7170,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "user-access.module.users.UserCreatedDomainEvent"
                   ],
                   "source": "src/Modules/UserAccess/Application/Users/CreateUser/CreateUserCommandHandler.cs:15"
                 },
@@ -7118,6 +7228,7 @@
             {
               "address": "integration-events.MemberCreatedIntegrationEvent",
               "kind": "event",
+              "protocol": "in-memory",
               "title": "Bus · Member created",
               "doc": "One integration event on the in-memory events bus: the bus routes by type, so each event is a channel with the module that publishes it and the modules that subscribe. One process, no broker.",
               "messages": [

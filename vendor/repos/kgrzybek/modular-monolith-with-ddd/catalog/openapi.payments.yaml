@@ -33,7 +33,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: RegisterPayment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/MeetingFees/MeetingFeePaymentsController.cs:20
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/MeetingFees/MeetingFeePaymentsController.cs:20
       x-portolan-controller: MeetingFeePaymentsController
     put:
       operationId: RegisterMeetingFeePayment
@@ -45,7 +45,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: RegisterPayment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/MeetingFees/MeetingFeePaymentsController.cs:30
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/MeetingFees/MeetingFeePaymentsController.cs:30
       x-portolan-controller: MeetingFeePaymentsController
   /api/payments/payers/authenticated/subscription:
     get:
@@ -59,7 +59,7 @@ paths:
           x-portolan-type: SubscriptionDetailsDto
       x-portolan-permission: GetAuthenticatedPayerSubscription
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/Payers/PayersController.cs:20
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/Payers/PayersController.cs:20
       x-portolan-controller: PayersController
   /api/payments/priceListItems:
     get:
@@ -73,7 +73,7 @@ paths:
           x-portolan-type: PriceListItemMoneyValueDto
       x-portolan-permission: GetPriceListItem
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:23
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:23
       x-portolan-controller: PriceListItemsController
     post:
       operationId: CreatePriceListItem
@@ -103,7 +103,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: CreatePriceListItem
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:36
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:36
       x-portolan-controller: PriceListItemsController
     put:
       operationId: ChangePriceListItemAttributes
@@ -136,7 +136,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: ChangePriceListItemAttributes
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:71
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:71
       x-portolan-controller: PriceListItemsController
   /api/payments/priceListItems/{priceListItemId}/activate:
     patch:
@@ -156,7 +156,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: ActivatePriceListItem
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:51
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:51
       x-portolan-controller: PriceListItemsController
   /api/payments/priceListItems/{priceListItemId}/deactivate:
     patch:
@@ -176,7 +176,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: DeactivatePriceListItem
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:61
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/PriceListItems/PriceListItemsController.cs:61
       x-portolan-controller: PriceListItemsController
   /api/payments/subscriptionPayments:
     post:
@@ -200,7 +200,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: RegisterPayment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/Subscriptions/SubscriptionPaymentsController.cs:19
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/Subscriptions/SubscriptionPaymentsController.cs:19
       x-portolan-controller: SubscriptionPaymentsController
   /api/payments/subscriptionRenewals:
     post:
@@ -224,7 +224,7 @@ paths:
           description: Response schema and status are not available from static controller analysis.
       x-portolan-permission: RegisterPayment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/SubscriptionRenewalsController.cs:19
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/SubscriptionRenewalsController.cs:19
       x-portolan-controller: SubscriptionRenewalsController
   /api/payments/subscriptions:
     post:
@@ -253,7 +253,7 @@ paths:
           description: Response schema and status are not available from static controller analysis.
       x-portolan-permission: BuySubscription
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/Subscriptions/SubscriptionsController.cs:20
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/Subscriptions/SubscriptionsController.cs:20
       x-portolan-controller: SubscriptionsController
   /api/payments/subscriptions/{subscriptionId}/renewals:
     post:
@@ -289,5 +289,5 @@ paths:
           description: Response schema and status are not available from static controller analysis.
       x-portolan-permission: RenewSubscription
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Payments/Subscriptions/SubscriptionsController.cs:34
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Payments/Subscriptions/SubscriptionsController.cs:34
       x-portolan-controller: SubscriptionsController

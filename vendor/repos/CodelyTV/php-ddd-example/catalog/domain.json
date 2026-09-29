@@ -56,7 +56,8 @@
                   "direction": "receive"
                 }
               ],
-              "source": "src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:14"
+              "source": "src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php:14",
+              "protocol": "rabbitmq"
             }
           ]
         }
@@ -89,7 +90,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-backend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-backend.yaml"
             },
             {
               "id": "backoffice.backend.health-check",
@@ -103,7 +104,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-backend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-backend.yaml"
             },
             {
               "id": "backoffice.backend.metrics",
@@ -117,7 +118,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-backend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-backend.yaml"
             }
           ],
           "consumes": [],
@@ -247,7 +248,8 @@
                   "direction": "receive"
                 }
               ],
-              "source": "src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:10"
+              "source": "src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php:10",
+              "protocol": "rabbitmq"
             }
           ]
         },
@@ -271,7 +273,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-frontend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
             },
             {
               "id": "backoffice.frontend.courses",
@@ -293,7 +295,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-frontend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
             },
             {
               "id": "backoffice.frontend.health-check",
@@ -307,7 +309,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-frontend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
             },
             {
               "id": "backoffice.frontend.home",
@@ -321,7 +323,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-frontend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
             },
             {
               "id": "backoffice.frontend.metrics",
@@ -335,7 +337,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.backoffice-frontend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.backoffice-frontend.yaml"
             }
           ],
           "consumes": [],
@@ -370,7 +372,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.mooc-backend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
             },
             {
               "id": "mooc.backend.courses-counter",
@@ -384,7 +386,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.mooc-backend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
             },
             {
               "id": "mooc.backend.health-check",
@@ -398,7 +400,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.mooc-backend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
             },
             {
               "id": "mooc.backend.metrics",
@@ -412,7 +414,7 @@
                   }
                 }
               ],
-              "source": "catalog/openapi.mooc-backend.yaml"
+              "source": "vendor/repos/CodelyTV/php-ddd-example/catalog/openapi.mooc-backend.yaml"
             }
           ],
           "consumes": [],
@@ -500,6 +502,9 @@
                       "type": "string",
                       "doc": ""
                     }
+                  ],
+                  "emits": [
+                    "mooc.backend.courses.CourseCreated"
                   ],
                   "source": "src/Mooc/Courses/Application/Create/CreateCourseCommandHandler.php:16"
                 }
@@ -942,6 +947,9 @@
                       "doc": ""
                     }
                   ],
+                  "emits": [
+                    "mooc.backend.videos.VideoCreated"
+                  ],
                   "source": "src/Mooc/Videos/Application/Create/CreateVideoCommandHandler.php:18"
                 },
                 {
@@ -1045,7 +1053,8 @@
                   "direction": "send"
                 }
               ],
-              "source": "src/Mooc/Courses/Domain/Course.php:18"
+              "source": "src/Mooc/Courses/Domain/Course.php:18",
+              "protocol": "rabbitmq"
             },
             {
               "address": "codelytv.mooc.courses_counter.increment_courses_counter_on_course_created",
@@ -1060,7 +1069,8 @@
                   "direction": "receive"
                 }
               ],
-              "source": "src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:13"
+              "source": "src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php:13",
+              "protocol": "rabbitmq"
             }
           ]
         },
@@ -1106,6 +1116,11 @@
       "name": "Courses get",
       "summary": "",
       "source": "apps/backoffice/backend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1158,6 +1173,11 @@
       "name": "Health check get",
       "summary": "",
       "source": "apps/backoffice/backend/config/routes/health-check.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /health-check",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1191,6 +1211,11 @@
       "name": "Metrics get",
       "summary": "",
       "source": "apps/backoffice/backend/config/routes/metrics.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /metrics",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1224,6 +1249,11 @@
       "name": "Api courses get",
       "summary": "",
       "source": "apps/backoffice/frontend/config/routes/api_courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /api/courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1257,6 +1287,11 @@
       "name": "Courses get",
       "summary": "",
       "source": "apps/backoffice/frontend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1326,6 +1361,11 @@
       "name": "Courses post",
       "summary": "",
       "source": "apps/backoffice/frontend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "POST /courses",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1419,6 +1459,11 @@
       "name": "Health check get",
       "summary": "",
       "source": "apps/backoffice/frontend/config/routes/health-check.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /health-check",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1452,6 +1497,11 @@
       "name": "Home get",
       "summary": "",
       "source": "apps/backoffice/frontend/config/routes/home.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1485,6 +1535,11 @@
       "name": "Metrics get",
       "summary": "",
       "source": "apps/backoffice/frontend/config/routes/metrics.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /metrics",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1518,6 +1573,11 @@
       "name": "Courses put",
       "summary": "",
       "source": "apps/mooc/backend/config/routes/courses.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "PUT /courses/{id}",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {
@@ -1594,6 +1654,11 @@
       "name": "Courses counter get",
       "summary": "",
       "source": "apps/mooc/backend/config/routes/courses_counter.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /courses-counter",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {
@@ -1646,6 +1711,11 @@
       "name": "Health check get",
       "summary": "",
       "source": "apps/mooc/backend/config/routes/health-check.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /health-check",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {
@@ -1679,6 +1749,11 @@
       "name": "Metrics get",
       "summary": "",
       "source": "apps/mooc/backend/config/routes/metrics.yaml",
+      "trigger": {
+        "kind": "http",
+        "label": "GET /metrics",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {
@@ -1712,6 +1787,11 @@
       "name": "Store domain event on occurred",
       "summary": "",
       "source": "src/Analytics/DomainEvents/Application/Store/StoreDomainEventOnOccurred.php",
+      "trigger": {
+        "kind": "event",
+        "label": "RabbitMQ · codelytv.analytics.domain_events.store_domain_event_on_occurred",
+        "confidence": "high"
+      },
       "owner": "analytics",
       "participants": [
         {
@@ -1746,6 +1826,11 @@
       "name": "Create backoffice course on course created",
       "summary": "",
       "source": "src/Backoffice/Courses/Application/Create/CreateBackofficeCourseOnCourseCreated.php",
+      "trigger": {
+        "kind": "event",
+        "label": "RabbitMQ · codelytv.backoffice.courses.create_backoffice_course_on_course_created",
+        "confidence": "high"
+      },
       "owner": "backoffice",
       "participants": [
         {
@@ -1806,6 +1891,11 @@
       "name": "Increment courses counter on course created",
       "summary": "",
       "source": "src/Mooc/CoursesCounter/Application/Increment/IncrementCoursesCounterOnCourseCreated.php",
+      "trigger": {
+        "kind": "event",
+        "label": "RabbitMQ · codelytv.mooc.courses_counter.increment_courses_counter_on_course_created",
+        "confidence": "high"
+      },
       "owner": "mooc",
       "participants": [
         {

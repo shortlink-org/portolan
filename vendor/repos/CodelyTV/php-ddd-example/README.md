@@ -40,7 +40,7 @@ git -C /tmp/codely rev-parse HEAD                         # goes into git.repo.j
 cargo build --release --manifest-path plugins/extract-php-ddd/Cargo.toml
 mv vendor/repos/CodelyTV/php-ddd-example /tmp/codely-fragments  # the clone stands in for the run
 ln -s /tmp/codely vendor/repos/CodelyTV/php-ddd-example
-printf '%s' '{"portolanVersion":"0.1.0","input":{"root":"vendor/repos/CodelyTV/php-ddd-example","output":"vendor/repos/CodelyTV/php-ddd-example/catalog"},"options":{"classification":"core","repo":"github.com/CodelyTV/php-ddd-example"}}' \
+printf '%s' '{"portolanVersion":"0.1.0","input":{"root":"vendor/repos/CodelyTV/php-ddd-example","output":"vendor/repos/CodelyTV/php-ddd-example/catalog","repository":"vendor/repos/CodelyTV/php-ddd-example"},"options":{"classification":"core","repo":"github.com/CodelyTV/php-ddd-example"}}' \
   | ./plugins/extract-php-ddd/target/release/portolan-extract-php-ddd > /tmp/codely-out.json
 rm vendor/repos/CodelyTV/php-ddd-example && mv /tmp/codely-fragments vendor/repos/CodelyTV/php-ddd-example
 for i in 0 1 2 3 4; do

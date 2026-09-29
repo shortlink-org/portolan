@@ -36,7 +36,7 @@ paths:
           x-portolan-type: Guid
       x-portolan-permission: AddMeetingComment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:24
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:24
       x-portolan-controller: MeetingCommentsController
   /api/meetings/MeetingComments/{meetingCommentId}:
     delete:
@@ -56,7 +56,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: RemoveMeetingComment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:51
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:51
       x-portolan-controller: MeetingCommentsController
     put:
       operationId: EditComment
@@ -85,7 +85,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: EditMeetingComment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:37
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:37
       x-portolan-controller: MeetingCommentsController
   /api/meetings/MeetingComments/{meetingCommentId}/likes:
     delete:
@@ -105,7 +105,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: UnlikeMeetingComment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:83
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:83
       x-portolan-controller: MeetingCommentsController
     post:
       operationId: LikeComment
@@ -124,7 +124,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: LikeMeetingComment
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:72
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:72
       x-portolan-controller: MeetingCommentsController
   /api/meetings/MeetingComments/{meetingCommentId}/replies:
     post:
@@ -150,7 +150,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: AddMeetingCommentReply
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:62
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingComments/MeetingCommentsController.cs:62
       x-portolan-controller: MeetingCommentsController
   /api/meetings/MeetingGroupProposals:
     get:
@@ -164,7 +164,7 @@ paths:
           x-portolan-type: List<MeetingGroupProposalDto>
       x-portolan-permission: GetMeetingGroupProposals
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:22
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:22
       x-portolan-controller: MeetingGroupProposalsController
     post:
       operationId: ProposeMeetingGroup
@@ -192,7 +192,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: ProposeMeetingGroup
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:44
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:44
       x-portolan-controller: MeetingGroupProposalsController
   /api/meetings/MeetingGroupProposals/all:
     get:
@@ -206,7 +206,7 @@ paths:
           x-portolan-type: List<MeetingGroupProposalDto>
       x-portolan-permission: GetMeetingGroupProposals
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:33
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroupProposals/MeetingGroupProposalsController.cs:33
       x-portolan-controller: MeetingGroupProposalsController
   /api/meetings/MeetingGroups:
     get:
@@ -220,7 +220,7 @@ paths:
           x-portolan-type: List<MemberMeetingGroupDto>
       x-portolan-permission: GetAuthenticatedMemberMeetingGroups
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:24
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:24
       x-portolan-controller: MeetingGroupsController
   /api/meetings/MeetingGroups/all:
     get:
@@ -234,7 +234,7 @@ paths:
           x-portolan-type: List<MeetingGroupDto>
       x-portolan-permission: GetAllMeetingGroups
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:46
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:46
       x-portolan-controller: MeetingGroupsController
   /api/meetings/MeetingGroups/{meetingGroupId}:
     get:
@@ -255,7 +255,7 @@ paths:
           x-portolan-type: MeetingGroupDetailsDto
       x-portolan-permission: GetMeetingGroupDetails
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:35
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:35
       x-portolan-controller: MeetingGroupsController
     put:
       operationId: EditMeetingGroupGeneralAttributes
@@ -290,7 +290,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: EditMeetingGroupGeneralAttributes
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:56
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:56
       x-portolan-controller: MeetingGroupsController
   /api/meetings/MeetingGroups/{meetingGroupId}/members:
     delete:
@@ -310,7 +310,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: LeaveMeetingGroup
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:83
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:83
       x-portolan-controller: MeetingGroupsController
     post:
       operationId: JoinToGroup
@@ -329,7 +329,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: JoinToGroup
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:73
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingGroups/MeetingGroupsController.cs:73
       x-portolan-controller: MeetingGroupsController
   /api/meetings/countries:
     get:
@@ -343,7 +343,7 @@ paths:
           x-portolan-type: List<CountryDto>
       x-portolan-permission: GetMeetingGroupProposals
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Countries/CountriesController.cs:19
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Countries/CountriesController.cs:19
       x-portolan-controller: CountriesController
   /api/meetings/meetings:
     get:
@@ -357,7 +357,7 @@ paths:
           x-portolan-type: List<MemberMeetingDto>
       x-portolan-permission: GetAuthenticatedMemberMeetings
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:32
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:32
       x-portolan-controller: MeetingsController
     post:
       operationId: CreateNewMeeting
@@ -417,7 +417,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: CreateNewMeeting
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:52
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:52
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}:
     get:
@@ -438,7 +438,7 @@ paths:
           x-portolan-type: MeetingDetailsDto
       x-portolan-permission: GetMeetingDetails
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:42
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:42
       x-portolan-controller: MeetingsController
     put:
       operationId: EditMeeting
@@ -505,7 +505,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: EditMeeting
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:78
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:78
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}/attendees:
     get:
@@ -526,7 +526,7 @@ paths:
           x-portolan-type: List<MeetingAttendeeDto>
       x-portolan-permission: GetMeetingAttendees
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:105
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:105
       x-portolan-controller: MeetingsController
     post:
       operationId: AddMeetingAttendee
@@ -555,7 +555,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: AddMeetingAttendee
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:115
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:115
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}/attendees/attendeeRole:
     post:
@@ -586,7 +586,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: SetMeetingAttendeeRole
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:193
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:193
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}/attendees/{attendeeId}:
     delete:
@@ -612,7 +612,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: RemoveMeetingAttendee
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:129
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:129
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}/cancel:
     patch:
@@ -632,7 +632,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: CancelMeeting
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:203
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:203
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}/configuration/commenting/disable:
     patch:
@@ -652,7 +652,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: DisableMeetingCommenting
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingCommentingConfiguration/MeetingCommentingConfigurationController.cs:20
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingCommentingConfiguration/MeetingCommentingConfigurationController.cs:20
       x-portolan-controller: MeetingCommentingConfigurationController
   /api/meetings/meetings/{meetingId}/configuration/commenting/enable:
     patch:
@@ -672,7 +672,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: EnableMeetingCommenting
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingCommentingConfiguration/MeetingCommentingConfigurationController.cs:29
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/MeetingCommentingConfiguration/MeetingCommentingConfigurationController.cs:29
       x-portolan-controller: MeetingCommentingConfigurationController
   /api/meetings/meetings/{meetingId}/hosts:
     post:
@@ -703,7 +703,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: SetMeetingHostRole
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:183
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:183
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}/notAttendees:
     delete:
@@ -723,7 +723,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: ChangeNotAttendeeDecision
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:153
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:153
       x-portolan-controller: MeetingsController
     post:
       operationId: AddNotAttendee
@@ -742,7 +742,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: AddNotAttendee
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:143
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:143
       x-portolan-controller: MeetingsController
   /api/meetings/meetings/{meetingId}/waitlistMembers:
     delete:
@@ -762,7 +762,7 @@ paths:
           description: Declared by the action.
       x-portolan-permission: SignOffMemberFromWaitlist
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:173
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:173
       x-portolan-controller: MeetingsController
     post:
       operationId: SignUpMemberToWaitlist
@@ -781,5 +781,5 @@ paths:
           description: Declared by the action.
       x-portolan-permission: SignUpMemberToWaitlist
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:163
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Meetings/Meetings/MeetingsController.cs:163
       x-portolan-controller: MeetingsController

@@ -19,7 +19,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses_counter.yaml:1"
+      x-portolan-source: "apps/mooc/backend/config/routes/courses_counter.yaml:1"
       x-portolan-route: courses_counter_get
   /courses/{id}:
     put:
@@ -37,7 +37,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/courses.yaml:1"
+      x-portolan-source: "apps/mooc/backend/config/routes/courses.yaml:1"
       x-portolan-route: courses_put
   /health-check:
     get:
@@ -49,7 +49,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/health-check.yaml:1"
+      x-portolan-source: "apps/mooc/backend/config/routes/health-check.yaml:1"
       x-portolan-route: health-check_get
   /metrics:
     get:
@@ -61,7 +61,7 @@ paths:
         default:
           description: Response schema and status are not available from static route analysis.
       x-portolan-inferred: true
-      x-portolan-source: "vendor/repos/CodelyTV/php-ddd-example/apps/mooc/backend/config/routes/metrics.yaml:1"
+      x-portolan-source: "apps/mooc/backend/config/routes/metrics.yaml:1"
       x-portolan-route: metrics_get
 x-portolan-inferred: true
 x-portolan-generator: extract-php-ddd

@@ -18,7 +18,7 @@ paths:
           x-portolan-type: List<MeetingGroupProposalDto>
       x-portolan-permission: AcceptMeetingGroupProposal
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Administration/MeetingGroupProposals/MeetingGroupProposalsController.cs:21
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Administration/MeetingGroupProposals/MeetingGroupProposalsController.cs:21
       x-portolan-controller: MeetingGroupProposalsController
   /api/administration/meetingGroupProposals/{meetingGroupProposalId}/accept:
     patch:
@@ -38,5 +38,5 @@ paths:
           description: Declared by the action.
       x-portolan-permission: AcceptMeetingGroupProposal
       x-portolan-inferred: true
-      x-portolan-source: vendor/repos/kgrzybek/modular-monolith-with-ddd/src/API/CompanyName.MyMeetings.API/Modules/Administration/MeetingGroupProposals/MeetingGroupProposalsController.cs:32
+      x-portolan-source: src/API/CompanyName.MyMeetings.API/Modules/Administration/MeetingGroupProposals/MeetingGroupProposalsController.cs:32
       x-portolan-controller: MeetingGroupProposalsController

@@ -47,7 +47,7 @@ git -C /tmp/mm rev-parse HEAD                              # goes into git.repo.
 npm run plugins:build                                      # builds plugins/extract-csharp-ddd/bin and the wasm
 mv vendor/repos/kgrzybek/modular-monolith-with-ddd /tmp/mm-fragments   # the clone stands in for the run
 ln -s /tmp/mm vendor/repos/kgrzybek/modular-monolith-with-ddd
-printf '%s' '{"portolanVersion":"0.1.0","input":{"root":"vendor/repos/kgrzybek/modular-monolith-with-ddd","output":"vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog"},"options":{"classification":"core","repo":"github.com/kgrzybek/modular-monolith-with-ddd"}}' \
+printf '%s' '{"portolanVersion":"0.1.0","input":{"root":"vendor/repos/kgrzybek/modular-monolith-with-ddd","output":"vendor/repos/kgrzybek/modular-monolith-with-ddd/catalog","repository":"vendor/repos/kgrzybek/modular-monolith-with-ddd"},"options":{"classification":"core","repo":"github.com/kgrzybek/modular-monolith-with-ddd"}}' \
   | dotnet plugins/extract-csharp-ddd/bin/portolan-extract-csharp-ddd.dll > /tmp/mm-out.json
 node --input-type=module -e '
   import { runPlugin } from "./scripts/plugin-host.mjs";
