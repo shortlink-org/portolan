@@ -5,13 +5,36 @@ DDD layouts. It also discovers registered HTTP execution roots without requiring
 an aggregate, a `UseCase.Handle` method, an `internal` directory or a `scope`.
 
 For conventional services, supported registrations include `net/http.HandleFunc`,
-`ServeMux.HandleFunc`, and `ServeMux.Handle` with a `http.HandlerFunc` conversion.
-The handler can be a function or a same-package method on an explicitly typed
-parameter, receiver or local composite literal. Router verb registrations use
-recognized router imports/types; the existing `http` package convention remains
-available for syntax-only legacy fixtures. Concrete service methods and their
-repository calls are followed by the existing flow walker. An unregistered
-method does not become an HTTP root just because it resembles a handler.
+`ServeMux.HandleFunc` and `ServeMux.Handle` (with a `"VERB /path"` pattern), and
+the verb methods of chi, gin and echo (`Get`/`GET`, `Any`, chi `Method`, gin
+`Handle(method, ...)`). Router verb registrations use recognized router
+imports/types; the existing `http` package convention remains available for
+syntax-only legacy fixtures, where a call that does not resolve is passed over
+quietly since it may be anything with a `Get` method.
+
+A route path is a literal, a constant of the module (the package's own or an
+imported one), a concatenation of those (`base + "/items"`), or a local or
+parameter followed to them. Prefixes are applied from chi `Route(prefix, fn)`,
+`Group(fn)` and `With(...)` chains, chi `Mount(prefix, h.Routes())` and a
+router built locally and mounted later, net/http `Handle(p, http.StripPrefix(p,
+sub))`, and gin/echo `Group(prefix)`, nested, kept in a variable, or handed to
+another function of the module as its router parameter.
+
+The handler can be a function or method of any package of the module, on a
+parameter, receiver, field or local whose type the index can follow; a value
+whose type has `ServeHTTP`; a closure written in place, named the way the
+toolchain names it (`Handler.Routes.func1`) and read with the enclosing
+receiver and parameters; or the one closure or method value a factory such as
+`h.List()` returns. Concrete service methods and their repository calls are
+followed by the existing flow walker. An unregistered method does not become an
+HTTP root just because it resembles a handler.
+
+A call on a known router that cannot become an endpoint - a path or prefix that
+is not a literal or constant, a handler declared outside the module, one of
+several implementations, a factory with several returns - is a warning with the
+message code `http.route-skipped`, the reason, and the registration's
+`file:line` as its ref. Routes in generated files (an oapi-codegen server) are
+described by the contract they were generated from and are not warned about.
 
 Every emitted flow names its source-backed trigger. HTTP roots use `http`,
 gRPC roots use `callback`, and event policies use `event`; labels preserve the
