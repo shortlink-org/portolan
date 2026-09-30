@@ -18,7 +18,7 @@ const BOX =
  * once, in the top bar, where it is one control among five and its border
  * makes it one of them; a second copy in the sidebar said nothing new.
  *
- * `compact` is the phone form: the icon alone, and everything the wide stamp
+ * `compact` is the narrow form: the icon alone, and everything the wide stamp
  * says in line - the commit, when it was built, the branch and the run - behind
  * a tap. The stamp is not a control a reader reaches for often enough to spend
  * a fifth of a phone's top bar on, but it is the one they reach for when they

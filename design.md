@@ -249,6 +249,8 @@ Responsive behavior has two product thresholds:
 - Below 1100 px, the three-pane desktop shell becomes one main pane with the tree and detail rail available as overlays.
 - Below 640 px, the top bar remains one row and moves secondary controls behind a menu.
 
+Nothing may widen the page pane past the viewport. Card grids use `card-grid [--card-min:…]`, whose track minimum yields to a narrower pane, never a bare `minmax(Npx, 1fr)`; `.seg` and `.rows` already hold themselves to a phone's line, so a new filter strip or aligned list should reuse them rather than hand-sizing its own.
+
 Treat these as changes of composition, not scaled-down desktop. Test long names, wide tables, diagrams, menus, sticky headers, and open overlays. At phone width, preserve the central question and next action even when audit detail requires horizontal scroll or a secondary surface.
 
 ## Check for these design failures

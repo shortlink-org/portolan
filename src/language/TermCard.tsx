@@ -116,14 +116,14 @@ export function TermCard({
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="mono text-faint hover:text-accent"
+            className="mono min-w-0 text-faint [overflow-wrap:anywhere] hover:text-accent"
           >
             {term.source}
           </a>
         ) : (
           /* Not a link, but still the answer to "where do I change this?" -
              the same way every unlinkable path in this app stays text. */
-          <span className="mono text-faint">{term.source}</span>
+          <span className="mono min-w-0 text-faint [overflow-wrap:anywhere]">{term.source}</span>
         )}
         <RowActions copy={term.id} label={term.name} />
       </div>

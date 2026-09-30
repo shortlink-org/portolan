@@ -262,7 +262,7 @@ export function FlowIndex() {
         </div>
       ) : (
         <div
-          className="mt-section grid gap-grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
+          className="mt-section card-grid [--card-min:380px]"
           data-nav-list
         >
           <DraftFlowCards />

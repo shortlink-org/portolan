@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildEdgeLabelCss,
   buildFrameCss,
   buildFocusedPathCss,
   buildWalkthroughCss,
@@ -72,5 +73,18 @@ describe("buildWalkthroughCss", () => {
     expect(css).toContain(".top_0");
     expect(css).toContain(".left_0");
     expect(css).toContain(".h_100cqh");
+  });
+});
+
+describe("buildEdgeLabelCss", () => {
+  const css = buildEdgeLabelCss();
+
+  it("touches only the light theme, whose tinted chips carried pale text", () => {
+    expect(css.startsWith("[data-mantine-color-scheme=light] .likec4-root")).toBe(true);
+  });
+
+  it("derives the ink from the chip rather than listing colours", () => {
+    expect(css).toContain("--xy-edge-label-color: oklch(from var(--likec4-palette-relation-label-bg)");
+    expect(css).not.toContain("data-likec4-color");
   });
 });

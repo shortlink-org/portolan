@@ -141,7 +141,10 @@ export function TopBar({
           <Wide onOpenHelp={onOpenHelp} />
         )}
 
-        <BuildStamp compact={phone} />
+        {/* The stamp folds below the narrow breakpoint, not only on the
+            phone: between the two the controls wrap, and the full stamp was
+            the one control left for a third row of chrome of its own. */}
+        <BuildStamp compact={phone || narrow} />
       </div>
     </header>
   );
@@ -157,10 +160,19 @@ function CatalogPicker({ compact }: { compact: boolean }) {
     window.location.assign(next);
   };
 
+  // On the phone the picker folds to its icon like the branch and the drafts
+  // beside it. Showing the profile's name took the width the breadcrumbs
+  // needed and left the row saying which catalog but not where in it. The
+  // native select still covers the icon, so a tap opens the system list and
+  // the name is one tap away, as the branch's is.
   return (
     <label
-      className="mono flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2 py-1.5 text-muted hover:border-line-strong hover:text-ink"
-      title="Catalog profile"
+      className={
+        compact
+          ? "relative flex size-8 shrink-0 items-center justify-center rounded-control border border-line text-muted hover:border-line-strong hover:text-ink has-[select:focus-visible]:border-accent has-[select:focus-visible]:text-accent"
+          : "mono flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2 py-1.5 text-muted hover:border-line-strong hover:text-ink"
+      }
+      title={compact ? `Catalog profile: ${activeCatalogProfile.title}` : "Catalog profile"}
     >
       <Layers3 size={16} aria-hidden className="shrink-0" />
       <span className="sr-only">Catalog</span>
@@ -168,7 +180,7 @@ function CatalogPicker({ compact }: { compact: boolean }) {
         aria-label="Catalog profile"
         value={activeCatalogProfile.id}
         onChange={(event) => change(event.target.value)}
-        className={`bg-transparent text-ink outline-none ${compact ? "max-w-20" : "max-w-36"}`}
+        className={compact ? "absolute inset-0 cursor-pointer opacity-0" : "max-w-36 bg-transparent text-ink outline-none"}
       >
         {catalogProfiles.map((profile) => (
           <option key={profile.id} value={profile.id}>

@@ -95,6 +95,27 @@ export function buildFocusedPathCss(
   return `${selectors.join(",\n")} {\n  display: none;\n}`;
 }
 
+/**
+ * Edge labels in the light theme, given ink that reads on their chip.
+ *
+ * LikeC4 paints a label's chip in the relation's own colour at 65% over the
+ * canvas and, in the light theme, sets the text a step lighter than the
+ * colour's label tone. For its built-in palette the chip is dark and the text
+ * pale, which reads. For the colours portolan declares - status and context -
+ * the chip is a mid tone and the near-white text on it falls under 2:1: the
+ * `npm run gen` label on a declared (amber) edge is barely there. So the ink
+ * is chosen from the chip rather than listed per colour: white on a dark chip,
+ * near-black on a light one. The dark theme's labels already read and are left
+ * alone.
+ */
+export function buildEdgeLabelCss(): string {
+  return [
+    "[data-mantine-color-scheme=light] .likec4-root .likec4-edge-label-container {",
+    "  --xy-edge-label-color: oklch(from var(--likec4-palette-relation-label-bg) clamp(0.2, (0.45 - l) * 1000, 1) 0 0);",
+    "}",
+  ].join("\n");
+}
+
 /** CSS string escape for an attribute value. */
 function cssQuote(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');

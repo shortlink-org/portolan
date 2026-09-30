@@ -7,7 +7,11 @@ import { ReactLikeC4, RenderIcon, isLikeC4ViewId } from "./bundle";
 import { useTheme } from "../app/theme";
 import { Ident } from "../components/Ident";
 import { buildHighlightCss } from "./highlight-css";
+import { buildEdgeLabelCss } from "./frame-theme";
 import type { Size } from "./canvas-viewport";
+
+/** Every canvas carries it; it scopes itself to the light theme. */
+const EDGE_LABEL_CSS = buildEdgeLabelCss();
 
 export interface InteractiveViewProps {
   viewId: string;
@@ -102,7 +106,7 @@ export function InteractiveView({
       nodeKey ? nodeKey.split(" ") : [],
       edgeKey ? edgeKey.split(" ") : [],
     );
-    return [extraCss, rules].filter(Boolean).join("\n");
+    return [EDGE_LABEL_CSS, extraCss, rules].filter(Boolean).join("\n");
   }, [nodeKey, edgeKey, extraCss]);
 
   const onInitialized = useCallback(

@@ -251,7 +251,7 @@ export function Overview() {
       <section id={OVERVIEW_ANCHOR.contexts} className="mt-section">
         <SectionTitle anchor={OVERVIEW_ANCHOR.contexts}>Contexts</SectionTitle>
         <div
-          className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
+          className="card-grid [--card-min:300px]"
           data-nav-list
         >
           {catalog.contexts.map((context, i) => {
