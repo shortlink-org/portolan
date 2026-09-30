@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 )
 
 // What a use case can publish, read off the domain calls it makes.
@@ -25,27 +26,42 @@ import (
 // case only decides whether to run the method that names it - so the operation
 // emits what it reaches, whether or not a branch keeps the result.
 //
-// Calls are matched by name: a root method by its name on any receiver, a
-// domain function through the import that names the domain package. A
-// repository method that happens to share a name with an emitting root method
-// is read as that method; the names in a domain package are chosen to say what
-// the aggregate does, and the collision is rare enough to take.
+// A domain function is matched through the import that names the domain
+// package. A root method is matched by the type of what it is called on, as
+// the declarations say it - a parameter, a field, a local assigned from a
+// constructor or from the repository port's result: `l.Fail()` on a
+// *lockout.Lockout is the root's Fail, and the same name on another
+// aggregate's root is that aggregate's business. When the declarations do not
+// say (an interface, a value from outside the tree), the name decides, unless
+// another type of a domain package declares a method of that name too: then
+// the call could be either, and it is left out rather than cross-attributed.
 type emitters struct {
 	methods map[string][]string // root method -> event ids
 	funcs   map[string][]string // package function -> event ids
 	events  map[string]string   // event type name -> event id
 	order   map[string]int      // event id -> position in the aggregate
 	pkgName string              // what an unaliased import of the domain is called
+	types   *typeInfo           // the tree's declarations; nil for a lone file
+	root    string              // the root's type key; empty without types
+	rivals  map[string]bool     // root method names another domain type declares
 }
 
-// domainEmitters reads the emitting functions of one domain package.
-func domainEmitters(domain *pkg, root string, events []catalog.Event) emitters {
+// domainEmitters reads the emitting functions of one domain package. domains
+// is the import path of every domain package in the service, the root's own
+// among them; a method of the same name on another type in one of them
+// makes a call on an untyped receiver ambiguous.
+func domainEmitters(domain *pkg, root string, events []catalog.Event, domains ...string) emitters {
 	e := emitters{
 		methods: map[string][]string{},
 		funcs:   map[string][]string{},
 		events:  map[string]string{},
 		order:   map[string]int{},
 		pkgName: domain.name,
+		types:   domain.types(),
+		rivals:  map[string]bool{},
+	}
+	if e.types != nil && len(domain.files) > 0 {
+		e.root = e.types.importPath(domain.files[0]) + "." + root
 	}
 	for i, ev := range events {
 		e.events[ev.Name] = ev.ID
@@ -135,8 +151,41 @@ func domainEmitters(domain *pkg, root string, events []catalog.Event) emitters {
 			e.funcs[k[2:]] = ids
 		}
 	}
+	if e.types != nil && e.root != "" {
+		for name := range e.methods {
+			for _, fn := range e.types.ByName[name] {
+				if fn.Receiver != e.root && withinAny(fn.File.Pkg, domains) {
+					e.rivals[name] = true
+				}
+			}
+		}
+	}
 
 	return e
+}
+
+// withinAny is whether an import path is one of these packages or below one.
+func withinAny(importPath string, packages []string) bool {
+	for _, p := range packages {
+		if importPath == p || strings.HasPrefix(importPath, p+"/") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// onRoot is whether a call of a root method's name, read inside fn, is on
+// the root: by the receiver's declared type when there is one, by the name
+// when no rival declares it otherwise.
+func (e emitters) onRoot(call *ast.SelectorExpr, fn *goscan.Function) bool {
+	if receiver := e.types.typeOf(call.X, fn); e.types.concrete(receiver) {
+		if method := e.types.Method(receiver, call.Sel.Name); method != nil {
+			return method.Receiver == e.root
+		}
+	}
+
+	return !e.rivals[call.Sel.Name]
 }
 
 // resultEvents are the events a function's results are typed as.
@@ -209,28 +258,37 @@ func (e emitters) useCaseEmits(useCase *pkg, domainPath string) []string {
 			}
 			domainImports[name] = true
 		}
-		ast.Inspect(file, func(x ast.Node) bool {
-			switch x := x.(type) {
-			case *ast.CompositeLit:
-				if id := e.literalEvent(x); id != "" {
-					found[id] = true
-				}
-			case *ast.CallExpr:
-				f, ok := x.Fun.(*ast.SelectorExpr)
-				if !ok {
-					return true
-				}
-				ids := e.methods[f.Sel.Name]
-				if base, ok := f.X.(*ast.Ident); ok && domainImports[base.Name] {
-					ids = e.funcs[f.Sel.Name]
-				}
-				for _, id := range ids {
-					found[id] = true
-				}
+		for _, decl := range file.Decls {
+			// A call is typed in the function it is written in.
+			var fn *goscan.Function
+			if declared, ok := decl.(*ast.FuncDecl); ok {
+				fn = e.types.function(declared)
 			}
+			ast.Inspect(decl, func(x ast.Node) bool {
+				switch x := x.(type) {
+				case *ast.CompositeLit:
+					if id := e.literalEvent(x); id != "" {
+						found[id] = true
+					}
+				case *ast.CallExpr:
+					f, ok := x.Fun.(*ast.SelectorExpr)
+					if !ok {
+						return true
+					}
+					var ids []string
+					if base, ok := f.X.(*ast.Ident); ok && domainImports[base.Name] {
+						ids = e.funcs[f.Sel.Name]
+					} else if len(e.methods[f.Sel.Name]) > 0 && e.onRoot(f, fn) {
+						ids = e.methods[f.Sel.Name]
+					}
+					for _, id := range ids {
+						found[id] = true
+					}
+				}
 
-			return true
-		})
+				return true
+			})
+		}
 	}
 	if len(found) == 0 {
 		return nil
@@ -246,7 +304,15 @@ func linkEmits(root, aggregateName string, layout sourceLayout, aggregate *catal
 	if err != nil {
 		return
 	}
-	e := domainEmitters(domain, aggregate.Root, aggregate.Events)
+	var domains []string
+	if types := domain.types(); types != nil {
+		for _, name := range sortedKeys(layout.domains) {
+			if other, err := parsePkg(root, layout.domains[name], layout.index); err == nil && len(other.files) > 0 {
+				domains = append(domains, types.importPath(other.files[0]))
+			}
+		}
+	}
+	e := domainEmitters(domain, aggregate.Root, aggregate.Events, domains...)
 	for i := range aggregate.Operations {
 		dir := layout.useCases[aggregateName+"/"+useCaseName(layout, aggregateName, aggregate.Operations[i].ID)]
 		if dir == "" {

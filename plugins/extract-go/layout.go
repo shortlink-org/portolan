@@ -112,7 +112,9 @@ func discoverLayout(root string, indexes ...*goscan.Tree) sourceLayout {
 		if isTransportPackage(parts, "http") {
 			layout.http = append(layout.http, dir)
 		}
-		if isTransportPackage(parts, "grpc") {
+		// A gRPC handler package is where the transport convention puts one,
+		// or wherever a type the generated code calls a server lives.
+		if isTransportPackage(parts, "grpc") || servesGRPC(root, dir, index) {
 			layout.grpc = append(layout.grpc, dir)
 		}
 	}
@@ -122,6 +124,12 @@ func discoverLayout(root string, indexes ...*goscan.Tree) sourceLayout {
 	sort.Strings(layout.grpc)
 
 	return layout
+}
+
+func servesGRPC(root, dir string, index *goscan.Tree) bool {
+	pkg, err := parsePkg(root, dir, index)
+
+	return err == nil && len(grpcServers(pkg)) > 0
 }
 
 func hasStructNamed(pkg *pkg, name string) bool {

@@ -730,28 +730,25 @@ func httpRouterNames(p *pkg, fn *ast.FuncDecl) map[string]string {
 	return out
 }
 
+// grpcServiceEndpoints is every rpc a server implementation in p answers:
+// a type the generated code says is a server (grpcserver.go), wherever the
+// package sits, and each of its methods the generated client names.
 func grpcServiceEndpoints(p *pkg, dir string) []serviceEndpoint {
-	base := path.Base(dir)
-	if base != "rpc" && base != "grpc" {
+	servers := grpcServers(p)
+	if len(servers) == 0 {
 		return nil
 	}
-	clients, _ := readClients(p)
+	clients := map[*pkg]map[string]client{}
 	var out []serviceEndpoint
 	for _, decl := range allMethods(p) {
-		if !strings.HasSuffix(decl.recvType, "Server") || !isRpcHandler(decl.fn) {
+		server, ok := servers[decl.recvType]
+		if !ok || !isRpcHandler(decl.fn) {
 			continue
 		}
-		serverStem := grpcServerStem(p, decl.recvType)
-		id := ""
-		for clientName, client := range clients {
-			if strings.TrimSuffix(clientName, "Client") != serverStem {
-				continue
-			}
-			if candidate := client.methods[decl.fn.Name.Name]; candidate != "" {
-				id = candidate
-				break
-			}
+		if clients[server.generated] == nil {
+			clients[server.generated], _ = readClients(server.generated)
 		}
+		id := clients[server.generated][server.stem+"Client"].methods[decl.fn.Name.Name]
 		if id == "" {
 			continue
 		}
@@ -762,24 +759,6 @@ func grpcServiceEndpoints(p *pkg, dir string) []serviceEndpoint {
 		})
 	}
 	return out
-}
-
-func grpcServerStem(p *pkg, recv string) string {
-	for _, decl := range p.structs() {
-		if decl.name != recv || decl.fields == nil || decl.fields.Fields == nil {
-			continue
-		}
-		for _, field := range decl.fields.Fields.List {
-			if len(field.Names) != 0 {
-				continue
-			}
-			name := strings.TrimPrefix(typesString(field.Type), "*")
-			if strings.HasPrefix(name, "Unimplemented") && strings.HasSuffix(name, "Server") {
-				return strings.TrimSuffix(strings.TrimPrefix(name, "Unimplemented"), "Server")
-			}
-		}
-	}
-	return strings.TrimSuffix(recv, "Server")
 }
 
 func typesString(expr ast.Expr) string {

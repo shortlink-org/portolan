@@ -6,4 +6,4 @@ type Placed struct {
 	OrderID string
 }
 
-func (Placed) Name() string { return "order.Placed" }
+func (Placed) Name() string { return TopicPlaced }

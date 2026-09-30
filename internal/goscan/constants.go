@@ -36,7 +36,8 @@ func (t *Tree) indexConstants() {
 }
 
 // StringOf is the string an expression is worth: a literal; a constant of the
-// tree, by its own name or through an import; or what Foreign says about a
+// tree, by its own name or through an import; a concatenation of those, the
+// way a topic is built from a prefix constant; or what Foreign says about a
 // name from outside. Empty when it is none of those. visiting is the chain of
 // constants being followed, so one defined in terms of itself ends rather
 // than recurses; nil to start.
@@ -61,6 +62,20 @@ func (t *Tree) StringOf(expr ast.Expr, file *File, visiting map[string]bool) str
 			}
 		}
 		return t.ConstantString(imported+"."+value.Sel.Name, visiting)
+	case *ast.BinaryExpr:
+		// Both halves or nothing: half a name is not a name.
+		if value.Op != token.ADD {
+			return ""
+		}
+		left := t.StringOf(value.X, file, visiting)
+		if left == "" {
+			return ""
+		}
+		right := t.StringOf(value.Y, file, visiting)
+		if right == "" {
+			return ""
+		}
+		return left + right
 	}
 	return ""
 }

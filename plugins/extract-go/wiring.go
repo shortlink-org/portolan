@@ -95,7 +95,7 @@ func readPortBindings(root string, layouts ...sourceLayout) (map[string]string, 
 				}
 
 				providers[port] = append(providers[port], provider{
-					targets: bound, methods: methodBindings(file, fn, useCases),
+					targets: bound, methods: methodBindings(pkg, file, fn, useCases, layouts...),
 				})
 			}
 		}
@@ -144,10 +144,15 @@ func readPortBindings(root string, layouts ...sourceLayout) (map[string]string, 
 // methodBindings reads which use case each method of a provider's adapter
 // reaches: the struct the provider returns, its fields' types, and the field
 // whose Handle each method calls. Empty when any of those cannot be read.
-func methodBindings(file *ast.File, provider *ast.FuncDecl, useCases map[string]string) map[string]string {
+//
+// The adapter is read off the file when the provider builds it there as a
+// literal; otherwise off the tree's declarations, which also know `new(T)`,
+// a local holding either, and a constructor - `adapter.NewLockout(...)` -
+// whose declared result, or whose own return, is a struct of the tree.
+func methodBindings(p *pkg, file *ast.File, provider *ast.FuncDecl, useCases map[string]string, layouts ...sourceLayout) map[string]string {
 	adapter := returnedType(provider)
 	if adapter == "" {
-		return nil
+		return typedMethodBindings(p, provider, layouts...)
 	}
 
 	fields := adapterFields(file, adapter)
@@ -158,13 +163,108 @@ func methodBindings(file *ast.File, provider *ast.FuncDecl, useCases map[string]
 			out[method] = useCase
 		}
 	}
+	if len(out) == 0 {
+		return typedMethodBindings(p, provider, layouts...)
+	}
 
 	return out
 }
 
+// typedMethodBindings is methodBindings read through the tree's
+// declarations: the adapter wherever it is declared, its fields by type key,
+// and its methods wherever they are written.
+func typedMethodBindings(p *pkg, provider *ast.FuncDecl, layouts ...sourceLayout) map[string]string {
+	info := p.types()
+	fn := info.function(provider)
+	if fn == nil {
+		return nil
+	}
+	adapter := info.returnedStruct(fn, 0)
+	if adapter == "" {
+		return nil
+	}
+	fields := info.Structs[adapter].Fields
+	out := map[string]string{}
+	for _, method := range info.Methods[adapter] {
+		handled := handledFields(method.Decl)
+		if len(handled) != 1 {
+			continue
+		}
+		if useCase, ok := useCaseOfType(fields[sortedKeys(handled)[0]], layouts...); ok {
+			out[method.Name] = useCase
+		}
+	}
+
+	return out
+}
+
+// returnedStruct is the one struct of the tree every return of fn hands
+// back: read off the returned expression's type, or - when that is a port
+// interface - off what the constructor it calls returns, one call deep.
+func (t *typeInfo) returnedStruct(fn *goscan.Function, depth int) string {
+	if fn == nil || fn.Decl.Body == nil {
+		return ""
+	}
+	found := map[string]bool{}
+	unknown := false
+	ast.Inspect(fn.Decl.Body, func(n ast.Node) bool {
+		if _, closure := n.(*ast.FuncLit); closure || unknown {
+			return false
+		}
+		ret, ok := n.(*ast.ReturnStmt)
+		if !ok {
+			return true
+		}
+		if len(ret.Results) != 1 {
+			unknown = true
+			return false
+		}
+		key := t.typeOf(ret.Results[0], fn)
+		if t.Structs[key] == nil && depth < 1 {
+			if call, ok := goscan.Unwrap(ret.Results[0]).(*ast.CallExpr); ok {
+				if callees := t.Callees(call, fn); len(callees) == 1 {
+					key = t.returnedStruct(callees[0], depth+1)
+				}
+			}
+		}
+		if t.Structs[key] == nil {
+			unknown = true
+			return false
+		}
+		found[key] = true
+		return false
+	})
+	if unknown || len(found) != 1 {
+		return ""
+	}
+
+	return sortedKeys(found)[0]
+}
+
+// useCaseOfType reads a field's type key, "<import path>.UseCase", back to
+// the discovered "<aggregate>/<use case>" it names.
+func useCaseOfType(key string, layouts ...sourceLayout) (string, bool) {
+	importPath, ok := strings.CutSuffix(key, ".UseCase")
+	if !ok {
+		return "", false
+	}
+	aggregate, name, ok := useCaseImport(importPath)
+	if !ok {
+		return "", false
+	}
+	useCase := aggregate + "/" + name
+	if len(layouts) > 0 {
+		if _, discovered := layouts[0].useCases[useCase]; !discovered {
+			return "", false
+		}
+	}
+
+	return useCase, true
+}
+
 // returnedType names the struct a provider returns as a composite literal,
 // `return lockoutAdapter{...}` or `return &lockoutAdapter{...}`. Anything else
-// - a call, a variable - is not read.
+// - a call, a variable - is left to typedMethodBindings.
 func returnedType(fn *ast.FuncDecl) string {
 	if fn.Body == nil {
 		return ""
@@ -243,42 +343,48 @@ func handleCalls(file *ast.File, typeName string) map[string]string {
 		if !ok || fn.Recv == nil || fn.Body == nil || receiverTypeName(fn) != typeName {
 			continue
 		}
-		recv := receiverIdent(fn)
-		if recv == "" {
-			continue
-		}
-
-		fields := map[string]bool{}
-		ast.Inspect(fn.Body, func(n ast.Node) bool {
-			if _, closure := n.(*ast.FuncLit); closure {
-				return false
-			}
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "Handle" {
-				return true
-			}
-			field, ok := sel.X.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			base, ok := field.X.(*ast.Ident)
-			if !ok || base.Name != recv {
-				return true
-			}
-			fields[field.Sel.Name] = true
-
-			return true
-		})
-		if len(fields) == 1 {
+		if fields := handledFields(fn); len(fields) == 1 {
 			out[fn.Name.Name] = sortedKeys(fields)[0]
 		}
 	}
 
 	return out
+}
+
+// handledFields is every field of the receiver whose Handle a method calls.
+func handledFields(fn *ast.FuncDecl) map[string]bool {
+	recv := receiverIdent(fn)
+	if recv == "" || fn.Body == nil {
+		return nil
+	}
+
+	fields := map[string]bool{}
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		if _, closure := n.(*ast.FuncLit); closure {
+			return false
+		}
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "Handle" {
+			return true
+		}
+		field, ok := sel.X.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		base, ok := field.X.(*ast.Ident)
+		if !ok || base.Name != recv {
+			return true
+		}
+		fields[field.Sel.Name] = true
+
+		return true
+	})
+
+	return fields
 }
 
 // receiverTypeName reads `lockoutAdapter` off `(l lockoutAdapter)` and
