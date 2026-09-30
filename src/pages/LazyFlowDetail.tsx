@@ -2,6 +2,7 @@ import { lazy } from "react";
 import type { ComponentProps } from "react";
 import type { FlowDetail as LoadedFlowDetail } from "./FlowDetail";
 import { SuspenseReveal } from "../components/SuspenseReveal";
+import { PageLoading } from "../app/PageLoading";
 
 // A flow page is LikeC4 and elk end to end, several megabytes the pages
 // without a flow never use. Every place that shows one goes through here, so
@@ -16,7 +17,7 @@ export function preloadFlowDetail(): void {
 
 export function FlowDetail(props: ComponentProps<typeof LoadedFlowDetail>) {
   return (
-    <SuspenseReveal fallback={<div className="h-full p-gutter text-muted">Loading the flow…</div>}>
+    <SuspenseReveal fallback={<PageLoading diagram label="loading the flow" />}>
       <Loaded {...props} />
     </SuspenseReveal>
   );

@@ -1,6 +1,7 @@
 import type { Catalog } from "./catalog";
 import { workItemTargetExists } from "./lib/work-items.ts";
 import { annotationTargetExists } from "./lib/annotations.mjs";
+import { globToRegExp, matchesSourceGlobs } from "./lib/source-glob.ts";
 
 export interface CatalogProfile {
   id: string;
@@ -56,28 +57,10 @@ export function catalogProfileNamed(
   return profiles.find((profile) => profile.id === id) ?? defaultCatalogProfile(manifest);
 }
 
-/** Match the source globs used by the manifest without bringing a Node globber into the browser. */
-export function globToRegExp(glob: string): RegExp {
-  let source = "^";
-  for (let i = 0; i < glob.length; i++) {
-    const char = glob[i]!;
-    if (char !== "*") {
-      source += /[\\^$.*+?()[\]{}|]/.test(char) ? `\\${char}` : char;
-      continue;
-    }
-    if (glob[i + 1] === "*") {
-      i++;
-      source += glob[i + 1] === "/" ? "(?:.*/)?" : ".*";
-      if (glob[i + 1] === "/") i++;
-    } else {
-      source += "[^/]*";
-    }
-  }
-  return new RegExp(`${source}$`);
-}
+export { globToRegExp };
 
 export function profileIncludesSource(profile: CatalogProfile, path: string): boolean {
-  return profile.sources.some((pattern) => globToRegExp(pattern).test(path));
+  return matchesSourceGlobs(profile.sources, path);
 }
 
 /**

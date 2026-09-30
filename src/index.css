@@ -1683,6 +1683,11 @@
 .catalog-loading {
   animation: fade-in var(--dur-narrative) var(--ease-out) 200ms both;
 }
+/* A page's chunk on its way (src/app/PageLoading.tsx): late for the same
+   reason, and on the page clock, since it stands where the page will be. */
+.page-loading {
+  animation: fade-in var(--dur-page) var(--ease-out) 150ms both;
+}
 .catalog-loading-rhumb {
   stroke-dasharray: 1;
   animation: rhumb-draw 900ms var(--ease-out) both;
