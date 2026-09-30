@@ -107,6 +107,8 @@
               "debezium",
               "go-nats",
               "go-sqs",
+              "go-kafka",
+              "go-amqp",
               "go-eventgrid",
               "terraform",
               "k8s",
@@ -558,6 +560,44 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.go-sqs"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "go-kafka"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.go-kafka"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "go-amqp"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.go-amqp"
                 }
               }
             }
@@ -3404,6 +3444,56 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "sqs.json"
+        }
+      }
+    },
+    "options.go-kafka": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "ledger"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "kafka.json"
+        }
+      }
+    },
+    "options.go-amqp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "ledger"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "amqp.json"
         }
       }
     },

@@ -179,6 +179,8 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   debezium: { label: "Debezium", icon: { lucide: "database" } },
   "go-nats": { label: "NATS", icon: { brand: "NATS" } },
   "go-sqs": { label: "SQS", icon: { lucide: "inbox" } },
+  "go-kafka": { label: "Kafka (Go)", icon: { brand: "Kafka" } },
+  "go-amqp": { label: "RabbitMQ", icon: { brand: "RabbitMQ" } },
   "go-eventgrid": { label: "Azure Event Grid", icon: { lucide: "message" } },
   terraform: { label: "Terraform", icon: { brand: "Terraform" } },
   k8s: { label: "Kubernetes manifests", icon: { brand: "Kubernetes" } },

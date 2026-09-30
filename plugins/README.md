@@ -283,6 +283,27 @@ match it. A port that takes exactly one other string beside the queue names
 the message; a direct call names none. `DeleteMessage`, visibility changes and
 `CreateQueue` say nothing about direction and are not read; SNS is not read.
 
+`extract-go-kafka` reads Kafka topics from sarama (IBM and Shopify paths),
+segmentio/kafka-go, confluent-kafka-go and franz-go. A client struct that
+carries a topic - `sarama.ProducerMessage`, `kafka.Writer`, `kafka.Message`,
+`kafka.ReaderConfig`, `kgo.Record`, confluent's `TopicPartition` inside a
+`kafka.Message` - is the declaration wherever it is built; consumer calls are
+known by the type they are made on (`sarama.ConsumerGroup.Consume`,
+`Consumer.ConsumePartition`, confluent `Consumer.Subscribe`/`SubscribeTopics`,
+`kgo.ConsumeTopics`, `Client.AddConsumeTopics`). Topics and lists of topics
+are followed like a NATS subject, through constructors and callers, and an
+unresolved one is a warning. Channels are `message` streams with protocol
+`kafka`, the shape `extract-python-kafka` gives a topic, with the consumer
+group in the doc. See `extract-go-kafka/README.md`.
+
+`extract-go-amqp` reads RabbitMQ through amqp091-go and streadway/amqp:
+publishes, consumes, `QueueBind`, `ExchangeDeclare` and `q.Name` of a
+`QueueDeclare`. The channel is the string the broker routes by - the routing
+key on a direct or topic exchange, the exchange when it is fanout or headers
+or the publish has no key, the queue for the default exchange - and a consumer
+lands on it through its queue's bindings, or on its queue when nothing binds
+it. `extract-go-amqp/README.md` says why the exchange alone is not the address.
+
 `extract-go-eventgrid` reads publishers built with the Azure SDK for Go. For
 basic and custom topics it recognizes `azeventgrid.Client.PublishEvents`,
 `PublishCloudEvents` and `PublishCustomEventEvents`; for Event Grid namespace
