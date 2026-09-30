@@ -246,22 +246,48 @@ export function projectsTouched(projects, paths) {
  */
 function branchesIn(repo, owner) {
   const main = mainRef(repo);
-  const names = new Set();
-  for (const line of git(repo, ["for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes/origin"]).split("\n")) {
-    const name = line.startsWith("refs/heads/") ? line.slice("refs/heads/".length) : line.startsWith("refs/remotes/origin/") ? line.slice("refs/remotes/origin/".length) : "";
-    if (name && name !== "HEAD" && name !== "main" && name !== "master") names.add(name);
-  }
+  const refs = refsIn(repo, main);
   const branches = [];
-  for (const branch of [...names].sort()) {
-    const tip = tipOf(repo, branch);
-    if (!tip) continue;
-    const base = git(repo, ["merge-base", main, tip], { allowFailure: true });
-    if (!base || base === tip) continue;
-    const changed = git(repo, ["diff", "--name-only", base, tip]).split("\n").filter(Boolean);
-    const ahead = Number(git(repo, ["rev-list", "--count", `${base}..${tip}`]));
-    branches.push({ branch, tip, base, ahead, main, projects: owner(changed) });
+  for (const [branch, ref] of [...refs].sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))) {
+    // Main already has every commit of it: nothing to draft, and no reason to
+    // spend two more git processes finding that out.
+    if (ref.ahead === 0) continue;
+    const base = git(repo, ["merge-base", main, ref.tip], { allowFailure: true });
+    if (!base || base === ref.tip) continue;
+    const changed = git(repo, ["diff", "--name-only", base, ref.tip]).split("\n").filter(Boolean);
+    const ahead = ref.ahead ?? Number(git(repo, ["rev-list", "--count", `${base}..${ref.tip}`]));
+    branches.push({ branch, tip: ref.tip, base, ahead, main, date: ref.date, subject: ref.subject, projects: owner(changed) });
   }
   return { main, branches };
+}
+
+const REF_FIELDS = ["%(refname)", "%(objectname)", "%(committerdate:iso-strict)", "%(subject)"];
+
+/**
+ * Every branch of a repository with its tip, the date and subject of its last
+ * commit and how far it is ahead of main, from one `for-each-ref`: a service
+ * with 238 branches took three git processes a branch to list before, which
+ * was 14 seconds. A local branch wins over the remote's of the same name.
+ *
+ * `ahead-behind` is git 2.41; an older git refuses the field, and the count is
+ * then taken per branch as it used to be.
+ */
+function refsIn(repo, main) {
+  const list = (fields) => git(repo, ["for-each-ref", `--format=${fields.join("%00")}`, "refs/heads", "refs/remotes/origin"], { allowFailure: true });
+  const counted = list([...REF_FIELDS, `%(ahead-behind:${main})`]);
+  const out = counted ?? list(REF_FIELDS);
+  if (out === null) throw new Error(`git for-each-ref: could not list the branches of ${repo}`);
+  const refs = new Map();
+  for (const line of out.split("\n")) {
+    const [refname = "", tip = "", date = "", subject = "", aheadBehind] = line.split("\0");
+    const local = refname.startsWith("refs/heads/");
+    const name = local ? refname.slice("refs/heads/".length) : refname.startsWith("refs/remotes/origin/") ? refname.slice("refs/remotes/origin/".length) : "";
+    if (!name || name === "HEAD" || name === "main" || name === "master" || !tip) continue;
+    if (refs.has(name) && !local) continue;
+    const ahead = aheadBehind ? Number(aheadBehind.split(" ")[0]) : undefined;
+    refs.set(name, { tip, date, subject, ...(Number.isFinite(ahead) ? { ahead } : {}) });
+  }
+  return refs;
 }
 
 /**
