@@ -79,7 +79,7 @@ export function C4View({
   return (
     <div
       data-fullscreen
-      className="relative w-full overflow-hidden rounded-card border border-line bg-canvas shadow-xs"
+      className="@container relative w-full overflow-hidden rounded-card border border-line bg-canvas shadow-xs"
       style={{ height }}
     >
       {containers && layout?.id !== viewId ? <DiagramSkeleton /> : <InteractiveView
@@ -97,8 +97,11 @@ export function C4View({
       />}
       {containers && layout?.id === viewId && layout.error ? <p className="absolute bottom-3 left-3 bg-canvas px-3 py-2 text-sm">Using the default layout; container routing is unavailable.</p> : null}
       {/* LikeC4 refits on its own when the box changes size, so the button
-          needs no hook into the diagram. */}
-      <div className="seg seg-float absolute top-3 right-3 z-10">
+          needs no hook into the diagram. With LikeC4's own controls on, a
+          canvas narrower than its `sm` container (24rem) turns their panel
+          into a full-width bar along the top edge, and this group would sit
+          under it; there it steps down below the bar. */}
+      <div className={`seg seg-float absolute top-3 right-3 z-10 ${controls || containers ? "@max-sm:top-11" : ""}`}>
         {legend ? <LegendButton open={key.open} controls={key.id} onToggle={key.toggle} /> : null}
         <FullscreenButton />
       </div>
