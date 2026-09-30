@@ -8,6 +8,7 @@ import type { Adr, AdrCommit } from "../catalog";
 import { adrNumber } from "../lib/adr";
 import { Markdown } from "../components/Markdown";
 import { Ident } from "../components/Ident";
+import { Blank, CapabilityEmpty } from "../components/PageHeader";
 import {
   AdrNumber,
   AdrScopePill,
@@ -222,7 +223,21 @@ export function AdrDetail() {
           {/* Rendered exactly as written, mermaid fences included. No LikeC4
               view belongs here: a decision record must not redraw itself from
               a model that has moved on since it was taken. */}
-          <Markdown mermaid>{withoutLeadingTitle(adr.body)}</Markdown>
+          {withoutLeadingTitle(adr.body).trim() ? (
+            <Markdown mermaid>{withoutLeadingTitle(adr.body)}</Markdown>
+          ) : local ? (
+            <CapabilityEmpty
+              title="This record has no text yet"
+              actions={<Link className="product-primary" to={paths.editAdr(adr.slug)}><Pencil size={13} aria-hidden /> Write the decision</Link>}
+              signal={adr.source}
+            >
+              Only its title was read. Write down the context, the decision and its consequences; the text is saved to the record’s file.
+            </CapabilityEmpty>
+          ) : (
+            <Blank where={adr.source}>
+              This record has no text beyond its title yet. Its context, decision and consequences are read from the file below.
+            </Blank>
+          )}
         </div>
 
         {relatesToSomething(adr) ? (

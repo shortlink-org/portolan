@@ -1,6 +1,7 @@
 import { useDocumentTitle } from "../app/title";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { LoaderCircle } from "lucide-react";
 import { ctxStyle } from "../lib/context-color";
 import { PinButton } from "../app/pins";
 import type { PinKind } from "../lib/pins";
@@ -153,6 +154,20 @@ export function SectionTitle({
 
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty">{children}</div>;
+}
+
+/**
+ * What stands where an answer is on its way. It takes the place, and with
+ * `className` roughly the height, of the surface that will arrive, so a click
+ * never looks like it did nothing and the page does not jump when it lands.
+ */
+export function Loading({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div role="status" aria-live="polite" className={`empty flex items-start gap-2 ${className}`}>
+      <LoaderCircle size={14} aria-hidden className="mt-0.5 shrink-0 text-accent motion-safe:animate-spin" />
+      <span>{children}</span>
+    </div>
+  );
 }
 
 /**

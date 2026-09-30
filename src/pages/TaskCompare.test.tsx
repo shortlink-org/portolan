@@ -61,7 +61,8 @@ describe("a task's compare page", () => {
   });
 
   it("says so when no draft of the task is saved", async () => {
-    const { text } = await page([]);
+    const { container, text } = await page([]);
     expect(text()).toContain("No saved draft of ASUP-976");
+    expect(container.querySelector(".empty a[href='/drafts']")?.textContent).toBe("All branch drafts");
   });
 });

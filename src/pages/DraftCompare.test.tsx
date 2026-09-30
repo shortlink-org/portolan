@@ -76,4 +76,23 @@ describe("DraftCompare", () => {
     expect(container.querySelector(`[id="draft-${SESSION_STARTED}"]`)).toBeNull();
     expect(container.querySelector(`[id="draft-${LOGIN}"]`)).not.toBeNull();
   });
+
+  it("answers a branch with no saved draft, and leads back to the drafts", async () => {
+    const { container, text } = await compare([passkeys], "demo/deleted");
+    expect(container.querySelector(".empty")).not.toBeNull();
+    expect(text()).toContain("No saved draft of demo/deleted for auth.");
+    expect(container.querySelector('a[href="/drafts"]')?.textContent).toBe("All branch drafts");
+  });
+
+  it("says when the filters leave nothing of the draft", async () => {
+    const { container, text } = await compare([passkeys, audit], "demo/passkeys");
+    const filter = container.querySelector("input[placeholder='Filter entities']") as HTMLInputElement;
+    const { act } = await import("react");
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      setter.call(filter, "nothing-is-called-this");
+      filter.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(text()).toContain("No entities of this draft match these filters.");
+  });
 });

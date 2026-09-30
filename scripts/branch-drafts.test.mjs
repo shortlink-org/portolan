@@ -84,13 +84,16 @@ describe("branches and saved drafts", { timeout: 30_000 }, () => {
     const base = commit("examples/auth/a.go", "package a\n");
     git("branch", "merged");
     git("switch", "-q", "-c", "demo/passkeys");
-    const tip = commit("examples/auth/b.go", "package a\n");
+    const tip = commit("examples/auth/b.go", "package a\n", "Add passkeys");
     git("switch", "-q", "main");
     commit("README.md", "main moves on\n");
 
     const { main, branches, projects } = listBranches(root, { projects: PROJECTS });
     expect(main).toBe("main");
-    expect(branches).toEqual([{ branch: "demo/passkeys", tip, base, ahead: 1, main: "main", projects: ["auth"] }]);
+    // The last commit's date and subject come with the branch, for a picker
+    // that orders by the one and shows the other.
+    const date = git("log", "-1", "--format=%cI", tip);
+    expect(branches).toEqual([{ branch: "demo/passkeys", tip, base, ahead: 1, main: "main", date, subject: "Add passkeys", projects: ["auth"] }]);
     expect(projects.map((project) => project.id)).toEqual(["portolan", "auth", "cart"]);
   });
 
@@ -245,9 +248,9 @@ describe("a project vendored from another repository", { timeout: 30_000 }, () =
     // repository it is in.
     expect(main).toBe("main");
     expect(branches).toEqual([
-      { branch: "ASUP-976", tip, base, ahead: 1, main: "master", projects: ["aviacore"] },
+      { branch: "ASUP-976", tip, base, ahead: 1, main: "master", date: expect.any(String), subject: "internal/app/b.go", projects: ["aviacore"] },
       // Outside the paths the snapshot takes: nothing in the catalog to draft.
-      { branch: "chore/ci", tip: expect.any(String), base, ahead: 1, main: "master", projects: [] },
+      { branch: "chore/ci", tip: expect.any(String), base, ahead: 1, main: "master", date: expect.any(String), subject: ".gitlab-ci.yml", projects: [] },
     ]);
   });
 

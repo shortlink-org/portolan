@@ -93,6 +93,10 @@ export interface BranchChoice {
   ahead: number;
   /** The main the branch is ahead of - a cloned project's own, not this repository's. */
   main?: string;
+  /** When the branch's last commit was made (committer date, ISO). */
+  date?: string;
+  /** The subject line of the branch's last commit. */
+  subject?: string;
 }
 
 export function draftKey(draft: { project: string; branch: string }): string {

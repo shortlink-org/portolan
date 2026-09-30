@@ -5,8 +5,11 @@ import { AlertTriangle, Check, CircleSlash, ExternalLink, GitBranch, GitCompare,
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useDocumentTitle } from "../app/title";
+import { Blank, CapabilityEmpty, Empty } from "../components/PageHeader";
 import { relativeTime } from "../lib/format";
 import { useToastStore } from "../app/toast";
+import { BranchPicker, BranchPickerLoading } from "../drafts/BranchPicker";
+import { defaultBranch } from "../drafts/branch-picker";
 import { draftKey, short, taskCounts, tasksOf } from "../drafts/model";
 import type { BranchChoice, Draft, DraftTask } from "../drafts/model";
 import { counts, useDrafts } from "../drafts/store";
@@ -18,6 +21,9 @@ function choiceFor(draft: Draft): BranchChoice {
 }
 
 const message = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+
+/** Where saved drafts live in the repository, as scripts/branch-drafts.mjs writes them. */
+const DRAFTS_DIR = "portolan-drafts";
 
 /**
  * When the project's clone last heard from its remote. Dev never fetches by
@@ -148,7 +154,8 @@ export function Drafts() {
               <AlertTriangle size={12} aria-hidden /> {attention} need attention
             </span>
           ) : null}
-          <div className="mono ml-auto flex overflow-hidden rounded-control border border-line text-xs">
+          {/* Grouping nothing does nothing: the toggle waits for a draft. */}
+          <div className={`mono ml-auto overflow-hidden rounded-control border border-line text-xs ${sorted.length > 0 ? "flex" : "hidden"}`}>
             {(["task", "project"] as const).map((value) => (
               <button
                 key={value}
@@ -163,50 +170,57 @@ export function Drafts() {
           </div>
         </div>
 
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="label border-b border-line">
-                <th className="py-2 pr-3 pl-2 font-normal">show</th>
-                <th className="py-2 pr-3 font-normal">project</th>
-                <th className="py-2 pr-3 font-normal">branch</th>
-                <th className="py-2 pr-3 font-normal">changes</th>
-                <th className="py-2 pr-3 font-normal">base → tip</th>
-                <th className="py-2 pr-3 font-normal">saved</th>
-                <th className="py-2 pr-2 font-normal" />
-              </tr>
-            </thead>
-            <tbody>
-              {grouping === "task"
-                ? tasks.map((task) =>
-                    task.drafts.length === 1 ? (
-                      <DraftRow key={task.key} draft={task.drafts[0]!} indented={false} openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
-                    ) : (
-                      <FragmentRows key={task.key}>
-                        <TaskRow task={task} />
-                        {task.drafts.map((draft) => (
-                          <DraftRow key={draftKey(draft)} draft={draft} indented openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
-                        ))}
-                      </FragmentRows>
-                    ),
-                  )
-                : sorted.map((draft) => (
-                    <DraftRow key={draftKey(draft)} draft={draft} indented={false} openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
-                  ))}
-            </tbody>
-          </table>
-          {sorted.length === 0 ? (
-            <div className="empty mt-4">
-              <GitBranch size={22} aria-hidden className="mx-auto mb-2 text-muted" />
-              <div className="font-medium text-ink">No saved drafts</div>
-              <p className="mx-auto mt-1 max-w-prose text-muted">
-                {mode === "dev" ? "Pick a project and a branch above to see what the branch adds." : "Drafts are made with portolan dev and saved into the repository."}
-              </p>
-            </div>
-          ) : null}
-        </div>
+        {sorted.length > 0 ? (
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="label border-b border-line">
+                  <th className="py-2 pr-3 pl-2 font-normal">show</th>
+                  <th className="py-2 pr-3 font-normal">project</th>
+                  <th className="py-2 pr-3 font-normal">branch</th>
+                  <th className="py-2 pr-3 font-normal">changes</th>
+                  <th className="py-2 pr-3 font-normal">base → tip</th>
+                  <th className="py-2 pr-3 font-normal">saved</th>
+                  <th className="py-2 pr-2 font-normal" />
+                </tr>
+              </thead>
+              <tbody>
+                {grouping === "task"
+                  ? tasks.map((task) =>
+                      task.drafts.length === 1 ? (
+                        <DraftRow key={task.key} draft={task.drafts[0]!} indented={false} openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
+                      ) : (
+                        <FragmentRows key={task.key}>
+                          <TaskRow task={task} />
+                          {task.drafts.map((draft) => (
+                            <DraftRow key={draftKey(draft)} draft={draft} indented openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
+                          ))}
+                        </FragmentRows>
+                      ),
+                    )
+                  : sorted.map((draft) => (
+                      <DraftRow key={draftKey(draft)} draft={draft} indented={false} openLog={openLog} setOpenLog={setOpenLog} drop={drop} regenerate={regenerate} />
+                    ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          // Nothing saved yet: under dev the form above is the way to one, on
+          // a published site the repository is where one would come from.
+          <div className="mt-4">
+            {mode === "dev" ? (
+              <CapabilityEmpty title={outside > 0 ? "No draft of this catalog’s projects yet" : "No branch drafted yet"} signal={<>saved drafts are written to {DRAFTS_DIR}/</>}>
+                Pick a project and a branch under New draft above and generate it. The draft shows what the branch adds to the catalog, compared from the commit it branched off; save it to keep it on this page.
+              </CapabilityEmpty>
+            ) : (
+              <Blank where={`${DRAFTS_DIR}/`}>
+                This site was built with no saved branch drafts. A draft is made with <span className="mono text-ink">portolan dev</span> and saved into the repository, where the next build reads it.
+              </Blank>
+            )}
+          </div>
+        )}
 
-        {mode === "static" ? (
+        {mode === "static" && sorted.length > 0 ? (
           <p className="mono mt-4 text-xs text-muted">
             A published site shows the drafts saved in the repository. Drafts are made and deleted with <span className="text-ink">portolan dev</span>.
           </p>
@@ -273,12 +287,17 @@ function NewDraft() {
   const projects = (branches?.projects ?? []).filter((p) => branches?.branches.some((b) => b.projects.includes(p.id)));
   const [picked, setProject] = useState<string | null>(null);
   const project = picked ?? projects[0]?.id ?? "";
-  const choices: BranchChoice[] = (branches?.branches ?? [])
-    .filter((b) => b.projects.includes(project))
-    .map((b) => ({ project, branch: b.branch, tip: short(b.tip), ahead: b.ahead, main: b.main }));
+  const choices: BranchChoice[] = useMemo(
+    () =>
+      (branches?.branches ?? [])
+        .filter((b) => b.projects.includes(project))
+        .map((b) => ({ project, branch: b.branch, tip: short(b.tip), ahead: b.ahead, main: b.main, ...(b.date ? { date: b.date } : {}), ...(b.subject ? { subject: b.subject } : {}) })),
+    [branches, project],
+  );
   const [branch, setBranch] = useState("");
   const [showLog, setShowLog] = useState(false);
-  const choice = choices.find((b) => b.branch === branch) ?? choices[0];
+  const [now] = useState(() => new Date());
+  const choice = choices.find((b) => b.branch === branch) ?? defaultBranch(choices, now);
   const existing = choice ? drafts.find((d) => draftKey(d) === draftKey(choice)) : undefined;
   const busy = Boolean(generation && !generation.result && !generation.error);
   const failed = Boolean(generation?.error);
@@ -293,11 +312,11 @@ function NewDraft() {
       {loadError ? (
         <div className="mono mt-3 text-xs text-unresolved">Could not list the branches: {loadError}</div>
       ) : !branches ? (
-        <div className="mono mt-3 flex items-center gap-2 text-xs text-muted">
-          <LoaderCircle size={13} aria-hidden className="animate-spin" /> reading the branches
-        </div>
+        <BranchPickerLoading />
       ) : projects.length === 0 ? (
-        <div className="mono mt-3 text-xs text-muted">No branch has commits {branches.main} does not have.</div>
+        <div className="mt-3">
+          <Empty>No branch has commits {branches.main} does not have, so there is nothing to draft yet.</Empty>
+        </div>
       ) : (
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
@@ -318,21 +337,7 @@ function NewDraft() {
               ))}
             </select>
           </label>
-          <label className="flex min-w-64 flex-col gap-1">
-            <span className="label">branch</span>
-            <select
-              value={choice?.branch ?? ""}
-              disabled={busy}
-              onChange={(event) => setBranch(event.target.value)}
-              className="mono rounded-control border border-line bg-canvas px-2 py-1.5 text-sm"
-            >
-              {choices.map((b) => (
-                <option key={b.branch} value={b.branch}>
-                  {b.branch} · {b.tip} · {b.ahead} ahead of {b.main ?? branches.main}
-                </option>
-              ))}
-            </select>
-          </label>
+          <BranchPicker key={project} choices={choices} value={choice} onChange={setBranch} disabled={busy} main={branches.main} now={now} />
           <button
             type="button"
             disabled={!choice || busy}

@@ -5,6 +5,7 @@ import { catalog, index } from "../data";
 import { allRepos, type AdrCommit, type Rfc } from "../catalog";
 import { Markdown } from "../components/Markdown";
 import { Ident } from "../components/Ident";
+import { Blank } from "../components/PageHeader";
 import { SourcePreviewLink } from "../components/SourcePreview";
 import { CommitLink } from "../components/CommitLink";
 import { WorkItems } from "../components/WorkItems";
@@ -133,7 +134,11 @@ export function RfcDetail() {
 
       <div className="flex flex-wrap items-start gap-section p-gutter">
         <div className="min-w-0 grow basis-[40rem]">
-          <Markdown mermaid>{withoutLeadingTitle(rfc.body)}</Markdown>
+          {withoutLeadingTitle(rfc.body).trim() ? (
+            <Markdown mermaid>{withoutLeadingTitle(rfc.body)}</Markdown>
+          ) : (
+            <Blank where={rfc.source}>This RFC has no text beyond its title yet. Its proposal is read from the file below.</Blank>
+          )}
         </div>
         {(rfc.links?.length ?? 0) + (rfc.relates.services?.length ?? 0) + (rfc.relates.events?.length ?? 0) + (rfc.relates.flows?.length ?? 0) > 0 ? (
           <div className="flex min-w-[280px] max-w-prose grow basis-[280px] flex-col gap-4">

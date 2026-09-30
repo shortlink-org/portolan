@@ -544,7 +544,11 @@ export interface SavedDraftStatus {
 export interface DraftBranches {
   main: string;
   projects: { id: string; name: string }[];
-  branches: { branch: string; tip: string; base: string; ahead: number; main: string; projects: string[] }[];
+  /**
+   * `date` (committer date, ISO) and `subject` are the branch's last commit;
+   * a dev server older than the picker that shows them leaves them out.
+   */
+  branches: { branch: string; tip: string; base: string; ahead: number; main: string; date?: string; subject?: string; projects: string[] }[];
   /** Projects whose branches could not be read, one line each. */
   problems?: string[];
 }

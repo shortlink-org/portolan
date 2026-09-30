@@ -156,3 +156,77 @@ describe("the branches page on a published site", () => {
     expect(text()).toContain("2 more of projects this catalog leaves out");
   });
 });
+
+type Listed = NonNullable<ReturnType<typeof useDrafts.getState>["branches"]>["branches"][number];
+
+async function devPage(drafts: Draft[], branches: Listed[] | null, mode: "dev" | "static" = "dev"): Promise<Rendered> {
+  useDrafts.setState({
+    mode,
+    drafts,
+    outside: 0,
+    enabled: [],
+    branches: branches && { main: "origin/main", projects: [{ id: "auth", name: "Authentication" }], branches },
+    refresh: async () => undefined,
+    loadBranches: async () => undefined,
+  });
+  rendered = await render(
+    <MemoryRouter initialEntries={["/drafts"]}>
+      <Drafts />
+    </MemoryRouter>,
+  );
+  return rendered;
+}
+
+describe("the new-draft branch picker", () => {
+  const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+  const listed = (branch: string, days: number, subject: string): Listed => ({
+    branch, tip: `${branch.length}0000000abc`, base: "b0", ahead: 2, main: "origin/main", date: ago(days), subject, projects: ["auth"],
+  });
+
+  it("holds the pickers' place while dev reads the branches", async () => {
+    const { container, text } = await devPage([], null);
+    expect(text()).toContain("Reading the branches…");
+    expect(container.querySelector('[role="status"]')?.textContent).toContain("Reading the branches");
+    expect(container.querySelector('[role="combobox"]')).toBeNull();
+  });
+
+  it("starts on the newest branch and keeps stale ones behind a toggle", async () => {
+    const { container, text, click } = await devPage([], [
+      listed("a3f9c21e", 200, "wip"),
+      listed("demo/older", 20, "Older work"),
+      listed("demo/passkeys", 1, "Add passkeys to login"),
+    ]);
+    const input = container.querySelector('[role="combobox"]') as HTMLInputElement;
+    expect(input.value).toBe("demo/passkeys");
+    // The label names the field and the note under it describes it.
+    expect(input.labels?.[0]?.textContent).toBe("branch");
+    expect(document.getElementById(input.getAttribute("aria-describedby")!)?.textContent).toContain("Newest commit first.");
+    expect(text()).toContain("1 branch with no commit in the last 90 days is hidden.");
+    await click(button(container, "Show 1 stale"));
+    expect(text()).toContain("Showing all 3 branches, 1 with no commit in the last 90 days.");
+    expect(button(container, "Hide stale")?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("says there is nothing to draft when no branch is ahead of main", async () => {
+    const { container, text } = await devPage([], []);
+    expect(text()).toContain("No branch has commits origin/main does not have");
+    expect(container.querySelector(".empty")).not.toBeNull();
+  });
+});
+
+describe("with no saved drafts", () => {
+  it("points dev at the form that makes one, with no empty table", async () => {
+    const { container, text } = await devPage([], []);
+    expect(text()).toContain("next useful step");
+    expect(text()).toContain("No branch drafted yet");
+    expect(container.querySelector("table")).toBeNull();
+  });
+
+  it("says on a published site where drafts would come from", async () => {
+    const { text } = await devPage([], [], "static");
+    expect(text()).toContain("This site was built with no saved branch drafts.");
+    expect(text()).toContain("portolan-drafts/");
+    expect(text()).not.toContain("next useful step");
+    expect(text()).not.toContain("A published site shows the drafts saved in the repository.");
+  });
+});

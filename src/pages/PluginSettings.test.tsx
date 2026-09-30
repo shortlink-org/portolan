@@ -38,6 +38,8 @@ describe("plugin settings route", () => {
   it("waits for local capability detection and supports published read-only catalogs", () => {
     query.isPending = true;
     expect(render()).toContain("Loading plugin settings");
+    // The placeholder stands where the form will be, and says so to a screen reader.
+    expect(render()).toMatch(/role="status"[^>]*class="empty[^"]*min-h-48/);
     expect(render()).not.toContain("tracker form");
     query.isPending = false; query.isSuccess = false;
     expect(render()).toContain("read-only tracker form");
@@ -47,6 +49,15 @@ describe("plugin settings route", () => {
     expect(render("openapi")).toContain("no dedicated settings page");
     expect(render("missing")).not.toContain("tracker form");
     expect(render("openapi")).not.toContain("tracker form");
+  });
+  it("answers an unknown plugin with nothing found, and a plugin without a page with where its options live", () => {
+    const missing = render("missing");
+    expect(missing).toContain('class="empty"');
+    expect(missing).toContain("No plugin named");
+    const plain = render("openapi");
+    expect(plain).toContain('class="empty"');
+    expect(plain).toContain("portolan.json");
+    expect(plain).toContain('href="/plugins?catalog=example#plugin-openapi"');
   });
   it("renders EventBridge settings through the plugin-owned route", () => {
     expect(render("eventbridge")).toContain("editable EventBridge form");

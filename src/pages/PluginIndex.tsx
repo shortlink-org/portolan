@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { ArrowUpRight, Settings, ShieldCheck, Terminal } from "lucide-react";
 import { CatIllustration } from "../components/CatIllustration";
-import { SectionTitle } from "../components/PageHeader";
+import { Blank, Empty, SectionTitle } from "../components/PageHeader";
 import { PluginIcon } from "../components/PluginIcon";
 import {
   pluginsByCategory,
@@ -18,6 +18,14 @@ import { PRODUCT_REPOSITORY } from "../lib/product";
 import { paths } from "../routes";
 
 const PHASE_LABEL = { extract: "extract", verify: "verify", generate: "generate" } as const;
+
+const safeDecode = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
 
 /** Every cat the site has drawn; any of them suits a page that is a list. */
 const CAT_SCENES = ["about", "clear", "unchanged", "onboarding", "search", "trial"] as const;
@@ -37,6 +45,8 @@ export function PluginIndex() {
   const total = groups.reduce((n, group) => n + group.plugins.length, 0);
   const { hash } = useLocation();
   const target = hash.startsWith("#plugin-") ? hash.slice("#plugin-".length) : null;
+  const wanted = target === null ? null : safeDecode(target);
+  const missing = wanted !== null && total > 0 && !groups.some((group) => group.plugins.some((entry) => entry.name === wanted));
   // A different cat each visit, the same one for the visit: picked once, not
   // on every render, or a hash change would swap it mid-scroll.
   const [cat] = useState(() => CAT_SCENES[Math.floor(Math.random() * CAT_SCENES.length)] ?? "about");
@@ -86,6 +96,24 @@ export function PluginIndex() {
       </div>
       <CatIllustration scene={cat} className="hidden xl:block h-[126px] w-[180px] justify-self-end" />
       </div>
+
+      {total === 0 ? (
+        <div className="mt-section">
+          <Blank where="src/lib/plugin-index.json">
+            The plugin index is empty. It is written by <span className="mono text-ink">npm run schema</span> from what each plugin says about itself when asked to describe itself.
+          </Blank>
+        </div>
+      ) : null}
+
+      {/* A link that names a plugin this index does not have: say so, rather
+          than land on the top of the page as if it had been found. */}
+      {missing ? (
+        <div className="mt-4">
+          <Empty>
+            No plugin named <span className="mono text-ink">{wanted}</span> is in this index. It may have been renamed or left out of this package.
+          </Empty>
+        </div>
+      ) : null}
 
       <nav aria-label="Categories" className="mt-4 flex flex-wrap gap-1.5">
         {groups.map((group) => (
