@@ -1,0 +1,130 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.ent",
+          "slug": "ent",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.ent.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.ent.pg",
+      "slug": "pg",
+      "name": "ent database",
+      "kind": "postgres",
+      "owner": "shop.ent",
+      "tables": [
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "ent-schema",
+              "source": "testdata/ent/ent/schema/order.go",
+              "symbol": "sales_orders"
+            }
+          ],
+          "id": "shop.ent.pg.sales_orders",
+          "name": "sales_orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "state",
+              "type": "enum(draft | placed)",
+              "nullable": false
+            },
+            {
+              "name": "placed_at",
+              "type": "time",
+              "nullable": true
+            }
+          ],
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Repository.ByID",
+              "source": "testdata/ent/internal/order/repository.go:15"
+            },
+            {
+              "operation": "write",
+              "method": "Repository.Place",
+              "source": "testdata/ent/internal/order/repository.go:23"
+            }
+          ]
+        },
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "ent-schema",
+              "source": "testdata/ent/ent/schema/order.go",
+              "symbol": "order_lines"
+            }
+          ],
+          "id": "shop.ent.pg.order_lines",
+          "name": "order_lines",
+          "columns": [
+            {
+              "name": "id",
+              "type": "int",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "sku_code",
+              "type": "string",
+              "nullable": false
+            },
+            {
+              "name": "quantity",
+              "type": "int",
+              "nullable": false
+            }
+          ],
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Repository.Lines",
+              "source": "testdata/ent/internal/order/repository.go:36"
+            },
+            {
+              "operation": "write",
+              "method": "Repository.Place",
+              "source": "testdata/ent/internal/order/repository.go:28"
+            },
+            {
+              "operation": "delete",
+              "method": "Repository.Clear",
+              "source": "testdata/ent/internal/order/repository.go:40"
+            }
+          ]
+        }
+      ],
+      "source": "testdata/ent/ent/schema"
+    }
+  ]
+}

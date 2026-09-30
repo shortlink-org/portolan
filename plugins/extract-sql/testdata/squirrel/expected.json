@@ -1,0 +1,192 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.squirrel",
+          "slug": "squirrel",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.squirrel.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.squirrel.pg",
+      "slug": "pg",
+      "name": "squirrel database",
+      "kind": "postgres",
+      "owner": "shop.squirrel",
+      "tables": [
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "orders"
+            }
+          ],
+          "id": "shop.squirrel.pg.orders",
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "state",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/squirrel/internal/order/domain/order.go:3",
+                "symbol": "shop.squirrel.order"
+              }
+            ],
+            "aggregate": "shop.squirrel.order"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.ByID",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/postgres.go:18"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Place",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/postgres.go:35"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/postgres.go:30"
+            }
+          ]
+        },
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "order_lines"
+            }
+          ],
+          "id": "shop.squirrel.pg.order_lines",
+          "name": "order_lines",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": false,
+              "fk": {
+                "table": "shop.squirrel.pg.orders",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/squirrel/internal/order/domain/order.go:3",
+                "symbol": "shop.squirrel.order"
+              }
+            ],
+            "aggregate": "shop.squirrel.order"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.ByID",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/postgres.go:18"
+            },
+            {
+              "operation": "delete",
+              "method": "Postgres.Remove",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/postgres.go:42"
+            }
+          ]
+        },
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "carts"
+            }
+          ],
+          "id": "shop.squirrel.pg.carts",
+          "name": "carts",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": true
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/squirrel/internal/order/domain/order.go:3",
+                "symbol": "shop.squirrel.order"
+              }
+            ],
+            "aggregate": "shop.squirrel.order"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.Place",
+              "source": "testdata/squirrel/internal/order/infrastructure/repository/postgres.go:37"
+            }
+          ]
+        }
+      ],
+      "source": "testdata/squirrel/internal/order/infrastructure/repository"
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.gorm",
+          "slug": "gorm",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.gorm.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.gorm.pg",
+      "slug": "pg",
+      "name": "gorm database",
+      "kind": "postgres",
+      "owner": "shop.gorm",
+      "tables": [
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "orders"
+            }
+          ],
+          "id": "shop.gorm.pg.orders",
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "state",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/gorm/internal/order/domain/order.go:3",
+                "symbol": "shop.gorm.order"
+              }
+            ],
+            "aggregate": "shop.gorm.order"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.ByID",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:45"
+            },
+            {
+              "operation": "read",
+              "method": "Postgres.CountPlaced",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:59"
+            },
+            {
+              "operation": "read",
+              "method": "Postgres.Totals",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:69"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Cancel",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:64"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:31"
+            }
+          ]
+        },
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "order_lines"
+            }
+          ],
+          "id": "shop.gorm.pg.order_lines",
+          "name": "order_lines",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "shop.gorm.pg.orders",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/gorm/internal/order/domain/order.go:3",
+                "symbol": "shop.gorm.order"
+              }
+            ],
+            "aggregate": "shop.gorm.order"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.Lines",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:51"
+            },
+            {
+              "operation": "read",
+              "method": "Postgres.Totals",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:69"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/gorm.go:35"
+            },
+            {
+              "operation": "delete",
+              "method": "Postgres.Remove",
+              "source": "testdata/gorm/internal/order/infrastructure/repository/remove.go:8"
+            }
+          ]
+        }
+      ],
+      "source": "testdata/gorm/internal/order/infrastructure/repository"
+    }
+  ]
+}

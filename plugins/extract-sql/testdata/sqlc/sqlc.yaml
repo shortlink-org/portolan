@@ -1,0 +1,19 @@
+version: "2"
+sql:
+  - engine: postgresql
+    schema: internal/order/infrastructure/repository/migrations
+    queries: queries/order.sql
+    gen:
+      go:
+        package: db
+        out: internal/order/infrastructure/repository/db
+  # Not generated into the tree: the queries and the package they will be
+  # generated into are all there is to read.
+  - engine: postgresql
+    schema: internal/order/infrastructure/repository/migrations
+    queries:
+      - queries/reports
+    gen:
+      go:
+        package: reports
+        out: internal/order/infrastructure/repository/reports
