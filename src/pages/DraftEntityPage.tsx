@@ -8,6 +8,7 @@ import { GitBranch } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { useDocumentTitle } from "../app/title";
 import { KindIcon } from "../components/kind";
+import { Empty } from "../components/PageHeader";
 import { index } from "../data";
 import { useDrafts } from "../drafts/store";
 import { DraftChip, StateChip, when } from "../drafts/ui";
@@ -25,12 +26,27 @@ export function DraftEntityPage() {
   if (!draft || !entity) {
     return (
       <div className="h-full overflow-y-auto p-gutter">
-        <div className="empty">
-          <span className="mono text-ink">{entityId}</span> is not in a saved draft of {branch}.{" "}
-          <Link to={paths.drafts()} className="text-accent hover:underline">
-            all branches
-          </Link>
-        </div>
+        {/* Which half is missing decides where to go next: a draft that is
+            there but no longer has the entity still has a page to compare. */}
+        <Empty>
+          {draft ? (
+            <>
+              The saved draft of <span className="mono text-ink">{branch}</span> in {draft.projectName} has no{" "}
+              <span className="mono text-ink">{entityId}</span>. The branch may have dropped or renamed it since this link was made.{" "}
+              <Link to={paths.draftCompare(draft.project, draft.branch)} className="text-accent hover:underline">
+                Compare {branch}
+              </Link>
+            </>
+          ) : (
+            <>
+              No saved draft of <span className="mono text-ink">{branch}</span> for <span className="mono text-ink">{project}</span>, so{" "}
+              <span className="mono text-ink">{entityId}</span> cannot be shown.{" "}
+              <Link to={paths.drafts()} className="text-accent hover:underline">
+                All branch drafts
+              </Link>
+            </>
+          )}
+        </Empty>
       </div>
     );
   }

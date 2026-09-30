@@ -6,6 +6,7 @@ import { GitBranch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useDocumentTitle } from "../app/title";
+import { Empty } from "../components/PageHeader";
 import { EntityRows, NothingRead } from "../drafts/EntityRows";
 import { draftKey, taskCounts, tasksOf } from "../drafts/model";
 import type { DraftState } from "../drafts/model";
@@ -37,12 +38,13 @@ export function TaskCompare() {
   if (!task) {
     return (
       <div className="h-full overflow-y-auto p-gutter">
-        <div className="empty">
-          No saved draft of <span className="mono text-ink">{key}</span>.{" "}
+        <Empty>
+          No saved draft of <span className="mono text-ink">{key}</span> is in this catalog. Its drafts may have been deleted, or saved for projects this
+          catalog leaves out.{" "}
           <Link to={paths.drafts()} className="text-accent hover:underline">
-            all branches
+            All branch drafts
           </Link>
-        </div>
+        </Empty>
       </div>
     );
   }
@@ -132,7 +134,9 @@ export function TaskCompare() {
             {draft.entities.length === 0 ? (
               <NothingRead draft={draft} />
             ) : entities.length === 0 ? (
-              <div className="empty mt-4">Nothing in {draft.projectName} matches these filters.</div>
+              <div className="mt-4">
+                <Empty>Nothing in {draft.projectName} matches these filters.</Empty>
+              </div>
             ) : (
               <EntityRows draft={draft} entities={entities} />
             )}

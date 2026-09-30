@@ -9,7 +9,7 @@
 import { Link, useParams } from "react-router";
 import { catalog } from "../data";
 import { walkSteps } from "../catalog";
-import { PageHeader } from "../components/PageHeader";
+import { Blank, PageHeader } from "../components/PageHeader";
 import { paths } from "../routes";
 import { ContextPill } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
@@ -42,6 +42,7 @@ export function StorePage() {
   const columns = storeColumnCount(store);
   const views = storeViewCount(store);
   const keyspaces = store.keyspaces ?? [];
+  const unread = keyspaces.length === 0 && store.tables.length === 0;
   const usedIn = catalog.flows.flatMap((flow) => {
     const lanes = new Set(
       flow.participants
@@ -85,6 +86,8 @@ export function StorePage() {
                 <span className="tnum">{keyspaces.length}</span>{" "}
                 {plural(keyspaces.length, "key pattern")}
               </>
+            ) : unread ? (
+              "no tables read"
             ) : (
               <>
                 <span className="tnum">{store.tables.length}</span>{" "}
@@ -135,6 +138,15 @@ export function StorePage() {
         ) : null}
         {keyspaces.length > 0 ? (
           <RedisSchema store={store} />
+        ) : unread ? (
+          // An empty canvas with its zoom controls would read as a schema
+          // with nothing in it; what is true is that nothing was read.
+          <div className="max-w-table">
+            <Blank {...(store.source ? { where: store.source } : {})}>
+              No table of {store.name} has been read. Tables come from the migrations or schema files an extractor reads for this store
+              {store.source ? ", and this is where the catalog looks for them." : "; the catalog names no source for it yet."}
+            </Blank>
+          </div>
         ) : (
           <ErCanvas store={store} height="100%" />
         )}
