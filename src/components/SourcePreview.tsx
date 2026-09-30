@@ -31,9 +31,38 @@ import {
   SourceLoadError,
 } from "../lib/source-code";
 import type { SourceFile } from "../lib/source-code";
-import { highlightSource } from "../lib/source-highlight";
-import type { HighlightNode } from "../lib/source-highlight";
+import type { HighlightNode, highlightSource } from "../lib/source-highlight";
 import type { SourceLocation } from "../lib/source-link";
+
+// The highlighter is highlight.js with its common grammars, ~150 kB that only
+// an open preview uses, while the links that open one are on every page and in
+// the detail rail. It is fetched when the first preview opens, side by side
+// with the file, and the panel says "Loading source…" until both are in.
+type Highlight = typeof highlightSource;
+let highlighter: Promise<Highlight> | null = null;
+
+function useHighlighter(): Highlight | null {
+  const [highlight, setHighlight] = useState<Highlight | null>(null);
+  useEffect(() => {
+    let live = true;
+    highlighter ??= import("../lib/source-highlight").then(
+      (module) => module.highlightSource,
+      // A chunk that failed to load leaves the code plain rather than the
+      // panel loading forever; the next preview tries again.
+      () => {
+        highlighter = null;
+        return (_path: string, code: string) => [{ type: "text", value: code }] as HighlightNode[];
+      },
+    );
+    void highlighter.then((loaded) => {
+      if (live) setHighlight(() => loaded);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return highlight;
+}
 
 const OPEN_DELAY_MS = 220;
 const CLOSE_DELAY_MS = 140;
@@ -131,9 +160,11 @@ function AccessForm({
 function CodeWindow({
   file,
   location,
+  highlightSource,
 }: {
   file: SourceFile;
   location: SourceLocation;
+  highlightSource: Highlight;
 }) {
   const rows = useMemo(
     () => sourceWindow(file.content, location.line),
@@ -142,7 +173,7 @@ function CodeWindow({
   const highlighted = useMemo(
     () =>
       highlightSource(location.path, rows.map((row) => row.text).join("\n")),
-    [location.path, rows],
+    [highlightSource, location.path, rows],
   );
   const focusedIndex = rows.findIndex((row) => row.focused);
 
@@ -222,9 +253,10 @@ function PreviewPanel({
   const token =
     location.kind === "remote" ? access.tokenFor(location.origin) : "";
   const source = useQuery(sourceCodeQuery(location, token));
+  const highlight = useHighlighter();
   const file = source.data ?? null;
   const error = source.error;
-  const loading = source.isLoading;
+  const loading = source.isLoading || (file !== null && !highlight);
 
   const auth =
     location.kind === "remote" &&
@@ -312,8 +344,8 @@ function PreviewPanel({
           <AccessForm location={location} message={error.message} />
         ) : error ? (
           <div className="p-4 text-sm text-muted">{error.message}</div>
-        ) : file ? (
-          <CodeWindow file={file} location={location} />
+        ) : file && highlight ? (
+          <CodeWindow file={file} location={location} highlightSource={highlight} />
         ) : null}
       </div>
     </div>

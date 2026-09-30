@@ -20,33 +20,41 @@ import {
   useCanvasResize,
   usePanelRef,
 } from "./panels";
-import { FlowIndex } from "../pages/FlowIndex";
-import { AdrIndex } from "../pages/AdrIndex";
-import { Language } from "../pages/Language";
-import { PluginIndex } from "../pages/PluginIndex";
-import { PluginSettings } from "../pages/PluginSettings";
-import { AdrDetail } from "../pages/AdrDetail";
-import { RfcIndex } from "../pages/RfcIndex";
-import { RfcDetail } from "../pages/RfcDetail";
 import { Overview } from "../pages/Overview";
-import { ContextMap } from "../pages/ContextMap";
-import { ContextPage } from "../pages/ContextPage";
-import { ServicePage } from "../pages/ServicePage";
-import { AggregatePage } from "../pages/AggregatePage";
-import { BlockPage } from "../pages/BlockPage";
-import { EnumPage } from "../pages/EnumPage";
-import { EventPage } from "../pages/EventPage";
-import { StorePage } from "../pages/StorePage";
-import { GraphPage } from "../pages/GraphPage";
-import { Problems } from "../pages/Problems";
-import { Changes } from "../pages/Changes";
-import { Drafts } from "../pages/Drafts";
-import { DraftCompare } from "../pages/DraftCompare";
-import { TaskCompare } from "../pages/TaskCompare";
-import { DraftEntityPage } from "../pages/DraftEntityPage";
-import { RegistryIndex } from "../pages/RegistryIndex";
-import { ModulePage } from "../pages/ModulePage";
-import { ExternalPage } from "../pages/ExternalPage";
+import {
+  AdrCreate,
+  AdrDetail,
+  AdrIndex,
+  AggregatePage,
+  BlockPage,
+  Changes,
+  ContextMap,
+  ContextPage,
+  DraftCompare,
+  DraftEntityPage,
+  Drafts,
+  EnumPage,
+  EventPage,
+  ExternalPage,
+  FlowIndex,
+  GraphPage,
+  Language,
+  ModulePage,
+  PluginIndex,
+  PluginSettings,
+  Problems,
+  RegistryIndex,
+  RfcDetail,
+  RfcIndex,
+  ServicePage,
+  Settings,
+  StorePage,
+  TaskCompare,
+  pageRouteFor,
+  preloadPage,
+  preloadSettings,
+} from "./lazy-pages";
+import { PageLoading } from "./PageLoading";
 import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
 import { activeCatalogProfile, catalogError, index } from "../data";
@@ -86,19 +94,14 @@ const ChatPanel =
     ? lazy(() => import("../chat/ChatPanel"))
     : null;
 
-const AdrCreate = lazy(() => import("../pages/AdrCreate"));
-
 // Settings is an editor few readers open, and a flow page or a C4 view is
 // LikeC4 and elk: none of them belongs in the chunk every page waits for. They
 // are fetched once the first page has painted and the browser is idle, so going
 // to them afterwards is as quick as it was when they were bundled in.
-const loadSettings = () => import("../pages/Settings");
-const Settings = lazy(() => loadSettings().then((module) => ({ default: module.Settings })));
-
 function usePreloadHeavyPages() {
   useEffect(() => {
     const preload = () => {
-      void loadSettings();
+      preloadSettings();
       preloadFlowDetail();
       preloadC4View();
     };
@@ -108,6 +111,34 @@ function usePreloadHeavyPages() {
     }
     const timer = setTimeout(preload, 2000);
     return () => clearTimeout(timer);
+  }, []);
+}
+
+/**
+ * A link the pointer rests on, or the keyboard lands on, is where the reader
+ * is about to go: its page's chunk is fetched then, so the click finds it
+ * loaded. One listener for the whole shell, since links are drawn by every
+ * page, the tree, the palette and the peek cards alike.
+ */
+function usePreloadOnIntent() {
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    let last = "";
+    const onIntent = (event: Event) => {
+      const link = (event.target as Element | null)?.closest?.("a[href]");
+      if (!(link instanceof HTMLAnchorElement) || link.origin !== window.location.origin) return;
+      const { pathname } = link;
+      if (pathname === last) return;
+      last = pathname;
+      if (base && pathname !== base && !pathname.startsWith(`${base}/`)) return;
+      preloadPage(pathname.slice(base.length) || "/");
+    };
+    document.addEventListener("pointerover", onIntent, { passive: true });
+    document.addEventListener("focusin", onIntent);
+    return () => {
+      document.removeEventListener("pointerover", onIntent);
+      document.removeEventListener("focusin", onIntent);
+    };
   }, []);
 }
 
@@ -174,22 +205,8 @@ function AppRoutes({
       <Route path="/language" element={<Language />} />
       <Route path="/plugins" element={<PluginIndex />} />
       <Route path="/plugins/:name/settings" element={<PluginSettings />} />
-      <Route
-        path="/adrs/new"
-        element={
-          <SuspenseReveal fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
-            <AdrCreate />
-          </SuspenseReveal>
-        }
-      />
-      <Route
-        path="/adrs/:adr/edit"
-        element={
-          <SuspenseReveal fallback={<div className="h-full p-gutter text-muted">Loading the ADR editor…</div>}>
-            <AdrCreate />
-          </SuspenseReveal>
-        }
-      />
+      <Route path="/adrs/new" element={<AdrCreate />} />
+      <Route path="/adrs/:adr/edit" element={<AdrCreate />} />
       <Route
         path="/adrs/:adr"
         element={
@@ -199,14 +216,7 @@ function AppRoutes({
         }
       />
       <Route path="/problems" element={<Problems />} />
-      <Route
-        path="/settings/*"
-        element={
-          <SuspenseReveal fallback={<div className="h-full p-gutter text-muted">Loading settings…</div>}>
-            <Settings />
-          </SuspenseReveal>
-        }
-      />
+      <Route path="/settings/*" element={<Settings />} />
       <Route path="/changes" element={<Changes />} />
       <Route path="/drafts" element={<Drafts />} />
       <Route path="/drafts/task/:task" element={<TaskCompare />} />
@@ -317,6 +327,23 @@ function AppRoutes({
 }
 
 /**
+ * What a route's fallback says, and which pages are one large drawing. A flow
+ * is not here: LazyFlowDetail holds its own place, inside the rail.
+ */
+const ROUTE_LOADING: Record<string, { label: string; diagram?: boolean }> = {
+  "/map": { label: "loading the context map", diagram: true },
+  "/graph": { label: "loading the graph", diagram: true },
+  "/adrs/new": { label: "loading the ADR editor" },
+  "/adrs/:adr/edit": { label: "loading the ADR editor" },
+  "/settings/*": { label: "loading settings" },
+};
+
+function RouteLoading({ pathname }: { pathname: string }) {
+  const route = pageRouteFor(pathname);
+  return <PageLoading {...(route ? ROUTE_LOADING[route] : undefined)} />;
+}
+
+/**
  * One transition boundary per pathname. Replacing the keyed boundary makes a
  * route change an enter/exit pair; updates within a page are deliberately not
  * animated, including deferred filters and Suspense reveals.
@@ -339,7 +366,12 @@ function RoutePage({
       default="none"
     >
       <main className={className}>
-        <AppRoutes location={location} onOpenSearch={onOpenSearch} />
+        {/* Inside the keyed boundary, so every route change mounts a new
+            one: the page being left is replaced at once by the shape of the
+            page being opened, never kept on screen while its chunk loads. */}
+        <SuspenseReveal fallback={<RouteLoading pathname={location.pathname} />}>
+          <AppRoutes location={location} onOpenSearch={onOpenSearch} />
+        </SuspenseReveal>
       </main>
     </ViewTransition>
   );
@@ -374,6 +406,7 @@ function SidebarDrawer() {
 
 function Shell() {
   usePreloadHeavyPages();
+  usePreloadOnIntent();
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const chatOpen = useChatUi((s) => s.open);

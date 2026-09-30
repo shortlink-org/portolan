@@ -103,35 +103,39 @@ export const SOURCE_GLOBS = [
   "examples/argocd/argocd.apps.json",
 ] as const;
 
-const modules: Record<string, unknown> = {
-  ...import.meta.glob("../data/*.json", { eager: true, import: "default" }),
-  ...import.meta.glob("../portolan/*.json", { eager: true, import: "default" }),
-  ...import.meta.glob("../portolan-work-items/**/*.json", { eager: true, import: "default" }),
-  ...import.meta.glob("../examples/*/portolan/*.json", {
-    eager: true,
-    import: "default",
-  }),
-  ...import.meta.glob("../examples/*/*/portolan/*.json", {
-    eager: true,
-    import: "default",
-  }),
-  ...import.meta.glob("../examples/*/*/*/portolan/*.json", {
-    eager: true,
-    import: "default",
-  }),
-  ...import.meta.glob("../vendor/repos/*/*/git.repo.json", {
-    eager: true,
-    import: "default",
-  }),
-  ...import.meta.glob("../vendor/repos/**/portolan/*.json", {
-    eager: true,
-    import: "default",
-  }),
-  ...import.meta.glob("../examples/argocd/argocd.apps.json", {
-    eager: true,
-    import: "default",
-  }),
+/**
+ * Every source the site carries, as a loader: the glob is lazy, so no file is
+ * in the bundle's first chunk. A page shows one profile, and the profiles are
+ * disjoint estates - the landing's example estate is most of the bytes and the
+ * catalog Portolan keeps about itself needs none of them.
+ */
+const loaders: Record<string, () => Promise<unknown>> = {
+  ...import.meta.glob("../data/*.json", { import: "default" }),
+  ...import.meta.glob("../portolan/*.json", { import: "default" }),
+  ...import.meta.glob("../portolan-work-items/**/*.json", { import: "default" }),
+  ...import.meta.glob("../examples/*/portolan/*.json", { import: "default" }),
+  ...import.meta.glob("../examples/*/*/portolan/*.json", { import: "default" }),
+  ...import.meta.glob("../examples/*/*/*/portolan/*.json", { import: "default" }),
+  ...import.meta.glob("../vendor/repos/*/*/git.repo.json", { import: "default" }),
+  ...import.meta.glob("../vendor/repos/**/portolan/*.json", { import: "default" }),
+  ...import.meta.glob("../examples/argocd/argocd.apps.json", { import: "default" }),
 };
+
+/**
+ * The active profile's sources, read before anything below runs. The await is
+ * at the top of the module on purpose: every export stays a plain value, and
+ * whatever imports this module is evaluated after the catalog is in, exactly
+ * as it was when the files were bundled in. The build groups each profile's
+ * files into one chunk (vite.config.ts): the bytes arrive in one request, and
+ * each file is left a re-export of a line.
+ */
+const modules: Record<string, unknown> = Object.fromEntries(
+  await Promise.all(
+    Object.entries(loaders)
+      .filter(([key]) => profileIncludesSource(activeCatalogProfile, key.replace(/^\.\.\//, "")))
+      .map(async ([key, load]) => [key, await load()] as const),
+  ),
+);
 
 /** What the app draws when the catalog cannot be trusted: nothing. */
 const EMPTY: Catalog = {
