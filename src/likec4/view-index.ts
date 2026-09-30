@@ -6,7 +6,7 @@
 // costs a render and neither can drift from what LikeC4 will draw.
 
 import { pickViewBounds } from "likec4/react";
-import { likec4model } from "./generated";
+import { likec4model } from "./bundle";
 import type { Flow } from "../catalog";
 import { drawnStepIds, pairEdgesToSteps } from "./flow-edges";
 import type { EdgeStepPairing } from "./flow-edges";

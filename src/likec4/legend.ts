@@ -7,7 +7,7 @@
 // So the key is read off the layouted view itself, the same data LikeC4 paints
 // from, and cannot drift from the picture on screen.
 
-import { likec4model } from "./generated";
+import { likec4model } from "./bundle";
 import { abbreviationsIn } from "../lib/abbreviations";
 
 export type Status = "verified" | "declared" | "unresolved";

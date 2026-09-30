@@ -695,6 +695,21 @@
         "author": "Victor Login",
         "date": "2026-09-30T00:07:59+07:00"
       }
+    },
+    {
+      "id": "portolan.0034",
+      "slug": "portolan-0034-each-catalog-profile-is-its-own-likec4-project",
+      "number": 34,
+      "title": "Each catalog profile is its own LikeC4 project",
+      "status": "accepted",
+      "date": "2026-09-30",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nA manifest names catalog profiles, and the site shows one of them at a time:\nthe page loads the active profile's sources when it starts, and every page\nafter that is about that estate alone. The LikeC4 model was not: it was one\nmodel over every source the site staged, with a pair of views per profile to\nnarrow it.\n\nTwo estates may use the same words. The example estate and the modular\nmonolith each have a `payments` context; the example estate and CodelyTV's\neach have a `bus`; several have a `client`. One model merged each pair into\none element, so the Payments context page of either estate drew the other's\nservices beside its own, and the one `bus` travelled on NATS and RabbitMQ at\nonce and could name neither.\n\n## Decision Drivers\n\n- A picture shows the estate the page is about, and nothing of another.\n- Catalog ids stay what the catalog says: the app and the generator derive\n  every LikeC4 name from them without a table of renames (`src/likec4/ids.ts`).\n- The committed `likec4/` covers what the repository's own site can load, as\n  it did before.\n\n## Considered Options\n\n1. **A LikeC4 project per profile.** The generator writes\n   `likec4/\u003cprofile\u003e/` with a `likec4.config.json` naming it, from that\n   profile's own merged catalog; `likec4 gen react --project` writes\n   `src/likec4/generated/\u003cprofile\u003e.jsx`; the page loads the active profile's\n   bundle.\n2. **One model, colliding ids renamed.** The first profile keeps an id, later\n   ones get a prefix. Every field of a catalog that names an id would have to\n   be rewritten before the merge, and the app would have to find out which ids\n   were renamed for the profile it shows.\n3. **Keep the one model, rename brokers only.** Cheap, and leaves `payments`\n   and `client` merged.\n\n## Decision Outcome\n\nOption 1.\n\nA profile is drawn when every source it names is also matched by the\nmanifest's top-level `sources` - the profiles the site can load. In this\nrepository those are `portolan` and `example`; `portolan dev` stages every\nprofile's sources at the top level, so there every profile is drawn. A\nmanifest without profiles keeps its single unnamed model and its `default`\nbundle.\n\n## Consequences\n\n- `likec4/` holds one directory per drawn profile; nothing sits at its root.\n  `npm run likec4:validate` validates each project by name, since LikeC4 asks\n  which project to lay out in a workspace of several.\n- `src/likec4/bundle.ts` is the one place the page gets its model from. It\n  loads `generated/\u003cprofile\u003e.jsx` with a top-level await, falling back to the\n  unnamed bundle, so a page downloads one estate's diagrams, not every one.\n- Each project still carries its profile's `landscape_\u003cprofile\u003e` and\n  `containers_\u003cprofile\u003e` views beside `landscape` and `containers`, so the\n  view ids the app asks for are unchanged.\n- A view built from a catalog other than a profile's - a branch draft's flow\n  (portolan.0019) - is still laid out as one model from the catalog it is\n  given.\n",
+      "relates": {},
+      "source": "adr/0034-each-catalog-profile-is-its-own-likec4-project.md"
     }
   ]
 }

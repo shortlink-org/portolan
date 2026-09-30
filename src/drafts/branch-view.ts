@@ -10,7 +10,7 @@
 
 import { LikeC4Model } from "@likec4/core/model";
 import type { Flow } from "../catalog";
-import { likec4model } from "../likec4/generated";
+import { likec4model } from "../likec4/bundle";
 import { flowCrossViewId, flowViewId } from "../likec4/ids";
 import { drawnStepIds, pairEdgesToSteps } from "../likec4/flow-edges";
 import type { EdgeStepPairing } from "../likec4/flow-edges";

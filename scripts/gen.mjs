@@ -212,7 +212,7 @@ async function generate() {
   // which left a flow a verifier had just changed with a picture of the
   // flow before - and a run from the page with no picture of a new flow.
   await executeStep("generate", LIKEC4_STEP, "likec4 → likec4", async () => ({
-    files: await likec4Sources({ catalog, manifest }),
+    files: await likec4Sources({ catalog, manifest, sources, loadProfile: (profile) => loadSources({ profile: profile.id }) }),
   }), { inputs: sources.map((source) => source.path), excludes: [] });
 
   sweepAll();

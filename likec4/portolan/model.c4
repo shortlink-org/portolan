@@ -1,0 +1,29 @@
+// GENERATED — do not edit.
+model {
+  developer = actor 'developer'
+  tree = store 'the tree: fragments, docs/, exports/'
+
+  portolan = context 'Portolan' {
+    description 'system · The tool that reads an architecture catalog from the code and specifications that already describe a software estate. It is documented here as the system that extracts, merges, validates and presents those facts.'
+    style { color ctx0 }
+    host = service 'Host' {
+      description 'The side of portolan that runs.'
+      technology 'Node.js'
+      style { color ctx0 }
+    }
+    plugins = service 'Plugins' {
+      description 'A generator turns the catalog into something else.'
+      technology 'Go · TypeScript · Rust · Java · Python'
+      style { color ctx0 }
+    }
+    site = service 'Site' {
+      description 'The browser: a React single-page application that loads every source the manifest names, merges them, validates the union and renders the estate.'
+      technology 'TypeScript · React · Vite'
+      style { color ctx0 }
+    }
+  }
+
+  developer -[uses]-> portolan.host 'npm run gen' {
+    style { color declared  line dashed  head normal }
+  }
+}

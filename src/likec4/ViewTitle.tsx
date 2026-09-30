@@ -5,7 +5,7 @@
 // repeating itself. Given the whole screen, the drawing loses all three, so
 // this plate carries them there and only there (`fullscreen-only`).
 
-import { likec4model } from "./generated";
+import { likec4model } from "./bundle";
 import { C4_LEVEL, viewLevel } from "./levels";
 
 export function ViewTitle({ viewId }: { viewId: string }) {

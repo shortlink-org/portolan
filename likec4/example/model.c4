@@ -28,8 +28,6 @@ model {
   }
   oms_pg = store 'oms-pg'
   pricing_pg = store 'pricing-pg'
-  developer = actor 'developer'
-  tree = store 'the tree: fragments, docs/, exports/'
 
   auth = context 'Authentication' {
     description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
@@ -260,25 +258,6 @@ payment was captured, and what that means for a parcel is decided here.'
     _store_delivery_core_pg = store 'Delivery database' {
       technology 'postgres'
       description 'Owned by Delivery Core'
-    }
-  }
-  portolan = context 'Portolan' {
-    description 'system · The tool that reads an architecture catalog from the code and specifications that already describe a software estate. It is documented here as the system that extracts, merges, validates and presents those facts.'
-    style { color ctx5 }
-    host = service 'Host' {
-      description 'The side of portolan that runs.'
-      technology 'Node.js'
-      style { color ctx5 }
-    }
-    plugins = service 'Plugins' {
-      description 'A generator turns the catalog into something else.'
-      technology 'Go · TypeScript · Rust · Java · Python'
-      style { color ctx5 }
-    }
-    site = service 'Site' {
-      description 'The browser: a React single-page application that loads every source the manifest names, merges them, validates the union and renders the estate.'
-      technology 'TypeScript · React · Vite'
-      style { color ctx5 }
     }
   }
 
@@ -549,8 +528,5 @@ payment was captured, and what that means for a parcel is decided here.'
   }
   client -[uses]-> shop.oms 'starts 2 flows' {
     style { color verified  line solid  head normal }
-  }
-  developer -[uses]-> portolan.host 'npm run gen' {
-    style { color declared  line dashed  head normal }
   }
 }

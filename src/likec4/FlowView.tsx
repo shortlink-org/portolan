@@ -34,7 +34,7 @@ const NOTHING: readonly string[] = [];
 
 /**
  * The flow picture. LikeC4 owns it end to end: the sequence is declared in
- * likec4/views.c4, generated from the same catalog.json the rest of the page
+ * likec4/<profile>/views.c4, generated from the same catalog the rest of the page
  * reads. Portolan draws nothing here itself — it says which steps are lit,
  * where to look, and what colour the frames should be, and hears which step
  * was clicked and which one playback is on.

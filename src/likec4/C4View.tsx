@@ -6,7 +6,7 @@ import { catalogIdOf } from "./mapping";
 import { viewNodeIds, viewEdgeIds, viewNeighborhood } from "./view-index";
 import { neighborhoodCss } from "./neighborhood";
 import { useSelectionStore } from "../selection/store";
-import { likec4model } from "./generated";
+import { likec4model } from "./bundle";
 import { layoutContainers } from "./container-layout";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { FullscreenButton } from "../components/FullscreenButton";

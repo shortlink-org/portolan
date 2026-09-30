@@ -304,12 +304,13 @@ export async function prepareSite(workspace) {
 
 async function generateLikeC4(stage) {
   runNode(resolve(stage, "scripts/gen-likec4.mjs"), [], stage);
-  // The arguments ask for the wasm layout engine by name (see
-  // LIKEC4_REACT_ARGS). The stamp tells the Vite plugin in the stage that
-  // this bundle came from the installed likec4, so it is not written twice.
-  const { LIKEC4_REACT_ARGS, writeLikeC4Stamp } = await import(pathToFileURL(resolve(stage, "scripts/likec4-bundle.mjs")).href);
-  runNode(packageBin("likec4", "bin/likec4.mjs"), LIKEC4_REACT_ARGS, stage);
-  writeLikeC4Stamp(stage);
+  // A bundle per profile's project (portolan.0034), asking for the wasm
+  // layout engine by name (see likec4ReactArgs). The stamp tells the Vite
+  // plugin in the stage that these came from the installed likec4, so they
+  // are not written twice.
+  const { writeLikeC4Bundles } = await import(pathToFileURL(resolve(stage, "scripts/likec4-bundle.mjs")).href);
+  const bin = packageBin("likec4", "bin/likec4.mjs");
+  writeLikeC4Bundles(stage, (root, _bin, args) => runNode(bin, args, root));
 }
 
 async function matchedFiles(workspace, patterns) {

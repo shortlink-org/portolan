@@ -30,8 +30,8 @@ import { draftsPlugin } from "./scripts/branch-drafts.mjs";
 // (portolan.0020).
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { workItemsPlugin } from "./scripts/work-items-history.mjs";
-// src/likec4/generated.jsx is not committed; a checkout without it gets it
-// written from likec4/ before Vite serves or builds.
+// src/likec4/generated/<project>.jsx is not committed; a checkout without it
+// gets it written from likec4/ before Vite serves or builds.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { likec4BundlePlugin } from "./scripts/likec4-bundle.mjs";
 
@@ -217,12 +217,14 @@ export default defineConfig({
           // A group of their own keeps them off the first load, together with
           // the app modules that import them. Icons are excluded: the shell
           // draws one of them. Only the modules named here move, not what
-          // they depend on, or React would move with them.
+          // they depend on, or React would move with them. A profile's model
+          // (src/likec4/generated/<profile>.jsx) stays its own chunk, loaded
+          // by bundle.ts for the profile on screen alone (portolan.0034).
           includeDependenciesRecursively: false,
           groups: [
             {
               name: "likec4",
-              test: /[\\/]node_modules[\\/](likec4|@likec4[\\/](?!icons[\\/]))|[\\/]src[\\/]likec4[\\/](generated\.jsx|C4View\.tsx|FlowView\.tsx|InteractiveView\.tsx|CanvasBridge\.tsx|view-index\.ts|container-layout\.ts)$|[\\/]src[\\/]drafts[\\/]branch-view\.ts$/,
+              test: /[\\/]node_modules[\\/](likec4|@likec4[\\/](?!icons[\\/]))|[\\/]src[\\/]likec4[\\/](generated\.jsx|bundle\.ts|C4View\.tsx|FlowView\.tsx|InteractiveView\.tsx|CanvasBridge\.tsx|view-index\.ts|container-layout\.ts)$|[\\/]src[\\/]drafts[\\/]branch-view\.ts$/,
             },
           ],
         },

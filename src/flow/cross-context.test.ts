@@ -4,7 +4,7 @@ import { catalog } from "../testing/estate";
 // Same split as src/likec4/ids.test.ts: the predicate is checked against the
 // frozen fixture, and the generated views against the estate they were
 // generated from.
-import { catalog as shipped } from "../data";
+import { activeCatalogProfile, catalog as shipped } from "../data";
 import { walkSteps } from "../catalog";
 import {
   contextResolver,
@@ -39,7 +39,8 @@ describe("isCrossContext", () => {
 });
 
 describe("generated LikeC4 views agree with the predicate", () => {
-  const views = readFileSync("likec4/views.c4", "utf8");
+  // The active profile's own LikeC4 project (portolan.0034).
+  const views = readFileSync(`likec4/${activeCatalogProfile.id}/views.c4`, "utf8");
 
   it("declares every full view and omits cross views without crossings", () => {
     for (const flow of shipped.flows) {

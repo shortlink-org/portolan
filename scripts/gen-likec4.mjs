@@ -7,8 +7,8 @@
 //
 //   node scripts/gen-likec4.mjs
 
-import { writeFileSync, mkdirSync, realpathSync } from "node:fs";
-import { join } from "node:path";
+import { writeFileSync, mkdirSync, readdirSync, realpathSync, rmSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadCatalog } from "./catalog-sources.mjs";
@@ -25,7 +25,36 @@ import { isCrossContext } from "../src/flow/cross-context.ts";
 // `gen` can settle them the way it settles every generated page - written,
 // or in check mode compared and reported as drift - and `likec4:gen` can
 // still write them on its own before the dev server starts.
-export async function likec4Sources({ catalog, manifest }) {
+/**
+ * The LikeC4 sources of the estate (portolan.0034). A manifest with catalog
+ * profiles gets one LikeC4 project per profile, in a directory of its own
+ * with a likec4.config.json naming it: two estates may each have a `payments`
+ * context or a `bus`, and one model would make them one. Only the profiles
+ * whose sources the top-level `sources` also match are drawn - the ones the
+ * site can load; a showcase kept outside them is drawn where it is staged.
+ * A manifest without profiles keeps its single unnamed model.
+ *
+ * `loadProfile(profile)` is the profile's own merged catalog and its sources,
+ * as loadCatalog answers them; without it, or without profiles, the one model
+ * is drawn from `catalog`.
+ */
+export async function likec4Sources({ catalog, manifest, sources = [], loadProfile }) {
+  const declared = manifest?.catalogs ?? [];
+  if (declared.length === 0 || !loadProfile) return modelSources({ catalog, manifest });
+  const top = new Set(sources.map((source) => source.path));
+  const files = [];
+  for (const profile of declared) {
+    const loaded = await loadProfile(profile);
+    if (!loaded.sources.every((source) => top.has(source.path))) continue;
+    const model = await modelSources({ catalog: loaded.catalog, manifest: { ...manifest, catalogs: [profile] } });
+    files.push({ name: `${profile.id}/likec4.config.json`, contents: `${JSON.stringify({ name: profile.id, title: profile.title ?? profile.id }, null, 2)}\n` });
+    for (const file of model) files.push({ ...file, name: `${profile.id}/${file.name}` });
+  }
+  return files;
+}
+
+/** One LikeC4 model: the estate `catalog` describes, and a view pair per profile `manifest` names. */
+async function modelSources({ catalog, manifest }) {
 const profiles = catalogProfiles(manifest);
 
 // --- ids (mirrors src/likec4/ids.ts; kept in step by src/likec4/ids.test.ts) ---
@@ -1511,11 +1540,25 @@ return [
 // sources are written under likec4/ here and now.
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const bundle = await loadCatalog();
-  const files = await likec4Sources(bundle);
+  const files = await likec4Sources({
+    ...bundle,
+    loadProfile: (profile) => loadCatalog("portolan.json", { profile: profile.id }),
+  });
+  // What an earlier run wrote and this one does not - the single model's
+  // files once profiles appear, a profile since dropped - goes, so that
+  // likec4/ holds exactly one workspace.
   mkdirSync("likec4", { recursive: true });
-  for (const file of files) writeFileSync(join("likec4", file.name), file.contents);
+  const written = new Set(files.map((file) => file.name.split("/")[0]));
+  for (const entry of readdirSync("likec4", { withFileTypes: true })) {
+    if (entry.name.startsWith(".") || written.has(entry.name)) continue;
+    if (entry.isDirectory() || entry.name.endsWith(".c4")) rmSync(join("likec4", entry.name), { recursive: true, force: true });
+  }
+  for (const file of files) {
+    mkdirSync(dirname(join("likec4", file.name)), { recursive: true });
+    writeFileSync(join("likec4", file.name), file.contents);
+  }
   console.log(
     `wrote ${files.map((file) => `likec4/${file.name}`).join(", ")} ` +
-      `(${files.find((file) => file.name === "views.c4").contents.match(/dynamic view /g)?.length ?? 0} dynamic views)`,
+      `(${files.filter((file) => file.name.endsWith("views.c4")).reduce((n, file) => n + (file.contents.match(/dynamic view /g)?.length ?? 0), 0)} dynamic views)`,
   );
 }

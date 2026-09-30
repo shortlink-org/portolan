@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { catalog } from "../testing/estate";
 import { hasCrossContextSteps } from "../flow/cross-context";
 // The generated sources are generated from the estate the app ships, so the
 // block that reads them off disk is held against that one and not against the
 // frozen fixture the id rules are checked with.
-import { catalog as shipped, catalogProfiles } from "../data";
+import { activeCatalogProfile, catalog as shipped } from "../data";
 import {
   CONTAINERS_VIEW,
   LANDSCAPE_VIEW,
@@ -131,27 +131,34 @@ describe("view ids", () => {
 });
 
 describe("generated sources match the ids the app asks for", () => {
-  const views = readFileSync("likec4/views.c4", "utf8");
+  // One LikeC4 project per profile (portolan.0034): the page draws from the
+  // active profile's, and each project names its own profile's entry points.
+  const projects = readdirSync("likec4", { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(`likec4/${entry.name}/likec4.config.json`))
+    .map((entry) => entry.name);
 
-  /** Every `view x {` and `dynamic view x {` declared in the generated source. */
-  const declared = [
-    ...views.matchAll(/^\s*(?:dynamic\s+)?view\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm),
+  /** Every `view x {` and `dynamic view x {` declared in one project's views. */
+  const declaredIn = (dir: string) => [
+    ...readFileSync(`${dir}/views.c4`, "utf8").matchAll(/^\s*(?:dynamic\s+)?view\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm),
   ].map((m) => m[1] as string);
 
-  it("declares every selected-catalog view and every profile entry point", () => {
-    const askedFor = [
-      ...allViewIds(shipped),
-      ...catalogProfiles.flatMap((profile) => [
-        profileLandscapeViewId(profile.id),
-        profileContainersViewId(profile.id),
-      ]),
-    ];
-    expect(new Set(declared).size).toBe(declared.length);
-    for (const id of askedFor) expect(declared).toContain(id);
+  it("writes a project for the profile the page is showing", () => {
+    expect(projects).toContain(activeCatalogProfile.id);
   });
 
-  it("declares the landscape and the containers once each, the only views with fixed names", () => {
-    expect(declared.filter((id) => id === LANDSCAPE_VIEW)).toHaveLength(1);
-    expect(declared.filter((id) => id === CONTAINERS_VIEW)).toHaveLength(1);
+  it("declares every view the active catalog asks for in its own project", () => {
+    const declared = declaredIn(`likec4/${activeCatalogProfile.id}`);
+    expect(new Set(declared).size).toBe(declared.length);
+    for (const id of allViewIds(shipped)) expect(declared).toContain(id);
+  });
+
+  it("gives every project its profile's entry points, and the landscape and the containers once each", () => {
+    for (const project of projects) {
+      const declared = declaredIn(`likec4/${project}`);
+      expect(declared, project).toContain(profileLandscapeViewId(project));
+      expect(declared, project).toContain(profileContainersViewId(project));
+      expect(declared.filter((id) => id === LANDSCAPE_VIEW), project).toHaveLength(1);
+      expect(declared.filter((id) => id === CONTAINERS_VIEW), project).toHaveLength(1);
+    }
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { likec4model } from "./generated";
+import { likec4model } from "./bundle";
 import { BOXES, legendFrom, viewLegend } from "./legend";
 
 describe("C4 legend", () => {

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { DiagramApi, ViewPadding } from "likec4/react";
 import { ReactLikeC4 as ModelView, LikeC4ModelProvider } from "likec4/react";
 import type { LikeC4Model } from "@likec4/core/model";
-import { ReactLikeC4, RenderIcon, isLikeC4ViewId } from "./generated";
+import { ReactLikeC4, RenderIcon, isLikeC4ViewId } from "./bundle";
 import { useTheme } from "../app/theme";
 import { Ident } from "../components/Ident";
 import { buildHighlightCss } from "./highlight-css";

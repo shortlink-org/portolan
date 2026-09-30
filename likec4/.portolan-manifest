@@ -1,8 +1,14 @@
 {
   "likec4": [
-    "deployment.c4",
-    "model.c4",
-    "spec.c4",
-    "views.c4"
+    "example/deployment.c4",
+    "example/likec4.config.json",
+    "example/model.c4",
+    "example/spec.c4",
+    "example/views.c4",
+    "portolan/deployment.c4",
+    "portolan/likec4.config.json",
+    "portolan/model.c4",
+    "portolan/spec.c4",
+    "portolan/views.c4"
   ]
 }

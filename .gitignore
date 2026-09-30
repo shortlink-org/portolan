@@ -19,6 +19,7 @@ examples/*/portolan/*.local.json
 # stale; the stamp names the likec4 that wrote it
 src/likec4/generated.jsx
 src/likec4/generated.d.ts
+src/likec4/generated/
 src/likec4/generated.stamp.json
 
 # Compiled generator plugins: rebuilt by `npm run plugins:build`

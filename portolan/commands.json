@@ -77,14 +77,14 @@
               "runner": "npm",
               "name": "likec4:gen",
               "run": "npm run likec4:gen",
-              "body": "node scripts/gen-likec4.mjs \u0026\u0026 likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot",
+              "body": "node scripts/gen-likec4.mjs \u0026\u0026 node scripts/likec4-bundle.mjs",
               "source": "package.json:70"
             },
             {
               "runner": "npm",
               "name": "likec4:validate",
               "run": "npm run likec4:validate",
-              "body": "likec4 validate likec4",
+              "body": "node scripts/likec4-bundle.mjs --validate",
               "source": "package.json:71"
             },
             {

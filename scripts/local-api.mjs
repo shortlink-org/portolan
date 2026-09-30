@@ -33,6 +33,7 @@ import { listGitRefs } from "./git-refs.mjs";
 import { deleteDraft, discardDraft, draftPath, fetchClone, listBranches, listDrafts, readDrafts, readPending, restoreDraft, saveDraft } from "./branch-drafts.mjs";
 import { eventBridgeState, saveEventBridgeSettings } from "./eventbridge-settings.mjs";
 import { annotationState, saveAnnotation } from "./annotations.mjs";
+import { bundlePath, likec4Projects, likec4ReactArgs } from "./likec4-bundle.mjs";
 import { UPLOAD_LIMIT, checkRecording, manifestWithTraceStep, recordingPath, stepWithMappings, summarizeTraceTrial, traceStepFor } from "./trace-trials.mjs";
 import {
   discoverProject,
@@ -1496,25 +1497,28 @@ async function startProjectPreview(job) {
 }
 
 /**
- * Rebuilds src/likec4/generated.jsx from likec4/ in the workspace, the way
- * `npm run likec4:gen` does before `dev`. Said in the run's log either way;
- * a bundle that fails to build leaves the last one in place.
+ * Rebuilds the bundle of every project under likec4/ in the workspace - one
+ * per profile (portolan.0034) - the way `npm run likec4:gen` does before
+ * `dev`. Said in the run's log either way; a bundle that fails to build leaves
+ * the last one in place.
  */
-function refreshLikeC4Bundle(job) {
-  return new Promise((done) => {
-    const bin = join(job.runRoot, "node_modules/likec4/bin/likec4.mjs");
-    if (!lstatExists(bin)) return done();
-    emit(job, { type: "log", stream: "stdout", message: "likec4 → src/likec4/generated.jsx" });
-    const child = spawn(process.execPath, [bin, "gen", "react", "likec4", "-o", "src/likec4/generated.jsx", "--no-use-dot"], { cwd: job.runRoot, stdio: ["ignore", "pipe", "pipe"] });
-    let output = "";
-    child.stdout.on("data", (chunk) => { output += chunk; });
-    child.stderr.on("data", (chunk) => { output += chunk; });
-    child.on("error", (error) => { emit(job, { type: "log", stream: "stderr", message: `likec4: ${error.message}` }); done(); });
-    child.on("close", (code) => {
-      if (code !== 0) emit(job, { type: "log", stream: "stderr", message: `likec4 gen react exited with ${code}:\n${output.trim()}` });
-      done();
+async function refreshLikeC4Bundle(job) {
+  const bin = join(job.runRoot, "node_modules/likec4/bin/likec4.mjs");
+  if (!lstatExists(bin)) return;
+  for (const project of likec4Projects(job.runRoot)) {
+    await new Promise((done) => {
+      emit(job, { type: "log", stream: "stdout", message: `likec4 → ${bundlePath(project)}` });
+      const child = spawn(process.execPath, [bin, ...likec4ReactArgs(project)], { cwd: job.runRoot, stdio: ["ignore", "pipe", "pipe"] });
+      let output = "";
+      child.stdout.on("data", (chunk) => { output += chunk; });
+      child.stderr.on("data", (chunk) => { output += chunk; });
+      child.on("error", (error) => { emit(job, { type: "log", stream: "stderr", message: `likec4: ${error.message}` }); done(); });
+      child.on("close", (code) => {
+        if (code !== 0) emit(job, { type: "log", stream: "stderr", message: `likec4 gen react exited with ${code}:\n${output.trim()}` });
+        done();
+      });
     });
-  });
+  }
 }
 
 function startJob(workspace, mode, approvedPreview, preparedTrial) {

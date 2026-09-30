@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { STAMP, ensureLikeC4Bundle, likec4BundleFresh, likec4Stamp, writeLikeC4Stamp } from "./likec4-bundle.mjs";
+import { STAMP, ensureLikeC4Bundle, likec4BundleFresh, likec4Projects, likec4Stamp, writeLikeC4Stamp } from "./likec4-bundle.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -17,9 +17,9 @@ function root({ source, built, stamp = likec4Stamp() }) {
   const dir = mkdtempSync(join(tmpdir(), "portolan-likec4-"));
   roots.push(dir);
   mkdirSync(join(dir, "likec4"), { recursive: true });
-  mkdirSync(join(dir, "src/likec4"), { recursive: true });
+  mkdirSync(join(dir, "src/likec4/generated"), { recursive: true });
   const files = { "likec4/model.c4": source, "likec4/views.c4": source };
-  if (built !== undefined) Object.assign(files, { "src/likec4/generated.jsx": built, "src/likec4/generated.d.ts": built });
+  if (built !== undefined) Object.assign(files, { "src/likec4/generated/default.jsx": built, "src/likec4/generated/default.d.ts": built });
   for (const [name, time] of Object.entries(files)) {
     writeFileSync(join(dir, name), "x");
     utimesSync(join(dir, name), time, time);
@@ -28,12 +28,13 @@ function root({ source, built, stamp = likec4Stamp() }) {
   return dir;
 }
 
-/** ensureLikeC4Bundle with the spawn replaced by a recorder that touches the outputs. */
+/** ensureLikeC4Bundle with the spawn replaced by a recorder that writes the bundle `-o` names. */
 function ensure(dir) {
   const runs = [];
-  const ran = ensureLikeC4Bundle(dir, () => {}, (cwd, bin) => {
+  const ran = ensureLikeC4Bundle(dir, () => {}, (cwd, bin, args) => {
     runs.push(bin);
-    for (const output of ["src/likec4/generated.jsx", "src/likec4/generated.d.ts"]) writeFileSync(join(cwd, output), "y");
+    const output = args[args.indexOf("-o") + 1];
+    for (const file of [output, output.replace(/\.jsx$/, ".d.ts")]) writeFileSync(join(cwd, file), "y");
   });
   return { ran, runs };
 }
@@ -48,7 +49,7 @@ describe("whether the LikeC4 react bundle follows from likec4/", () => {
     expect(likec4BundleFresh(root({ source: 1000 }))).toBe(false);
 
     const half = root({ source: 1000, built: 2000 });
-    rmSync(join(half, "src/likec4/generated.d.ts"));
+    rmSync(join(half, "src/likec4/generated/default.d.ts"));
     expect(likec4BundleFresh(half)).toBe(false);
 
     const stale = root({ source: 1000, built: 2000 });
@@ -82,5 +83,24 @@ describe("whether the LikeC4 react bundle follows from likec4/", () => {
     expect(JSON.parse(readFileSync(join(upgraded, STAMP), "utf8"))).toEqual(likec4Stamp());
 
     expect(ensure(upgraded)).toEqual({ ran: false, runs: [] });
+  });
+
+  it("writes a bundle per named project, and drops the bundles of projects gone and of the old layout", () => {
+    const dir = root({ source: 1000 });
+    for (const project of ["shop", "bank"]) {
+      mkdirSync(join(dir, "likec4", project), { recursive: true });
+      writeFileSync(join(dir, "likec4", project, "likec4.config.json"), JSON.stringify({ name: project }));
+    }
+    rmSync(join(dir, "likec4/model.c4"));
+    rmSync(join(dir, "likec4/views.c4"));
+    writeFileSync(join(dir, "src/likec4/generated/gone.jsx"), "old");
+    writeFileSync(join(dir, "src/likec4/generated.jsx"), "old");
+    expect(likec4Projects(dir)).toEqual(["bank", "shop"]);
+
+    const first = ensure(dir);
+    expect(first.runs).toHaveLength(2);
+    expect(readdirSync(join(dir, "src/likec4/generated")).sort()).toEqual(["bank.d.ts", "bank.jsx", "shop.d.ts", "shop.jsx"]);
+    expect(existsSync(join(dir, "src/likec4/generated.jsx"))).toBe(false);
+    expect(likec4BundleFresh(dir)).toBe(true);
   });
 });
