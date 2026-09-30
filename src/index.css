@@ -44,15 +44,16 @@
   :where(select) {
     max-width: 100%;
   }
-  /* A touch browser zooms the page into any text field set below 16px the
-     moment it is focused, and leaves it zoomed. Every field a reader types
-     into - the palette, a branch search, a filter - is 16px on a touch
-     screen, whatever size the desktop composition gave it. Important so a
-     field's own text-sm cannot win it back. */
-  @media (pointer: coarse) {
-    :where(textarea, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"])) {
-      font-size: 16px !important;
-    }
+}
+
+/* A touch browser zooms the page into any text field set below 16px the
+   moment it is focused, and leaves it zoomed. Every field a reader types
+   into - the palette, a branch search, a filter - is 16px on a touch
+   screen, whatever size the desktop composition gave it. Outside every
+   layer, so a field's own text-sm utility cannot win it back. */
+@media (pointer: coarse) {
+  :where(textarea, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"])) {
+    font-size: 16px;
   }
 }
 
