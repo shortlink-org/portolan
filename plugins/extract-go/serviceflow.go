@@ -6,7 +6,6 @@ import (
 	"go/token"
 	"go/types"
 	"net/http"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
