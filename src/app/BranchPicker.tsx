@@ -30,44 +30,7 @@ function refNote(ref: ForgeRef, current: string): string {
  * runtime; a choice opens the first-class changes route, whose URL carries both heads.
  */
 export function BranchPicker({ compact = false }: { compact?: boolean }) {
-  const current = buildInfo.branch || "main";
-  const repo = forgeRepoFromUrl(buildInfo.repoUrl, buildInfo.forge);
-  const access = useForgeAccess();
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const [search] = useSearchParams();
-  const token = repo ? access.tokenFor(repo) : "";
-  // The same query the changes page reads: whichever mounts first fetches,
-  // the other one joins it.
-  const refsQuery = useQuery(forgeRefsQuery(repo, token));
-  const remote = refsQuery.data ?? NO_REFS;
-  const loading = refsQuery.isLoading;
-  const error = refsQuery.error?.message ?? "";
-
-  const refs = useMemo(() => {
-    const known = remote.some((ref) => ref.kind === "branch" && ref.name === current)
-      ? remote
-      : [...remote, { name: current, commit: buildInfo.commit, protected: false, kind: "branch" as const }];
-    return sortRefs(known, current);
-  }, [current, remote]);
-  const branches = refs.filter((ref) => ref.kind === "branch");
-  const tags = refs.filter((ref) => ref.kind === "tag");
-
-  const requested = pathname === paths.changes() ? search.get("head") ?? "" : "";
-  const selected = findRef(refs, requested) ? requested : current;
-  const comparing = selected !== current;
-  const compareHref = branchCompareHref(current, selected);
-
-  const choose = (name: string) => {
-    if (name === current) {
-      forgetComparison();
-      navigate(paths.changes());
-      return;
-    }
-    rememberComparison(current, name);
-    const next = new URLSearchParams({ base: current, head: name });
-    navigate(`${paths.changes()}?${next}`);
-  };
+  const { current, repo, loading, error, branches, tags, selected, comparing, compareHref, choose } = useBranchChoice();
 
   return (
     <Listbox value={selected} onChange={choose}>
@@ -149,5 +112,103 @@ function RefOption({ item, current }: { item: ForgeRef; current: string }) {
         </>
       )}
     </ListboxOption>
+  );
+}
+
+/**
+ * Which heads there are to compare with, which one is chosen, and how to
+ * choose another. The listbox in the bar and the phone menu's select read the
+ * same forge refs through it.
+ */
+function useBranchChoice() {
+  const current = buildInfo.branch || "main";
+  const repo = forgeRepoFromUrl(buildInfo.repoUrl, buildInfo.forge);
+  const access = useForgeAccess();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [search] = useSearchParams();
+  const token = repo ? access.tokenFor(repo) : "";
+  // The same query the changes page reads: whichever mounts first fetches,
+  // the other one joins it.
+  const refsQuery = useQuery(forgeRefsQuery(repo, token));
+  const remote = refsQuery.data ?? NO_REFS;
+  const loading = refsQuery.isLoading;
+  const error = refsQuery.error?.message ?? "";
+
+  const refs = useMemo(() => {
+    const known = remote.some((ref) => ref.kind === "branch" && ref.name === current)
+      ? remote
+      : [...remote, { name: current, commit: buildInfo.commit, protected: false, kind: "branch" as const }];
+    return sortRefs(known, current);
+  }, [current, remote]);
+  const branches = refs.filter((ref) => ref.kind === "branch");
+  const tags = refs.filter((ref) => ref.kind === "tag");
+
+  const requested = pathname === paths.changes() ? search.get("head") ?? "" : "";
+  const selected = findRef(refs, requested) ? requested : current;
+  const comparing = selected !== current;
+  const compareHref = branchCompareHref(current, selected);
+
+  const choose = (name: string) => {
+    if (name === current) {
+      forgetComparison();
+      navigate(paths.changes());
+      return;
+    }
+    rememberComparison(current, name);
+    const next = new URLSearchParams({ base: current, head: name });
+    navigate(`${paths.changes()}?${next}`);
+  };
+
+
+  return { current, repo, loading, error, branches, tags, selected, comparing, compareHref, choose };
+}
+
+/**
+ * The phone's form of the picker: a native select in the overflow menu. A tap
+ * opens the system list, which fits a phone better than a listbox anchored
+ * under a 40px bar, and the choice opens the changes route as the listbox does.
+ */
+export function BranchSelect({ onChosen }: { onChosen?: () => void }) {
+  const { current, repo, loading, error, branches, tags, selected, choose } = useBranchChoice();
+
+  return (
+    <label className="mono flex min-h-10 w-full items-center gap-2 rounded-control px-2 text-muted hover:bg-surface hover:text-ink has-[select:focus-visible]:text-accent">
+      <GitBranch size={16} aria-hidden className="shrink-0" />
+      <span className="sr-only">Compare with</span>
+      <select
+        aria-label={`Compare ${current} with a branch or tag`}
+        value={selected}
+        onChange={(event) => {
+          choose(event.target.value);
+          onChosen?.();
+        }}
+        className="min-w-0 flex-1 bg-transparent text-ink outline-none"
+      >
+        <optgroup label={`compare ${current} with`}>
+          {branches.map((ref) => (
+            <option key={`branch:${ref.name}`} value={ref.name}>
+              {ref.name === current ? `${ref.name} (current)` : ref.name}
+            </option>
+          ))}
+        </optgroup>
+        {tags.length > 0 ? (
+          <optgroup label="tags">
+            {tags.map((ref) => (
+              <option key={`tag:${ref.name}`} value={ref.name}>
+                {ref.name}
+              </option>
+            ))}
+          </optgroup>
+        ) : null}
+      </select>
+      {loading ? (
+        <LoaderCircle size={13} aria-label="Loading branches" className="shrink-0 animate-spin" />
+      ) : error || !repo ? (
+        <span className="shrink-0 text-xs text-unresolved" title={error || "Runtime comparison needs a GitHub or GitLab repository."}>
+          only {current}
+        </span>
+      ) : null}
+    </label>
   );
 }

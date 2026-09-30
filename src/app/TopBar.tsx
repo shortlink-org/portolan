@@ -17,9 +17,10 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
-import { BranchPicker } from "./BranchPicker";
-import { DraftPicker } from "./DraftPicker";
-import { BuildStamp } from "./BuildStamp";
+import { BranchPicker, BranchSelect } from "./BranchPicker";
+import { DraftPicker, DraftToggles } from "./DraftPicker";
+import { BuildDetails, BuildStamp } from "./BuildStamp";
+import { buildHref } from "../lib/build-info";
 import { useDensity } from "./density";
 import { usePhone } from "./responsive";
 import { useTheme } from "./theme";
@@ -63,9 +64,11 @@ export function TopBar({
        three rows of chrome above a page that had few enough of its own, and
        chrome that tall is not "reachable", it is in the way. So below the
        phone breakpoint the bar keeps one row and folds instead - the search
-       box to its icon, the whole-estate views and the two settings into an
-       overflow menu, the build stamp into a popover. What stays on the row is
-       what a reader steers with: the drawer, where they are, and search. */
+       box to its icon; the catalog, branch and drafts pickers, the build
+       stamp, the whole-estate views and the two settings into an overflow
+       menu. What stays on the row is what a reader steers with: the drawer,
+       where they are, and search - three 40px targets, which is what a thumb
+       needs and what six 32px icons beside the crumbs could not be. */
     <header
       className={`flex min-h-12 shrink-0 items-center border-b py-1 px-gutter border-line bg-canvas ${
         phone ? "gap-x-2" : "flex-wrap justify-end gap-x-3 gap-y-2"
@@ -78,7 +81,9 @@ export function TopBar({
           aria-label="Open the catalog"
           aria-keyshortcuts="["
           title="Catalog — ["
-          className="-ml-2 flex size-8 shrink-0 items-center justify-center rounded-control text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+          className={`-ml-2 flex shrink-0 items-center justify-center rounded-control text-muted t-micro transition-colors hover:bg-surface hover:text-ink ${
+            phone ? "size-10" : "size-8"
+          }`}
         >
           <Menu size={16} aria-hidden />
         </button>
@@ -100,9 +105,13 @@ export function TopBar({
             : "contents"
         }
       >
-        <CatalogPicker compact={phone} />
-        <BranchPicker compact={phone} />
-        <DraftPicker compact={phone} />
+        {phone ? null : (
+          <>
+            <CatalogPicker />
+            <BranchPicker />
+            <DraftPicker />
+          </>
+        )}
 
         {/* Opens the palette rather than filtering in place: the sidebar box
             narrows the tree, this one searches the whole catalog. */}
@@ -113,7 +122,7 @@ export function TopBar({
             aria-label="Search catalog"
             aria-keyshortcuts="Meta+K Control+K"
             title="Search catalog"
-            className="flex size-8 shrink-0 items-center justify-center rounded-control border border-line text-muted t-micro transition-colors hover:bg-surface hover:border-line-strong hover:text-ink"
+            className="flex size-10 shrink-0 items-center justify-center rounded-control border border-line text-muted t-micro transition-colors hover:bg-surface hover:border-line-strong hover:text-ink"
           >
             <Search size={16} aria-hidden />
           </button>
@@ -143,52 +152,50 @@ export function TopBar({
 
         {/* The stamp folds below the narrow breakpoint, not only on the
             phone: between the two the controls wrap, and the full stamp was
-            the one control left for a third row of chrome of its own. */}
-        <BuildStamp compact={phone || narrow} />
+            the one control left for a third row of chrome of its own. On the
+            phone it is a section of the overflow menu. */}
+        {phone ? null : <BuildStamp compact={narrow} />}
       </div>
     </header>
   );
 }
 
-function CatalogPicker({ compact }: { compact: boolean }) {
+function changeCatalog(id: string) {
+  if (id === activeCatalogProfile.id) return;
+  const next = new URL(import.meta.env.BASE_URL, window.location.origin);
+  next.searchParams.set("catalog", id);
+  window.location.assign(next);
+}
+
+function CatalogPicker() {
   if (catalogProfiles.length < 2) return null;
 
-  const change = (id: string) => {
-    if (id === activeCatalogProfile.id) return;
-    const next = new URL(import.meta.env.BASE_URL, window.location.origin);
-    next.searchParams.set("catalog", id);
-    window.location.assign(next);
-  };
-
-  // On the phone the picker folds to its icon like the branch and the drafts
-  // beside it. Showing the profile's name took the width the breadcrumbs
-  // needed and left the row saying which catalog but not where in it. The
-  // native select still covers the icon, so a tap opens the system list and
-  // the name is one tap away, as the branch's is.
   return (
     <label
-      className={
-        compact
-          ? "relative flex size-8 shrink-0 items-center justify-center rounded-control border border-line text-muted hover:border-line-strong hover:text-ink has-[select:focus-visible]:border-accent has-[select:focus-visible]:text-accent"
-          : "mono flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2 py-1.5 text-muted hover:border-line-strong hover:text-ink"
-      }
-      title={compact ? `Catalog profile: ${activeCatalogProfile.title}` : "Catalog profile"}
+      className="mono flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2 py-1.5 text-muted hover:border-line-strong hover:text-ink"
+      title="Catalog profile"
     >
       <Layers3 size={16} aria-hidden className="shrink-0" />
       <span className="sr-only">Catalog</span>
-      <select
-        aria-label="Catalog profile"
-        value={activeCatalogProfile.id}
-        onChange={(event) => change(event.target.value)}
-        className={compact ? "absolute inset-0 cursor-pointer opacity-0" : "max-w-36 bg-transparent text-ink outline-none"}
-      >
-        {catalogProfiles.map((profile) => (
-          <option key={profile.id} value={profile.id}>
-            {profile.title}
-          </option>
-        ))}
-      </select>
+      <CatalogOptions className="max-w-36 bg-transparent text-ink outline-none" />
     </label>
+  );
+}
+
+function CatalogOptions({ className }: { className: string }) {
+  return (
+    <select
+      aria-label="Catalog profile"
+      value={activeCatalogProfile.id}
+      onChange={(event) => changeCatalog(event.target.value)}
+      className={className}
+    >
+      {catalogProfiles.map((profile) => (
+        <option key={profile.id} value={profile.id}>
+          {profile.title}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -291,13 +298,18 @@ function Wide({ onOpenHelp }: { onOpenHelp: () => void }) {
 }
 
 const ROW =
-  "mono flex w-full items-center gap-2 rounded-control px-2 py-2 text-left text-muted transition-colors hover:bg-surface hover:text-ink";
+  "mono flex min-h-10 w-full items-center gap-2 rounded-control px-2 py-2 text-left text-muted transition-colors hover:bg-surface hover:text-ink";
 
 /**
  * Everything the wide bar puts on the row and a phone has no room for. It is a
  * menu rather than a smaller segmented control because at this width the
  * controls had shed their labels first, and five unlabelled icons in a strip is
  * a puzzle - the menu buys the labels back with the space it saves.
+ *
+ * The pickers come first: which catalog, compared with which branch, with
+ * which drafts laid over it are what the page shows, the rest is how the app
+ * is set. Each is a native control where one fits - a tap opens the system
+ * list - because a popover opened from inside a popover closes its parent.
  */
 function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
   const { theme, toggle } = useTheme();
@@ -311,7 +323,7 @@ function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
         aria-label="More"
         title="More"
         className={({ open }) =>
-          `flex size-8 items-center justify-center rounded-control border t-micro transition-colors border-line hover:bg-surface ${
+          `flex size-10 items-center justify-center rounded-control border t-micro transition-colors border-line hover:bg-surface ${
             open ? "text-accent" : "text-muted hover:text-ink"
           }`
         }
@@ -320,11 +332,25 @@ function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
       </PopoverButton>
       <PopoverPanel
         anchor={{ to: "bottom end", gap: 4, padding: 8 }}
-        className="palette-in z-50 w-56 rounded-control border bg-canvas p-1 border-line-strong shadow-md focus:outline-none"
+        className="palette-in z-50 max-h-[calc(100dvh-4rem)] w-72 overflow-y-auto rounded-control border bg-canvas p-1 border-line-strong shadow-md focus:outline-none"
       >
         {({ close }) => (
           <>
-            <div className="label mt-1 mb-1 px-2">the whole estate</div>
+            <div className="label mt-1 mb-1 px-2">what is shown</div>
+            {catalogProfiles.length > 1 ? (
+              <label className="mono flex min-h-10 w-full items-center gap-2 rounded-control px-2 text-muted hover:bg-surface hover:text-ink has-[select:focus-visible]:text-accent">
+                <Layers3 size={16} aria-hidden className="shrink-0" />
+                <span className="sr-only">Catalog</span>
+                <CatalogOptions className="min-w-0 flex-1 bg-transparent text-ink outline-none" />
+              </label>
+            ) : null}
+            <BranchSelect onChosen={() => close()} />
+
+            <div className="-mx-1 mt-1 border-t border-line">
+              <DraftToggles />
+            </div>
+
+            <div className="label mt-2 mb-1 px-2">the whole estate</div>
             <Link to="/map" onClick={() => close()} className={ROW}>
               <Map size={16} aria-hidden className="shrink-0" />
               context map
@@ -381,6 +407,10 @@ function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
               <Settings2 size={16} aria-hidden className="shrink-0" />
               settings
             </Link>
+
+            <div className="mt-1 border-t border-line p-1 pt-2">
+              <BuildDetails href={buildHref()} />
+            </div>
           </>
         )}
       </PopoverPanel>

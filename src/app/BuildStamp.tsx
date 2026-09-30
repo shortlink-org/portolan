@@ -92,55 +92,68 @@ function CompactStamp({ href }: { href: string | null }) {
         anchor={{ to: "bottom end", gap: 4, padding: 8 }}
         className="palette-in z-50 w-64 rounded-control border bg-canvas p-2 border-line-strong shadow-md focus:outline-none"
       >
-        <div className="label mb-1.5 px-1">build</div>
-        <dl className="mono grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-1 text-muted">
-          <dt>commit</dt>
-          {/* `buildLabel` ends a dirty tree in a "+", which is what the wide
-              stamp has room to say. Here the word says it, so the sign would
-              be saying it twice. */}
-          <dd className="truncate text-ink">
-            {buildInfo.shortCommit || buildLabel()}
-            {buildInfo.dirty ? (
-              <span className="ml-1.5 text-muted">uncommitted</span>
-            ) : null}
-          </dd>
-          {buildInfo.branch ? (
-            <>
-              <dt>branch</dt>
-              <dd className="truncate text-ink">{buildInfo.branch}</dd>
-            </>
-          ) : null}
-          {buildInfo.buildNumber ? (
-            <>
-              <dt>run</dt>
-              <dd className="truncate text-ink">#{buildInfo.buildNumber}</dd>
-            </>
-          ) : null}
-          <dt>built</dt>
-          <dd className="text-ink">
-            {buildInfo.builtAt ? (
-              <>
-                {relativeTime(buildInfo.builtAt)}
-                <div className="text-muted">
-                  {absoluteTime(buildInfo.builtAt)}
-                </div>
-              </>
-            ) : (
-              "at an unrecorded time"
-            )}
-          </dd>
-        </dl>
-        {href ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            className="mono mt-2 block rounded-control px-1 py-1 text-accent hover:bg-surface"
-          >
-            open on the forge ↗
-          </a>
-        ) : null}
+        <BuildDetails href={href} />
       </PopoverPanel>
     </Popover>
+  );
+}
+
+/**
+ * What the stamp says, written out: the commit, the branch, the run and when it
+ * was built. The compact stamp's popover shows it, and so does the phone's
+ * overflow menu, where the stamp has no button of its own.
+ */
+export function BuildDetails({ href }: { href: string | null }) {
+  return (
+    <>
+      <div className="label mb-1.5 px-1">build</div>
+      <dl className="mono grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-1 text-muted">
+        <dt>commit</dt>
+        {/* `buildLabel` ends a dirty tree in a "+", which is what the wide
+            stamp has room to say. Here the word says it, so the sign would
+            be saying it twice. */}
+        <dd className="truncate text-ink">
+          {buildInfo.shortCommit || buildLabel()}
+          {buildInfo.dirty ? (
+            <span className="ml-1.5 text-muted">uncommitted</span>
+          ) : null}
+        </dd>
+        {buildInfo.branch ? (
+          <>
+            <dt>branch</dt>
+            <dd className="truncate text-ink">{buildInfo.branch}</dd>
+          </>
+        ) : null}
+        {buildInfo.buildNumber ? (
+          <>
+            <dt>run</dt>
+            <dd className="truncate text-ink">#{buildInfo.buildNumber}</dd>
+          </>
+        ) : null}
+        <dt>built</dt>
+        <dd className="text-ink">
+          {buildInfo.builtAt ? (
+            <>
+              {relativeTime(buildInfo.builtAt)}
+              <div className="text-muted">
+                {absoluteTime(buildInfo.builtAt)}
+              </div>
+            </>
+          ) : (
+            "at an unrecorded time"
+          )}
+        </dd>
+      </dl>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="mono mt-2 block rounded-control px-1 py-1 text-accent hover:bg-surface"
+        >
+          open on the forge ↗
+        </a>
+      ) : null}
+    </>
   );
 }

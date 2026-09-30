@@ -12,9 +12,7 @@ import { paths } from "../routes";
 export function DraftPicker({ compact = false }: { compact?: boolean }) {
   const drafts = useDrafts((s) => s.drafts);
   const enabled = useDrafts((s) => s.enabled);
-  const toggle = useDrafts((s) => s.toggle);
   const on = drafts.filter((d) => enabled.includes(draftKey(d))).length;
-  const projects = [...new Set(drafts.map((d) => d.projectName))];
 
   return (
     <Popover className="relative">
@@ -36,48 +34,66 @@ export function DraftPicker({ compact = false }: { compact?: boolean }) {
         anchor={{ to: "bottom end", gap: 4, padding: 8 }}
         className="palette-in z-50 w-96 rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"
       >
-        <div className="label px-3 pt-2 pb-1">show branch drafts in the catalog</div>
-        {drafts.length === 0 ? (
-          <div className="px-3 py-3 text-sm text-muted">No saved drafts yet.</div>
-        ) : (
-          projects.map((project) => (
-            <div key={project} className="border-t border-line first-of-type:border-t-0">
-              <div className="mono px-3 pt-2 text-xs text-muted">{project}</div>
-              {drafts
-                .filter((d) => d.projectName === project)
-                .map((draft) => {
-                  const key = draftKey(draft);
-                  const n = counts(draft);
-                  return (
-                    <label key={key} className="mono flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-raised">
-                      <input type="checkbox" checked={enabled.includes(key)} onChange={() => toggle(key)} className="accent-[var(--accent)]" />
-                      <span className="min-w-0 flex-1 truncate text-ink">{draft.branch}</span>
-                      <span className="flex shrink-0 gap-1">
-                        {STATES.filter((s) => n[s] > 0).map((s) => (
-                          <span key={s} className={`tnum rounded-sm border px-1 text-[10px] ${STATE_TONE[s]}`} title={s}>
-                            {n[s]}
-                          </span>
-                        ))}
-                      </span>
-                      <Link
-                        to={paths.draftCompare(draft.project, draft.branch)}
-                        className="shrink-0 text-xs text-accent hover:underline"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        compare
-                      </Link>
-                    </label>
-                  );
-                })}
-            </div>
-          ))
-        )}
-        <div className="mt-1 border-t border-line px-3 py-2">
-          <Link to={paths.drafts()} className="mono text-sm text-accent hover:underline">
-            all branches →
-          </Link>
-        </div>
+        <DraftToggles />
       </PopoverPanel>
     </Popover>
+  );
+}
+
+/**
+ * The drafts themselves, one checkbox each, grouped by project. The picker's
+ * popover shows them, and so does the phone's overflow menu, where the picker
+ * has no button of its own.
+ */
+export function DraftToggles() {
+  const drafts = useDrafts((s) => s.drafts);
+  const enabled = useDrafts((s) => s.enabled);
+  const toggle = useDrafts((s) => s.toggle);
+  const projects = [...new Set(drafts.map((d) => d.projectName))];
+
+  return (
+    <>
+      <div className="label px-3 pt-2 pb-1">show branch drafts in the catalog</div>
+      {drafts.length === 0 ? (
+        <div className="px-3 py-3 text-sm text-muted">No saved drafts yet.</div>
+      ) : (
+        projects.map((project) => (
+          <div key={project} className="border-t border-line first-of-type:border-t-0">
+            <div className="mono px-3 pt-2 text-xs text-muted">{project}</div>
+            {drafts
+              .filter((d) => d.projectName === project)
+              .map((draft) => {
+                const key = draftKey(draft);
+                const n = counts(draft);
+                return (
+                  <label key={key} className="mono flex min-h-10 cursor-pointer items-center gap-2 px-3 hover:bg-raised">
+                    <input type="checkbox" checked={enabled.includes(key)} onChange={() => toggle(key)} className="accent-[var(--accent)]" />
+                    <span className="min-w-0 flex-1 truncate text-ink">{draft.branch}</span>
+                    <span className="flex shrink-0 gap-1">
+                      {STATES.filter((s) => n[s] > 0).map((s) => (
+                        <span key={s} className={`tnum rounded-sm border px-1 text-[10px] ${STATE_TONE[s]}`} title={s}>
+                          {n[s]}
+                        </span>
+                      ))}
+                    </span>
+                    <Link
+                      to={paths.draftCompare(draft.project, draft.branch)}
+                      className="flex shrink-0 items-center self-stretch text-xs text-accent hover:underline"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      compare
+                    </Link>
+                  </label>
+                );
+              })}
+          </div>
+        ))
+      )}
+      <div className="mt-1 border-t border-line px-3">
+        <Link to={paths.drafts()} className="mono flex min-h-10 items-center text-sm text-accent hover:underline">
+          all branches →
+        </Link>
+      </div>
+    </>
   );
 }
