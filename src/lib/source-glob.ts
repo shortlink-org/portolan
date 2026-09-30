@@ -1,6 +1,6 @@
 // The manifest's source globs, matched without a Node globber. On its own and
-// free of imports, because vite.config.ts reads it too: the build groups each
-// profile's sources into a chunk by the same patterns the app selects them by.
+// free of imports, because scripts/site-sources.mjs reads it too: the site's
+// per-profile source modules are selected by the same patterns the app uses.
 
 /** Match the source globs used by the manifest without bringing a Node globber into the browser. */
 export function globToRegExp(glob: string): RegExp {

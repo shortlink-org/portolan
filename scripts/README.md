@@ -56,6 +56,7 @@ and validates the union. Nothing here draws anything.
   to it; `history.mjs`, what the checkout's history says about every file,
   for a plugin that asks and for the provenance of every source;
   `provenance.mjs`, that provenance handed to the site as one virtual module;
+  `site-sources.mjs`, the sources themselves, one virtual module per profile;
   `output-diff.mjs`, where a generated file first differs from what the
   generator produces; `site-docs.mjs`, generated documentation put into the
   built site; `local-api.mjs`, what the dev server answers the site with;
