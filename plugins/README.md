@@ -202,6 +202,13 @@ projector forms), merging every package into one store. An explicit root keeps
 the original collection layout for TypeScript, Rust, Java, or custom trees and
 may also point directly at one feature repository.
 
+Who reads and writes each table comes from the SQL strings in those
+repository packages and, anywhere in the module, from gorm, sqlx, sqlc, ent
+and squirrel calls, each recognised by its import path. An ent schema adds its
+tables when no migration creates them. A table name the code does not give as
+a literal or a constant is reported, never guessed; see
+[extract-sql](extract-sql/README.md).
+
 `extract-river` is another independent enrichment for Go repositories. It
 joins a job argument's `Kind()` to `Client.Insert`/`InsertTx` and the
 `InsertMany*` batches, the selected queue, `Worker[Args].Work`, and

@@ -1,0 +1,153 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.sqlx",
+          "slug": "sqlx",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.sqlx.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.sqlx.pg",
+      "slug": "pg",
+      "name": "sqlx database",
+      "kind": "postgres",
+      "owner": "shop.sqlx",
+      "tables": [
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/sqlx/internal/user/infrastructure/repository/migrations/001_users.sql",
+              "symbol": "users"
+            }
+          ],
+          "id": "shop.sqlx.pg.users",
+          "name": "users",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "email",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/sqlx/internal/user/domain/user.go:3",
+                "symbol": "shop.sqlx.user"
+              }
+            ],
+            "aggregate": "shop.sqlx.user"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Users.ByID",
+              "source": "testdata/sqlx/internal/user/store/users.go:33"
+            },
+            {
+              "operation": "read",
+              "method": "Users.ByIDs",
+              "source": "testdata/sqlx/internal/user/store/users.go:50"
+            },
+            {
+              "operation": "read",
+              "method": "Users.List",
+              "source": "testdata/sqlx/internal/user/store/users.go:39"
+            },
+            {
+              "operation": "write",
+              "method": "Users.Create",
+              "source": "testdata/sqlx/internal/user/store/users.go:55"
+            }
+          ]
+        },
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/sqlx/internal/user/infrastructure/repository/migrations/001_users.sql",
+              "symbol": "sessions"
+            }
+          ],
+          "id": "shop.sqlx.pg.sessions",
+          "name": "sessions",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "user_id",
+              "type": "uuid",
+              "nullable": false,
+              "fk": {
+                "table": "shop.sqlx.pg.users",
+                "column": "id"
+              }
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/sqlx/internal/user/domain/user.go:3",
+                "symbol": "shop.sqlx.user"
+              }
+            ],
+            "aggregate": "shop.sqlx.user"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "CountSessions",
+              "source": "testdata/sqlx/internal/user/store/users.go:65"
+            },
+            {
+              "operation": "delete",
+              "method": "Users.Logout",
+              "source": "testdata/sqlx/internal/user/store/users.go:60"
+            }
+          ]
+        }
+      ],
+      "source": "testdata/sqlx/internal/user/infrastructure/repository"
+    }
+  ]
+}

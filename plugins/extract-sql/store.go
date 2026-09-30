@@ -171,6 +171,14 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 	for i := range views {
 		views[i] = resolveView(views[i], storeID, tables)
 	}
+
+	// The ORMs and query builders, read over the whole module: an ent schema
+	// is a table even with no migration, and every library call proves an
+	// access the raw statements above may not.
+	found, entities := readLibraryAccesses(root, storeID, layout.index, b)
+	tables = entTables(tables, entities, storeID)
+	mergeLibraryAccesses(accesses, found)
+	warnUnknownTables(tables, found, b, storeID)
 	attachTableAccesses(tables, accesses)
 
 	return tables, views

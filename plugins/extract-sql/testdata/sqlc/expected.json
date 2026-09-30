@@ -1,0 +1,158 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.sqlc",
+          "slug": "sqlc",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.sqlc.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.sqlc.pg",
+      "slug": "pg",
+      "name": "sqlc database",
+      "kind": "postgres",
+      "owner": "shop.sqlc",
+      "tables": [
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/sqlc/internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "orders"
+            }
+          ],
+          "id": "shop.sqlc.pg.orders",
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "state",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/sqlc/internal/order/domain/order.go:3",
+                "symbol": "shop.sqlc.order"
+              }
+            ],
+            "aggregate": "shop.sqlc.order"
+          },
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.ByID",
+              "source": "testdata/sqlc/internal/order/infrastructure/repository/postgres.go:16"
+            },
+            {
+              "operation": "read",
+              "method": "Postgres.Totals",
+              "source": "testdata/sqlc/internal/order/infrastructure/repository/postgres.go:20"
+            },
+            {
+              "operation": "read",
+              "method": "Queries.StaleOrders",
+              "source": "testdata/sqlc/queries/reports/totals.sql:7"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "testdata/sqlc/internal/order/infrastructure/repository/save.go:8"
+            }
+          ]
+        },
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "testdata/sqlc/internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "order_lines"
+            }
+          ],
+          "id": "shop.sqlc.pg.order_lines",
+          "name": "order_lines",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": false,
+              "fk": {
+                "table": "shop.sqlc.pg.orders",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "qty",
+              "type": "integer",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "testdata/sqlc/internal/order/domain/order.go:3",
+                "symbol": "shop.sqlc.order"
+              }
+            ],
+            "aggregate": "shop.sqlc.order"
+          },
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.Totals",
+              "source": "testdata/sqlc/internal/order/infrastructure/repository/postgres.go:20"
+            },
+            {
+              "operation": "delete",
+              "method": "Queries.DeleteOrderLines",
+              "source": "testdata/sqlc/internal/order/infrastructure/repository/db/query.sql.go:36"
+            }
+          ]
+        }
+      ],
+      "source": "testdata/sqlc/internal/order/infrastructure/repository"
+    }
+  ]
+}

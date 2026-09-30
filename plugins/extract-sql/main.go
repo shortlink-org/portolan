@@ -76,6 +76,15 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 	layout := discoverStorageLayout(root, opts.Repositories, opts.Projectors)
 
 	tables, views := readStore(root, layout, storeID, owner, b)
+	if layout.source == "" {
+		// No migrations: the schema, if there is one, is ent's.
+		for _, table := range tables {
+			if len(table.Evidence) > 0 && table.Evidence[0].Rule == "ent-schema" {
+				layout.source = filepath.ToSlash(filepath.Join(root, filepath.Dir(filepath.FromSlash(table.Evidence[0].Source))))
+				break
+			}
+		}
+	}
 	resolveForeignKeys(storeID, tables, b)
 	spellSources(in, tables, views)
 	foreignSchemas(root, modulePath(root), b, storeID, layout.index)
