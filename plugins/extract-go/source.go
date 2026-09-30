@@ -152,28 +152,6 @@ func receiverName(expr ast.Expr) string {
 	return ""
 }
 
-// returnedString is the string a one-line method returns, which is how an
-// event's name on the bus is read out of `func (E) Name() string`: a literal,
-// or a constant the package declares - `return TopicAccountLocked` - since a
-// topic is routinely named once and returned by name.
-func returnedString(p *pkg, fn *ast.FuncDecl) (string, bool) {
-	if fn == nil || fn.Body == nil {
-		return "", false
-	}
-
-	for _, stmt := range fn.Body.List {
-		ret, ok := stmt.(*ast.ReturnStmt)
-		if !ok || len(ret.Results) != 1 {
-			continue
-		}
-		if value, ok := constString(ret.Results[0], stringConsts(p)); ok {
-			return value, true
-		}
-	}
-
-	return "", false
-}
-
 // calls reports whether a function's body calls a method with one of these
 // names on anything at all.
 func calls(fn *ast.FuncDecl, names ...string) bool {

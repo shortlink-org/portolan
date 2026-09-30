@@ -201,60 +201,17 @@ type endpointDecl struct {
 	line         int
 }
 
-// grpcMethodRef resolves the generated server embedded by a handler back to
+// grpcMethodRef resolves the generated server a handler implements back to
 // the protocol identifier carried by protoc-gen-go-grpc. The handler method
 // gives us only ArchivePriceList; the generated constant gives us the stable
 // shop.v1.PriceLists/ArchivePriceList that joins the flow to its contract.
-func grpcMethodRef(root string, handlerPkg *pkg, structName, method string) string {
-	var generatedPkg *pkg
-	serviceName := ""
-
-	for _, declared := range handlerPkg.structs() {
-		if declared.name != structName || declared.fields == nil || declared.fields.Fields == nil {
-			continue
-		}
-		for _, field := range declared.fields.Fields.List {
-			if len(field.Names) != 0 {
-				continue
-			}
-
-			typeName := strings.TrimPrefix(types.ExprString(field.Type), "*")
-			selector, embedded, qualified := strings.Cut(typeName, ".")
-			if !qualified {
-				embedded = selector
-				generatedPkg = handlerPkg
-			} else {
-				importPath := importsOf(handlerPkg)[selector]
-				module := modulePath(root)
-				rel, local := strings.CutPrefix(importPath, module+"/")
-				if importPath == "" || module == "" || !local {
-					continue
-				}
-				parsed, err := parsePkg(root, rel, handlerPkg.index)
-				if err != nil {
-					continue
-				}
-				generatedPkg = parsed
-			}
-
-			name, ok := strings.CutPrefix(embedded, "Unimplemented")
-			if !ok {
-				continue
-			}
-			name, ok = strings.CutSuffix(name, "Server")
-			if !ok || name == "" {
-				continue
-			}
-			serviceName = name
-			break
-		}
-	}
-
-	if generatedPkg == nil || serviceName == "" {
+func grpcMethodRef(_ string, handlerPkg *pkg, structName, method string) string {
+	server, ok := grpcServers(handlerPkg)[structName]
+	if !ok {
 		return ""
 	}
-	clients, _ := readClients(generatedPkg)
-	return clients[serviceName+"Client"].methods[method]
+	clients, _ := readClients(server.generated)
+	return clients[server.stem+"Client"].methods[method]
 }
 
 // operationsRunning finds the handler methods on a struct and the use cases

@@ -47,6 +47,35 @@ local application methods can be followed across that boundary. Nested modules,
 vendor, node_modules and testdata are excluded from package discovery. When a
 DDD flow already covers the same handler, its richer domain flow is retained.
 
+What a declaration is, is read off its declarations rather than its name or
+its directory. The shared `internal/goscan` index supplies the types (struct
+fields, function results, port interface results, what a local was assigned):
+
+- A gRPC server is a type that embeds `Unimplemented<X>Server` or
+  `Unsafe<X>Server`, or is passed to a generated `Register<X>Server(...)` as a
+  literal, `new(T)`, a constructor with a declared result, or a local holding
+  one. The package may have any name; the generated package that declares the
+  embed or the registration names each rpc. A type registered as two services
+  is left out. A struct named `...Server` in an `rpc` directory is no longer
+  enough.
+- An aggregate method a use case calls emits the root's events when the
+  receiver's declared type is the root. When the receiver's type is unknown,
+  for example an interface, the name decides. If another type in a domain
+  package declares a method with that name, the call is left out instead of
+  being given to the wrong aggregate.
+- An event's `Name()` is resolved through literals and constants. The
+  constants may be in any file of the package or imported, and may be joined
+  with `+`. A local or a one-line function that returns one of these also
+  resolves. A `Name()` that returns something else, but not a field of the
+  value, still marks an event. The event is listed without a wire name, with a
+  warning. A `Name()` that returns a field is a getter on a helper.
+- A DI provider's adapter is the struct it returns: `T{...}`, `&T{...}`,
+  `new(T)` (also through a local), or a call to a constructor such as
+  `adapter.NewLockout(...)`. The constructor may be in another package. When
+  its declared result is the port interface, the reader follows its return
+  one call deep. The adapter's fields and methods are read wherever they are
+  declared.
+
 Assembly must not select the first of several use cases. Competing providers,
 multiple adapter targets and unreadable multi-use-case providers leave the call
 `unresolved`, with an `ambiguous-binding` warning and the candidate use cases.

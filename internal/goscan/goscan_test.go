@@ -40,6 +40,8 @@ const (
 	Self2 = Self1
 	Foreign = lib.Default
 	Number = 3
+	Joined = A + "." + other.D
+	Half = A + lib.Default
 )
 
 type Args struct {
@@ -122,6 +124,8 @@ func TestConstantsResolveThroughEachOther(t *testing.T) {
 		"example.com/m.Self1":     "",
 		"example.com/m.Foreign":   "",
 		"example.com/m.Number":    "",
+		"example.com/m.Joined":    "a.d",
+		"example.com/m.Half":      "",
 		"example.com/m.Missing":   "",
 	}
 	for key, want := range cases {
