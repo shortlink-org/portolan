@@ -3,6 +3,9 @@ import { defineConfig } from "vitest/config";
 // that imports src/data.ts needs the same virtual module the site gets.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { provenancePlugin } from "./scripts/provenance.mjs";
+// ...and its sources, which it loads through the site's per-profile modules.
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { siteSourcesPlugin } from "./scripts/site-sources.mjs";
 // @ts-expect-error Node-only authoring module
 import { annotationsPlugin } from "./scripts/annotations.mjs";
 // @ts-expect-error plain JavaScript module intentionally has no browser types
@@ -34,7 +37,7 @@ const excludedTests = ["**/node_modules/**", "plugins/extract-ts/testdata/**"];
 export default defineConfig({
   // Tests read no task links: a link names whatever commit is newest, and a
   // test that saw them would change with every commit.
-  plugins: [provenancePlugin("."), workItemsPlugin(".", { disabled: true }), annotationsPlugin("."), draftsPlugin(".")],
+  plugins: [provenancePlugin("."), siteSourcesPlugin(), workItemsPlugin(".", { disabled: true }), annotationsPlugin("."), draftsPlugin(".")],
   test: {
     projects: [
       {

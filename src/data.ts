@@ -19,7 +19,6 @@ import {
   catalogProfileNamed,
   catalogProfiles as profilesFromManifest,
   filterCatalogForProfile,
-  profileIncludesSource,
 } from "./catalog-profile";
 import type { CatalogProfile, CatalogProfileManifest } from "./catalog-profile";
 import { enrichCatalog } from "./enrich";
@@ -41,6 +40,8 @@ import authored from "virtual:portolan-annotations";
 // Which tasks changed what, read from the same history and never written into
 // a fragment, since a file cannot name the commit it lands in (portolan.0020).
 import workItemSources from "virtual:portolan-work-items";
+// Every source, one loader per profile (scripts/site-sources.mjs).
+import siteSources from "virtual:portolan-sources";
 import { applyAnnotations } from "./lib/annotations.mjs";
 
 const manifest = manifestJson as CatalogProfileManifest & { sources: string[] };
@@ -85,57 +86,14 @@ if (import.meta.hot) {
 }
 
 /**
- * Where sources are looked for. The patterns are written out because
- * import.meta.glob resolves at build time and needs literals - and because
- * they are worth reading: the first is the estate's own files, the second is
- * what each service publishes beside its code - one level down for a context
- * of one service, two for a context that holds several.
- */
-export const SOURCE_GLOBS = [
-  "data/*.json",
-  "portolan/*.json",
-  "portolan-work-items/**/*.json",
-  "examples/*/portolan/*.json",
-  "examples/*/*/portolan/*.json",
-  "examples/*/*/*/portolan/*.json",
-  "vendor/repos/*/*/git.repo.json",
-  "vendor/repos/**/portolan/*.json",
-  "examples/argocd/argocd.apps.json",
-] as const;
-
-/**
- * Every source the site carries, as a loader: the glob is lazy, so no file is
- * in the bundle's first chunk. A page shows one profile, and the profiles are
- * disjoint estates - the landing's example estate is most of the bytes and the
- * catalog Portolan keeps about itself needs none of them.
- */
-const loaders: Record<string, () => Promise<unknown>> = {
-  ...import.meta.glob("../data/*.json", { import: "default" }),
-  ...import.meta.glob("../portolan/*.json", { import: "default" }),
-  ...import.meta.glob("../portolan-work-items/**/*.json", { import: "default" }),
-  ...import.meta.glob("../examples/*/portolan/*.json", { import: "default" }),
-  ...import.meta.glob("../examples/*/*/portolan/*.json", { import: "default" }),
-  ...import.meta.glob("../examples/*/*/*/portolan/*.json", { import: "default" }),
-  ...import.meta.glob("../vendor/repos/*/*/git.repo.json", { import: "default" }),
-  ...import.meta.glob("../vendor/repos/**/portolan/*.json", { import: "default" }),
-  ...import.meta.glob("../examples/argocd/argocd.apps.json", { import: "default" }),
-};
-
-/**
  * The active profile's sources, read before anything below runs. The await is
  * at the top of the module on purpose: every export stays a plain value, and
  * whatever imports this module is evaluated after the catalog is in, exactly
- * as it was when the files were bundled in. The build groups each profile's
- * files into one chunk (vite.config.ts): the bytes arrive in one request, and
- * each file is left a re-export of a line.
+ * as it was when the files were bundled in. scripts/site-sources.mjs serves
+ * each profile's sources as one module keyed by path, so the bytes arrive in
+ * one request and no other profile's come with them.
  */
-const modules: Record<string, unknown> = Object.fromEntries(
-  await Promise.all(
-    Object.entries(loaders)
-      .filter(([key]) => profileIncludesSource(activeCatalogProfile, key.replace(/^\.\.\//, "")))
-      .map(async ([key, load]) => [key, await load()] as const),
-  ),
-);
+const modules: Record<string, unknown> = (await siteSources[activeCatalogProfile.id]?.()) ?? {};
 
 /** What the app draws when the catalog cannot be trusted: nothing. */
 const EMPTY: Catalog = {
@@ -159,15 +117,11 @@ interface Loaded {
 
 function load(): Loaded {
   const sources: CatalogSource[] = Object.entries(modules)
-    .map(([key, catalog]) => {
-      // Vite keys a glob by its pattern-relative path; the leading ../ is an
-      // artefact of this file's location, not part of where anything lives.
-      const imported = key.replace(/^\.\.\//, "");
+    .map(([imported, catalog]): CatalogSource => {
       // A SOURCE, not a catalog: a file carries no stamp of its own, and the
       // history's travels beside it (portolan.0010).
       const { source, ...stamp } = provenance[imported] ?? {};
       return {
-        imported,
         // A staged site imports a source under a flattened name; the file is
         // still the one in the workspace, and that is the path a project's
         // root is a prefix of and a link to the file names.
@@ -176,9 +130,6 @@ function load(): Loaded {
         stamp: "commit" in stamp ? stamp : undefined,
       };
     })
-    // The profile spells its sources the way the site imports them.
-    .filter((source) => profileIncludesSource(activeCatalogProfile, source.imported))
-    .map(({ imported: _imported, ...source }): CatalogSource => source)
     .concat(
       workItemSources
         .filter((source) => source.catalogs === null || source.catalogs.includes(activeCatalogProfile.id))

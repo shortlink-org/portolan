@@ -1,14 +1,12 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { publicSetupFrom } from "./src/lib/setup-info.ts";
-import { matchesSourceGlobs } from "./src/lib/source-glob.ts";
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { readManifest } from "./scripts/manifest.mjs";
 // The local control plane is a Node-only Vite plugin kept as plain ESM so its
@@ -23,6 +21,10 @@ import { siteDocsPlugin } from "./scripts/site-docs.mjs";
 // served to the app as one virtual module (portolan.0010).
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { provenancePlugin } from "./scripts/provenance.mjs";
+// The catalog sources, one module per profile: src/data.ts loads the one on
+// screen, in one request, and no other profile's bytes.
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { isProfileSources, siteSourcesPlugin } from "./scripts/site-sources.mjs";
 // @ts-expect-error Node-only authoring module
 import { annotationsPlugin } from "./scripts/annotations.mjs";
 // Saved branch drafts, served to the app as one virtual module (portolan.0019).
@@ -153,30 +155,6 @@ const setupInfo = publicSetupFrom(
   createHash("sha256").update(manifestText).digest("hex"),
 );
 
-// src/data.ts loads only the sources of the profile on screen. Left alone,
-// each source would be a chunk of its own - seventy chunks of data for the
-// example estate - so they are grouped by the profiles that read them: one
-// chunk per profile, and one for a file two profiles share. What stays per
-// file is a one-line re-export. The manifest is the one
-// beside this config, which in a staged site (`portolan dev`) names the
-// flattened portolan/source-NNNN.json the site imports.
-// A manifest without profiles is one catalog, and its sources one chunk.
-const siteRoot = fileURLToPath(new URL(".", import.meta.url));
-const siteManifest = JSON.parse(readFileSync(resolve(siteRoot, "portolan.json"), "utf8")) as {
-  sources?: string[];
-  catalogs?: { id: string; sources?: string[] }[];
-};
-const siteProfiles = siteManifest.catalogs?.length
-  ? siteManifest.catalogs
-  : [{ id: "default", sources: siteManifest.sources }];
-function catalogChunkFor(id: string): string | null {
-  if (!id.endsWith(".json")) return null;
-  const path = relative(siteRoot, id).split(sep).join("/");
-  if (path.startsWith("../")) return null;
-  const readers = siteProfiles.filter((profile) => matchesSourceGlobs(profile.sources ?? [], path));
-  return readers.length ? `catalog-${readers.map((profile) => profile.id).join("+")}` : null;
-}
-
 // GitHub Pages serves the app from /<repo>/, so CI sets BASE_PATH.
 // Locally (and for a root-domain deploy) it stays "/".
 export default defineConfig({
@@ -217,6 +195,7 @@ export default defineConfig({
     localApiPlugin(workspace, publicSetupFrom),
     siteDocsPlugin(workspace),
     provenancePlugin(workspace),
+    siteSourcesPlugin(),
     workItemsPlugin(workspace),
     annotationsPlugin(workspace),
     draftsPlugin(workspace),
@@ -248,13 +227,15 @@ export default defineConfig({
           // by bundle.ts for the profile on screen alone (portolan.0034).
           includeDependenciesRecursively: false,
           groups: [
-            { name: catalogChunkFor, debugName: "catalog sources" },
             {
               name: "likec4",
               test: /[\\/]node_modules[\\/](likec4|@likec4[\\/](?!icons[\\/]))|[\\/]src[\\/]likec4[\\/](generated\.jsx|bundle\.ts|C4View\.tsx|FlowView\.tsx|InteractiveView\.tsx|CanvasBridge\.tsx|view-index\.ts|container-layout\.ts)$|[\\/]src[\\/]drafts[\\/]branch-view\.ts$/,
             },
           ],
         },
+        // A profile's sources are one module (scripts/site-sources.mjs), and
+        // so one chunk of their own: only its file name says what it is.
+        chunkFileNames: (chunk) => isProfileSources(chunk.facadeModuleId ?? "") ? "assets/catalog-[name]-[hash].js" : "assets/[name]-[hash].js",
       },
     },
   },
