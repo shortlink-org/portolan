@@ -6,6 +6,7 @@
 - **Date:** 2026-09-30
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0034-each-catalog-profile-is-its-own-likec4-project.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0034-each-catalog-profile-is-its-own-likec4-project.md)
+- **Committed:** Victor Login, 2026-09-30 (`3a0e422`)
 
 ### Context and Problem Statement
 
