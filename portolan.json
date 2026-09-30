@@ -283,6 +283,18 @@
       }
     },
     {
+      "name": "go-kafka",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
+      "name": "go-amqp",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "go-eventgrid",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"

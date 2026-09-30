@@ -2012,6 +2012,78 @@
     }
   },
   {
+    "name": "go-kafka",
+    "plugin": "extract-go-kafka",
+    "summary": "Reads sarama, kafka-go, confluent-kafka-go and franz-go calls, through the port that wraps them, into the Kafka topics a service consumes and produces.",
+    "category": "messaging",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-go-kafka",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "ledger"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "kafka.json"
+        }
+      }
+    }
+  },
+  {
+    "name": "go-amqp",
+    "plugin": "extract-go-amqp",
+    "summary": "Reads amqp091-go and streadway/amqp publishes, consumes and queue bindings into the RabbitMQ routes a service publishes to and consumes.",
+    "category": "messaging",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-go-amqp",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "ledger"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "amqp.json"
+        }
+      }
+    }
+  },
+  {
     "name": "go-eventgrid",
     "plugin": "extract-go-eventgrid",
     "summary": "Reads Azure SDK for Go Event Grid publisher calls into the topics and event types a service publishes.",
