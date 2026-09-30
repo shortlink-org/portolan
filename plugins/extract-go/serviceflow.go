@@ -38,8 +38,16 @@ func extractServiceFlows(root string, opts Options, b *plugin.Builder, covered m
 		store: opts.Store, peers: opts.Peers, externals: opts.Externals, events: opts.Events, serviceStyle: true,
 	}, b, layouts...)
 
+	endpoints, skipped := serviceEndpointsAndSkips(root, opts.Scope, r.layout.index)
+	warned := map[string]bool{}
+	for _, skip := range skipped {
+		if key := skip.ref + " " + skip.message(); !warned[key] {
+			warned[key] = true
+			b.Warn(skip.ref, skip.message())
+		}
+	}
 	var out []catalog.Flow
-	for _, endpoint := range serviceEndpoints(root, opts.Scope, r.layout.index) {
+	for _, endpoint := range endpoints {
 		file, line := endpoint.pkg.position(endpoint.fn.Pos())
 		if covered[at(file, line)] {
 			continue
@@ -456,19 +464,14 @@ func mergeRPCCalls(left, right []catalog.RpcCall) []catalog.RpcCall {
 }
 
 func serviceEndpoints(root, scope string, indexes ...*goscan.Tree) []serviceEndpoint {
-	var out []serviceEndpoint
-	owned := "internal/" + strings.Trim(scope, "/")
-	for _, dir := range goPackageDirs(root, ".", indexes...) {
-		if scope != "" && dir != owned && !strings.HasPrefix(dir, owned+"/") {
-			continue
-		}
-		p, err := parsePkg(root, dir, indexes...)
-		if err != nil {
-			continue
-		}
-		out = append(out, httpServiceEndpoints(p, dir)...)
-		out = append(out, grpcServiceEndpoints(p, dir)...)
-	}
+	out, _ := serviceEndpointsAndSkips(root, scope, indexes...)
+	return out
+}
+
+// serviceEndpointsAndSkips is the endpoints, and every route registration that
+// could not become one, with the reason (routes.go).
+func serviceEndpointsAndSkips(root, scope string, indexes ...*goscan.Tree) ([]serviceEndpoint, []routeSkip) {
+	out, skipped := serviceRoutes(root, scope, indexes...)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].kind != out[j].kind {
 			return out[i].kind < out[j].kind
@@ -478,7 +481,7 @@ func serviceEndpoints(root, scope string, indexes ...*goscan.Tree) []serviceEndp
 		}
 		return out[i].entrypoint < out[j].entrypoint
 	})
-	return out
+	return out, skipped
 }
 
 var httpRouteMethods = map[string]string{
@@ -486,88 +489,6 @@ var httpRouteMethods = map[string]string{
 	"Head": "HEAD", "Options": "OPTIONS",
 	"GET": "GET", "POST": "POST", "PUT": "PUT", "PATCH": "PATCH", "DELETE": "DELETE",
 	"HEAD": "HEAD", "OPTIONS": "OPTIONS",
-}
-
-func httpServiceEndpoints(p *pkg, dir string) []serviceEndpoint {
-	mounts := map[string]string{}
-	for _, decl := range allFunctions(p) {
-		if decl.fn.Body == nil {
-			continue
-		}
-		ast.Inspect(decl.fn.Body, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "Mount" || len(call.Args) < 2 {
-				return true
-			}
-			prefix, ok := stringLiteral(call.Args[0])
-			if !ok {
-				return true
-			}
-			factory, ok := call.Args[1].(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			fn, ok := factory.Fun.(*ast.SelectorExpr)
-			if ok {
-				mounts[fn.Sel.Name] = prefix
-			}
-			return true
-		})
-	}
-
-	var out []serviceEndpoint
-	for _, decl := range allFunctions(p) {
-		if decl.fn.Body == nil {
-			continue
-		}
-		routers := httpRouterNames(p, decl.fn)
-		ast.Inspect(decl.fn.Body, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || len(call.Args) < 2 {
-				return true
-			}
-			method := httpRouteMethods[sel.Sel.Name]
-			router := routers[types.ExprString(sel.X)]
-			standard := router == "net/http" && (sel.Sel.Name == "HandleFunc" || sel.Sel.Name == "Handle")
-			if !standard && (method == "" || (router == "" && path.Base(dir) != "http")) {
-				return true
-			}
-			routePath, ok := stringLiteral(call.Args[0])
-			if !ok {
-				return true
-			}
-			if standard {
-				method = "ANY"
-				if verb, rest, found := strings.Cut(routePath, " "); found {
-					method, routePath = verb, strings.TrimSpace(rest)
-				}
-			}
-			if !strings.HasPrefix(routePath, "/") {
-				return true
-			}
-			targetType, target := registeredHTTPHandler(p, decl.fn, call.Args[len(call.Args)-1])
-			if target == nil {
-				return true
-			}
-			fullPath := joinHTTPPath(mounts[decl.fn.Name.Name], routePath)
-			source, line := p.position(call.Pos())
-			out = append(out, serviceEndpoint{
-				kind: "http", method: method, path: fullPath, label: method + " " + fullPath,
-				entrypoint: functionEntry(dir, targetType, target.Name.Name), source: source, line: line,
-				pkg: p, recvType: targetType, fn: target,
-			})
-			return true
-		})
-	}
-	return out
 }
 
 type methodDecl struct {
