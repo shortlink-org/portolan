@@ -156,7 +156,7 @@ export function Language() {
               <ContextPill id={focused.context} />
             </span>
           </SectionTitle>
-          <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))]">
+          <div className="card-grid [--card-min:340px]">
             <TermCard term={focused} targets={bound.byTerm.get(focused.id)} />
           </div>
         </div>
@@ -181,7 +181,7 @@ export function Language() {
             {shared.map((homonym) => (
               <div
                 key={homonym.slug}
-                className="grid gap-grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
+                className="grid gap-grid grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))]"
               >
                 {homonym.terms.map((term, i) => (
                   <TermCard
@@ -237,7 +237,7 @@ export function Language() {
               </p>
             ) : null}
             <div
-              className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))]"
+              className="card-grid [--card-min:340px]"
               data-nav-list
             >
               {vocabulary.terms.map((term, i) => (

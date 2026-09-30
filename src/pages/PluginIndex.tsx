@@ -134,7 +134,7 @@ export function PluginIndex() {
               </span>
             </SectionTitle>
             <p className="mb-3 max-w-prose text-muted">{group.what}</p>
-            <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))]">
+            <div className="card-grid [--card-min:340px]">
               {group.plugins.map((entry) => (
                 <PluginCard key={entry.name} entry={entry} highlighted={entry.name === target} />
               ))}

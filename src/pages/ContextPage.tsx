@@ -140,7 +140,7 @@ export function ContextPage() {
               {neutral ? "Components" : "Services"}
             </SectionTitle>
             <div
-              className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
+              className="card-grid [--card-min:320px]"
               data-nav-list
             >
               {context.services.map((service, i) => (
