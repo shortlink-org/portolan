@@ -29,7 +29,7 @@ import { useSelectionStore } from "../selection/store";
 import { dependencyNodeTypes, TinyZoom } from "./DependencyNodes";
 import type { DependencyNode } from "./DependencyNodes";
 import { catalogIdOf, EVENT_NODE, layoutDependencyGraph } from "./dependency-layout";
-import type { GraphMode, Layout } from "./dependency-layout";
+import type { GraphMode, Layout, LayoutDirection } from "./dependency-layout";
 import { dependencyEdgeTypes } from "./RoutedEdge";
 import { FIT_OPTIONS, GraphToolbar } from "./GraphToolbar";
 import { EDGE_W, EDGE_W_LIT, LEGIBLE_ZOOM } from "./theme";
@@ -57,6 +57,11 @@ export interface DependencyGraphProps {
    * canvas is zoomed by pinch or by the fit control instead.
    */
   zoomOnScroll?: boolean;
+  /**
+   * Which way the layers run. Right unless the box is taller than it is
+   * wide, as it is on a phone.
+   */
+  direction?: LayoutDirection;
 }
 
 export function DependencyGraph({
@@ -65,6 +70,7 @@ export function DependencyGraph({
   onMode,
   fitKey,
   zoomOnScroll = true,
+  direction = "RIGHT",
 }: DependencyGraphProps) {
   const navigate = useNavigate();
   const [layout, setLayout] = useState<Layout | null>(null);
@@ -83,13 +89,13 @@ export function DependencyGraph({
   useEffect(() => {
     let cancelled = false;
     setLayout(null);
-    void layoutDependencyGraph(graph, mode).then((next) => {
+    void layoutDependencyGraph(graph, mode, { direction }).then((next) => {
       if (!cancelled) setLayout(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [graph, mode]);
+  }, [graph, mode, direction]);
 
   // --- focus -------------------------------------------------------------
 

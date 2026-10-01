@@ -107,18 +107,36 @@ export function budgeted(
     : { nodePlacement: "BRANDES_KOEPF", thoroughness: 2, considerModelOrder: false };
 }
 
+export type LayoutDirection = "RIGHT" | "DOWN";
+
+export interface LayoutOptions {
+  /**
+   * Which way the layers run. Right, as on the graph's own page, reads as a
+   * pipeline. Down is for a box taller than it is wide: there a graph three
+   * layers across is legible and one nine layers across is not.
+   */
+  direction?: LayoutDirection;
+}
+
 export async function layoutDependencyGraph(
   graph: EventGraph,
   mode: GraphMode,
+  options: LayoutOptions = {},
 ): Promise<Layout> {
-  return mode === "compact" ? compact(graph) : bipartite(graph);
+  const direction = options.direction ?? "RIGHT";
+  return mode === "compact"
+    ? compact(graph, direction)
+    : bipartite(graph, direction);
 }
 
 // ---------------------------------------------------------------------------
 // Bipartite: services and events both as nodes.
 // ---------------------------------------------------------------------------
 
-async function bipartite(graph: EventGraph): Promise<Layout> {
+async function bipartite(
+  graph: EventGraph,
+  direction: LayoutDirection,
+): Promise<Layout> {
   const present = new Set(graph.services.map((s) => s.id));
 
   // Services first, then events in publisher order. elk breaks ties inside a
@@ -176,7 +194,7 @@ async function bipartite(graph: EventGraph): Promise<Layout> {
   const { positions, routes } = await layoutWithElk({
     nodes: sized,
     edges: specs.map((e) => ({ id: e.id, source: e.source, target: e.target })),
-    direction: "RIGHT",
+    direction,
     layerSpacing: 96,
     nodeSpacing: 32,
     ports: true,
@@ -254,7 +272,10 @@ async function bipartite(graph: EventGraph): Promise<Layout> {
 // Compact: services only, one bundled edge per ordered pair.
 // ---------------------------------------------------------------------------
 
-async function compact(graph: EventGraph): Promise<Layout> {
+async function compact(
+  graph: EventGraph,
+  direction: LayoutDirection,
+): Promise<Layout> {
   const pairs = bundles(graph);
 
   const sized = graph.services.map((s) => ({
@@ -266,7 +287,7 @@ async function compact(graph: EventGraph): Promise<Layout> {
   const { positions, routes } = await layoutWithElk({
     nodes: sized,
     edges: pairs.map((b) => ({ id: b.id, source: b.from, target: b.to })),
-    direction: "RIGHT",
+    direction,
     layerSpacing: 96,
     nodeSpacing: 32,
     ports: true,
