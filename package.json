@@ -80,7 +80,7 @@
     "prepack": "npm run plugins:build"
   },
   "dependencies": {
-    "@aws-sdk/client-eventbridge": "^3.1142.0",
+    "@aws-sdk/client-eventbridge": "^3.1144.0",
     "@clack/prompts": "^1.8.1",
     "@marcbachmann/cel-js": "^8.0.0",
     "ajv": "^8.20.0",
@@ -89,32 +89,32 @@
     "yaml": "^2.9.1"
   },
   "optionalDependencies": {
-    "@ai-sdk/openai-compatible": "3.0.59",
-    "@ai-sdk/react": "4.0.125",
+    "@ai-sdk/openai-compatible": "3.0.62",
+    "@ai-sdk/react": "4.0.129",
     "@asyncapi/react-component": "^3.2.1",
     "@blocknote/core": "^0.55.0",
     "@blocknote/diagram-block": "^0.55.0",
     "@blocknote/mantine": "^0.55.0",
     "@blocknote/react": "^0.55.0",
-    "@daypicker/react": "^10.0.1",
+    "@daypicker/react": "^10.0.2",
     "@floating-ui/react": "^0.27.20",
     "@headlessui/react": "^2.2.10",
-    "@scalar/api-reference-react": "^0.9.75",
+    "@scalar/api-reference-react": "^0.9.76",
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/react-query": "^5.104.0",
     "@tanstack/react-table": "^9.2.4",
     "@tanstack/react-virtual": "^3.14.12",
     "@vitejs/plugin-react": "^6.1.1",
     "@xyflow/react": "^12.12.0",
-    "ai": "7.0.122",
+    "ai": "7.0.126",
     "cn": "0.4.0",
     "elkjs": "^0.12.0",
     "html-to-image": "^1.11.13",
     "likec4": "^1.59.4",
     "lowlight": "^3.3.0",
-    "lucide-react": "^1.48.0",
+    "lucide-react": "^1.49.0",
     "mermaid": "^12.0.0",
-    "motion": "^13.4.6",
+    "motion": "^13.5.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
@@ -123,7 +123,7 @@
     "remark-gfm": "^4.0.0",
     "simple-icons": "^16.33.0",
     "tailwindcss": "^4.0.0",
-    "vite": "^8.3.1",
+    "vite": "^8.3.2",
     "vite-plugin-node-polyfills": "^0.28.0",
     "zustand": "^5.0.15"
   },
@@ -133,6 +133,6 @@
     "@types/react-dom": "^19.3.0",
     "oxlint": "^1.86.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.3"
   }
 }

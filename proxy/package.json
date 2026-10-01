@@ -6,7 +6,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@ai-sdk/google": "4.0.85",
-    "ai": "7.0.122"
+    "@ai-sdk/google": "4.0.87",
+    "ai": "7.0.126"
   }
 }
