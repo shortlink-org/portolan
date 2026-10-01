@@ -14,6 +14,19 @@
       "port": 5183
     },
     {
+      "name": "portolan-src",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5186",
+        "--strictPort",
+        "--host",
+        "127.0.0.1"
+      ],
+      "port": 5186
+    },
+    {
       "name": "portolan-pages-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
