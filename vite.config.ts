@@ -38,6 +38,8 @@ import { workItemsPlugin } from "./scripts/work-items-history.mjs";
 // gets it written from likec4/ before Vite serves or builds.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { likec4BundlePlugin } from "./scripts/likec4-bundle.mjs";
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { LIKEC4_CHUNK_GROUPS } from "./scripts/site-chunks.mjs";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -215,23 +217,12 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         codeSplitting: {
-          // LikeC4's renderer and the generated model are only reached through
-          // lazy imports (a C4 view, a flow page), but two lazy chunks share
-          // them, and left alone the bundler hoists what they share into the
-          // chunk that imports both: the catalog shell every page waits for.
-          // A group of their own keeps them off the first load, together with
-          // the app modules that import them. Icons are excluded: the shell
-          // draws one of them. Only the modules named here move, not what
-          // they depend on, or React would move with them. A profile's model
-          // (src/likec4/generated/<profile>.jsx) stays its own chunk, loaded
-          // by bundle.ts for the profile on screen alone (portolan.0034).
+          // Two chunk groups for LikeC4, the runtime apart from the app
+          // modules that draw with it; scripts/site-chunks.mjs says why one
+          // would hang the diagrams. Only the modules named there move, not
+          // what they depend on, or React would move with them.
           includeDependenciesRecursively: false,
-          groups: [
-            {
-              name: "likec4",
-              test: /[\\/]node_modules[\\/](likec4|@likec4[\\/](?!icons[\\/]))|[\\/]src[\\/]likec4[\\/](generated\.jsx|bundle\.ts|C4View\.tsx|FlowView\.tsx|InteractiveView\.tsx|CanvasBridge\.tsx|view-index\.ts|container-layout\.ts)$|[\\/]src[\\/]drafts[\\/]branch-view\.ts$/,
-            },
-          ],
+          groups: LIKEC4_CHUNK_GROUPS,
         },
         // A profile's sources are one module (scripts/site-sources.mjs), and
         // so one chunk of their own: only its file name says what it is.
