@@ -367,10 +367,12 @@ export function Sidebar({
     return () => clearTimeout(timer);
   }, [selection, collapsed, sections, groups]);
 
-  if (railed) return <SidebarIconRail onExpand={() => onExpand?.()} />;
-
-  // Namespaces the selection light's layoutId to this tree.
+  // Namespaces the selection light's layoutId to this tree. Taken before the
+  // rail returns early: a hook after a conditional return changes the hook
+  // order when the sidebar collapses, and React refuses the render.
   const treeId = useId();
+
+  if (railed) return <SidebarIconRail onExpand={() => onExpand?.()} />;
 
   return (
     <nav
