@@ -3,6 +3,7 @@
 // out of the same catalog. Nothing on this page is drawn from a mock-up.
 
 import { lazy, Suspense, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { Link } from "react-router";
 import {
   AlertTriangle,
@@ -295,12 +296,41 @@ export function ProductTour() {
   const [active, setActive] = useState<DemoId>("estate");
   const selected = tours.find((tour) => tour.id === active) ?? tours[0]!;
 
+  // The arrow keys move between the stops, as a tab list promises; focus
+  // travels with the selection so the next press lands on the right stop.
+  const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const moves: Record<string, number | "first" | "last"> = {
+      ArrowRight: 1,
+      ArrowDown: 1,
+      ArrowLeft: -1,
+      ArrowUp: -1,
+      Home: "first",
+      End: "last",
+    };
+    const move = moves[event.key];
+    if (move === undefined) return;
+    event.preventDefault();
+    const at = tours.findIndex((tour) => tour.id === active);
+    const next =
+      move === "first"
+        ? 0
+        : move === "last"
+          ? tours.length - 1
+          : (at + move + tours.length) % tours.length;
+    const id = tours[next]!.id;
+    setActive(id);
+    event.currentTarget
+      .querySelector<HTMLButtonElement>(`[data-tour="${id}"]`)
+      ?.focus();
+  };
+
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(260px,0.72fr)_minmax(0,1.55fr)] lg:gap-12">
       <LayoutGroup id="product-tour">
         <div
           role="tablist"
           aria-label="Portolan product tour"
+          onKeyDown={onTabKey}
           className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1"
         >
           {tours.map((tour) => {
@@ -313,6 +343,8 @@ export function ProductTour() {
                 role="tab"
                 aria-selected={on}
                 aria-controls="landing-product-demo"
+                tabIndex={on ? 0 : -1}
+                data-tour={tour.id}
                 onClick={() => setActive(tour.id)}
                 className={`group relative rounded-card border border-line/60 p-4 text-left transition-colors ${
                   on ? "" : "hover:border-line-strong hover:bg-surface"

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router";
+import type { To } from "react-router";
 import { CompassRose, Wordmark } from "../components/logo";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { useTheme } from "../app/theme";
@@ -21,7 +22,7 @@ import { useDocumentTitle } from "../app/title";
 import { catalog } from "../data";
 import { m } from "../lib/motion";
 import { landingInputs } from "../lib/plugins";
-import { paths } from "../routes";
+import { eventPath, paths } from "../routes";
 import { catalogTo } from "./catalog";
 import { DraggableReveal } from "./DraggableReveal";
 import { EvidencePipeline } from "./EvidencePipeline";
@@ -155,21 +156,37 @@ function HeroDemo() {
 const inputGroups = landingInputs();
 const pluginsTo = catalogTo(paths.plugins());
 
-const features = [
+// Each claim opens the place in the example that shows it. A card that lit
+// up under the pointer and answered no click would promise a destination it
+// does not have.
+const EXAMPLE_EVENT = "shop.cart.basket.BasketCheckedOut";
+type Feature = {
+  icon: typeof FileSearch;
+  title: string;
+  copy: string;
+  cta: string;
+} & ({ to: To } | { href: string });
+const features: Feature[] = [
   {
     icon: FileSearch,
     title: "Source-level answers",
     copy: "Open the exact file and line behind an event, field, call or flow step without leaving the architecture context.",
+    cta: "Open an event and its source",
+    to: catalogTo(eventPath(EXAMPLE_EVENT) ?? paths.overview()),
   },
   {
     icon: ShieldCheck,
     title: "Drift caught before merge",
     copy: "Unresolved calls, mismatched schemas, second writers and missing publishers become explicit checks instead of tribal knowledge.",
+    cta: "See the example's problems",
+    to: catalogTo(paths.problems()),
   },
   {
     icon: GitBranch,
     title: "Made for pull requests",
     copy: "Generated docs, diagrams and exports are ordinary files, while portolan check fails when committed architecture is stale.",
+    cta: "Set up the pull-request check",
+    href: `${PRODUCT_REPOSITORY}#add-delivery-automation`,
   },
 ];
 
@@ -273,9 +290,12 @@ export function LandingPage() {
                 <CompassRose size={15} />
                 ARCHITECTURE CATALOG
               </m.div>
+              {/* The cap keeps "architecture," on one line of its 500px
+                  column: at 5.8rem a 1440px laptop broke the word in two, and
+                  at 5.3rem it wrapped the comma on its own. */}
               <m.h1
                 variants={heroLine}
-                className="landing-hero-title max-w-[760px] text-[clamp(3rem,6.4vw,5.8rem)] leading-[0.96] font-semibold tracking-[-0.055em] text-ink"
+                className="landing-hero-title max-w-[760px] text-[clamp(3rem,6.4vw,5rem)] leading-[0.96] font-semibold tracking-[-0.055em] text-ink"
               >
                 Your architecture, read from the code.
               </m.h1>
@@ -414,12 +434,8 @@ export function LandingPage() {
             <div className="mt-12 grid gap-4 md:grid-cols-3">
               {features.map((feature, index) => {
                 const Icon = feature.icon;
-                return (
-                  <Reveal
-                    key={feature.title}
-                    delay={(index % 3) * 0.07}
-                    className="rounded-card border border-line p-5 transition-colors hover:border-line-strong hover:bg-surface"
-                  >
+                const body = (
+                  <>
                     <span className="flow-tile text-accent">
                       <Icon size={14} />
                     </span>
@@ -429,6 +445,31 @@ export function LandingPage() {
                     <p className="mt-2 text-sm leading-6 text-muted">
                       {feature.copy}
                     </p>
+                    <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm text-accent">
+                      {feature.cta} <ArrowRight size={13} />
+                    </span>
+                  </>
+                );
+                return (
+                  <Reveal
+                    key={feature.title}
+                    delay={(index % 3) * 0.07}
+                    className="flex"
+                  >
+                    {"href" in feature ? (
+                      <a
+                        href={feature.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="card flex flex-1 flex-col"
+                      >
+                        {body}
+                      </a>
+                    ) : (
+                      <Link to={feature.to} className="card flex flex-1 flex-col">
+                        {body}
+                      </Link>
+                    )}
                   </Reveal>
                 );
               })}

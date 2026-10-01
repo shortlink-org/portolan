@@ -57,7 +57,7 @@ export function HeroMap() {
 
   return (
     <div
-      className="relative h-full"
+      className="@container relative h-full"
       onPointerDown={() => setTouched(true)}
       onPointerEnter={() => setHovering(true)}
       onPointerLeave={() => setHovering(false)}
@@ -88,12 +88,16 @@ export function HeroMap() {
             >
               <Boxes size={15} aria-hidden />
             </span>
+            {/* The name is what the card says; it is never the part that
+                gives way. The identifier shortens first, then the counts
+                leave: they are shown only when the map is wide enough to
+                hold them beside the name, the summary and the link. */}
             <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-2">
-                <span className="truncate font-semibold text-ink">
+              <div className="flex min-w-0 items-baseline gap-2">
+                <span className="shrink-0 font-semibold text-ink">
                   {context.name}
                 </span>
-                <span className="mono shrink-0 text-faint">
+                <span className="mono min-w-0 truncate text-faint">
                   {context.id}
                   {context.classification ? ` · ${context.classification}` : ""}
                 </span>
@@ -102,7 +106,7 @@ export function HeroMap() {
                 {context.summary || "\u00a0"}
               </div>
             </div>
-            <div className="mono hidden shrink-0 gap-x-3 text-faint md:flex">
+            <div className="mono hidden shrink-0 gap-x-3 text-faint @[640px]:flex">
               <span>
                 <span className="tnum text-ink">{stats.services}</span> services
               </span>
