@@ -52,6 +52,35 @@
         "/Users/batazor/myproject/etg/portolan/.portolan/local-site"
       ],
       "port": 4184
+    },
+    {
+      "name": "avia-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "cli/portolan.mjs",
+        "dev",
+        "--cwd",
+        "/Users/batazor/myproject/etg/portolan",
+        "--port",
+        "5191",
+        "--host",
+        "127.0.0.1"
+      ],
+      "port": 5191
+    },
+    {
+      "name": "portolan-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "4185",
+        "--strictPort",
+        "--host",
+        "127.0.0.1"
+      ],
+      "port": 4185
     }
   ]
 }
