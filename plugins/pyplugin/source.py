@@ -155,10 +155,14 @@ def read_imports(module: Module) -> Dict[str, Import]:
             base = node.module or ""
             if node.level:
                 parts = module.dotted.split(".")
-                # A package's __init__ is one level shallower than its path says.
+                level = node.level
+                # A package's __init__ is a member of the package itself, so
+                # `.` from there is the package: one level fewer than the
+                # file's path says, not two.
                 if parts and parts[-1] == "__init__":
                     parts = parts[:-1]
-                parts = parts[: len(parts) - node.level]
+                    level -= 1
+                parts = parts[: len(parts) - level]
                 base = ".".join([p for p in parts if p] + ([base] if base else []))
             for alias in node.names:
                 out[alias.asname or alias.name] = Import(base, alias.name, node.lineno)
