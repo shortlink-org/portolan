@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "react", "react-hooks"],
+  "categories": {
+    "correctness": "warn"
+  },
+  "rules": {
+    "eslint/no-unused-vars": "error",
+    "eslint/no-unused-expressions": "error",
+    "eslint/no-useless-escape": "error",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/set-state-in-effect": "off",
+    "react/preserve-manual-memoization": "off",
+    "react/refs": "off",
+    "react/static-components": "off",
+    "react/use-memo": "off",
+    "react/purity": "off",
+    "react/incompatible-library": "off",
+    "react/immutability": "off"
+  },
+  "overrides": [
+    {
+      "files": ["plugins/extract-ts/**", "scripts/**", "cli/**"],
+      "rules": {
+        "react-hooks/rules-of-hooks": "off",
+        "react-hooks/exhaustive-deps": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    "vendor/**",
+    "node_modules/**",
+    "**/testdata/**",
+    "src/likec4/generated*",
+    "plugins/extract-java/build/**",
+    "plugins/**/target/**",
+    "plugins/**/bin/**",
+    "plugins/**/obj/**",
+    "exports/**",
+    "docs/**"
+  ]
+}

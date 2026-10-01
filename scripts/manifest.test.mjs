@@ -133,7 +133,7 @@ describe("the manifest schema", () => {
   });
 
   it("refuses a step that names no output", () => {
-    const { out, ...step } = good.extract[0];
+    const { out: _out, ...step } = good.extract[0];
     const problems = check({ ...good, extract: [step] });
 
     expect(problems).toHaveLength(1);

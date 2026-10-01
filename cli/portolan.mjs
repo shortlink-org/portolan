@@ -15,7 +15,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { glob } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers, toolchainFor } from "./init.mjs";

@@ -378,7 +378,7 @@ function serviceFromTags(tags, configured) {
 function serviceParts(id) {
   const value = String(id ?? "").trim();
   const at = value.lastIndexOf(".");
-  if (at <= 0 || at === value.length - 1) throw new Error(`service mapping ${JSON.stringify(value)} must be a full id such as \"shop.orders\"`);
+  if (at <= 0 || at === value.length - 1) throw new Error(`service mapping ${JSON.stringify(value)} must be a full id such as "shop.orders"`);
   return { context: value.slice(0, at), slug: value.slice(at + 1) };
 }
 

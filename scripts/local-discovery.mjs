@@ -344,7 +344,7 @@ function goSOAPClientEvidence(root, files) {
 }
 
 function goRedisEvidence(root, files) {
-  const redisImport = /github\.com\/(?:redis\/go-redis(?:\/v\d+)?|go-redis\/redis(?:\/v\d+)?|redis\/rueidis|gomodule\/redigo\/redis)(?=\")/g;
+  const redisImport = /github\.com\/(?:redis\/go-redis(?:\/v\d+)?|go-redis\/redis(?:\/v\d+)?|redis\/rueidis|gomodule\/redigo\/redis)(?=")/g;
   for (const name of matches(files, /\.go$/).filter((name) => !name.endsWith("_test.go"))) {
     let source = "";
     try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
@@ -354,7 +354,7 @@ function goRedisEvidence(root, files) {
     const aliases = new Set();
     for (const importPath of imports) {
       const escaped = importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const declaration = new RegExp(`(?:^|\\n)\\s*(?:import\\s+)?(?:([A-Za-z_][A-Za-z0-9_]*)\\s+)?\"${escaped}\"`, "m").exec(source);
+      const declaration = new RegExp(`(?:^|\\n)\\s*(?:import\\s+)?(?:([A-Za-z_][A-Za-z0-9_]*)\\s+)?"${escaped}"`, "m").exec(source);
       const alias = declaration?.[1];
       if (alias && alias !== "_" && alias !== ".") aliases.add(alias);
       else aliases.add(importPath.includes("rueidis") ? "rueidis" : "redis");

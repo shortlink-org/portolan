@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fullScanRequested, fullScanTarget, historyRecords, issueKeys, run, scanWorkItems } from "./work-items.mjs";
+import { fullScanRequested, fullScanTarget, historyRecords, issueKeys, scanWorkItems } from "./work-items.mjs";
 
 const temporary = [];
 afterEach(() => { vi.unstubAllEnvs(); for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true }); });

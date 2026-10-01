@@ -67,6 +67,7 @@
     "test:package": "node scripts/package-smoke.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc -p plugins/extract-ts",
+    "lint": "oxlint src scripts cli plugins/extract-ts",
     "likec4:gen": "node scripts/gen-likec4.mjs && node scripts/likec4-bundle.mjs",
     "likec4:validate": "node scripts/likec4-bundle.mjs --validate",
     "predev": "npm run likec4:gen",
@@ -130,6 +131,7 @@
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "oxlint": "^1.86.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"
   }

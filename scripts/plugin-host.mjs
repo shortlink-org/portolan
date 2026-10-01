@@ -329,7 +329,8 @@ async function runWasm(plugin, payload, limits, access) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        cause ? reject(cause) : resolve(value);
+        if (cause) reject(cause);
+        else resolve(value);
       };
       const timer = setTimeout(async () => {
         if (settled) return;
@@ -487,7 +488,8 @@ function runProcess(plugin, payload, limits) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      cause ? reject(cause) : resolve(value);
+      if (cause) reject(cause);
+      else resolve(value);
     };
     const stopForLimit = (stream, limit) => {
       child.kill("SIGKILL");

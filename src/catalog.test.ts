@@ -703,7 +703,7 @@ describe("validateCatalog: requests for comments", () => {
 
   it("rejects an ambiguous or credential-bearing RFC repository", () => {
     expect(() => validateCatalog(withRfc({ repository: "architecture" }))).toThrow(/use host\/owner\/name/);
-    expect(() => validateCatalog(withRfc({ repository: "https:\/\/secret@github.com\/acme\/architecture" }))).toThrow(/invalid repository/);
+    expect(() => validateCatalog(withRfc({ repository: "https://secret@github.com/acme/architecture" }))).toThrow(/invalid repository/);
   });
 });
 

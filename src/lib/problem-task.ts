@@ -3,7 +3,7 @@ import type { RulePassport } from "./problem-rules";
 
 /** Catalog text is plain text, even when it contains Markdown punctuation. */
 const plain = (value: string): string =>
-  value.replace(/\s+/g, " ").replace(/[\\`*_{}\[\]<>()#!|]/g, "\\$&");
+  value.replace(/\s+/g, " ").replace(/[\\`*_{}[\]<>()#!|]/g, "\\$&");
 
 export function problemTaskMarkdown(
   problem: Problem,
