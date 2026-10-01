@@ -106,7 +106,7 @@
     "@tanstack/react-virtual": "^3.14.12",
     "@vitejs/plugin-react": "^6.1.1",
     "@xyflow/react": "^12.12.0",
-    "ai": "7.0.126",
+    "ai": "7.0.127",
     "cn": "0.4.0",
     "elkjs": "^0.12.0",
     "html-to-image": "^1.11.13",
