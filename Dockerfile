@@ -9,7 +9,7 @@
 # host (portolan.0008), so nothing runs `go` once the image is built. Java is
 # linked down to the modules its extractor needs, and the Rust extractor
 # arrives as a binary built in its own stage.
-FROM rust:1.98.1-trixie AS rust-builder
+FROM rust:1.99.0-trixie AS rust-builder
 
 WORKDIR /opt/portolan
 COPY plugins/extract-rust plugins/extract-rust
