@@ -7,7 +7,7 @@ require (
 	github.com/pgplex/pgparser v0.2.0
 	github.com/zclconf/go-cty v1.19.0
 	golang.org/x/mod v0.41.0
-	golang.org/x/tools v0.50.0
+	golang.org/x/tools v0.51.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
