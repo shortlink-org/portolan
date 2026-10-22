@@ -114,7 +114,7 @@
     "lowlight": "^3.3.0",
     "lucide-react": "^1.50.0",
     "mermaid": "^12.1.0",
-    "motion": "^13.5.1",
+    "motion": "^14.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
