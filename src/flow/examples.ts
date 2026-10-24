@@ -31,6 +31,16 @@ export function formatMs(ms: number): string {
   return `${ms.toFixed(ms >= 1 ? 1 : 2)} ms`;
 }
 
+/** True only for the extractor note already represented by Recorded. */
+export function noteDuplicatesRecorded(
+  note: string | undefined,
+  traceCount: number,
+): boolean {
+  if (!note || traceCount < 1) return false;
+  const match = /^Seen running in .+ \((\d+) traces?\)\.$/.exec(note.trim());
+  return match !== null && Number(match[1]) === traceCount;
+}
+
 /** The distinct steps a recording showed, in the order it showed them. */
 export function stepsShownBy(example: Pick<FlowExample, "steps">): string[] {
   return [...new Set(example.steps.map((shown) => shown.step))];

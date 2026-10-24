@@ -8,6 +8,7 @@
 
 import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { Link } from "react-router";
 import type { Field, RpcEnum } from "../catalog";
 import { parseType } from "../lib/shape";
 import { RuleMarks } from "./RuleMarks";
@@ -63,6 +64,7 @@ export function ShapeRows({
   enums,
   showHeader = false,
   stacked = false,
+  typeHref,
 }: {
   fields: Field[];
   /** The interface's enums, so a field typed by one can open its values. */
@@ -71,6 +73,8 @@ export function ShapeRows({
   showHeader?: boolean;
   /** A narrow detail rail reads fields top-to-bottom instead of squeezing columns. */
   stacked?: boolean;
+  /** Deep link for a field's declared message type, when that type has a page. */
+  typeHref?: (field: Field) => string | null;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (name: string) =>
@@ -87,6 +91,7 @@ export function ShapeRows({
         {fields.map((field) => {
           const set = enumFor(enums, field);
           const shown = set !== null && open.has(field.name);
+          const href = typeHref?.(field);
 
           return (
             <div key={field.name} className="min-w-0 py-2 first:pt-0 last:pb-0">
@@ -113,6 +118,14 @@ export function ShapeRows({
                       )}
                       <span className="min-w-0 break-all">{field.type}</span>
                     </button>
+                  ) : href ? (
+                    <Link
+                      to={href}
+                      className="min-w-0 break-all text-accent hover:underline"
+                      title={`Open type ${parseType(field.type).base}`}
+                    >
+                      {field.type} →
+                    </Link>
                   ) : (
                     <span className="min-w-0 break-all">
                       {field.type}
@@ -153,6 +166,7 @@ export function ShapeRows({
         {fields.map((field) => {
           const set = enumFor(enums, field);
           const shown = set !== null && open.has(field.name);
+          const href = typeHref?.(field);
           return (
           <Fragment key={field.name}>
           <tr className={`align-top${showHeader ? " border-b border-line last:border-b-0" : ""}`}>
@@ -186,6 +200,14 @@ export function ShapeRows({
                       {field.type}
                     </span>
                   </button>
+                ) : href ? (
+                  <Link
+                    to={href}
+                    className={`${showHeader ? "min-w-0 break-all" : "whitespace-nowrap"} text-accent hover:underline`}
+                    title={`Open type ${parseType(field.type).base}`}
+                  >
+                    {field.type} →
+                  </Link>
                 ) : (
                   <span className={showHeader ? "min-w-0 break-all" : undefined}>
                     {field.type}

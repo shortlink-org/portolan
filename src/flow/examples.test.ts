@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { exampleRowsFor, formatMs, stepsShownBy } from "./examples";
+import {
+  exampleRowsFor,
+  formatMs,
+  noteDuplicatesRecorded,
+  stepsShownBy,
+} from "./examples";
 
 const example = (traceId: string, ...steps: string[]) => ({
   id: `t.jsonl#${traceId}`,
@@ -17,6 +22,22 @@ describe("what the recordings said about one step", () => {
     expect(rows.map((row) => `${row.example.traceId}:${row.shown.durationMs}`)).toEqual(["a:2", "b:1", "b:2"]);
     expect(exampleRowsFor(flow, { id: "s9" })).toEqual([]);
     expect(exampleRowsFor({}, { id: "s1" })).toEqual([]);
+  });
+
+  it("recognizes only the generated note duplicated by Recorded", () => {
+    expect(
+      noteDuplicatesRecorded(
+        "Seen running in telemetry/traces.jsonl (3 traces).",
+        3,
+      ),
+    ).toBe(true);
+    expect(
+      noteDuplicatesRecorded(
+        "Seen running in telemetry/traces.jsonl (2 traces).",
+        3,
+      ),
+    ).toBe(false);
+    expect(noteDuplicatesRecorded("inside a retry loop", 3)).toBe(false);
   });
 
   it("names the distinct steps a recording showed, once each, in order", () => {

@@ -1,18 +1,19 @@
 import { RelationEvidencePanel } from "../components/RelationEvidence";
 import { WorkItems } from "../components/WorkItems";
 import { stepRelationEvidence } from "./evidence";
-import { exampleRowsFor, formatMs } from "./examples";
+import { exampleRowsFor, formatMs, noteDuplicatesRecorded } from "./examples";
 import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { AlertTriangle, ChevronRight, FileCode2 } from "lucide-react";
 import { allRepos, stepFrames } from "../catalog";
-import type { Flow, Step, StepFrame } from "../catalog";
+import type { Field, Flow, Step, StepFrame } from "../catalog";
 import { catalog, index } from "../data";
 import { Ident } from "../components/Ident";
 import { SourcePreviewLink } from "../components/SourcePreview";
 import { flowRepoService } from "../lib/derive";
 import { OPERATION_PARAM, routeLabel } from "../lib/palette";
+import { parseType } from "../lib/shape";
 import { sourceLocation } from "../lib/source-link";
 import { AdrNumber, RfcDisplayId, StatusChip } from "../components/primitives";
 import { ShapeRows } from "../components/ShapeRows";
@@ -20,6 +21,7 @@ import { shapeFor } from "../components/MethodRows";
 import { stepAnswer, stepRpcContract } from "./answers";
 import {
   aggregatePath,
+  messageAnchor,
   paths,
   eventPath,
   servicePath,
@@ -193,6 +195,23 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
       Boolean(source),
     ),
   ).size;
+  const typeHref = contract
+    ? (field: Field) => {
+        const base = parseType(field.type).base.replace(/^\./, "");
+        const message = contract.provided.messages?.find((candidate) => {
+          const name = candidate.name.replace(/^\./, "");
+          return name === base || base.endsWith(`.${name}`);
+        });
+        if (!message) return null;
+
+        const anchor = messageAnchor(contract.provided.id, message.name);
+        const module = contract.provided.module
+          ? index.moduleById.get(contract.provided.module)
+          : undefined;
+        if (module) return `${paths.module(module.slug)}?tab=types#${anchor}`;
+        return providerPath ? `${providerPath}?tab=provides#${anchor}` : null;
+      }
+    : undefined;
 
   return (
     <section
@@ -262,6 +281,7 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
               fields={requestFields}
               enums={contract.provided.enums}
               stacked
+              typeHref={typeHref}
             />
           ) : (
             <div className="mono text-muted">shape not recorded</div>
@@ -280,6 +300,7 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
               fields={responseFields}
               enums={contract.provided.enums}
               stacked
+              typeHref={typeHref}
             />
           ) : (
             <div className="mono text-muted">shape not recorded</div>
@@ -903,6 +924,13 @@ function StepExamples({ step, flow }: { step: Step; flow: Flow }) {
 export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   const decisions = step.ref ? (index.adrsByEvent.get(step.ref) ?? []) : [];
   const rfcs = step.ref ? (index.rfcsByEvent.get(step.ref) ?? []) : [];
+  const recordedTraceCount =
+    step.seen?.traces ?? exampleRowsFor(flow, step).length;
+  const note =
+    flow.examples?.length &&
+    noteDuplicatesRecorded(step.note, recordedTraceCount)
+      ? undefined
+      : step.note;
 
   return (
     <div className="flex flex-col gap-3">
@@ -965,7 +993,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
         <CallDetail step={step} flow={flow} />
       )}
 
-      {step.note ? (
+      {note ? (
         <div>
           <div className="label mb-1">Note</div>
           <p
@@ -978,7 +1006,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
               color: "var(--fg-muted)",
             }}
           >
-            {step.note}
+            {note}
           </p>
         </div>
       ) : null}
