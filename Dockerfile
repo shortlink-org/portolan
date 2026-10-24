@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.27
+# syntax=docker/dockerfile:1.28
 
 # Two published targets. `runtime` is the default and holds what generate,
 # check, diff, and comment need; `site` adds the optional toolchain that only
@@ -9,7 +9,7 @@
 # host (portolan.0008), so nothing runs `go` once the image is built. Java is
 # linked down to the modules its extractor needs, and the Rust extractor
 # arrives as a binary built in its own stage.
-FROM rust:1.99.0-trixie AS rust-builder
+FROM rust:1.99.1-trixie AS rust-builder
 
 WORKDIR /opt/portolan
 COPY plugins/extract-rust plugins/extract-rust

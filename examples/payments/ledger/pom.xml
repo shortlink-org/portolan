@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.1.1</version>
+    <version>4.1.2</version>
     <relativePath/>
   </parent>
 
@@ -23,7 +23,7 @@
 
   <properties>
     <java.version>21</java.version>
-    <grpc.version>1.84.0</grpc.version>
+    <grpc.version>1.85.1</grpc.version>
     <protobuf.version>3.25.5</protobuf.version>
     <jmolecules.version>2.0.1</jmolecules.version>
   </properties>
@@ -61,7 +61,7 @@
     <dependency>
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-events-api</artifactId>
-      <version>2.1.1</version>
+      <version>2.1.2</version>
     </dependency>
     <!-- The rules the domain states about its own values, in the words the
          catalog reads them by (portolan.0015). The annotations declare what
@@ -122,7 +122,7 @@
     <dependency>
       <groupId>io.nats</groupId>
       <artifactId>jnats</artifactId>
-      <version>2.26.3</version>
+      <version>2.26.4</version>
     </dependency>
 
     <dependency>
