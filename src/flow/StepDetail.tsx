@@ -5,13 +5,14 @@ import { exampleRowsFor, formatMs } from "./examples";
 import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { AlertTriangle, FileCode2 } from "lucide-react";
+import { AlertTriangle, ChevronRight, FileCode2 } from "lucide-react";
 import { allRepos, stepFrames } from "../catalog";
 import type { Flow, Step, StepFrame } from "../catalog";
 import { catalog, index } from "../data";
 import { Ident } from "../components/Ident";
 import { SourcePreviewLink } from "../components/SourcePreview";
 import { flowRepoService } from "../lib/derive";
+import { OPERATION_PARAM, routeLabel } from "../lib/palette";
 import { sourceLocation } from "../lib/source-link";
 import { AdrNumber, RfcDisplayId, StatusChip } from "../components/primitives";
 import { ShapeRows } from "../components/ShapeRows";
@@ -182,29 +183,50 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
     : null;
   // The flow records the hop; what comes back is the contract's to say.
   const answer = stepAnswer(index, step);
+  const httpRoute = contract?.method.http;
+  const apiReferencePath =
+    providerPath && httpRoute
+      ? `${providerPath}?tab=spec&${OPERATION_PARAM}=${encodeURIComponent(routeLabel(httpRoute))}`
+      : null;
+  const sourceCount = new Set(
+    [call?.source, step.line].filter((source): source is string =>
+      Boolean(source),
+    ),
+  ).size;
 
   return (
     <section
-      aria-label="RPC contract"
-      className="overflow-hidden rounded-card border shadow-xs border-line"
+      aria-label={httpRoute ? "HTTP contract" : "RPC contract"}
+      className="overflow-hidden rounded-card border border-line bg-surface"
     >
-      <header className="border-b px-3 py-2.5 border-line bg-surface">
-        <h2 className="label">RPC contract</h2>
-        <div className="mt-2">
-          <Ident block value={method} className="text-ink" />
-        </div>
-      </header>
-
-      {step.destination ? <HTTPDestinationEvidence destination={step.destination} /> : null}
-
-      <DetailSection title="Contract">
-        <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-2">
-          {answer ? (
-            <>
-              <dt className="mono text-muted">Answers with</dt>
-              <dd className="mono break-all text-ink">{answer}</dd>
-            </>
+      <header className="px-3 py-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="label">{httpRoute ? "HTTP contract" : "RPC"}</h2>
+          {apiReferencePath ? (
+            <Link
+              to={apiReferencePath}
+              aria-label="Open API contract"
+              title="Open this operation in the API reference"
+              className="shrink-0 text-accent hover:underline"
+            >
+              API →
+            </Link>
           ) : null}
+        </div>
+        {httpRoute ? (
+          <div className="mt-1.5">
+            <div className="mono flex min-w-0 items-baseline gap-2 text-ink">
+              <span className="shrink-0 font-medium">{httpRoute.method}</span>
+              <span className="min-w-0 break-all">{httpRoute.path}</span>
+            </div>
+            <Ident block value={method} className="mt-0.5 text-muted" />
+          </div>
+        ) : (
+          <div className="mt-1">
+            <Ident block value={method} className="text-ink" />
+          </div>
+        )}
+        <dl className="mt-2 grid grid-cols-1 gap-y-0.5">
           <dt className="mono text-muted">Provider</dt>
           <dd>
             {internalProvider && providerPath ? (
@@ -220,59 +242,135 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
               </span>
             )}
           </dd>
-          {call ? (
+          {answer ? (
             <>
-              <dt className="mono text-muted">Declared by</dt>
-              <dd className="mono break-all text-ink">{call.peer}</dd>
+              <dt className="mono text-muted">Returns</dt>
+              <dd className="mono break-all text-ink">{answer}</dd>
             </>
           ) : null}
         </dl>
-      </DetailSection>
+      </header>
 
       {contract?.method.request ? (
-        <DetailSection title="Request" meta={contract.method.request}>
+        <ContractShapeDisclosure
+          title="Request"
+          name={contract.method.request}
+          count={requestFields?.length}
+        >
           {requestFields ? (
             <ShapeRows
               fields={requestFields}
               enums={contract.provided.enums}
-              showHeader
+              stacked
             />
           ) : (
             <div className="mono text-muted">shape not recorded</div>
           )}
-        </DetailSection>
+        </ContractShapeDisclosure>
       ) : null}
 
       {contract?.method.response ? (
-        <DetailSection title="Response" meta={contract.method.response}>
+        <ContractShapeDisclosure
+          title="Response"
+          name={contract.method.response}
+          count={responseFields?.length}
+        >
           {responseFields ? (
             <ShapeRows
               fields={responseFields}
               enums={contract.provided.enums}
-              showHeader
+              stacked
             />
           ) : (
             <div className="mono text-muted">shape not recorded</div>
           )}
-        </DetailSection>
+        </ContractShapeDisclosure>
       ) : null}
 
-      <DetailSection title="Source">
-        {call ? (
-          <SourceWhere where={call.source} flow={flow} structured />
-        ) : step.line ? (
-          <SourceWhere where={step.line} flow={flow} structured />
-        ) : (
-          <div className="mono text-muted">not recorded</div>
-        )}
-      </DetailSection>
-
-      {step.line ? (
-        <DetailSection title="Observed at">
-          <SourceWhere where={step.line} flow={flow} structured />
-        </DetailSection>
-      ) : null}
+      <details className="group border-t border-line">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-muted hover:bg-raised hover:text-ink">
+          <ChevronRight
+            size={13}
+            aria-hidden
+            className="shrink-0 transition-transform group-open:rotate-90"
+          />
+          <span className="text-ink">Evidence</span>
+          <span
+            className="tnum ml-auto"
+            title={
+              sourceCount > 0
+                ? `${sourceCount} ${sourceCount === 1 ? "location" : "locations"}`
+                : "Evidence details"
+            }
+          >
+            {sourceCount > 0 ? sourceCount : "show"}
+          </span>
+        </summary>
+        <div className="space-y-3 border-t border-line px-3 py-2.5">
+          {call ? (
+            <div>
+              <div className="label mb-1">Declared by</div>
+              <div className="mono break-all text-ink">{call.peer}</div>
+            </div>
+          ) : null}
+          <div>
+            <div className="label mb-1">Contract source</div>
+            {call ? (
+              <SourceWhere where={call.source} flow={flow} structured />
+            ) : step.line ? (
+              <SourceWhere where={step.line} flow={flow} structured />
+            ) : (
+              <div className="mono text-muted">not recorded</div>
+            )}
+          </div>
+          {step.line && step.line !== call?.source ? (
+            <div>
+              <div className="label mb-1">Observed at</div>
+              <SourceWhere where={step.line} flow={flow} structured />
+            </div>
+          ) : null}
+          {step.destination ? (
+            <HTTPDestinationEvidence destination={step.destination} />
+          ) : null}
+        </div>
+      </details>
     </section>
+  );
+}
+
+function ContractShapeDisclosure({
+  title,
+  name,
+  count,
+  children,
+}: {
+  title: string;
+  name: string;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group border-t border-line">
+      <summary className="cursor-pointer list-none px-3 py-2 text-muted hover:bg-raised hover:text-ink">
+        <span className="flex min-w-0 items-center gap-2">
+          <ChevronRight
+            size={13}
+            aria-hidden
+            className="shrink-0 transition-transform group-open:rotate-90"
+          />
+          <span className="text-ink">{title}</span>
+          {count !== undefined ? (
+            <span className="tnum ml-auto shrink-0">
+              {count} {count === 1 ? "field" : "fields"}
+            </span>
+          ) : null}
+        </span>
+        <span className="mono mt-0.5 block truncate pl-[21px]" title={name}>
+          {name}
+        </span>
+      </summary>
+      <div className="border-t border-line px-3 py-2.5">{children}</div>
+    </details>
   );
 }
 
@@ -469,7 +567,7 @@ function ExecutionContext({ step, flow }: { step: Step; flow: Flow }) {
   const conditional = frames.some((f) => f.kind === "alt");
 
   return (
-    <section className="mb-3 overflow-hidden rounded-card border shadow-xs border-line">
+    <section className="overflow-hidden rounded-card border shadow-xs border-line">
       <header className="flex items-center justify-between gap-3 border-b px-3 py-2 border-line bg-surface">
         <h2 className="label">Execution context</h2>
         {conditional ? (
@@ -727,46 +825,78 @@ function StoreCallDetail({ step, flow }: { step: Step; flow: Flow }) {
 function StepExamples({ step, flow }: { step: Step; flow: Flow }) {
   const rows = exampleRowsFor(flow, step);
   if (!flow.examples?.length) return null;
+  const traceCount = step.seen?.traces ?? rows.length;
 
   return (
-    <>
-      <Label>
-        Recorded{step.seen ? ` · seen in ${step.seen.traces} ${step.seen.traces === 1 ? "trace" : "traces"}` : ""}
-      </Label>
-      {rows.length === 0 ? (
-        <div className="mono text-muted">not shown in any recording kept as an example</div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          {rows.map(({ example, shown }) => {
-            const attrs = Object.entries(shown.attributes ?? {}).sort(([a], [b]) => a.localeCompare(b));
-            return (
-              <div key={example.id} className="border px-2 py-1.5 border-line">
-                <div className="mono flex flex-wrap items-baseline gap-x-2 text-muted">
-                  <span className="text-ink" title={example.recording}>{example.traceId}</span>
-                  {shown.durationMs ? <span>{formatMs(shown.durationMs)}</span> : null}
-                  {example.recordedAt ? <span>{example.recordedAt.slice(0, 19).replace("T", " ")}Z</span> : null}
+    <details className="group border-y border-line bg-surface">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-muted hover:bg-raised hover:text-ink">
+        <ChevronRight
+          size={13}
+          aria-hidden
+          className="shrink-0 transition-transform group-open:rotate-90"
+        />
+        <span className="text-ink">Recorded</span>
+        <span className="tnum ml-auto shrink-0">
+          {traceCount > 0
+            ? `${traceCount} ${traceCount === 1 ? "trace" : "traces"}`
+            : "not seen"}
+        </span>
+      </summary>
+      <div className="border-t border-line px-3 py-2.5">
+        {rows.length === 0 ? (
+          <div className="mono text-muted">
+            not shown in any recording kept as an example
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {rows.map(({ example, shown }) => {
+              const attrs = Object.entries(shown.attributes ?? {}).sort(
+                ([a], [b]) => a.localeCompare(b),
+              );
+              return (
+                <div
+                  key={example.id}
+                  className="border px-2 py-1.5 border-line"
+                >
+                  <div className="mono flex flex-wrap items-baseline gap-x-2 text-muted">
+                    <span className="text-ink" title={example.recording}>
+                      {example.traceId}
+                    </span>
+                    {shown.durationMs ? (
+                      <span>{formatMs(shown.durationMs)}</span>
+                    ) : null}
+                    {example.recordedAt ? (
+                      <span>
+                        {example.recordedAt.slice(0, 19).replace("T", " ")}Z
+                      </span>
+                    ) : null}
+                  </div>
+                  {shown.label && shown.label !== step.label ? (
+                    <div className="mono mt-0.5 text-muted">{shown.label}</div>
+                  ) : null}
+                  {attrs.length ? (
+                    /* One attribute per line, the key above its value, both
+                       allowed to wrap: the panel is narrow and a route or a
+                       destination is long, and a value cut off with an
+                       ellipsis is a value the reader has to hover for. */
+                    <dl className="mono mt-1 flex flex-col gap-y-1">
+                      {attrs.map(([key, value]) => (
+                        <div key={key} className="min-w-0">
+                          <dt className="text-faint">{key}</dt>
+                          <dd className="break-all whitespace-normal text-ink">
+                            {value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
                 </div>
-                {shown.label && shown.label !== step.label ? <div className="mono mt-0.5 text-muted">{shown.label}</div> : null}
-                {attrs.length ? (
-                  /* One attribute per line, the key above its value, both
-                     allowed to wrap: the panel is narrow and a route or a
-                     destination is long, and a value cut off with an
-                     ellipsis is a value the reader has to hover for. */
-                  <dl className="mono mt-1 flex flex-col gap-y-1">
-                    {attrs.map(([key, value]) => (
-                      <div key={key} className="min-w-0">
-                        <dt className="text-faint">{key}</dt>
-                        <dd className="break-all whitespace-normal text-ink">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -775,17 +905,20 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   const rfcs = step.ref ? (index.rfcsByEvent.get(step.ref) ?? []) : [];
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <ExecutionContext step={step} flow={flow} />
-      <WorkItems catalog={catalog} target={{ kind: "step", id: step.id, flow: flow.id }} className="mb-3" />
-      <RelationEvidencePanel items={stepRelationEvidence(index, step)} renderSource={(where) => <SourceWhere where={where} flow={flow} structured />} />
-      <StepExamples step={step} flow={flow} />
+      <WorkItems
+        catalog={catalog}
+        target={{ kind: "step", id: step.id, flow: flow.id }}
+        className="self-start"
+      />
+      <RelationEvidencePanel className="" items={stepRelationEvidence(index, step)} renderSource={(where) => <SourceWhere where={where} flow={flow} />} />
 
       {/* A decision that names this step's event is the reason the step
           looks the way it does. It belongs next to the step, not three
           clicks away on the service page. */}
       {decisions.length > 0 ? (
-        <div className="mb-3 flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           {decisions.map((adr) => (
             <Link
               key={adr.id}
@@ -803,7 +936,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
       ) : null}
 
       {rfcs.length > 0 ? (
-        <div className="mb-3 flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           {rfcs.map((rfc) => (
             <Link
               key={rfc.id}
@@ -833,8 +966,8 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
       )}
 
       {step.note ? (
-        <>
-          <Label>Note</Label>
+        <div>
+          <div className="label mb-1">Note</div>
           <p
             className="border-l-2 pl-2"
             style={{
@@ -847,18 +980,20 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
           >
             {step.note}
           </p>
-        </>
+        </div>
       ) : null}
 
       {step.line &&
       step.kind !== "call" &&
       step.kind !== "rpc" &&
       step.kind !== "response" ? (
-        <>
-          <Label>Observed at</Label>
+        <div>
+          <div className="label mb-1">Observed at</div>
           <Where step={step} flow={flow} />
-        </>
+        </div>
       ) : null}
-    </>
+
+      <StepExamples step={step} flow={flow} />
+    </div>
   );
 }

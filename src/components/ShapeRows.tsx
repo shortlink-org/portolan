@@ -42,16 +42,35 @@ function EnumRows({ set }: { set: RpcEnum }) {
   );
 }
 
+function EnumList({ set }: { set: RpcEnum }) {
+  return (
+    <div className="mt-1 border-l border-line pl-2">
+      {set.values.map((value) => (
+        <div key={value.name} className="py-0.5">
+          <div className="mono flex min-w-0 items-baseline justify-between gap-2">
+            <span className="min-w-0 break-all text-ink">{value.name}</span>
+            <span className="tnum shrink-0 text-muted">{value.number}</span>
+          </div>
+          {value.doc ? <div className="text-muted">{value.doc}</div> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ShapeRows({
   fields,
   enums,
   showHeader = false,
+  stacked = false,
 }: {
   fields: Field[];
   /** The interface's enums, so a field typed by one can open its values. */
   enums?: RpcEnum[];
   /** A contract panel needs named columns; compact inline shapes do not. */
   showHeader?: boolean;
+  /** A narrow detail rail reads fields top-to-bottom instead of squeezing columns. */
+  stacked?: boolean;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (name: string) =>
@@ -61,6 +80,56 @@ export function ShapeRows({
       else next.add(name);
       return next;
     });
+
+  if (stacked) {
+    return (
+      <dl className="divide-y divide-[var(--border)]">
+        {fields.map((field) => {
+          const set = enumFor(enums, field);
+          const shown = set !== null && open.has(field.name);
+
+          return (
+            <div key={field.name} className="min-w-0 py-2 first:pt-0 last:pb-0">
+              <dt
+                className={`mono break-all text-ink${field.deprecated ? " line-through" : ""}`}
+                title={field.deprecated ? "deprecated" : undefined}
+              >
+                {field.name}
+              </dt>
+              <dd className="mono mt-0.5 min-w-0 text-muted">
+                <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  {set ? (
+                    <button
+                      type="button"
+                      onClick={() => toggle(field.name)}
+                      aria-expanded={shown}
+                      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-control text-left hover:text-ink"
+                      title={`${set.name}: ${set.values.length} values — click to ${shown ? "hide" : "show"} them`}
+                    >
+                      {shown ? (
+                        <ChevronDown size={11} aria-hidden />
+                      ) : (
+                        <ChevronRight size={11} aria-hidden />
+                      )}
+                      <span className="min-w-0 break-all">{field.type}</span>
+                    </button>
+                  ) : (
+                    <span className="min-w-0 break-all">
+                      {field.type}
+                      {field.ref ? " →" : ""}
+                    </span>
+                  )}
+                  <RuleMarks field={field} />
+                </span>
+              </dd>
+              {field.doc ? <dd className="mt-0.5 text-muted">{field.doc}</dd> : null}
+              {shown && set ? <EnumList set={set} /> : null}
+            </div>
+          );
+        })}
+      </dl>
+    );
+  }
 
   return (
     <table className={`w-full${showHeader ? " table-fixed" : ""}`}>
