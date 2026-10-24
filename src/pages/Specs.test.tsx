@@ -70,7 +70,25 @@ describe("spec pages", () => {
     ]} />);
     expect(html).toContain("Changed with");
     expect(html).toContain("src/auction.ts");
-    expect(html).toContain("impact, not implementation evidence");
+    expect(html).toContain("path.impact");
+    expect(html).not.toContain("implements");
+  });
+
+  it("projects Git, lifecycle, task and path evidence into one activity timeline", () => {
+    const previous = { ...spec, lifecycle: "planned" as const, tasks: spec.tasks.map((task) => ({ ...task, done: false })) };
+    const html = render(<SpecDetailView
+      spec={spec}
+      previous={previous}
+      history={[{ source: "tasks.md", status: "available", repository: "https://github.com/acme/repo", first: { commit: "abc1234", author: "Ada", date: "2026-01-01T00:00:00Z" }, latest: { commit: "def5678", author: "Lin", date: "2026-02-01T00:00:00Z" } }]}
+      impact={[{ path: "src/auction.ts", repository: "acme/repo", level: "repository", reason: "unmatched" }]}
+    />);
+    expect(html).toContain("Git history");
+    expect(html).toContain("Catalog diff");
+    expect(html).toContain("Changed with");
+    expect(html).toContain("spec.lifecycle");
+    expect(html).toContain("task.completed");
+    expect(html).toContain("tasks.md was changed in def5678 by Lin");
+    expect(html).toContain("#spec-task-1.1");
   });
 
   it("links exact references, leaves similar names as prose, and lists broken exact references", () => {

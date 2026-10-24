@@ -2,10 +2,45 @@ package genmarkdown
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
 )
+
+type specActivityEvent struct {
+	key      string
+	kind     string
+	evidence string
+	summary  string
+	source   string
+}
+
+// specActivity is the static-catalog side of the shared activity projection.
+// Git, comparison and changed-path events are host enrichments; the generator
+// can reproduce only the current author-intent events present in the catalog.
+func specActivity(spec *catalog.ChangeSpec) []specActivityEvent {
+	events := []specActivityEvent{{
+		key: "intent:lifecycle:" + spec.ID + ":" + spec.Lifecycle, kind: "spec.lifecycle",
+		evidence: "Author intent", summary: "Lifecycle is " + spec.Lifecycle, source: spec.Source,
+	}}
+	for _, task := range spec.Tasks {
+		if !task.Done {
+			continue
+		}
+		events = append(events, specActivityEvent{
+			key: "intent:task:" + spec.ID + ":" + task.ID + ":completed", kind: "task.completed",
+			evidence: "Author intent", summary: task.ID + " is marked complete", source: task.Source,
+		})
+	}
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].kind != events[j].kind {
+			return events[i].kind < events[j].kind
+		}
+		return events[i].key < events[j].key
+	})
+	return events
+}
 
 func (s *site) renderSpecs() {
 	if len(s.cat.Specs) == 0 {
@@ -50,6 +85,11 @@ func (s *site) renderSpec(spec *catalog.ChangeSpec) {
 		{"Source", code(spec.Source)}, {"Checklist", fmt.Sprintf("%d / %d", doneTasks(spec), len(spec.Tasks))},
 	}))
 	b.WriteString("\n> Checklist progress is author intent. It is not proof that code, runtime behavior, or the architecture catalog conforms to this specification.\n")
+	activityRows := make([][]string, 0)
+	for _, event := range specActivity(spec) {
+		activityRows = append(activityRows, []string{code(event.kind), event.evidence, event.summary, code(event.source)})
+	}
+	section(&b, "Activity", table([]string{"Event", "Evidence", "Summary", "Source"}, activityRows))
 	for _, artifact := range spec.Artifacts {
 		if artifact.Kind != "proposal" && artifact.Kind != "design" {
 			continue

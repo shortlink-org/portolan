@@ -687,6 +687,21 @@ function diffSpecs(before: Catalog, after: Catalog, add: Add): void {
   for (const id of kept) diffSpec(was.get(id)!, now.get(id)!, add);
 }
 
+/** Specification-only diff for views that already hold the two spec versions. */
+export function diffSpecification(before: ChangeSpec, after: ChangeSpec): Change[] {
+  const changes: Change[] = [];
+  diffSpec(before, after, (kind, severity, where, summary) => {
+    changes.push({ kind, severity, where, summary });
+  });
+  return changes.sort(
+    (a, b) =>
+      SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity) ||
+      a.where.localeCompare(b.where) ||
+      a.kind.localeCompare(b.kind) ||
+      a.summary.localeCompare(b.summary),
+  );
+}
+
 function diffSpec(before: ChangeSpec, after: ChangeSpec, add: Add): void {
   if (before.lifecycle !== after.lifecycle) {
     add("spec.lifecycle", "change", before.id, `${before.id} is ${after.lifecycle}, was ${before.lifecycle}`);

@@ -23,7 +23,7 @@ func TestSpecificationsRenderIntentAndChecklistWithoutClaimingConformance(t *tes
 	if !strings.Contains(index, "1 / 2") || !strings.Contains(index, "implementation evidence is tracked separately") {
 		t.Fatalf("spec index does not separate checklist progress from evidence:\n%s", index)
 	}
-	for _, want := range []string{"Create an auction", "Seller creates an auction", "**WHEN** a valid lot is submitted", "**THEN** the auction is visible", "Create storage", "Checklist progress is author intent"} {
+	for _, want := range []string{"Create an auction", "Seller creates an auction", "**WHEN** a valid lot is submitted", "**THEN** the auction is visible", "Create storage", "Checklist progress is author intent", "## Activity", "`spec.lifecycle`", "Lifecycle is implementing", "`task.completed`", "1.1 is marked complete", "Author intent"} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("spec detail missing %q:\n%s", want, detail)
 		}

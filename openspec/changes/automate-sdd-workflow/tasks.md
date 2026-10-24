@@ -26,9 +26,9 @@
 
 ## 5. Activity feed
 
-- [ ] 5.1 Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact.
-- [ ] 5.2 Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries.
-- [ ] 5.3 Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels.
+- [x] 5.1 Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact.
+- [x] 5.2 Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries.
+- [x] 5.3 Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels.
 
 ## 6. Search and navigation
 

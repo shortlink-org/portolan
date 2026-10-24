@@ -11,7 +11,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams } from "react-router";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
+import type { ChangeSpec } from "../catalog";
+import { pathForId } from "../app/canonical";
 import { branchCompareHref } from "../lib/branch-compare";
 import { buildInfo } from "../lib/build-info";
 import { SEVERITIES } from "../lib/catalog-diff";
@@ -24,6 +26,10 @@ import { comparisonQuery, comparisonSide, forgeKeys, forgeRefsQuery } from "../l
 import { useForgeAccess } from "../app/forge-access";
 import { CatEmptyState } from "../components/CatIllustration";
 import { CommitLink } from "../components/CommitLink";
+import { ActivityFeed } from "../components/ActivityFeed";
+import { projectSpecActivity } from "../lib/spec-activity";
+import type { Change } from "../lib/catalog-diff";
+import { paths, specRequirementAnchor, specTaskAnchor } from "../routes";
 
 const LABEL: Record<Severity, string> = {
   breaking: "Breaking",
@@ -39,6 +45,34 @@ const TONE: Record<Severity, string> = {
 
 function forgeName(repo: ForgeRepo): string {
   return repo.provider === "gitlab" ? "GitLab" : "GitHub";
+}
+
+function specForChange(change: Change, specs: readonly ChangeSpec[]): ChangeSpec | undefined {
+  if (change.kind.startsWith("spec.")) return specs.find((spec) => spec.id === change.where);
+  if (change.kind.startsWith("task.")) {
+    const specId = change.where.split("#task:")[0]!;
+    return specs.find((spec) => spec.id === specId);
+  }
+  if (change.kind.startsWith("requirement.") || change.kind.startsWith("scenario.")) {
+    const requirementId = change.where.split("#scenario:")[0]!;
+    return specs.find((spec) => spec.requirements.some((requirement) => requirement.id === requirementId));
+  }
+  return undefined;
+}
+
+function activityHref(change: Change, before: readonly ChangeSpec[], after: readonly ChangeSpec[]): string | undefined {
+  const spec = specForChange(change, after) ?? specForChange(change, before);
+  if (!spec) return pathForId(index, change.where);
+  const root = paths.spec(spec.slug);
+  if (change.kind.startsWith("task.")) {
+    const task = change.where.split("#task:")[1];
+    return task ? `${root}#${specTaskAnchor(task)}` : root;
+  }
+  if (change.kind.startsWith("requirement.") || change.kind.startsWith("scenario.")) {
+    const requirement = change.where.split("#scenario:")[0]!;
+    return `${root}#${specRequirementAnchor(requirement)}`;
+  }
+  return root;
 }
 
 function RepositoryAccess({ repo, reveal }: { repo: ForgeRepo; reveal: boolean }) {
@@ -155,10 +189,14 @@ export function Changes() {
 
   const shown = useMemo(() => {
     if (!loaded) return [];
-    return loaded.changes.filter((change) => {
-      if (!active.has(change.severity)) return false;
+    const events = projectSpecActivity({
+      changes: loaded.changes,
+      hrefForSpecSubject: (change) => activityHref(change, loaded.beforeSpecs, loaded.afterSpecs),
+    });
+    return events.filter((event) => {
+      if (!event.severity || !active.has(event.severity)) return false;
       if (!deferredQuery) return true;
-      return `${change.where} ${change.kind} ${change.summary}`.toLowerCase().includes(deferredQuery);
+      return `${event.source?.label ?? ""} ${event.kind} ${event.summary}`.toLowerCase().includes(deferredQuery);
     });
   }, [active, deferredQuery, loaded]);
 
@@ -277,25 +315,7 @@ export function Changes() {
             ) : shown.length === 0 ? (
               <div className="empty mt-4">No changes match these filters.</div>
             ) : (
-              <div className="mt-3 flex flex-col gap-1" data-nav-list>
-                {shown.map((change, index) => (
-                  <div
-                    key={`${change.kind}:${change.where}:${change.summary}:${index}`}
-                    className="row items-start gap-3 rounded-control px-3 py-2.5"
-                  >
-                    <span className={`mono mt-0.5 shrink-0 rounded-sm border px-1.5 py-0.5 text-[10px] ${TONE[change.severity]}`}>
-                      {LABEL[change.severity]}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-ink">{change.summary}</div>
-                      <div className="mono mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
-                        <span>{change.where}</span>
-                        <span>{change.kind}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ActivityFeed events={shown} title="Activity" className="mt-3" />
             )}
 
             <div className="mono mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-muted">

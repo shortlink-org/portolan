@@ -12,7 +12,7 @@
 // public answer, or the other way round.
 
 import { queryOptions } from "@tanstack/react-query";
-import type { Catalog } from "../catalog";
+import type { Catalog, ChangeSpec } from "../catalog";
 import { diffCatalogs } from "./catalog-diff";
 import type { Change } from "./catalog-diff";
 import { findRef } from "./forge-refs";
@@ -87,6 +87,8 @@ export type Comparison = {
   changes: Change[];
   baseSha: string;
   headSha: string;
+  beforeSpecs: ChangeSpec[];
+  afterSpecs: ChangeSpec[];
 };
 
 /**
@@ -119,7 +121,13 @@ export function comparisonQuery(
       const load = (side: ComparisonSide) =>
         side.catalog ? Promise.resolve(side.catalog) : loadForgeCatalog(repo, side.sha, { token });
       const [before, after] = await Promise.all([load(base), load(head)]);
-      return { changes: diffCatalogs(before, after), baseSha: base.sha, headSha: head.sha };
+      return {
+        changes: diffCatalogs(before, after),
+        baseSha: base.sha,
+        headSha: head.sha,
+        beforeSpecs: before.specs ?? [],
+        afterSpecs: after.specs ?? [],
+      };
     },
     enabled: repo !== null && base !== null && head !== null,
   });

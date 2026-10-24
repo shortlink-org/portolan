@@ -6,9 +6,30 @@
 - **Format:** openspec
 - **Lifecycle:** implementing
 - **Source:** `openspec/changes/automate-sdd-workflow/proposal.md`
-- **Checklist:** 12 / 21
+- **Checklist:** 15 / 21
 
 > Checklist progress is author intent. It is not proof that code, runtime behavior, or the architecture catalog conforms to this specification.
+
+## Activity
+
+| Event | Evidence | Summary | Source |
+| --- | --- | --- | --- |
+| `spec.lifecycle` | Author intent | Lifecycle is implementing | `openspec/changes/automate-sdd-workflow/proposal.md` |
+| `task.completed` | Author intent | 1.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:5` |
+| `task.completed` | Author intent | 1.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:6` |
+| `task.completed` | Author intent | 1.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:7` |
+| `task.completed` | Author intent | 2.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:11` |
+| `task.completed` | Author intent | 2.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:12` |
+| `task.completed` | Author intent | 2.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:13` |
+| `task.completed` | Author intent | 3.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:17` |
+| `task.completed` | Author intent | 3.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:18` |
+| `task.completed` | Author intent | 3.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:19` |
+| `task.completed` | Author intent | 4.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:23` |
+| `task.completed` | Author intent | 4.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:24` |
+| `task.completed` | Author intent | 4.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:25` |
+| `task.completed` | Author intent | 5.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:29` |
+| `task.completed` | Author intent | 5.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:30` |
+| `task.completed` | Author intent | 5.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:31` |
 
 ## Proposal
 
@@ -264,9 +285,9 @@ Portolan SHALL label author intent, changed-with impact, declared architecture, 
 - [x] `4.1` Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers. — `openspec/changes/automate-sdd-workflow/tasks.md:23`
 - [x] `4.2` Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics. — `openspec/changes/automate-sdd-workflow/tasks.md:24`
 - [x] `4.3` Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text. — `openspec/changes/automate-sdd-workflow/tasks.md:25`
-- [ ] `5.1` Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact. — `openspec/changes/automate-sdd-workflow/tasks.md:29`
-- [ ] `5.2` Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries. — `openspec/changes/automate-sdd-workflow/tasks.md:30`
-- [ ] `5.3` Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels. — `openspec/changes/automate-sdd-workflow/tasks.md:31`
+- [x] `5.1` Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact. — `openspec/changes/automate-sdd-workflow/tasks.md:29`
+- [x] `5.2` Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries. — `openspec/changes/automate-sdd-workflow/tasks.md:30`
+- [x] `5.3` Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels. — `openspec/changes/automate-sdd-workflow/tasks.md:31`
 - [ ] `6.1` Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors. — `openspec/changes/automate-sdd-workflow/tasks.md:35`
 - [ ] `6.2` Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog. — `openspec/changes/automate-sdd-workflow/tasks.md:36`
 - [ ] `6.3` Verify keyboard navigation and responsive rendering for list, detail, activity and search results. — `openspec/changes/automate-sdd-workflow/tasks.md:37`
