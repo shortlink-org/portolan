@@ -3,7 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TREE_KEYS, treeKey } from "./tree-keys";
 import type { TreeRow } from "./tree-keys";
 import { Link, NavLink, useLocation } from "react-router";
-import { FileCheck2 } from "lucide-react";
+import { FileCheck2, PanelLeftClose } from "lucide-react";
 import { DURATION, LayoutGroup, Unfold } from "../lib/motion";
 import { catalog } from "../data";
 import type {
@@ -205,10 +205,13 @@ function TreeNote({ children }: { children: React.ReactNode }) {
 export function Sidebar({
   railed = false,
   onExpand,
+  onCollapse,
 }: {
   /** True once the shell panel has been collapsed to the 48px rail. */
   railed?: boolean;
   onExpand?: () => void;
+  /** Desktop shell only: folds the full tree into its icon rail. */
+  onCollapse?: () => void;
 }) {
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -414,9 +417,7 @@ export function Sidebar({
     <LayoutGroup id={treeId}>
         {/* One row: the mark and the name. Searching lives in ⌘K, so nothing
             else competes for the one pane that is always on screen. */}
-        <div className="shrink-0 border-b px-3 pt-2.5 pb-2 border-line">
-          <Wordmark />
-        </div>
+        <SidebarHeader onCollapse={onCollapse} />
 
         <div
           ref={scrollerRef}
@@ -882,6 +883,27 @@ export function Sidebar({
         <SidebarBottomGroup />
     </LayoutGroup>
     </nav>
+  );
+}
+
+/** The tree identity and its desktop-only space-saving action. */
+export function SidebarHeader({ onCollapse }: { onCollapse?: () => void }) {
+  return (
+    <div className="flex min-h-10 shrink-0 items-center gap-2 border-b px-3 py-1.5 border-line">
+      <Wordmark />
+      {onCollapse ? (
+        <button
+          type="button"
+          onClick={onCollapse}
+          aria-label="Collapse the catalog"
+          aria-keyshortcuts="["
+          title="Collapse the catalog — ["
+          className="ml-auto flex size-8 shrink-0 items-center justify-center rounded-control text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+        >
+          <PanelLeftClose size={16} aria-hidden />
+        </button>
+      ) : null}
+    </div>
   );
 }
 

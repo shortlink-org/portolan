@@ -567,7 +567,11 @@ function Shell() {
             panelRef={sidebarRef}
             onResize={onSidebarResize}
           >
-            <Sidebar railed={railed} onExpand={expandSidebar} />
+            <Sidebar
+              railed={railed}
+              onExpand={expandSidebar}
+              onCollapse={toggleSidebar}
+            />
           </Panel>
 
           <ResizeHandle id="shell" />
