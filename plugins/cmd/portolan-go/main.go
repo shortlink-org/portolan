@@ -47,6 +47,7 @@ import (
 	gendx "github.com/shortlink-org/portolan/plugins/gen-dx"
 	genmarkdown "github.com/shortlink-org/portolan/plugins/gen-markdown"
 	genmermaid "github.com/shortlink-org/portolan/plugins/gen-mermaid"
+	genreference "github.com/shortlink-org/portolan/plugins/gen-reference"
 	verifycodeowners "github.com/shortlink-org/portolan/plugins/verify-codeowners"
 	verifyotel "github.com/shortlink-org/portolan/plugins/verify-otel"
 )
@@ -85,6 +86,7 @@ var Plugins = map[string]func(io.Reader, io.Writer) error{
 	"codeowners":    verifycodeowners.Serve,
 	"markdown":      genmarkdown.Serve,
 	"mermaid":       genmermaid.Serve,
+	"reference":     genreference.Serve,
 	"backstage":     genbackstage.Serve,
 	"dx-export":     gendx.Serve,
 }

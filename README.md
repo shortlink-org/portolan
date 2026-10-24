@@ -55,7 +55,7 @@ flowchart TB
   docs["docs/<br/>markdown, llms.txt, agent.json"]
   mcp["local read-only MCP<br/>portolan mcp"]
   agents["coding agents"]
-  exports["exports/<br/>Backstage + Mermaid + DX"]
+  exports["exports/<br/>HTML reference + Backstage + Mermaid + DX"]
   c4["likec4/<br/>C4 + full/cross views per flow"]
 
   code -- extract --> frag
@@ -176,7 +176,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 | --- | --- |
 | extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-laravel`, `extract-php-ddd`, `extract-csharp-ddd`, `extract-celery`, `extract-python-kafka`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-redis`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-debezium`, `extract-go-nats`, `extract-go-sqs`, `extract-go-kafka`, `extract-go-amqp`, `extract-go-eventgrid`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-sdd`, `extract-glossary`, `extract-commands`, `extract-k8s`, `extract-argocd` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified`; `verify-codeowners` — reads CODEOWNERS, says who to ask about each service |
-| generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities, `gen-dx` — DX catalog apply plan |
+| generate | `gen-markdown` — `docs/`, `gen-reference` — one portable HTML architecture reference, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities, `gen-dx` — DX catalog apply plan |
 
 `fetch-git`, `fetch-bsr` and `fetch-csr` bring in sources from other
 repositories, the Buf Schema Registry and a Confluent Schema Registry, against a

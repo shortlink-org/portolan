@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Heading of the portable architecture reference."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short explanation of the estate or audience shown on the overview."
+    }
+  }
+}

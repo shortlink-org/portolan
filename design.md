@@ -167,6 +167,27 @@ Cat illustrations are a warm counterpoint used for rare positive empty states, m
 
 ## Treat evidence as the visual material
 
+### Portable architecture references
+
+A reference export is a reading surface for someone who cannot open the full
+catalog. It is one self-contained HTML file: no server, remote font, stylesheet,
+script, image, or runtime API may be required to read it. Keep the orientation
+path — title, scope, counts, contents, search, summaries, and relationships —
+small and immediate, then retain each exact catalog record as the audit path.
+
+Generate a full reference from one catalog profile. A selective export is a
+different security boundary, not a presentation filter: do not add one until
+inclusion closure, excluded-reference wording, authored documentation,
+ownership, repository, contact, source, and custom-property redaction each have
+an explicit and mechanically checked rule. An export must never imply that an
+omitted resource does not exist.
+
+The portable page uses the catalog's established neutral surfaces, evidence
+labels, mono identifiers, theme behavior, responsive composition, and keyboard
+search. It may simplify interactive diagrams, source previews, and editor-only
+controls, but it must not simplify the facts they show. Never stamp an export
+with the wall clock: generated files remain byte-identical for the same catalog.
+
 ### Status and provenance
 
 Every status, source link, build stamp, owner, deployment, and trace is part of the product's trust model.

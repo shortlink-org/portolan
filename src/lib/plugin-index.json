@@ -2510,6 +2510,31 @@
     }
   },
   {
+    "name": "reference",
+    "plugin": "gen-reference",
+    "summary": "Exports one catalog profile as a searchable, self-contained HTML architecture reference.",
+    "category": "exports",
+    "phases": [
+      "generate"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/gen-reference",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Heading of the portable architecture reference."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short explanation of the estate or audience shown on the overview."
+        }
+      }
+    }
+  },
+  {
     "name": "backstage",
     "plugin": "gen-backstage",
     "summary": "Exports contexts, services, APIs, stores and schema modules as a Backstage catalog.",
