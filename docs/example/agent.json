@@ -3,7 +3,7 @@
   "title": "Example estate",
   "catalog": {
     "generatedAt": "2026-09-10T21:47:36+07:00",
-    "commit": "26 sources",
+    "commit": "28 sources",
     "contexts": [
       {
         "id": "auth",
@@ -16085,6 +16085,11 @@
           "commit": "85b12f269a7d4e8eb9c0acbaf19df87b22f7edfd",
           "author": "Victor Login",
           "date": "2026-09-05T13:47:23+07:00"
+        },
+        "revised": {
+          "commit": "34d7e45011e665b396ada08cb2a21624f5f5acc2",
+          "author": "Victor Login",
+          "date": "2026-10-24T12:27:59+08:00"
         }
       },
       {

@@ -593,7 +593,7 @@
   {
     "name": "rust-domain",
     "plugin": "extract-rust",
-    "summary": "Reads a Rust service by its layout - aggregates, events, use cases, gRPC endpoints, policies, clients and rdkafka topics - into a catalog fragment.",
+    "summary": "Reads a Rust service by its layout - aggregates, events, use cases, gRPC endpoints, policies, clients, rdkafka topics and Temporal workflows - into a catalog fragment.",
     "category": "code",
     "phases": [
       "extract"
