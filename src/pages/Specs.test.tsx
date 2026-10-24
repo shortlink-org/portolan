@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { ChangeSpec } from "../catalog";
 import { SpecDetailView } from "./SpecDetail";
 import { SpecIndexView } from "./SpecIndex";
+import { specScenarioAnchor } from "../routes";
 
 const spec: ChangeSpec = {
   id: "deliver-local-auction-mvp",
@@ -58,6 +59,7 @@ describe("spec pages", () => {
     expect(html).toContain("Seller creates an auction");
     expect(html).toContain("the seller submits a valid lot");
     expect(html).toContain("the auction is visible locally");
+    expect(html).toContain(`id="${specScenarioAnchor("auction:create", "Seller creates an auction")}"`);
     expect(html).toContain("Create auction storage");
     expect(html).toContain("proposal.md");
     expect(html).toContain("design.md");
@@ -89,6 +91,16 @@ describe("spec pages", () => {
     expect(html).toContain("task.completed");
     expect(html).toContain("tasks.md was changed in def5678 by Lin");
     expect(html).toContain("#spec-task-1.1");
+  });
+
+  it("links scenario diff activity to the exact scenario section", () => {
+    const previous = {
+      ...spec,
+      requirements: spec.requirements.map((requirement) => ({ ...requirement, scenarios: [] })),
+    };
+    const html = render(<SpecDetailView spec={spec} previous={previous} />);
+    expect(html).toContain(`href="/#${specScenarioAnchor("auction:create", "Seller creates an auction")}"`);
+    expect(html).toContain("scenario.added");
   });
 
   it("links exact references, leaves similar names as prose, and lists broken exact references", () => {

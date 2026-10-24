@@ -32,9 +32,9 @@
 
 ## 6. Search and navigation
 
-- [ ] 6.1 Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors.
-- [ ] 6.2 Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog.
-- [ ] 6.3 Verify keyboard navigation and responsive rendering for list, detail, activity and search results.
+- [x] 6.1 Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors.
+- [x] 6.2 Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog.
+- [x] 6.3 Verify keyboard navigation and responsive rendering for list, detail, activity and search results.
 
 ## 7. Integrated verification
 

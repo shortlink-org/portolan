@@ -38,6 +38,10 @@ export type Kind =
   | "flow"
   | "adr"
   | "rfc"
+  /** Authored SDD intent: a change and the exact sections inside it. */
+  | "spec"
+  | "requirement"
+  | "scenario"
   /**
    * One entry of a context's glossary. Not a building block and not a page of
    * its own: a term is what a building block is CALLED, which is why it sits
@@ -98,6 +102,9 @@ export const KIND_LABEL: Record<Kind, string> = {
   flow: "flow",
   adr: "decision",
   rfc: "request for comments",
+  spec: "specification change",
+  requirement: "requirement",
+  scenario: "scenario",
   term: "term",
 };
 
@@ -121,6 +128,9 @@ export const KIND_PLURAL: Record<Kind, string> = {
   flow: "flows",
   adr: "decisions",
   rfc: "requests for comments",
+  spec: "specification changes",
+  requirement: "requirements",
+  scenario: "scenarios",
   term: "terms",
 };
 
@@ -161,6 +171,9 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   flow: ["flow", "flows"],
   adr: ["adr", "adrs", "decision", "decisions"],
   rfc: ["rfc", "rfcs", "proposal", "proposals"],
+  spec: ["spec", "specs", "change", "changes"],
+  requirement: ["req", "requirement", "requirements"],
+  scenario: ["scenario", "scenarios"],
   // A term is the word, not the thing: "t: session" finds what the glossary
   // says a session is, "agg: session" finds the aggregate it names.
   term: ["t", "term", "terms", "word", "glossary"],

@@ -4,6 +4,8 @@
 
 import { describe, expect, it } from "vitest";
 import { crumbsFor } from "./Breadcrumbs";
+import { catalog } from "../data";
+import { paths, specRequirementAnchor, specScenarioAnchor } from "../routes";
 
 describe("crumbsFor", () => {
   it("names the four index pages that used to have no trail", () => {
@@ -62,5 +64,18 @@ describe("crumbsFor", () => {
       "/c/ctx/svc/data/pg",
     ]);
     expect(crumbs.some((c) => c.label === "data")).toBe(false);
+  });
+
+  it("names exact requirement and scenario anchors inside a specification", () => {
+    const spec = (catalog.specs ?? [])[0]!;
+    const requirement = spec.requirements[0]!;
+    const scenario = requirement.scenarios[0]!;
+    const root = paths.spec(spec.slug);
+    expect(crumbsFor(root, `#${specRequirementAnchor(requirement.id)}`).map((crumb) => crumb.label)).toEqual([
+      "specs", spec.title, requirement.title,
+    ]);
+    expect(crumbsFor(root, `#${specScenarioAnchor(requirement.id, scenario.name)}`).map((crumb) => crumb.label)).toEqual([
+      "specs", spec.title, requirement.title, scenario.name,
+    ]);
   });
 });

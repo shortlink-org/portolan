@@ -48,7 +48,10 @@ const KIND_RANK: Record<Kind, number> = {
   flow: 14,
   adr: 15,
   rfc: 15,
-  term: 16,
+  spec: 16,
+  requirement: 17,
+  scenario: 18,
+  term: 19,
 };
 
 /** Case-insensitive, then case-sensitive, so the order is never arbitrary. */

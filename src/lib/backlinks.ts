@@ -22,6 +22,8 @@ import { readersOfStore } from "./data-model";
 import { flowsForService, usagesOfDef } from "./derive";
 import { usagesOfEnum } from "./shape";
 import { bindTerms } from "./terms";
+import { knownSpecPaths, referencesIn } from "./spec-references";
+import { specRequirementAnchor, specScenarioAnchor, specTaskAnchor } from "../routes";
 import type { DefUsage } from "./derive";
 import type { Kind } from "./kinds";
 
@@ -72,6 +74,7 @@ const GROUP_ORDER: readonly Kind[] = [
   "flow",
   "adr",
   "rfc",
+  "spec",
   "event",
   "aggregate",
   "entity",
@@ -204,6 +207,35 @@ function rfcLink(index: CatalogIndex, rfc: Rfc, via: string): Backlink {
     context,
     via,
   };
+}
+
+/** Authored SDD sections that name this exact catalog id. */
+function specificationBacklinks(catalog: Catalog, index: CatalogIndex, targetId: string): Backlink[] {
+  const out: Backlink[] = [];
+  for (const spec of catalog.specs ?? []) {
+    const context = { spec, index, knownPaths: knownSpecPaths(spec) };
+    const add = (texts: readonly string[], via: string, at?: string, owner?: string) => {
+      if (!texts.flatMap((text) => referencesIn(text, context)).some((reference) => reference.status === "resolved" && reference.targetId === targetId)) return;
+      out.push({
+        kind: "spec",
+        id: spec.id,
+        name: spec.slug,
+        owner: owner ?? spec.title,
+        context: null,
+        via,
+        ...(at ? { at } : {}),
+      });
+    };
+    for (const artifact of spec.artifacts) add([artifact.body], `exact reference in ${artifact.kind}`);
+    for (const requirement of spec.requirements) {
+      add([requirement.title, requirement.text], "exact reference in requirement", specRequirementAnchor(requirement.id), requirement.title);
+      for (const scenario of requirement.scenarios) {
+        add([scenario.name, ...scenario.when, ...scenario.then], "exact reference in scenario", specScenarioAnchor(requirement.id, scenario.name), scenario.name);
+      }
+    }
+    for (const task of spec.tasks) add([task.title], "exact reference in task", specTaskAnchor(task.id), task.title);
+  }
+  return out;
 }
 
 /**
@@ -636,29 +668,31 @@ export function backlinksFor(
   index: CatalogIndex,
   target: BacklinkTarget,
 ): BacklinkGroup[] {
+  let links: Backlink[];
   switch (target.kind) {
     case "context":
-      return grouped(contextBacklinks(catalog, index, target.id));
+      links = contextBacklinks(catalog, index, target.id); break;
     case "service":
-      return grouped(serviceBacklinks(catalog, index, target.id));
+      links = serviceBacklinks(catalog, index, target.id); break;
     // The three kinds a glossary can name. A context, a service and a flow are
     // not words in a vocabulary - they are places the words are spoken.
     case "aggregate":
-      return grouped(named(catalog, target.id, aggregateBacklinks(catalog, index, target.id)));
+      links = named(catalog, target.id, aggregateBacklinks(catalog, index, target.id)); break;
     case "event":
-      return grouped(named(catalog, target.id, eventBacklinks(catalog, index, target.id)));
+      links = named(catalog, target.id, eventBacklinks(catalog, index, target.id)); break;
     case "vo":
     case "entity":
-      return grouped(named(catalog, target.id, blockBacklinks(catalog, index, target.id)));
+      links = named(catalog, target.id, blockBacklinks(catalog, index, target.id)); break;
     case "enum":
-      return grouped(named(catalog, target.id, enumBacklinks(catalog, index, target.id)));
+      links = named(catalog, target.id, enumBacklinks(catalog, index, target.id)); break;
     case "flow":
-      return grouped(flowBacklinks(catalog, index, target.id));
+      links = flowBacklinks(catalog, index, target.id); break;
     case "store":
-      return grouped(storeBacklinks(catalog, index, target.id));
+      links = storeBacklinks(catalog, index, target.id); break;
     // A module and an external API list their callers in a section of their
     // own; a decision's incoming edges are its banner. Nothing to add here.
     default:
-      return [];
+      links = [];
   }
+  return grouped([...links, ...specificationBacklinks(catalog, index, target.id)]);
 }

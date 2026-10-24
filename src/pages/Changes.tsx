@@ -29,7 +29,7 @@ import { CommitLink } from "../components/CommitLink";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { projectSpecActivity } from "../lib/spec-activity";
 import type { Change } from "../lib/catalog-diff";
-import { paths, specRequirementAnchor, specTaskAnchor } from "../routes";
+import { paths, specRequirementAnchor, specScenarioAnchor, specTaskAnchor } from "../routes";
 
 const LABEL: Record<Severity, string> = {
   breaking: "Breaking",
@@ -69,8 +69,10 @@ function activityHref(change: Change, before: readonly ChangeSpec[], after: read
     return task ? `${root}#${specTaskAnchor(task)}` : root;
   }
   if (change.kind.startsWith("requirement.") || change.kind.startsWith("scenario.")) {
-    const requirement = change.where.split("#scenario:")[0]!;
-    return `${root}#${specRequirementAnchor(requirement)}`;
+    const [requirement, scenario] = change.where.split("#scenario:");
+    return change.kind.startsWith("scenario.") && scenario
+      ? `${root}#${specScenarioAnchor(requirement!, scenario)}`
+      : `${root}#${specRequirementAnchor(requirement!)}`;
   }
   return root;
 }

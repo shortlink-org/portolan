@@ -4,10 +4,12 @@
 import {
   Database,
   Eye,
+  FileText,
   Globe,
   Hexagon,
   ListChecks,
   MessagesSquare,
+  ListTree,
   Package,
   Route,
   ScrollText,
@@ -78,6 +80,9 @@ const KIND_ICON: Record<Kind, IconComponent> = {
   flow: Route,
   adr: ScrollText,
   rfc: MessagesSquare,
+  spec: FileText,
+  requirement: ListChecks,
+  scenario: ListTree,
   // A term is a word, and the mark says so. It is deliberately NOT one of the
   // five domain marks: the glossary names the building blocks, it is not one
   // of them, and a term wearing an aggregate's hexagon would say it was.
@@ -109,6 +114,9 @@ export const KIND_COLOR: Record<Kind, string> = {
   flow: "var(--fg-muted)",
   adr: "var(--fg-muted)",
   rfc: "var(--fg-muted)",
+  spec: "var(--fg-muted)",
+  requirement: "var(--fg-muted)",
+  scenario: "var(--fg-muted)",
   // A term is painted by the context that means it, like a context row: which
   // vocabulary a word belongs to is the whole of what distinguishes two
   // entries that spell the same word.

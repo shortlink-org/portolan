@@ -7,14 +7,14 @@ import { adrNumber } from "../lib/adr";
 import { selectionLabel, selectionTrail } from "../selection/model";
 import { selectionPath } from "../selection/pages";
 import { useSelectionStore } from "../selection/store";
-import { paths } from "../routes";
+import { paths, specRequirementAnchor, specScenarioAnchor } from "../routes";
 
 interface Crumb {
   label: string;
   to: string;
 }
 
-export function crumbsFor(pathname: string): Crumb[] {
+export function crumbsFor(pathname: string, hash = ""): Crumb[] {
   const parts = pathname.split("/").filter(Boolean);
   if (parts.length === 0) return [];
 
@@ -57,6 +57,12 @@ export function crumbsFor(pathname: string): Crumb[] {
     if (slug) {
       const spec = (catalog.specs ?? []).find((candidate) => candidate.slug === slug);
       crumbs.push({ label: spec?.title ?? slug, to: paths.spec(slug) });
+      const requirement = spec?.requirements.find((candidate) => hash === `#${specRequirementAnchor(candidate.id)}` || candidate.scenarios.some((scenario) => hash === `#${specScenarioAnchor(candidate.id, scenario.name)}`));
+      if (requirement) {
+        crumbs.push({ label: requirement.title, to: `${paths.spec(slug)}#${specRequirementAnchor(requirement.id)}` });
+        const scenario = requirement.scenarios.find((candidate) => hash === `#${specScenarioAnchor(requirement.id, candidate.name)}`);
+        if (scenario) crumbs.push({ label: scenario.name, to: `${paths.spec(slug)}${hash}` });
+      }
     }
     return crumbs;
   }
@@ -207,8 +213,8 @@ export function crumbsFor(pathname: string): Crumb[] {
 }
 
 export function Breadcrumbs() {
-  const { pathname } = useLocation();
-  const crumbs = crumbsFor(pathname);
+  const { pathname, hash } = useLocation();
+  const crumbs = crumbsFor(pathname, hash);
 
   const selection = useSelectionStore((s) => s.selection);
   const select = useSelectionStore((s) => s.select);

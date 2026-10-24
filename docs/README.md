@@ -57,4 +57,4 @@
 
 | Change | Format | Lifecycle | Requirements | Checklist |
 | --- | --- | --- | --- | --- |
-| [Automate sdd workflow](spec/automate-sdd-workflow.md) | openspec | implementing | 7 requirements | 15 / 21 |
+| [Automate sdd workflow](spec/automate-sdd-workflow.md) | openspec | implementing | 7 requirements | 18 / 21 |

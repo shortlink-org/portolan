@@ -139,6 +139,34 @@ describe("prefix filters", () => {
   });
 });
 
+describe("specification intent in the palette", () => {
+  const withSpec = structuredClone(catalog);
+  withSpec.specs = [{
+    id: "checkout-change", slug: "checkout-change", title: "Change checkout", format: "openspec", lifecycle: "planned",
+    source: "openspec/changes/checkout-change/proposal.md", artifacts: [{ kind: "proposal", path: "proposal.md", body: "Use local pricing." }], tasks: [],
+    requirements: [{
+      id: "checkout:price", title: "Price the basket", text: "The system SHALL price the basket.", source: "specs/checkout/spec.md:3",
+      scenarios: [{ name: "Basket has items", when: ["the basket has an item"], then: ["the total is returned"] }],
+    }],
+  }];
+  const sdd = paletteItems(withSpec);
+
+  it("indexes current changes, requirements and scenarios with exact anchors", () => {
+    const spec = withSpec.specs![0]!;
+    const requirement = spec.requirements[0]!;
+    const scenario = requirement.scenarios[0]!;
+    const change = sdd.find((item) => item.kind === "spec" && item.id === spec.id);
+    const requirementItem = sdd.find((item) => item.kind === "requirement" && item.id === requirement.id);
+    const scenarioItem = sdd.find((item) => item.kind === "scenario" && item.id === `${requirement.id}#scenario:${scenario.name}`);
+
+    expect(change?.path).toBe(`/specs/${spec.slug}`);
+    expect(requirementItem?.path).toContain("#spec-requirement-");
+    expect(scenarioItem?.path).toContain("#spec-scenario-");
+    expect(search(sdd, `req: ${requirement.id}`).hits[0]?.item.id).toBe(requirement.id);
+    expect(search(sdd, `scenario: ${scenario.name}`).hits[0]?.item.id).toBe(scenarioItem?.id);
+  });
+});
+
 describe("ranking", () => {
   it("puts an exact name above a partial one", () => {
     const first = rows("Money")[0];

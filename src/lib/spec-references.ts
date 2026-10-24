@@ -6,7 +6,7 @@ import { paths, specRequirementAnchor, specTaskAnchor } from "../routes";
 export type ExactReferenceKind = "url" | "catalog-id" | "typed-slug" | "source" | "requirement" | "task";
 
 export type ExactReference =
-  | { raw: string; status: "resolved"; kind: ExactReferenceKind; href?: string; source?: string }
+  | { raw: string; status: "resolved"; kind: ExactReferenceKind; href?: string; source?: string; targetId?: string }
   | { raw: string; status: "unresolved"; kind: Exclude<ExactReferenceKind, "url">; reason: string };
 
 export interface SpecReferenceContext {
@@ -18,23 +18,26 @@ export interface SpecReferenceContext {
 const TYPED = /^(flow|adr|rfc|spec|module|external|service|context):([A-Za-z0-9][A-Za-z0-9._/-]*)$/;
 const CATALOG_ID = /^[A-Za-z0-9][A-Za-z0-9._/-]*[./][A-Za-z0-9._/-]+$/;
 
-function typedSlug(kind: string, slug: string, index: CatalogIndex): string | undefined {
-  if (kind === "flow") return index.flowBySlug.has(slug) ? paths.flow(slug) : undefined;
-  if (kind === "adr") return index.adrBySlug.has(slug) ? paths.adr(slug) : undefined;
-  if (kind === "rfc") return index.rfcBySlug.has(slug) ? paths.rfc(slug) : undefined;
-  if (kind === "spec") return index.specBySlug.has(slug) ? paths.spec(slug) : undefined;
-  if (kind === "module") return index.moduleBySlug.has(slug) ? paths.module(slug) : undefined;
+function typedSlug(kind: string, slug: string, index: CatalogIndex): { href: string; targetId: string } | undefined {
+  if (kind === "flow") { const found = index.flowBySlug.get(slug); return found ? { href: paths.flow(slug), targetId: found.id } : undefined; }
+  if (kind === "adr") { const found = index.adrBySlug.get(slug); return found ? { href: paths.adr(slug), targetId: found.id } : undefined; }
+  if (kind === "rfc") { const found = index.rfcBySlug.get(slug); return found ? { href: paths.rfc(slug), targetId: found.id } : undefined; }
+  if (kind === "spec") { const found = index.specBySlug.get(slug); return found ? { href: paths.spec(slug), targetId: found.id } : undefined; }
+  if (kind === "module") { const found = index.moduleBySlug.get(slug); return found ? { href: paths.module(slug), targetId: found.id } : undefined; }
   if (kind === "external") {
     const found = [...index.externalById.values()].filter((item) => item.slug === slug);
-    return found.length === 1 ? paths.external(slug) : undefined;
+    return found.length === 1 ? { href: paths.external(slug), targetId: found[0]!.id } : undefined;
   }
   if (kind === "service") {
     const found = [...index.serviceById.values()].filter((service) => service.slug === slug);
     if (found.length !== 1) return undefined;
     const context = index.serviceContext.get(found[0]!.id);
-    return context ? paths.service(context.id, slug) : undefined;
+    return context ? { href: paths.service(context.id, slug), targetId: found[0]!.id } : undefined;
   }
-  if (kind === "context") return index.catalog.contexts.some((context) => context.slug === slug) ? paths.context(slug) : undefined;
+  if (kind === "context") {
+    const found = index.catalog.contexts.find((context) => context.slug === slug);
+    return found ? { href: paths.context(found.id), targetId: found.id } : undefined;
+  }
   return undefined;
 }
 
@@ -68,14 +71,14 @@ export function resolveSpecReference(raw: string, context: SpecReferenceContext)
 
   const typed = TYPED.exec(value);
   if (typed) {
-    const href = typedSlug(typed[1]!, typed[2]!, context.index);
-    return href
-      ? { raw, status: "resolved", kind: "typed-slug", href }
+    const target = typedSlug(typed[1]!, typed[2]!, context.index);
+    return target
+      ? { raw, status: "resolved", kind: "typed-slug", ...target }
       : { raw, status: "unresolved", kind: "typed-slug", reason: `No ${typed[1]} has the exact slug ${typed[2]}` };
   }
 
   const catalogHref = pathForId(context.index, value);
-  if (catalogHref) return { raw, status: "resolved", kind: "catalog-id", href: catalogHref };
+  if (catalogHref) return { raw, status: "resolved", kind: "catalog-id", href: catalogHref, targetId: value };
 
   const { path } = splitLine(value);
   if (looksLikePath(path)) {

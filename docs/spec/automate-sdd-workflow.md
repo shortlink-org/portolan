@@ -6,7 +6,7 @@
 - **Format:** openspec
 - **Lifecycle:** implementing
 - **Source:** `openspec/changes/automate-sdd-workflow/proposal.md`
-- **Checklist:** 15 / 21
+- **Checklist:** 18 / 21
 
 > Checklist progress is author intent. It is not proof that code, runtime behavior, or the architecture catalog conforms to this specification.
 
@@ -30,6 +30,9 @@
 | `task.completed` | Author intent | 5.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:29` |
 | `task.completed` | Author intent | 5.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:30` |
 | `task.completed` | Author intent | 5.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:31` |
+| `task.completed` | Author intent | 6.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:35` |
+| `task.completed` | Author intent | 6.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:36` |
+| `task.completed` | Author intent | 6.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:37` |
 
 ## Proposal
 
@@ -288,9 +291,9 @@ Portolan SHALL label author intent, changed-with impact, declared architecture, 
 - [x] `5.1` Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact. — `openspec/changes/automate-sdd-workflow/tasks.md:29`
 - [x] `5.2` Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries. — `openspec/changes/automate-sdd-workflow/tasks.md:30`
 - [x] `5.3` Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels. — `openspec/changes/automate-sdd-workflow/tasks.md:31`
-- [ ] `6.1` Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors. — `openspec/changes/automate-sdd-workflow/tasks.md:35`
-- [ ] `6.2` Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog. — `openspec/changes/automate-sdd-workflow/tasks.md:36`
-- [ ] `6.3` Verify keyboard navigation and responsive rendering for list, detail, activity and search results. — `openspec/changes/automate-sdd-workflow/tasks.md:37`
+- [x] `6.1` Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors. — `openspec/changes/automate-sdd-workflow/tasks.md:35`
+- [x] `6.2` Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog. — `openspec/changes/automate-sdd-workflow/tasks.md:36`
+- [x] `6.3` Verify keyboard navigation and responsive rendering for list, detail, activity and search results. — `openspec/changes/automate-sdd-workflow/tasks.md:37`
 - [ ] `7.1` Run focused extractor, discovery, history, diff, link-resolution, search and UI tests. — `openspec/changes/automate-sdd-workflow/tasks.md:41`
 - [ ] `7.2` Run `npm run typecheck`, schema generation/check, catalog generation and the required rendered UI verification with cache busting. — `openspec/changes/automate-sdd-workflow/tasks.md:42`
 - [ ] `7.3` Confirm the external Gavel tree is unchanged and document which results are source intent, derived impact and independent evidence. — `openspec/changes/automate-sdd-workflow/tasks.md:43`

@@ -112,6 +112,27 @@ describe("an RFC", () => {
   });
 });
 
+describe("an exact SDD reference", () => {
+  it("appears as a specification backlink to the exact authored section", () => {
+    const next = structuredClone(catalog);
+    next.specs = [{
+      id: "change-checkout", slug: "change-checkout", title: "Change checkout", format: "openspec", lifecycle: "planned",
+      source: "openspec/changes/change-checkout/proposal.md", artifacts: [], tasks: [],
+      requirements: [{
+        id: "checkout:pricing", title: "Use exact pricing service", source: "specs/checkout/spec.md:3",
+        text: "Checkout SHALL call `shop.pricing`.", scenarios: [{ name: "Price a basket", when: ["`shop.pricing` is available"], then: ["a quote is returned"] }],
+      }],
+    }];
+    const groups = backlinksFor(next, buildIndex(next), { kind: "service", id: "shop.pricing" });
+    const links = groups.find((group) => group.kind === "spec")?.links ?? [];
+    expect(links).toHaveLength(2);
+    expect(links.map((link) => [link.via, link.at])).toEqual([
+      ["exact reference in requirement", "spec-requirement-checkout%3Apricing"],
+      ["exact reference in scenario", "spec-scenario-checkout%3Apricing-Price%20a%20basket"],
+    ]);
+  });
+});
+
 describe("a service", () => {
   const target: BacklinkTarget = { kind: "service", id: "shop.oms" };
 

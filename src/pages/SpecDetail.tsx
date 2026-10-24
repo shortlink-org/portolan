@@ -14,7 +14,7 @@ import type { PathImpact } from "../lib/path-impact";
 import { SpecReference, SpecReferenceText } from "../components/SpecReference";
 import { knownSpecPaths, unresolvedSpecReferences } from "../lib/spec-references";
 import type { SpecReferenceContext } from "../lib/spec-references";
-import { paths, specRequirementAnchor, specTaskAnchor } from "../routes";
+import { paths, specRequirementAnchor, specScenarioAnchor, specTaskAnchor } from "../routes";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { projectSpecActivity } from "../lib/spec-activity";
 import type { Change } from "../lib/catalog-diff";
@@ -37,8 +37,13 @@ function activitySubjectHref(spec: ChangeSpec, change: Change): string | undefin
     return id ? `#${specTaskAnchor(id)}` : undefined;
   }
   if (change.kind.startsWith("requirement.") || change.kind.startsWith("scenario.")) {
-    const id = change.where.split("#scenario:")[0]!;
-    return spec.requirements.some((requirement) => requirement.id === id) ? `#${specRequirementAnchor(id)}` : undefined;
+    const [id, scenarioName] = change.where.split("#scenario:");
+    const requirement = spec.requirements.find((candidate) => candidate.id === id);
+    if (!requirement) return undefined;
+    if (change.kind.startsWith("scenario.") && scenarioName && requirement.scenarios.some((scenario) => scenario.name === scenarioName)) {
+      return `#${specScenarioAnchor(id!, scenarioName)}`;
+    }
+    return `#${specRequirementAnchor(id!)}`;
   }
   if (change.kind.startsWith("spec.")) return paths.spec(spec.slug);
   return pathForId(index, change.where);
@@ -97,7 +102,7 @@ export function SpecDetailView({ spec, previous, history = [], impact = [], draf
                   <div className="p-4">
                     {requirement.text ? <Markdown inlineCode={(value) => <SpecReference value={value} context={references} />}>{requirement.text}</Markdown> : null}
                     {requirement.scenarios.map((scenario) => (
-                      <div key={scenario.name} className="mt-4 border-l-2 border-accent pl-3">
+                      <div id={specScenarioAnchor(requirement.id, scenario.name)} key={scenario.name} className="scroll-mt-4 mt-4 border-l-2 border-accent pl-3">
                         <h4 className="font-medium"><SpecReferenceText context={references}>{scenario.name}</SpecReferenceText></h4>
                         {scenario.when.map((line) => <div key={`when:${line}`} className="mt-2 text-sm"><span className="label mr-2">WHEN</span><SpecReferenceText context={references}>{line}</SpecReferenceText></div>)}
                         {scenario.then.map((line) => <div key={`then:${line}`} className="mt-1 text-sm"><span className="label mr-2">THEN</span><SpecReferenceText context={references}>{line}</SpecReferenceText></div>)}

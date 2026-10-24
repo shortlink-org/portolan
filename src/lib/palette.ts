@@ -24,7 +24,7 @@ import { allTerms, enumsOf, walkSteps } from "../catalog";
 import { flowHealth } from "./flow-tree";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
-import { paths, storePath, tablePath, viewPath } from "../routes";
+import { paths, specRequirementAnchor, specScenarioAnchor, storePath, tablePath, viewPath } from "../routes";
 
 /**
  * Markdown, flattened to one line of searchable prose.
@@ -631,6 +631,47 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
     });
   }
 
+  // SDD is indexed as intent, at the granularity a reader can navigate to.
+  // Only the current catalog participates, so a requirement removed on a
+  // compared branch stays in Changes without leaking into global search.
+  for (const spec of catalog.specs ?? []) {
+    const root = paths.spec(spec.slug);
+    items.push({
+      kind: "spec",
+      id: spec.id,
+      name: spec.title,
+      detail: spec.id,
+      path: root,
+      context: null,
+      badge: spec.lifecycle,
+      text: flattenProse(spec.artifacts.map((artifact) => artifact.body).join(" ")),
+    });
+    for (const requirement of spec.requirements) {
+      const requirementPath = `${root}#${specRequirementAnchor(requirement.id)}`;
+      items.push({
+        kind: "requirement",
+        id: requirement.id,
+        name: requirement.title,
+        detail: spec.title,
+        path: requirementPath,
+        context: null,
+        keywords: [requirement.source],
+        text: flattenProse(requirement.text),
+      });
+      for (const scenario of requirement.scenarios) {
+        items.push({
+          kind: "scenario",
+          id: `${requirement.id}#scenario:${scenario.name}`,
+          name: scenario.name,
+          detail: requirement.title,
+          path: `${root}#${specScenarioAnchor(requirement.id, scenario.name)}`,
+          context: null,
+          text: flattenProse([...scenario.when, ...scenario.then].join(" ")),
+        });
+      }
+    }
+  }
+
   return items;
 }
 
@@ -773,10 +814,13 @@ const KIND_RANK: Record<Kind, number> = {
   flow: 14,
   adr: 15,
   rfc: 15,
+  spec: 15,
+  requirement: 16,
+  scenario: 17,
   // Last, and on purpose. A reader typing "session" wants the aggregate they
   // can open, not the sentence about what the word means; the term is what
   // they fall back to when nothing they clicked explained it.
-  term: 16,
+  term: 18,
 };
 
 /**

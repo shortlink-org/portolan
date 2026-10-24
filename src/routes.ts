@@ -227,6 +227,10 @@ export function specRequirementAnchor(id: string): string {
   return `spec-requirement-${encodeURIComponent(id)}`;
 }
 
+export function specScenarioAnchor(requirementId: string, name: string): string {
+  return `spec-scenario-${encodeURIComponent(requirementId)}-${encodeURIComponent(name)}`;
+}
+
 export function specTaskAnchor(id: string): string {
   return `spec-task-${encodeURIComponent(id)}`;
 }
@@ -438,6 +442,12 @@ export function backlinkPath(link: Backlink): string | null {
       return adrPath(link.id);
     case "rfc":
       return rfcPath(link.id);
+    case "spec": {
+      const spec = index.specById.get(link.id);
+      if (!spec) return null;
+      const root = paths.spec(spec.slug);
+      return link.at ? `${root}#${link.at}` : root;
+    }
     case "term":
       return index.termById.has(link.id) ? paths.term(link.id) : null;
     // A shared type is only ever seen through the blocks that name it, and a
