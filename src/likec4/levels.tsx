@@ -35,7 +35,7 @@ export const C4_LEVEL: Record<C4Level, { name: string; note: string }> = {
  */
 export function viewLevel(viewId: string): C4Level | "deployment" {
   if (viewId.startsWith("deploy_")) return "deployment";
-  if (viewId.startsWith("landscape")) return 1;
+  if (viewId.startsWith("landscape") || viewId.endsWith("_landscape")) return 1;
   if (viewId.startsWith("svc_") && viewId.endsWith("_inside")) return 3;
   return 2;
 }

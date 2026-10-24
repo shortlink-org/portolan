@@ -37,9 +37,10 @@ export function labelHelpers(g) {
    * box, or nothing when it cannot name it without naming something else, and
    * `keep` says which pairs of boxes are labelled at all.
    */
-  function foldLabels(endpoint, indent = "    ", spell = (box) => box, keep = () => true) {
+  function foldLabels(endpoint, indent = "    ", spell = (box) => box, keep = () => true, keepRelation = () => true) {
     const pairs = new Map(); // "from|to" -> { from, to, byVerb: Map<verb, Set<name>> }
     for (const { from: source, to: target, verb, name } of crossings) {
+      if (!keepRelation(source, target)) continue;
       const [from, to] = [endpoint(source), endpoint(target)];
       if (!from || !to || from === to || !keep(from, to)) continue;
       const key = `${from}|${to}`;
@@ -132,7 +133,7 @@ export function labelHelpers(g) {
    * arrows between the two sides are labelled here; the ones inside are the
    * folded call pairs `containerPredicates` already names.
    */
-  function contextLabels(context, indent = "    ") {
+  function contextLabels(context, indent = "    ", visible = () => true) {
     const home = safeId(context.id);
     const inside = (box) => box.startsWith(`${home}.`);
     const box = (reference) => {
@@ -140,7 +141,7 @@ export function labelHelpers(g) {
       if (segments.length === 1) return reference;
       return segments[0] === home ? segments.slice(0, 2).join(".") : segments[0];
     };
-    return foldLabels(box, indent, (reference) => spellIn(home, reference), (from, to) => inside(from) !== inside(to));
+    return foldLabels(box, indent, (reference) => spellIn(home, reference), (from, to) => inside(from) !== inside(to), (from, to) => visible(from) && visible(to));
   }
 
   /** A top-level box stands for everything nested in it. */

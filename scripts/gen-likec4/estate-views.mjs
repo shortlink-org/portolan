@@ -1,7 +1,7 @@
 // The estate's own pictures: C4 level 1, level 2 with every container, and
 // the pair of them drawn for each catalog profile.
 
-import { CONTAINERS_VIEW, LANDSCAPE_VIEW, includeTargets, profileContainersViewId, profileLandscapeViewId, q, safeId } from "./ids.mjs";
+import { CONTAINERS_VIEW, LANDSCAPE_VIEW, filterVariants, includeTargets, profileContainersViewId, profileLandscapeViewId, q, safeId } from "./ids.mjs";
 
 /** The landscape and containers views, and the two of each profile. */
 export function estateViews(g) {
@@ -67,6 +67,51 @@ export function estateViews(g) {
     views.push(`    rank source { ${[...actorIds].map(safeId).join(", ")} }`);
   views.push("  }");
   views.push("");
+
+  const emitFilteredContainers = ({ base, title, description, contexts, services, stores, brokers, outsideRoots, roots, pairs, carried, actors }) => {
+    for (const { id, hidden } of filterVariants(base)) {
+      const shownStores = hidden.has("store") ? [] : stores;
+      const shownBrokers = hidden.has("broker") ? [] : brokers;
+      const shownOutside = hidden.has("external") ? [] : outsideRoots;
+      const shownRoots = roots.filter((root) =>
+        !hidden.has("broker") || !brokerIds.has(root),
+      ).filter((root) =>
+        !hidden.has("external") || !OUTSIDE.has(rootParticipants.get(root)?.kind),
+      );
+      views.push(`  view ${id} {`);
+      views.push(`    title ${q(title)}`);
+      views.push(`    description ${q(description)}`);
+      views.push(`    include ${includeTargets([
+        ...contexts.map((context) => safeId(context.id)),
+        ...services.map((service) => fqn(service.id)),
+        ...shownStores.map((store) => fqn(store.id)),
+        ...shownBrokers.map(safeId),
+        ...shownOutside,
+      ])}`);
+      views.push(...containerCards(services, "    ", !hidden.has("store")));
+      if (!hidden.has("broker")) views.push(...transportLabels(services, shownRoots));
+      views.push(...containerPredicates(pairs, hidden.has("broker") ? [] : carried, "    "));
+      if (!hidden.has("broker")) views.push(...localQueueRanks(services, shownRoots));
+      if (!hidden.has("external") && actors.length) views.push(`    rank source { ${actors.join(", ")} }`);
+      views.push("  }");
+      views.push("");
+    }
+  };
+
+  emitFilteredContainers({
+    base: CONTAINERS_VIEW,
+    title: "Containers",
+    description: "Every service and the visible infrastructure between them.",
+    contexts: catalog.contexts,
+    services: allServices,
+    stores: catalog.stores ?? [],
+    brokers: drawnBrokers,
+    outsideRoots: outside,
+    roots: [...rootParticipants.keys()],
+    pairs: [...callPairs.values()],
+    carried: carriedByBus,
+    actors: [...actorIds].map(safeId),
+  });
 
   // The model is the union so shared edges and per-context views are declared
   // once. These two views per profile are the isolated estate entry points the
@@ -172,6 +217,25 @@ export function estateViews(g) {
     if (profileActors.length) views.push(`    rank source { ${profileActors.join(", ")} }`);
     views.push("  }");
     views.push("");
+
+    emitFilteredContainers({
+      base: profileContainersViewId(profile),
+      title: `${profile.title} containers`,
+      description: "The services and visible infrastructure selected by this catalog profile.",
+      contexts: profileContexts,
+      services: profileServices,
+      stores: profileStores,
+      brokers: profileBrokers,
+      outsideRoots: profileOutside,
+      roots: [...profileRoots],
+      pairs: [...callPairs.values()].filter(
+        (pair) => profileServiceIds.has(pair.from) && (profileServiceIds.has(pair.to) || profileRoots.has(pair.to)),
+      ),
+      carried: carriedByBus.filter(
+        ([from, to]) => profileServiceIds.has(from) && profileServiceIds.has(to),
+      ),
+      actors: profileActors,
+    });
   }
   return { allServices };
 }

@@ -109,10 +109,10 @@ export function containerHelpers(g) {
   }
 
   /** Compact cards keep implementation paths in element details, not on the canvas. */
-  function containerCards(services, indent = "    ") {
+  function containerCards(services, indent = "    ", stores = true) {
     return services.flatMap((service) => [
       `${indent}include ${fqn(service.id)} with { description '' }`,
-      ...(storesByOwner.get(service.id) ?? []).map((store) => `${indent}include ${fqn(store.id)} with { description '' }`),
+      ...(stores ? (storesByOwner.get(service.id) ?? []).map((store) => `${indent}include ${fqn(store.id)} with { description '' }`) : []),
     ]);
   }
 

@@ -100,6 +100,36 @@ describe("the LikeC4 generator", () => {
     expect(views).toContain("include platform, platform.api");
   });
 
+  it("gives each context an L1 landscape of its real neighbours", () => {
+    const service = (id, dependsOn = []) => ({
+      id,
+      slug: id.split(".").at(-1),
+      name: id,
+      repo: "example/estate",
+      path: id,
+      readme: "",
+      provides: [],
+      consumes: [],
+      aggregates: [],
+      dependsOn,
+    });
+    const { views } = generate({
+      contexts: [
+        { id: "shop", slug: "shop", name: "Shop", summary: "", services: [service("shop.cart", ["payments.ledger"])] },
+        { id: "payments", slug: "payments", name: "Payments", summary: "", services: [service("payments.ledger")] },
+        { id: "isolated", slug: "isolated", name: "Isolated", summary: "", services: [service("isolated.worker")] },
+      ],
+      flows: [],
+    });
+    const scoped = views.slice(
+      views.indexOf("view ctx_shop_landscape"),
+      views.indexOf("view ctx_shop of shop"),
+    );
+    expect(scoped).toContain("include shop, payments");
+    expect(scoped).toContain("depends on payments.ledger");
+    expect(scoped).not.toContain("isolated");
+  });
+
   it("keeps a contract request/response on one numbered relation", () => {
     const service = (slug, provides = []) => ({
       id: `demo.${slug}`,
@@ -468,10 +498,21 @@ describe("the LikeC4 generator", () => {
     const pair =
       "include shop.oms -> shop.cart where kind is calls with { multiple true }";
     expect(views).toContain(`view containers {\n    title 'Containers'`);
-    expect(views.split(pair)).toHaveLength(4); // containers, containers_default, and ctx_shop
+    expect(views.split(pair).length).toBeGreaterThanOrEqual(4); // every compatible L2 variant keeps the calls
     // With the bus on the picture the direct consumer arrow is not drawn twice.
     expect(views).toContain("include *, shop._store_shop_cart_pg");
     expect(views).toContain("exclude shop.cart -> shop.oms where kind is publishes_to");
+    const withoutBroker = views.slice(
+      views.indexOf("view containers_without_broker"),
+      views.indexOf("view containers_without_external"),
+    );
+    expect(withoutBroker).not.toContain(", bus");
+    expect(withoutBroker).not.toContain("exclude shop.cart -> shop.oms where kind is publishes_to");
+    const withoutStore = views.slice(
+      views.indexOf("view containers_without_store"),
+      views.indexOf("view containers_without_broker"),
+    );
+    expect(withoutStore).not.toContain("shop._store_shop_cart_pg");
     expect(model).toContain("shop.cart -[owns]-> shop._store_shop_cart_pg 'owns'");
     expect(views).toContain("autoLayout LeftRight 100 70");
     expect(views).toContain("include shop.cart with { description '' }");
@@ -497,6 +538,10 @@ describe("the LikeC4 generator", () => {
         expect(view.edges.some((edge) => edge.kind === "publishes_to")).toBe(false);
         expect(view.edges.filter((edge) => edge.kind === "bus")).toHaveLength(2);
       }
+      const filtered = computed.view("containers_without_broker").$view;
+      expect(filtered.nodes.some((node) => node.kind === "broker")).toBe(false);
+      expect(filtered.edges.some((edge) => edge.kind === "bus")).toBe(false);
+      expect(filtered.edges.some((edge) => edge.kind === "publishes_to")).toBe(true);
     } finally { await engine.dispose(); }
   });
 

@@ -12,6 +12,8 @@ import { allTerms } from "../catalog";
 import { catalog } from "../data";
 import { explain } from "../lib/abbreviations";
 import type { ArrowEntry, BoxEntry, EvidenceEntry, Head, Legend } from "./legend";
+import { legendFilterOptions } from "./legend";
+import type { DiagramFilterKind } from "./ids";
 
 const W = 32;
 const H = 18;
@@ -120,8 +122,21 @@ export function LegendButton({ open, controls, onToggle }: { open: boolean; cont
   );
 }
 
-export function LegendPanel({ id, legend, onClose }: { id: string; legend: Legend; onClose: () => void }) {
+export function LegendPanel({
+  id,
+  legend,
+  onClose,
+  hiddenKinds,
+  onToggleKind,
+}: {
+  id: string;
+  legend: Legend;
+  onClose: () => void;
+  hiddenKinds?: ReadonlySet<DiagramFilterKind>;
+  onToggleKind?: (kind: DiagramFilterKind) => void;
+}) {
   const first = legend.contexts[0] ?? 0;
+  const filters = onToggleKind ? legendFilterOptions(legend) : [];
   return (
     <div
       id={id}
@@ -136,6 +151,26 @@ export function LegendPanel({ id, legend, onClose }: { id: string; legend: Legen
           <X size={13} aria-hidden />
         </button>
       </div>
+      {filters.length ? (
+        <Section title="Show on canvas">
+          {filters.map((option) => (
+            <li key={option.kind} className="py-1">
+              <label className="grid cursor-pointer grid-cols-[1rem_1fr] items-start gap-x-3 rounded-control py-1">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={!hiddenKinds?.has(option.kind)}
+                  onChange={() => onToggleKind?.(option.kind)}
+                />
+                <span>
+                  <span className="text-sm text-ink">{option.label}</span>{" "}
+                  <span className="text-sm text-muted">{option.note}</span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </Section>
+      ) : null}
       {legend.boxes.length ? (
         <Section title="Boxes">
           {legend.boxes.map((entry) => (

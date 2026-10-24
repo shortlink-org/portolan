@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { LikeC4Model } from "@likec4/core/model";
 import type { ViewPadding } from "likec4/react";
@@ -16,6 +16,9 @@ import { viewLegend } from "./legend";
 import { ViewTitle } from "./ViewTitle";
 import { evidenceForEdge } from "./edge-evidence";
 import type { EvidenceModel } from "./edge-evidence";
+import { boundaryEdgeIds } from "./boundaries";
+import { filteredViewId, safeId } from "./ids";
+import type { DiagramFilterKind } from "./ids";
 
 const layouts = new Map<string, Promise<LikeC4Model.Layouted>>();
 function containerModel(viewId: string) {
@@ -42,6 +45,8 @@ export function C4View({
   height = 320,
   controls = false,
   fitViewPadding,
+  boundaryContext,
+  filterable = false,
 }: {
   viewId: string;
   height?: number | string;
@@ -49,6 +54,10 @@ export function C4View({
   controls?: boolean;
   /** Space around the fitted model; overview uses a tighter product frame. */
   fitViewPadding?: ViewPadding;
+  /** Offer paint-only highlighting for every boundary, or for one context. */
+  boundaryContext?: true | string;
+  /** Let the legend swap among generated, re-laid-out L2 variants. */
+  filterable?: boolean;
 }) {
   const selection = useSelectionStore((s) => s.selection);
   const source = useSelectionStore((s) => s.source);
@@ -56,6 +65,9 @@ export function C4View({
   const clear = useSelectionStore((s) => s.clear);
 
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [highlightBoundaries, setHighlightBoundaries] = useState(false);
+  const [hiddenKinds, setHiddenKinds] = useState<Set<DiagramFilterKind>>(new Set());
+  const shownViewId = filterable ? filteredViewId(viewId, [...hiddenKinds]) : viewId;
 
   const onNode = useCallback(
     (likec4Id: string) => {
@@ -72,25 +84,37 @@ export function C4View({
   // A selection made here is already marked by LikeC4 itself; one made
   // elsewhere is only marked when this view actually draws it.
   const selectedNode = selection
-    ? viewNodeIds(viewId).find((id) => catalogIdOf(id) === selection.id)
+    ? viewNodeIds(shownViewId).find((id) => catalogIdOf(id) === selection.id)
     : undefined;
   const marked = selectedNode && source !== "diagram" ? [selectedNode] : [];
-  const containers = viewId === "containers" || viewId.startsWith("containers_") || viewId.startsWith("ctx_");
+  const containers = shownViewId === "containers" || shownViewId.startsWith("containers_") ||
+    (shownViewId.startsWith("ctx_") && !shownViewId.endsWith("_landscape"));
   const [layout, setLayout] = useState<{ id: string; model?: LikeC4Model.Layouted; error?: boolean }>();
   useEffect(() => {
     if (!containers) return;
     let cancelled = false;
-    containerModel(viewId).then((model) => { if (!cancelled) setLayout({ id: viewId, model }); }, () => { if (!cancelled) setLayout({ id: viewId, error: true }); });
+    containerModel(shownViewId).then((model) => { if (!cancelled) setLayout({ id: shownViewId, model }); }, () => { if (!cancelled) setLayout({ id: shownViewId, error: true }); });
     return () => { cancelled = true; };
-  }, [viewId, containers]);
-  useEffect(() => setSelectedEdge(null), [viewId]);
-  const focus = containers && selectedNode ? viewNeighborhood(viewId, selectedNode) : null;
+  }, [shownViewId, containers]);
+  useEffect(() => setSelectedEdge(null), [shownViewId]);
+  const focus = containers && selectedNode ? viewNeighborhood(shownViewId, selectedNode) : null;
   const legend = viewLegend(viewId);
   const key = useLegend();
   const activeModel = containers ? layout?.model : likec4model;
+  const crossingEdges = useMemo(() => {
+    if (!boundaryContext || !activeModel) return [];
+    const view = activeModel.findView(shownViewId)?.$layouted;
+    return view
+      ? boundaryEdgeIds(
+          view.nodes,
+          view.edges,
+          boundaryContext === true ? undefined : safeId(boundaryContext),
+        )
+      : [];
+  }, [activeModel, boundaryContext, shownViewId]);
   const edgeEvidence =
     selectedEdge && activeModel
-      ? evidenceForEdge(activeModel as unknown as EvidenceModel, viewId, selectedEdge)
+      ? evidenceForEdge(activeModel as unknown as EvidenceModel, shownViewId, selectedEdge)
       : null;
 
   return (
@@ -99,13 +123,13 @@ export function C4View({
       className="@container relative w-full overflow-hidden rounded-card border border-line bg-canvas shadow-xs"
       style={{ height }}
     >
-      {containers && layout?.id !== viewId ? <DiagramSkeleton /> : <InteractiveView
-        viewId={viewId}
+      {containers && layout?.id !== shownViewId ? <DiagramSkeleton /> : <InteractiveView
+        viewId={shownViewId}
         controls={controls || containers}
         fitViewPadding={fitViewPadding}
         highlightNodes={containers ? [] : marked}
-        highlightEdges={selectedEdge ? [selectedEdge] : []}
-        extraCss={focus && selectedNode ? neighborhoodCss(focus, viewEdgeIds(viewId), selectedNode) : ""}
+        highlightEdges={selectedEdge ? [selectedEdge] : highlightBoundaries ? crossingEdges : []}
+        extraCss={focus && selectedNode ? neighborhoodCss(focus, viewEdgeIds(shownViewId), selectedNode) : ""}
         // Every picture folds relations into summaries now, so every one
         // keeps the methods behind a summary one click away.
         relationshipDetails={false}
@@ -117,18 +141,39 @@ export function C4View({
         }}
         onCanvas={onCanvas}
       />}
-      {containers && layout?.id === viewId && layout.error ? <p className="absolute bottom-3 left-3 bg-canvas px-3 py-2 text-sm">Using the default layout; container routing is unavailable.</p> : null}
+      {containers && layout?.id === shownViewId && layout.error ? <p className="absolute bottom-3 left-3 bg-canvas px-3 py-2 text-sm">Using the default layout; container routing is unavailable.</p> : null}
       {/* LikeC4 refits on its own when the box changes size, so the button
           needs no hook into the diagram. With LikeC4's own controls on, a
           canvas narrower than its `sm` container (24rem) turns their panel
           into a full-width bar along the top edge, and this group would sit
           under it; there it steps down below the bar. */}
       <div className={`seg seg-float absolute top-3 right-3 z-10 ${controls || containers ? "@max-sm:top-11" : ""}`}>
+        {crossingEdges.length > 0 ? (
+          <button
+            type="button"
+            aria-pressed={highlightBoundaries}
+            className={highlightBoundaries ? "is-on" : ""}
+            title="Highlight communication that crosses context boundaries"
+            onClick={() => setHighlightBoundaries((shown) => !shown)}
+          >
+            Crossings
+          </button>
+        ) : null}
         {legend ? <LegendButton open={key.open} controls={key.id} onToggle={key.toggle} /> : null}
         <FullscreenButton />
       </div>
-      {legend && key.open ? <LegendPanel id={key.id} legend={legend} onClose={key.close} /> : null}
-      <ViewTitle viewId={viewId} />
+      {legend && key.open ? <LegendPanel
+        id={key.id}
+        legend={legend}
+        onClose={key.close}
+        hiddenKinds={filterable ? hiddenKinds : undefined}
+        onToggleKind={filterable ? (kind) => setHiddenKinds((hidden) => {
+          const next = new Set(hidden);
+          if (!next.delete(kind)) next.add(kind);
+          return next;
+        }) : undefined}
+      /> : null}
+      <ViewTitle viewId={shownViewId} />
       {edgeEvidence ? (
         <aside
           aria-label="Relationship evidence"

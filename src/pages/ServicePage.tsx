@@ -64,6 +64,7 @@ import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/LazyC4View";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
+import { diagramLevel, withDiagramLevel } from "../likec4/level-state";
 import {
   serviceDeployViewId,
   serviceInsideViewId,
@@ -269,7 +270,9 @@ export function ServicePage() {
   const [params, setParams] = useSearchParams();
   const [showRetired, setShowRetired] = useState(false);
   /** Which C4 level the model canvas is drawn at: the service, or its parts. */
-  const [level, setLevel] = useState<C4Level>(2);
+  const level = diagramLevel(params, [2, 3], 2);
+  const setLevel = (next: C4Level) =>
+    setParams(withDiagramLevel(params, next), { replace: true });
   const [infrastructureView, setInfrastructureView] =
     useState<InfrastructureView>(() =>
       typeof window !== "undefined" &&
@@ -363,8 +366,12 @@ export function ServicePage() {
     flows: flows.length,
     decisions: adrs.length + rfcs.length,
   };
-  const setTab = (next: Tab) =>
-    setParams(next === "overview" ? {} : { tab: next }, { replace: true });
+  const setTab = (next: Tab) => {
+    const changed = new URLSearchParams(params);
+    if (next === "overview") changed.delete("tab");
+    else changed.set("tab", next);
+    setParams(changed, { replace: true });
+  };
 
   const serviceMeta = (
     <div className="mt-3 grid max-w-table gap-2 text-sm">

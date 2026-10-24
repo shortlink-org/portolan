@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { likec4model } from "./bundle";
-import { BOXES, legendFrom, viewLegend } from "./legend";
+import { BOXES, legendFilterOptions, legendFrom, viewLegend } from "./legend";
 
 describe("C4 legend", () => {
   it("explains every element kind the generator can draw", () => {
@@ -47,5 +47,20 @@ describe("C4 legend", () => {
       [{ kind: "calls", color: "declared", head: "normal", technology: "HTTP" }, { kind: "calls", color: "declared", head: "normal", technology: "HTTP" }],
     );
     expect(legend.abbreviations).toEqual(["BFF", "NATS", "HTTP"]);
+  });
+
+  it("offers one infrastructure filter per category the L2 picture contains", () => {
+    const legend = legendFrom(
+      [
+        { kind: "service", color: "ctx0" },
+        { kind: "store", color: "muted" },
+        { kind: "broker", color: "muted" },
+        { kind: "actor", color: "muted" },
+        { kind: "external", color: "muted" },
+      ],
+      [],
+    );
+    expect(legendFilterOptions(legend).map((option) => option.kind))
+      .toEqual(["store", "broker", "external"]);
   });
 });

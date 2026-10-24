@@ -20,6 +20,93 @@ views {
     rank source { developer }
   }
 
+  view containers_without_store {
+    title 'Containers'
+    description 'Every service and the visible infrastructure between them.'
+    include portolan, portolan.host, portolan.plugins, portolan.site, developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { developer }
+  }
+
+  view containers_without_broker {
+    title 'Containers'
+    description 'Every service and the visible infrastructure between them.'
+    include portolan, portolan.host, portolan.plugins, portolan.site, developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { developer }
+  }
+
+  view containers_without_store_broker {
+    title 'Containers'
+    description 'Every service and the visible infrastructure between them.'
+    include portolan, portolan.host, portolan.plugins, portolan.site, developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { developer }
+  }
+
+  view containers_without_external {
+    title 'Containers'
+    description 'Every service and the visible infrastructure between them.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
+  view containers_without_store_external {
+    title 'Containers'
+    description 'Every service and the visible infrastructure between them.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
+  view containers_without_broker_external {
+    title 'Containers'
+    description 'Every service and the visible infrastructure between them.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
+  view containers_without_store_broker_external {
+    title 'Containers'
+    description 'Every service and the visible infrastructure between them.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
   view landscape_portolan {
     title 'Portolan'
     description 'The groups and outside systems selected by this catalog profile.'
@@ -40,6 +127,100 @@ views {
     rank source { developer }
   }
 
+  view containers_portolan_without_store {
+    title 'Portolan containers'
+    description 'The services and visible infrastructure selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site, developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { developer }
+  }
+
+  view containers_portolan_without_broker {
+    title 'Portolan containers'
+    description 'The services and visible infrastructure selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site, developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { developer }
+  }
+
+  view containers_portolan_without_store_broker {
+    title 'Portolan containers'
+    description 'The services and visible infrastructure selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site, developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+    rank source { developer }
+  }
+
+  view containers_portolan_without_external {
+    title 'Portolan containers'
+    description 'The services and visible infrastructure selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
+  view containers_portolan_without_store_external {
+    title 'Portolan containers'
+    description 'The services and visible infrastructure selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
+  view containers_portolan_without_broker_external {
+    title 'Portolan containers'
+    description 'The services and visible infrastructure selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
+  view containers_portolan_without_store_broker_external {
+    title 'Portolan containers'
+    description 'The services and visible infrastructure selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
+  view ctx_portolan_landscape {
+    title 'Portolan — context'
+    description 'Portolan, and every context or outside system connected to it.'
+    include portolan, developer
+    include developer -> portolan with { title 'npm run gen' }
+  }
+
   view ctx_portolan of portolan {
     title 'Portolan'
     include *
@@ -51,6 +232,84 @@ views {
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
   }
+  view ctx_portolan_without_store of portolan {
+    title 'Portolan'
+    include *
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    include developer -> host with { title 'npm run gen' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+  view ctx_portolan_without_broker of portolan {
+    title 'Portolan'
+    include *
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    include developer -> host with { title 'npm run gen' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+  view ctx_portolan_without_store_broker of portolan {
+    title 'Portolan'
+    include *
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    include developer -> host with { title 'npm run gen' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+  view ctx_portolan_without_external of portolan {
+    title 'Portolan'
+    include *
+    exclude developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+  view ctx_portolan_without_store_external of portolan {
+    title 'Portolan'
+    include *
+    exclude developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+  view ctx_portolan_without_broker_external of portolan {
+    title 'Portolan'
+    include *
+    exclude developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+  view ctx_portolan_without_store_broker_external of portolan {
+    title 'Portolan'
+    include *
+    exclude developer
+    include portolan.host with { description '' }
+    include portolan.plugins with { description '' }
+    include portolan.site with { description '' }
+    autoLayout LeftRight 100 70
+    style * { size sm  textSize xl }
+    style element.kind = store { size xs  textSize lg }
+  }
+
   view svc_portolan_host of portolan.host {
     title 'Host — neighbours'
     include *, -> *, * ->

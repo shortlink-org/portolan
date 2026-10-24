@@ -29,12 +29,25 @@ export function catalogIds(catalog) {
 export const flowViewId = (flow) => `flow_${safeId(flow.slug)}`;
 export const flowCrossViewId = (flow) => `${flowViewId(flow)}_cross`;
 export const contextViewId = (c) => `ctx_${safeId(c.id)}`;
+export const contextLandscapeViewId = (c) => `${contextViewId(c)}_landscape`;
 export const serviceViewId = (s) => `svc_${safeId(s.id)}`;
 export const serviceInsideViewId = (s) => `${serviceViewId(s)}_inside`;
 export const deploymentViewId = (environment) => `deploy_${safeId(environment)}`;
 export const serviceDeployViewId = (s) => `deploy_svc_${safeId(s.id)}`;
 export const LANDSCAPE_VIEW = "landscape";
 export const CONTAINERS_VIEW = "containers";
+export const DIAGRAM_FILTER_KINDS = ["store", "broker", "external"];
+export const filteredViewId = (base, hidden) => {
+  const ordered = DIAGRAM_FILTER_KINDS.filter((kind) => hidden.includes(kind));
+  return ordered.length ? `${base}_without_${ordered.join("_")}` : base;
+};
+export const filterVariants = (base) => Array.from(
+  { length: 2 ** DIAGRAM_FILTER_KINDS.length - 1 },
+  (_, bits) => {
+    const hidden = DIAGRAM_FILTER_KINDS.filter((_, index) => (bits + 1) & (1 << index));
+    return { id: filteredViewId(base, hidden), hidden: new Set(hidden) };
+  },
+);
 export const profileLandscapeViewId = (profile) =>
   `${LANDSCAPE_VIEW}_${safeId(profile.id)}`;
 export const profileContainersViewId = (profile) =>

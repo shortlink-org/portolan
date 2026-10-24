@@ -1,6 +1,6 @@
 import { useDocumentTitle } from "../app/title";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { activeCatalogProfile, CATALOG_PATH, catalog } from "../data";
 import { contextOwners, contextStats, widestFlows } from "../lib/derive";
@@ -23,6 +23,7 @@ import {
 import { servicesDeployedIn } from "../lib/environments";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
+import { diagramLevel, withDiagramLevel } from "../likec4/level-state";
 import { CatalogStamp } from "../components/CatalogStamp";
 import { ProblemRow } from "../components/ProblemRow";
 import { RowActions } from "../components/RowActions";
@@ -108,7 +109,10 @@ function askTitle(owners: readonly ContextOwner[]): string | undefined {
 export function Overview() {
   useDocumentTitle("Overview");
   const phone = usePhone();
-  const [level, setLevel] = useState<C4Level>(1);
+  const [params, setParams] = useSearchParams();
+  const level = diagramLevel(params, [1, 2], 1);
+  const setLevel = (next: C4Level) =>
+    setParams(withDiagramLevel(params, next), { replace: true });
   // Where the estate runs, one environment at a time. Production first when
   // there is one by that name: it is the environment a reader means by
   // "deployed" until they say otherwise.
@@ -221,6 +225,8 @@ export function Overview() {
           height={phone ? 300 : level === 2 ? 620 : 480}
           controls={phone}
           fitViewPadding={{ x: 8, y: 8 }}
+          boundaryContext
+          filterable={level === 2}
         />
       </section>
 

@@ -9,6 +9,7 @@
 
 import { likec4model } from "./bundle";
 import { abbreviationsIn } from "../lib/abbreviations";
+import type { DiagramFilterKind } from "./ids";
 
 export type Status = "verified" | "declared" | "unresolved";
 export type Head = "normal" | "onormal" | "none";
@@ -49,6 +50,24 @@ export interface Legend {
   evidence: EvidenceEntry[];
   /** Abbreviations in the picture's names and technologies, in order of first use. */
   abbreviations: string[];
+}
+
+export interface LegendFilterOption {
+  kind: DiagramFilterKind;
+  label: string;
+  note: string;
+}
+
+/** Infrastructure categories present in this picture, in toolbar order. */
+export function legendFilterOptions(legend: Legend): LegendFilterOption[] {
+  const kinds = new Set(legend.boxes.map((box) => box.kind));
+  return [
+    ...(kinds.has("store") ? [{ kind: "store", label: "Stores", note: "Databases and other persisted state" } as const] : []),
+    ...(kinds.has("broker") ? [{ kind: "broker", label: "Brokers", note: "Queues and message buses" } as const] : []),
+    ...(["actor", "external", "unknown"].some((kind) => kinds.has(kind))
+      ? [{ kind: "external", label: "Outside", note: "Actors and systems outside the estate" } as const]
+      : []),
+  ];
 }
 
 // One entry per element and deployment-node kind in the generated

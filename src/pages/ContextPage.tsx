@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
 import { componentKind, groupKind, ownersOf, technologiesOf } from "../catalog";
@@ -19,11 +19,17 @@ import type { TocItem } from "../components/Toc";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/LazyC4View";
-import { LevelBadge } from "../likec4/levels";
-import { contextViewId } from "../likec4/ids";
+import { LevelSwitch } from "../likec4/levels";
+import type { C4Level } from "../likec4/levels";
+import { diagramLevel, withDiagramLevel } from "../likec4/level-state";
+import { contextLandscapeViewId, contextViewId } from "../likec4/ids";
 
 export function ContextPage() {
   const { context: contextId } = useParams();
+  const [params, setParams] = useSearchParams();
+  const level = diagramLevel(params, [1, 2], 1);
+  const setLevel = (next: C4Level) =>
+    setParams(withDiagramLevel(params, next), { replace: true });
   const context = catalog.contexts.find((c) => c.id === contextId);
   if (!context) return <NotFound kind="Context" id={contextId} />;
   const stats = contextStats(context);
@@ -125,13 +131,24 @@ export function ContextPage() {
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
           <CustomProperties key={context.id} target={{ kind: "context", id: context.id }} />
-          <SectionTitle right={<LevelBadge level={2} />}>Model</SectionTitle>
+          <SectionTitle right={
+            <LevelSwitch
+              level={level}
+              onLevel={setLevel}
+              levels={[
+                { level: 1, label: "context" },
+                { level: 2, label: "containers" },
+              ]}
+            />
+          }>Model</SectionTitle>
           {/* The derived `ctx_<id>` view unless the catalog names another one.
               Containers: the services of this context, the stores they own,
               and any store they read that somebody else owns. */}
           <C4View
-            viewId={context.viewId ?? contextViewId(context)}
+            viewId={level === 1 ? contextLandscapeViewId(context) : context.viewId ?? contextViewId(context)}
             height={400}
+            boundaryContext={context.id}
+            filterable={level === 2 && !context.viewId}
           />
 
           {/* --- Services ----------------------------------------------- */}

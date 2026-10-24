@@ -80,6 +80,21 @@ export const LANDSCAPE_VIEW = "landscape";
  */
 export const CONTAINERS_VIEW = "containers";
 
+export const DIAGRAM_FILTER_KINDS = ["store", "broker", "external"] as const;
+export type DiagramFilterKind = (typeof DIAGRAM_FILTER_KINDS)[number];
+
+/** A generated, re-laid-out L2 view with selected infrastructure omitted. */
+export function filteredViewId(base: string, hidden: readonly DiagramFilterKind[]): string {
+  const ordered = DIAGRAM_FILTER_KINDS.filter((kind) => hidden.includes(kind));
+  return ordered.length ? `${base}_without_${ordered.join("_")}` : base;
+}
+
+export function filteredViewIds(base: string): string[] {
+  return Array.from({ length: 2 ** DIAGRAM_FILTER_KINDS.length - 1 }, (_, bits) =>
+    filteredViewId(base, DIAGRAM_FILTER_KINDS.filter((_, index) => (bits + 1) & (1 << index))),
+  );
+}
+
 /** Whole-estate views narrowed to one configured catalog profile. */
 export const profileLandscapeViewId = (profile: string): string =>
   `${LANDSCAPE_VIEW}_${safeId(profile)}`;
@@ -89,6 +104,10 @@ export const profileContainersViewId = (profile: string): string =>
 /** C4 level 2, one context: its services, their stores, and the brokers they use. */
 export const contextViewId = (context: BoundedContext | string): string =>
   `ctx_${safeId(typeof context === "string" ? context : context.id)}`;
+
+/** C4 level 1, one context kept whole beside only the roots it touches. */
+export const contextLandscapeViewId = (context: BoundedContext | string): string =>
+  `${contextViewId(context)}_landscape`;
 
 /** C4 level 2, one service: the service as a box among the ones it touches. */
 export const serviceViewId = (service: Service | string): string =>
@@ -154,9 +173,11 @@ export function deployedServices(catalog: Catalog): Service[] {
 
 /** Every view id the generator is expected to emit, in a stable order. */
 export function allViewIds(catalog: Catalog): string[] {
-  const out: string[] = [LANDSCAPE_VIEW, CONTAINERS_VIEW];
+  const out: string[] = [LANDSCAPE_VIEW, CONTAINERS_VIEW, ...filteredViewIds(CONTAINERS_VIEW)];
   for (const context of catalog.contexts) {
+    out.push(contextLandscapeViewId(context));
     out.push(contextViewId(context));
+    out.push(...filteredViewIds(contextViewId(context)));
     for (const service of context.services) {
       out.push(serviceViewId(service));
       out.push(serviceInsideViewId(service));

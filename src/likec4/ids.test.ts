@@ -13,6 +13,7 @@ import {
   deployedServices,
   environmentsOf,
   contextViewId,
+  contextLandscapeViewId,
   eventFqn,
   flowCrossViewId,
   flowViewId,
@@ -20,6 +21,7 @@ import {
   participantFqn,
   profileContainersViewId,
   profileLandscapeViewId,
+  filteredViewId,
   safeId,
   serviceInsideViewId,
   serviceViewId,
@@ -94,8 +96,11 @@ describe("view ids", () => {
     expect(flowViewId("checkout")).toBe("flow_checkout");
     expect(flowCrossViewId("checkout")).toBe("flow_checkout_cross");
     expect(contextViewId("shop")).toBe("ctx_shop");
+    expect(contextLandscapeViewId("shop")).toBe("ctx_shop_landscape");
     expect(serviceViewId("shop.oms")).toBe("svc_shop_oms");
     expect(serviceInsideViewId("shop.oms")).toBe("svc_shop_oms_inside");
+    expect(filteredViewId("containers_default", ["broker", "store"]))
+      .toBe("containers_default_without_store_broker");
   });
 
   it("is unique across the whole catalog", () => {
@@ -107,8 +112,8 @@ describe("view ids", () => {
     const ids = allViewIds(catalog);
     const services = catalog.contexts.flatMap((c) => c.services);
     expect(ids).toHaveLength(
-      2 +
-        catalog.contexts.length +
+      2 + 7 +
+        catalog.contexts.length * 9 +
         services.length * 2 +
         catalog.flows.length +
         catalog.flows.filter(hasCrossContextSteps).length +
@@ -120,6 +125,7 @@ describe("view ids", () => {
     expect(ids).toContain(LANDSCAPE_VIEW);
     expect(ids).toContain(CONTAINERS_VIEW);
     expect(ids).toContain(contextViewId("shop"));
+    expect(ids).toContain(contextLandscapeViewId("shop"));
     expect(ids).toContain(serviceInsideViewId("shop.oms"));
   });
 
