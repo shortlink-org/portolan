@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TREE_KEYS, treeKey } from "./tree-keys";
 import type { TreeRow } from "./tree-keys";
-import { Link, NavLink } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { DURATION, LayoutGroup, Unfold } from "../lib/motion";
 import { catalog } from "../data";
 import type {
@@ -208,6 +208,7 @@ export function Sidebar({
   railed?: boolean;
   onExpand?: () => void;
 }) {
+  const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Which bands and which owner groups are folded. Both outlive the session:
@@ -218,7 +219,8 @@ export function Sidebar({
   );
   const [groups, setGroups] = useState<Flags>(() => readFlags(FLOW_GROUPS_KEY));
 
-  const sectionOpen = (key: string): boolean => sections[key] ?? true;
+  const sectionOpen = (key: string): boolean =>
+    sections[key] ?? (key === "pinned" || key === "contexts");
   const toggleSection = (key: string) =>
     setSections((prev) => {
       const next = { ...prev, [key]: !(prev[key] ?? true) };
@@ -259,6 +261,16 @@ export function Sidebar({
         .map(contextRows),
     [],
   );
+
+  const routeParts = pathname.split("/").filter(Boolean).map((part) => {
+    try {
+      return decodeURIComponent(part);
+    } catch {
+      return part;
+    }
+  });
+  const activeContext = routeParts[0] === "c" ? routeParts[1] : undefined;
+  const activeService = routeParts[0] === "c" ? routeParts[2] : undefined;
 
   // The schema modules. Nothing at all when the estate has never published a
   // proto, which is what keeps the band from appearing empty.
@@ -432,7 +444,11 @@ export function Sidebar({
             ) : null}
             {contexts.map(({ context, services }) => {
               const ckey = `c:${context.id}`;
-              const copen = isOpen(ckey, true);
+              // The current branch opens itself; the rest begin folded. This
+              // keeps the estate visible as a list of contexts instead of a
+              // wall of every service, while an explicit reader choice still
+              // wins through `collapsed`.
+              const copen = isOpen(ckey, context.id === activeContext);
               const unresolved = contextStats(context).unresolved;
               return (
                 <div key={context.id}>
@@ -440,7 +456,7 @@ export function Sidebar({
                     to={paths.context(context.id)}
                     depth={0}
                     open={copen}
-                    onToggle={() => toggle(ckey, true)}
+                    onToggle={() => toggle(ckey, context.id === activeContext)}
                     label={`context ${context.id}`}
                     selId={context.id}
                     end={
@@ -488,14 +504,24 @@ export function Sidebar({
                     {services.map(
                         ({ service, aggregates, endpoints, stores }) => {
                           const skey = `s:${service.id}`;
-                          const sopen = isOpen(skey, true);
+                          const sopen = isOpen(
+                            skey,
+                            context.id === activeContext &&
+                              service.slug === activeService,
+                          );
                           return (
                             <div key={service.id}>
                               <Branch
                                 to={paths.service(context.id, service.slug)}
                                 depth={1}
                                 open={sopen}
-                                onToggle={() => toggle(skey, true)}
+                                onToggle={() =>
+                                  toggle(
+                                    skey,
+                                    context.id === activeContext &&
+                                      service.slug === activeService,
+                                  )
+                                }
                                 label={`service ${service.id}`}
                                 selId={service.id}
                               >

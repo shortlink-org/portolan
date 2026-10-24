@@ -33,6 +33,8 @@ import { selectionHash } from "../selection/hash";
 import { selectionFor } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
 import { CatIllustration } from "../components/CatIllustration";
+import { architectureQuestion } from "../lib/architecture-questions";
+import { paths } from "../routes";
 
 const ITEMS = paletteItems(catalog);
 
@@ -191,7 +193,16 @@ export function CommandPalette({
   const setSelection = useSelectionStore((s) => s.set);
 
   const draftItems = useDraftPaletteItems();
-  const result = useMemo(() => search([...draftItems, ...ITEMS], open ? query : ""), [draftItems, open, query]);
+  const indexedItems = useMemo(() => [...draftItems, ...ITEMS], [draftItems]);
+  const baseResult = useMemo(
+    () => search(indexedItems, open ? query : ""),
+    [indexedItems, open, query],
+  );
+  const question = useMemo(
+    () => (open ? architectureQuestion(indexedItems, query) : null),
+    [indexedItems, open, query],
+  );
+  const result = question?.result ?? baseResult;
   const results = open ? result.hits : [];
 
   // Under an empty input: where the reader has been and what they pinned,
@@ -204,9 +215,11 @@ export function CommandPalette({
     const found = recentSections(visits, pins, ITEMS, location.pathname);
     return found.length > 0 ? found : null;
   }, [open, query, visits, pins, location.pathname]);
-  const shown = sections
-    ? sections.reduce((n, s) => n + s.hits.length, 0)
-    : results.length;
+  const shown = question?.action
+    ? 1
+    : sections
+      ? sections.reduce((n, s) => n + s.hits.length, 0)
+      : results.length;
 
   const close = (): void => {
     onClose();
@@ -274,14 +287,52 @@ export function CommandPalette({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="jump to anything — or narrow with e: vo: ent: agg: cmd: q:"
+            placeholder="Search names and routes, or ask “who calls checkout?”"
             spellCheck={false}
             aria-label="Search the catalog"
             className="glow mono w-full shrink-0 border-b bg-transparent px-4 py-3 text-sm outline-none border-line placeholder:text-muted"
           />
 
+          {query.trim() === "" ? (
+            <div className="flex shrink-0 flex-wrap gap-1.5 border-b px-4 py-2 border-line">
+              {([
+                ["Who calls a service?", "who calls "],
+                ["Where does it run?", "where is "],
+                ["What does it publish?", "what does "],
+                ["What publishes an event?", "what publishes "],
+              ] as const).map(([label, value]) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="tbtn"
+                  onClick={() => {
+                    setQuery(value);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="tbtn"
+                onClick={() => {
+                  close();
+                  navigate(paths.problems());
+                }}
+              >
+                Unresolved relationships
+              </button>
+            </div>
+          ) : null}
+
           <div className="mono flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b px-4 py-2 border-line text-muted">
-            {result.kind ? (
+            {question ? (
+              <>
+                <span>Answering</span>
+                <span className="text-ink">{question.label}</span>
+              </>
+            ) : result.kind ? (
               <>
                 <span>only</span>
                 <span
@@ -318,7 +369,24 @@ export function CommandPalette({
             )}
           </div>
 
-          {shown === 0 ? (
+          {question?.action ? (
+            <div className="p-3">
+              <button
+                type="button"
+                autoFocus={false}
+                className="row w-full text-left"
+                onClick={() => {
+                  const path = question.action?.path;
+                  if (!path) return;
+                  close();
+                  navigate(path);
+                }}
+              >
+                <span className="font-medium text-ink">{question.action.label}</span>
+                <span className="mono ml-auto text-accent">open →</span>
+              </button>
+            </div>
+          ) : shown === 0 ? (
             <div className="cat-search-empty glow">
               <CatIllustration scene="search" className="cat-search-illustration" />
               <div className="mono">

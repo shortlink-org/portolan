@@ -630,6 +630,56 @@
   .card .card-link:focus-visible {
     outline: none;
   }
+  /* Overview facts are one instrument, not four unrelated destinations.
+     The internal rules preserve scan alignment while the outside reads as a
+     single answer; on a phone the same four facts become a balanced 2x2. */
+  .overview-health-metric:nth-child(even) {
+    border-left: 1px solid var(--border);
+  }
+  .overview-health-metric:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+  @media (min-width: 640px) {
+    .overview-health-metric:nth-child(n) {
+      border-top: 0;
+      border-left: 1px solid var(--border);
+    }
+    .overview-health-metric:first-child {
+      border-left: 0;
+    }
+  }
+  .service-nav-item,
+  .service-nav-select {
+    position: relative;
+    flex: none;
+    min-height: 36px;
+    padding: 8px 12px;
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+  .service-nav-item[aria-current="page"],
+  .service-nav-select[data-active] {
+    color: var(--fg);
+  }
+  .service-nav-item[aria-current="page"]::after,
+  .service-nav-select[data-active]::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    content: "";
+  }
+  .service-nav-select select {
+    appearance: auto;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    outline: none;
+  }
   .row {
     @apply flex items-center gap-3 rounded-control border border-line px-3 py-2;
     min-height: var(--row-h);

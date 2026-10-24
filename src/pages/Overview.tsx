@@ -31,6 +31,7 @@ import {
   ClassificationBadge,
   ContextPill,
 } from "../components/primitives";
+import { overviewFinding } from "./overview-summary";
 
 /** How many problems the overview lists before pointing at the page that lists them all. */
 const OVERVIEW_PROBLEMS = 4;
@@ -66,26 +67,28 @@ function HealthMetric({
   unit,
   to,
   problem = false,
+  action,
 }: {
   value: number;
   unit: string;
   to: string;
   problem?: boolean;
+  action?: string;
 }) {
   const shown = useCountUp(value);
   return (
     <Link
       to={to}
-      className="group flex min-w-0 items-baseline gap-2 rounded-card border border-line bg-canvas px-3 py-2 shadow-xs transition-colors hover:bg-surface hover:border-line-strong"
-      title={`Open ${plural(value, unit)}`}
+      className="overview-health-metric group flex min-w-0 items-baseline gap-2 px-3 py-2.5 transition-colors hover:bg-surface"
+      title={action ?? `Open ${plural(value, unit)}`}
     >
       <span
         className={`tnum text-lg font-semibold ${problem && value > 0 ? "text-unresolved" : "text-ink"}`}
       >
         {shown}
       </span>
-      <span className="mono truncate text-muted group-hover:text-ink">
-        {plural(value, unit)}
+      <span className="truncate text-sm text-muted group-hover:text-ink">
+        {action ?? plural(value, unit)}
       </span>
     </Link>
   );
@@ -138,7 +141,13 @@ export function Overview() {
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold">Architecture overview</h1>
           <p className="text-muted">
-            the chart is drawn from measurements; the code is the territory
+            {overviewFinding({
+              contexts: catalog.contexts.length,
+              services,
+              flows: catalog.flows.length,
+              problems: issueCount,
+              errors: errorCount,
+            })}
           </p>
         </div>
         {/* The catalog's own provenance, not the app's: the top bar carries
@@ -149,9 +158,20 @@ export function Overview() {
       </div>
 
       <div
-        className="mt-3 grid grid-cols-2 gap-grid sm:grid-cols-4"
+        className="mt-4 grid grid-cols-2 overflow-hidden rounded-card border border-line bg-canvas sm:grid-cols-4"
         aria-label="Catalog health"
       >
+        <HealthMetric
+          value={issueCount}
+          unit="problem"
+          to={paths.problems()}
+          problem
+          action={
+            issueCount > 0
+              ? `Review ${plural(issueCount, "problem")}`
+              : "No catalog problems"
+          }
+        />
         <HealthMetric
           value={catalog.contexts.length}
           unit="context"
@@ -166,12 +186,6 @@ export function Overview() {
           value={catalog.flows.length}
           unit="flow"
           to={paths.flows()}
-        />
-        <HealthMetric
-          value={issueCount}
-          unit="problem"
-          to={issueCount > 0 ? `#${OVERVIEW_ANCHOR.problems}` : paths.problems()}
-          problem
         />
       </div>
 
@@ -204,7 +218,7 @@ export function Overview() {
               ? profileContainersViewId(activeCatalogProfile.id)
               : profileLandscapeViewId(activeCatalogProfile.id)
           }
-          height={phone ? 320 : level === 2 ? 660 : 580}
+          height={phone ? 300 : level === 2 ? 620 : 480}
           controls={phone}
           fitViewPadding={{ x: 8, y: 8 }}
         />

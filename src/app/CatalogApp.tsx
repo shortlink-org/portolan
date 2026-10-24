@@ -421,6 +421,15 @@ function Shell() {
   const toggleDetail = useUiStore((s) => s.toggleDetail);
   const revealNonce = useUiStore((s) => s.revealNonce);
 
+  // A direct visit to a heavy route used to fetch its page first and only
+  // discover the diagram import after that page rendered. Start the route's
+  // whole presentation set together: the shell and its useful text still
+  // paint first, while the C4 bundle downloads beside the page chunk instead
+  // of behind it.
+  useEffect(() => {
+    preloadPage(location.pathname);
+  }, [location.pathname]);
+
   // Keep the selected catalog shareable even though most route builders do
   // not know about presentation state. Changing the profile itself reloads
   // the bundle; ordinary navigation only restores its URL marker.

@@ -33,7 +33,7 @@ import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
-import { TabButton, TabCount, TabRow } from "../components/TabRow";
+import { TabButton, TabCount } from "../components/TabRow";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
@@ -74,6 +74,11 @@ import { storesOfService } from "../lib/data-model";
 import { ErCanvas } from "../er/ErCanvas";
 import { StoreHeader } from "../er/StoreHeader";
 import { RedisSchema } from "../er/RedisSchema";
+import { usePhone } from "../app/responsive";
+import {
+  leadingMarkdownSummary,
+  stripLeadingMarkdownIdentity,
+} from "../lib/markdown-identity";
 
 const TABS = [
   "overview",
@@ -95,6 +100,136 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number];
 type InfrastructureView = "deployment" | "routing";
+
+const INTERFACE_TABS = ["provides", "spec", "consumes", "bus"] as const;
+type InterfaceTab = (typeof INTERFACE_TABS)[number];
+
+function isInterfaceTab(tab: Tab): tab is InterfaceTab {
+  return (INTERFACE_TABS as readonly string[]).includes(tab);
+}
+
+const TAB_LABEL: Record<Tab, string> = {
+  overview: "Overview",
+  provides: "Provides",
+  spec: "Spec",
+  consumes: "Integrations",
+  bus: "Bus",
+  data: "Data",
+  flows: "Flows",
+  decisions: "Decisions",
+};
+
+function ServiceNavigation({
+  tab,
+  counts,
+  onTab,
+  compact = false,
+}: {
+  tab: Tab;
+  counts: Record<Tab, number | null>;
+  onTab: (tab: Tab) => void;
+  compact?: boolean;
+}) {
+  const direct = ["overview", "data", "flows", "decisions"] as const;
+  if (compact) {
+    return (
+      <nav
+        aria-label="Service sections"
+        className="service-nav mt-4 grid grid-cols-[auto_1fr] border-b border-line"
+      >
+        <button
+          type="button"
+          aria-current={tab === "overview" ? "page" : undefined}
+          onClick={() => onTab("overview")}
+          className="service-nav-item"
+        >
+          Overview
+        </button>
+        <label className="service-nav-select" data-active={tab !== "overview" ? "" : undefined}>
+          <span className="sr-only">Service section</span>
+          <select
+            aria-label="Service section"
+            value={tab === "overview" ? "" : tab}
+            onChange={(event) => {
+              if (isTab(event.target.value)) onTab(event.target.value);
+            }}
+            className="w-full"
+          >
+            <option value="">Explore service…</option>
+            <optgroup label="Interfaces">
+              {INTERFACE_TABS.map((item) => (
+                <option key={item} value={item}>
+                  {TAB_LABEL[item]}{counts[item] === null ? "" : ` (${counts[item]})`}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Architecture">
+              {direct.slice(1).map((item) => (
+                <option key={item} value={item}>
+                  {TAB_LABEL[item]}{counts[item] === null ? "" : ` (${counts[item]})`}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+        </label>
+      </nav>
+    );
+  }
+  return (
+    <nav
+      aria-label="Service sections"
+      className="service-nav mt-4 flex min-w-0 items-center gap-1 overflow-x-auto border-b border-line"
+    >
+      {direct.slice(0, 1).map((item) => (
+        <button
+          key={item}
+          type="button"
+          aria-current={tab === item ? "page" : undefined}
+          onClick={() => onTab(item)}
+          className="service-nav-item"
+        >
+          {TAB_LABEL[item]}
+        </button>
+      ))}
+      <label
+        className="service-nav-select"
+        data-active={isInterfaceTab(tab) ? "" : undefined}
+      >
+        <span className="sr-only">Interface section</span>
+        <select
+          aria-label="Interface section"
+          value={isInterfaceTab(tab) ? tab : ""}
+          onChange={(event) => {
+            const next = event.target.value;
+            if ((INTERFACE_TABS as readonly string[]).includes(next)) {
+              onTab(next as InterfaceTab);
+            }
+          }}
+        >
+          <option value="">Interfaces</option>
+          {INTERFACE_TABS.map((item) => (
+            <option key={item} value={item}>
+              {TAB_LABEL[item]}
+              {counts[item] === null ? "" : ` (${counts[item]})`}
+            </option>
+          ))}
+        </select>
+      </label>
+      {direct.slice(1).map((item) => (
+        <button
+          key={item}
+          type="button"
+          aria-current={tab === item ? "page" : undefined}
+          onClick={() => onTab(item)}
+          className="service-nav-item"
+        >
+          {TAB_LABEL[item]}
+          {counts[item] !== null ? <TabCount>{counts[item]}</TabCount> : null}
+        </button>
+      ))}
+    </nav>
+  );
+}
 
 function isTab(value: string | null): value is Tab {
   return value !== null && (TABS as readonly string[]).includes(value);
@@ -129,6 +264,7 @@ function InfrastructureSwitch({
 }
 
 export function ServicePage() {
+  const phone = usePhone();
   const { context: contextId, service: serviceSlug } = useParams();
   const [params, setParams] = useSearchParams();
   const [showRetired, setShowRetired] = useState(false);
@@ -214,6 +350,8 @@ export function ServicePage() {
     ...(pickedService && pickedDraft ? draftIntegrationGroups(service, pickedService, pickedDraft.draft.branch) : []),
     ...integrationsFor(service, catalog),
   ];
+  const summary = leadingMarkdownSummary(service.readme, service.name);
+  const readme = stripLeadingMarkdownIdentity(service.readme, service.name, summary ?? undefined);
 
   const counts: Record<Tab, number | null> = {
     overview: null,
@@ -225,6 +363,64 @@ export function ServicePage() {
     flows: flows.length,
     decisions: adrs.length + rfcs.length,
   };
+  const setTab = (next: Tab) =>
+    setParams(next === "overview" ? {} : { tab: next }, { replace: true });
+
+  const serviceMeta = (
+    <div className="mt-3 grid max-w-table gap-2 text-sm">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="w-14 shrink-0 text-xs text-muted">Source</span>
+        <Ident value={service.repo}>{middleTruncate(service.repo, 32)}</Ident>
+        <Ident value={service.path}>{middleTruncate(service.path, 32)}</Ident>
+        {tree ? (
+          <a
+            href={tree}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-control text-accent hover:underline"
+            title="Open the service's directory on the forge, at the built commit"
+          >
+            open ↗
+          </a>
+        ) : null}
+        <DocsLinks name={service.name} />
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="w-14 shrink-0 text-xs text-muted">Details</span>
+        <WorkItems catalog={catalog} target={{ kind: "service", id: service.id }} />
+        {owners.length > 0 ? (
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-muted">owned by</span>
+            {owners.map((handle) => (
+              <Ident key={handle} value={handle}>
+                {middleTruncate(handle, 28)}
+              </Ident>
+            ))}
+          </span>
+        ) : null}
+        {technologiesOf(service).map((technology) => {
+          const glyph = techGlyph(technology);
+          return (
+            <span key={technology} className="chip">
+              {glyph ? <TechIcon glyph={glyph} /> : null}
+              {technology}
+            </span>
+          );
+        })}
+        {showDomain ? (
+          <a href={`#${SERVICE_ANCHOR.aggregates}`} className="rounded-control hover:text-ink">
+            <span className="tnum">{service.aggregates.length}</span>{" "}
+            {plural(service.aggregates.length, hasModelGroups ? "group" : "aggregate")}
+          </a>
+        ) : null}
+        {showDomain ? (
+          <a href={`#${SERVICE_ANCHOR.events}`} className="rounded-control hover:text-ink">
+            <span className="tnum">{events.length}</span> {plural(events.length, "event")}
+          </a>
+        ) : null}
+      </div>
+    </div>
+  );
 
   return (
     /* `manual`: the arrow keys move focus and ⏎ commits, rather than switching
@@ -238,7 +434,7 @@ export function ServicePage() {
       selectedIndex={TABS.indexOf(tab)}
       onChange={(at) => {
         const next = TABS[at] ?? "overview";
-        setParams(next === "overview" ? {} : { tab: next }, { replace: true });
+        setTab(next);
       }}
     >
       <PageHeader
@@ -265,89 +461,27 @@ export function ServicePage() {
           </>
         }
       >
-        <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
-          <Ident value={service.repo}>{middleTruncate(service.repo, 32)}</Ident>
-          <Ident value={service.path}>{middleTruncate(service.path, 32)}</Ident>
-          {tree ? (
-            <a
-              href={tree}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-control text-accent hover:underline"
-              title="Open the service's directory on the forge, at the built commit"
-            >
-              open ↗
-            </a>
-          ) : null}
-          <DocsLinks name={service.name} />
-          <WorkItems catalog={catalog} target={{ kind: "service", id: service.id }} />
-          {/* Who to ask, read out of CODEOWNERS. A handle is copied rather
-              than linked: it is what a reviewer types into a request, and a
-              link to a team page is a page most readers cannot open. */}
-          {owners.length > 0 ? (
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-muted">owned by</span>
-              {owners.map((handle) => (
-                <Ident key={handle} value={handle}>
-                  {middleTruncate(handle, 28)}
-                </Ident>
-              ))}
-            </span>
-          ) : null}
-          {/* What it is built with, read off its manifests. A brand that has
-              a mark shows it beside the name; one that does not is the name
-              alone, which is what every chip was before. */}
-          {technologiesOf(service).map((technology) => {
-            const glyph = techGlyph(technology);
-            return (
-              <span key={technology} className="chip">
-                {glyph ? <TechIcon glyph={glyph} /> : null}
-                {technology}
-              </span>
-            );
-          })}
-          <span aria-hidden className="h-4 w-px bg-line-strong" />
-          {/* Both counts land in the section that lists what they counted;
-              the tabs above do the same job for the other four. */}
-          {showDomain ? (
-            <a
-              href={`#${SERVICE_ANCHOR.aggregates}`}
-              className="rounded-control hover:text-ink"
-            >
-              <span className="tnum">{service.aggregates.length}</span>{" "}
-              {plural(service.aggregates.length, hasModelGroups ? "group" : "aggregate")}
-            </a>
-          ) : null}
-          {showDomain ? (
-            <a
-              href={`#${SERVICE_ANCHOR.events}`}
-              className="rounded-control hover:text-ink"
-            >
-              <span className="tnum">{events.length}</span>{" "}
-              {plural(events.length, "event")}
-            </a>
-          ) : null}
-        </div>
+        {summary ? <p className="mt-2 max-w-prose text-muted">{summary}</p> : null}
+        {phone ? (
+          <details className="service-details mt-3 rounded-control border border-line px-3 py-2">
+            <summary className="cursor-pointer text-sm text-muted">
+              Service details
+            </summary>
+            {serviceMeta}
+          </details>
+        ) : (
+          serviceMeta
+        )}
 
-        {/* Tabs keep the underline rather than becoming a segmented box: they
-            switch the page under them, they do not filter a list beside them.
-            The 2px rule is always drawn, transparent when idle, so selecting a
-            tab never lifts the row.
-
-            Eight of them do not fit a narrow window, so the row scrolls inside
-            `TabRow` and says at its edge that it does. */}
-        <div className="mt-4">
-          <TabRow active={tab}>
-            <TabList className="flex w-max gap-0">
-              {TABS.map((t) => (
-                <TabButton key={t}>
-                  {t === "consumes" ? "integrations" : t}
-                  {counts[t] !== null ? <TabCount>{counts[t]}</TabCount> : null}
-                </TabButton>
-              ))}
-            </TabList>
-          </TabRow>
-        </div>
+        {/* Keep every historic tab value registered, while the visible
+            navigation groups the four interface questions into one native
+            control. Old links continue to open the same panel. */}
+        <TabList className="hidden" aria-hidden="true">
+          {TABS.map((item) => (
+            <TabButton key={item}>{TAB_LABEL[item]}</TabButton>
+          ))}
+        </TabList>
+        <ServiceNavigation tab={tab} counts={counts} onTab={setTab} compact={phone} />
       </PageHeader>
       <DraftBanner id={service.id} className="mx-gutter mt-3" />
 
@@ -379,10 +513,13 @@ export function ServicePage() {
                   ? serviceInsideViewId(service)
                   : serviceViewId(service)
               }
-              height={300}
+              height={phone ? 260 : 280}
             />
-            <div className="mt-section" />
-            <Markdown mermaid sourceRoot={onDisk(service.path)}>{service.readme}</Markdown>
+            {readme ? (
+              <section className="mt-section max-w-prose">
+                <Markdown mermaid sourceRoot={onDisk(service.path)}>{readme}</Markdown>
+              </section>
+            ) : null}
             {/* What to type to build, test and run it. Under the README
                 rather than in a tab of its own: the list is short, it is the
                 first thing a reader new to the checkout wants, and the README

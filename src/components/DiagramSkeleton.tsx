@@ -66,6 +66,9 @@ export function DiagramSkeleton({ label = "laying out the diagram" }) {
       <span className="sr-only" role="status">
         {label}
       </span>
+      <span className="absolute bottom-3 left-3 rounded-control bg-canvas px-2 py-1 text-xs text-muted">
+        {label}
+      </span>
     </div>
   );
 }
