@@ -9,6 +9,10 @@ import { SectionTitle } from "../components/PageHeader";
 import { catalog, specificationHistory } from "../data";
 import { CommitLink } from "../components/CommitLink";
 import { NotFound } from "./NotFound";
+import { ChangedWith } from "../drafts/ChangedWith";
+import { DraftBanner } from "../drafts/DraftBanner";
+import { usePickedDraft } from "../drafts/store";
+import type { PathImpact } from "../lib/path-impact";
 
 function Artifact({ artifact }: { artifact: SpecArtifact }) {
   return (
@@ -81,7 +85,7 @@ function History({ entries }: { entries: SpecHistoryEntry[] }) {
   );
 }
 
-export function SpecDetailView({ spec, history = [] }: { spec: ChangeSpec; history?: SpecHistoryEntry[] }) {
+export function SpecDetailView({ spec, history = [], impact = [], draftId }: { spec: ChangeSpec; history?: SpecHistoryEntry[]; impact?: readonly PathImpact[]; draftId?: string }) {
   const done = spec.tasks.filter((task) => task.done).length;
   const narrative = spec.artifacts.filter(
     (artifact) => artifact.kind === "proposal" || artifact.kind === "design",
@@ -89,6 +93,7 @@ export function SpecDetailView({ spec, history = [] }: { spec: ChangeSpec; histo
 
   return (
     <div className="h-full overflow-y-auto">
+      {draftId ? <DraftBanner id={draftId} className="mx-gutter mt-3" /> : null}
       <header className="border-b border-line px-gutter py-5">
         <div className="label">{spec.format} specification</div>
         <div className="mt-1 flex flex-wrap items-baseline gap-3">
@@ -137,6 +142,8 @@ export function SpecDetailView({ spec, history = [] }: { spec: ChangeSpec; histo
         </div>
 
         <aside>
+          <ChangedWith impact={impact} />
+          {impact.length > 0 ? <div className="mt-section" /> : null}
           {history.length > 0 ? <><History entries={history} /><div className="mt-section" /></> : null}
           <SectionTitle right={<span className="mono text-muted">{done}/{spec.tasks.length}</span>}>
             Tasks
@@ -161,6 +168,9 @@ export function SpecDetailView({ spec, history = [] }: { spec: ChangeSpec; histo
 export function SpecDetail() {
   const { spec: slug } = useParams();
   const spec = (catalog.specs ?? []).find((candidate) => candidate.slug === slug);
+  const picked = usePickedDraft(spec?.id ?? "");
   useDocumentTitle(spec?.title ?? "Specification not found");
-  return spec ? <SpecDetailView spec={spec} history={specificationHistory[spec.id] ?? []} /> : <NotFound kind="specification" id={slug} />;
+  if (!spec) return <NotFound kind="specification" id={slug} />;
+  const shown = (picked?.entity.versions.branch ?? spec) as ChangeSpec;
+  return <SpecDetailView spec={shown} history={picked ? [] : specificationHistory[spec.id] ?? []} impact={picked?.draft.impact ?? []} draftId={spec.id} />;
 }

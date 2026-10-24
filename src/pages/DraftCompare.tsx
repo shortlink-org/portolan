@@ -7,6 +7,7 @@ import { Link, useParams } from "react-router";
 import { useDocumentTitle } from "../app/title";
 import { Empty } from "../components/PageHeader";
 import { EntityRows, NothingRead } from "../drafts/EntityRows";
+import { ChangedWith } from "../drafts/ChangedWith";
 import { draftKey, taskOf } from "../drafts/model";
 import type { DraftState } from "../drafts/model";
 import { counts, useDrafts } from "../drafts/store";
@@ -116,6 +117,8 @@ export function DraftCompare() {
             </button>
           ))}
         </div>
+
+        <ChangedWith impact={draft.impact ?? []} className="mt-section" />
 
         <div className="mt-4 flex flex-wrap items-center gap-3 border-b border-line pb-3">
           <label className="relative min-w-52 flex-1">

@@ -70,7 +70,7 @@ export function DraftEntityPage() {
     return (
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 px-gutter pt-3"><DraftOnlyStrip draft={draft} entity={entity} /></div>
-        <div className="min-h-0 flex-1"><SpecDetailView spec={(entity.versions.branch ?? entity.versions.base) as ChangeSpec} /></div>
+        <div className="min-h-0 flex-1"><SpecDetailView spec={(entity.versions.branch ?? entity.versions.base) as ChangeSpec} impact={draft.impact ?? []} /></div>
       </div>
     );
   }

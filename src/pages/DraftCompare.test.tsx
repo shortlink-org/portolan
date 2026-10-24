@@ -95,4 +95,12 @@ describe("DraftCompare", () => {
     });
     expect(text()).toContain("No entities of this draft match these filters.");
   });
+
+  it("shows changed paths as impact without claiming implementation", async () => {
+    const withImpact = { ...passkeys, impact: [{ path: "examples/auth/passkeys.go", repository: "github.com/acme/auth", level: "repository" as const, reason: "unmatched" as const }] };
+    const { text } = await compare([withImpact], "demo/passkeys");
+    expect(text()).toContain("Changed with");
+    expect(text()).toContain("examples/auth/passkeys.go");
+    expect(text()).toContain("impact, not implementation evidence");
+  });
 });

@@ -60,4 +60,13 @@ describe("spec pages", () => {
     expect(html).toContain("design.md");
     expect(html).toContain("Checklist progress is author intent");
   });
+
+  it("shows branch path impact as changed with rather than implementation evidence", () => {
+    const html = render(<SpecDetailView spec={spec} impact={[
+      { path: "src/auction.ts", repository: "github.com/acme/auction", level: "repository", reason: "unmatched" },
+    ]} />);
+    expect(html).toContain("Changed with");
+    expect(html).toContain("src/auction.ts");
+    expect(html).toContain("impact, not implementation evidence");
+  });
 });

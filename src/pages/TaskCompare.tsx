@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router";
 import { useDocumentTitle } from "../app/title";
 import { Empty } from "../components/PageHeader";
 import { EntityRows, NothingRead } from "../drafts/EntityRows";
+import { ChangedWith } from "../drafts/ChangedWith";
 import { draftKey, taskCounts, tasksOf } from "../drafts/model";
 import type { DraftState } from "../drafts/model";
 import { useDrafts } from "../drafts/store";
@@ -131,6 +132,7 @@ export function TaskCompare() {
               </span>
               <span className="mono ml-auto text-xs text-muted">saved {when(draft.savedAt)}</span>
             </div>
+            <ChangedWith impact={draft.impact ?? []} className="mt-4" />
             {draft.entities.length === 0 ? (
               <NothingRead draft={draft} />
             ) : entities.length === 0 ? (

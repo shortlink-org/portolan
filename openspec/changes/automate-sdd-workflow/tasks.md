@@ -16,7 +16,7 @@
 
 - [x] 3.1 Derive changed repository paths for the active comparison using the existing branch draft/history pipeline.
 - [x] 3.2 Resolve each path to the longest unique repository/service owner and preserve repository-level ambiguous or unmatched results.
-- [ ] 3.3 Present impact as `changed with` on specification and Changes pages without promoting it to implementation evidence.
+- [x] 3.3 Present impact as `changed with` on specification and Changes pages without promoting it to implementation evidence.
 
 ## 4. Exact links
 

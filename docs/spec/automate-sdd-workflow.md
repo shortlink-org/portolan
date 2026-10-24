@@ -6,7 +6,7 @@
 - **Format:** openspec
 - **Lifecycle:** implementing
 - **Source:** `openspec/changes/automate-sdd-workflow/proposal.md`
-- **Checklist:** 8 / 21
+- **Checklist:** 9 / 21
 
 > Checklist progress is author intent. It is not proof that code, runtime behavior, or the architecture catalog conforms to this specification.
 
@@ -260,7 +260,7 @@ Portolan SHALL label author intent, changed-with impact, declared architecture, 
 - [x] `2.3` Extend branch catalog diff with requirement, scenario, task and lifecycle changes using stable identifiers. — `openspec/changes/automate-sdd-workflow/tasks.md:13`
 - [x] `3.1` Derive changed repository paths for the active comparison using the existing branch draft/history pipeline. — `openspec/changes/automate-sdd-workflow/tasks.md:17`
 - [x] `3.2` Resolve each path to the longest unique repository/service owner and preserve repository-level ambiguous or unmatched results. — `openspec/changes/automate-sdd-workflow/tasks.md:18`
-- [ ] `3.3` Present impact as `changed with` on specification and Changes pages without promoting it to implementation evidence. — `openspec/changes/automate-sdd-workflow/tasks.md:19`
+- [x] `3.3` Present impact as `changed with` on specification and Changes pages without promoting it to implementation evidence. — `openspec/changes/automate-sdd-workflow/tasks.md:19`
 - [ ] `4.1` Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers. — `openspec/changes/automate-sdd-workflow/tasks.md:23`
 - [ ] `4.2` Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics. — `openspec/changes/automate-sdd-workflow/tasks.md:24`
 - [ ] `4.3` Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text. — `openspec/changes/automate-sdd-workflow/tasks.md:25`
