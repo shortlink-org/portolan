@@ -5,6 +5,7 @@ import { djangoAggregateProposals, saveDjangoAggregates } from "../../lib/local-
 import { localKeys, localStatusQuery } from "../../lib/queries";
 import type { WarningDiagnostic } from "../../lib/warnings";
 import { useToastStore } from "../../app/toast";
+import { Select } from "../../components/Select";
 
 const CANDIDATE_KEY = ["local", "django-aggregates"];
 
@@ -53,13 +54,13 @@ export function DjangoAggregateChoices({ warnings }: { warnings: WarningDiagnost
   return <div className="mt-3 space-y-3">
     <p className="text-muted">Choose the model that owns each application’s aggregate. Other concrete models become its entities.</p>
     {rows.map((row) => <div key={row.key} className="rounded-control border border-line p-3">
-      <label className="block font-medium text-ink">
+      <div className="block font-medium text-ink">
         Aggregate root for <span className="mono">{row.app}</span>
-        <select aria-label={`Aggregate root for ${row.app}`} className="mt-2 block w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink" value={choices[row.key] ?? ""} onChange={(event) => { setChoices({ ...choices, [row.key]: event.target.value }); setSaved(false); }} disabled={busy}>
-          <option value="">Choose a model…</option>
-          {row.models.map((model) => <option key={model.name} value={model.name}>{model.name}</option>)}
-        </select>
-      </label>
+        <Select label={`Aggregate root for ${row.app}`} appearance="detail" className="mt-2 w-full" value={choices[row.key] ?? ""} onChange={(value) => { setChoices({ ...choices, [row.key]: value }); setSaved(false); }} disabled={busy} options={[
+          { value: "", label: "Choose a model…" },
+          ...row.models.map((model) => ({ value: model.name, label: model.name })),
+        ]} />
+      </div>
       <details className="mt-2 text-muted">
         <summary className="cursor-pointer">{row.models.length} candidates · source locations</summary>
         <ul className="mono mt-2 space-y-1">{row.models.map((model) => <li key={model.name} className="break-words">{model.name} · {model.path}:{model.line}</li>)}</ul>

@@ -69,6 +69,7 @@
    the site's theme is - see the rule further down that says why. Listed here
    rather than repeating the values: one palette, declared once. */
 .spec-sheet {
+  color-scheme: light;
   --bg: #ffffff;
   --surface: #f7f8f9;
   --surface-2: #eef0f2;
@@ -215,6 +216,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --bg: #0c0e11;
   --surface: #14181d;
   --surface-2: #1b2027;
@@ -672,13 +674,16 @@
     background: var(--accent);
     content: "";
   }
-  .service-nav-select select {
+  .service-nav-select :is(select, .select-trigger) {
     appearance: auto;
+    min-height: 0;
+    padding: 0;
     border: 0;
     background: transparent;
     color: inherit;
     font: inherit;
     outline: none;
+    box-shadow: none;
   }
   .row {
     @apply flex items-center gap-3 rounded-control border border-line px-3 py-2;
@@ -756,6 +761,51 @@
     border-color: var(--accent);
     color: var(--accent);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  /* Selects are compact working controls, but the value, the disclosure and
+     the open panel still need to read as three distinct states in both
+     themes. The panel is custom because native macOS menus do not reliably
+     inherit an application's dark palette; native selects elsewhere inherit
+     the theme through `color-scheme` above. */
+  .select-trigger {
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
+  }
+  .select-trigger-open {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+  }
+  .select-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .select-options {
+    /* Headless UI's floating anchor writes z-index: 1 inline. A select can
+       open from inside another popover (the phone overflow menu), so its
+       list must sit on the next overlay level rather than under its parent. */
+    z-index: 60 !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  .select-option {
+    color: var(--fg-muted);
+  }
+  .select-option-focus {
+    color: var(--fg);
+    background: var(--surface-2);
+  }
+  .select-option[data-selected] {
+    color: var(--fg);
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  }
+  .select-option[data-disabled] {
+    cursor: not-allowed;
+    color: var(--fg-faint);
+    opacity: 0.6;
+  }
+  .select-group + .select-option {
+    margin-top: 2px;
   }
 
   /* The landing's primary action should feel like a control from the map,

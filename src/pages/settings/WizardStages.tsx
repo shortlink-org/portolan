@@ -7,6 +7,7 @@ import type { Discovery, LocalApiError, ProjectDraft, ProjectPlan, RunEvent } fr
 import { Empty } from "../../components/PageHeader";
 import { CatIllustration } from "../../components/CatIllustration";
 import { CommitLink } from "../../components/CommitLink";
+import { Select } from "../../components/Select";
 import type { ProjectSource } from "./setup";
 import { CAPABILITIES } from "./capabilities";
 import { FIELD, Field } from "./Field";
@@ -292,22 +293,25 @@ export function ConfigureStage({
         </div>
         <div className="grid gap-4 rounded-control border border-line p-4 sm:grid-cols-2">
           {catalog.contexts.length ? (
-            <label className="block sm:col-span-2">
+            <div className="block sm:col-span-2">
               <span className="label mb-1.5 block">start from</span>
-              <select
-                className={FIELD}
+              <Select
+                label="Start architecture placement from"
+                appearance="detail"
+                className="w-full"
                 value={catalog.contexts.some((context) => context.id === draft.group) ? draft.group : "__new__"}
-                onChange={(event) => {
-                  const existing = catalog.contexts.find((context) => context.id === event.target.value);
+                onChange={(value) => {
+                  const existing = catalog.contexts.find((context) => context.id === value);
                   setDraft(existing
                     ? { ...draft, group: existing.id, contextName: existing.name, contextSummary: existing.summary, classification: existing.classification || "supporting", groupKind: existing.kind || "bounded-context" }
                     : { ...draft, group: draft.id, contextName: draft.name, contextSummary: "", classification: "supporting", groupKind: "bounded-context" });
                 }}
-              >
-                <option value="__new__">Create a new context or group</option>
-                {catalog.contexts.map((context) => <option key={context.id} value={context.id}>Use {context.name} ({context.id})</option>)}
-              </select>
-            </label>
+                options={[
+                  { value: "__new__", label: "Create a new context or group" },
+                  ...catalog.contexts.map((context) => ({ value: context.id, label: `Use ${context.name} (${context.id})` })),
+                ]}
+              />
+            </div>
           ) : null}
           <Field label="bounded context / group" value={draft.group} onChange={(group) => setDraft({ ...draft, group })} placeholder="avia" />
           <Field label="context name" value={draft.contextName ?? ""} onChange={(contextName) => setDraft({ ...draft, contextName })} placeholder="Aviation" />
@@ -323,53 +327,52 @@ export function ConfigureStage({
           {splitsDeployables ? null : (
             <>
               <Field label="component slug" value={draft.component} onChange={(component) => setDraft({ ...draft, component })} placeholder="aviaadmin" />
-              <label className="block">
+              <div className="block">
                 <span className="label mb-1.5 block">component kind</span>
-                <select
-                  className={FIELD}
+                <Select
+                  label="Component kind"
+                  appearance="detail"
+                  className="w-full"
                   value={draft.componentKind ?? "application"}
-                  onChange={(event) => setDraft({ ...draft, componentKind: event.target.value as ProjectDraft["componentKind"] })}
-                >
-                  <option value="service">service</option>
-                  <option value="application">application</option>
-                  <option value="webapp">web app</option>
-                  <option value="worker">worker</option>
-                  <option value="job">job</option>
-                  <option value="function">function</option>
-                  <option value="cli">CLI</option>
-                  <option value="library">library</option>
-                  <option value="data-pipeline">data pipeline</option>
-                </select>
-              </label>
+                  onChange={(value) => setDraft({ ...draft, componentKind: value as ProjectDraft["componentKind"] })}
+                  options={[
+                    { value: "service", label: "service" }, { value: "application", label: "application" },
+                    { value: "webapp", label: "web app" }, { value: "worker", label: "worker" },
+                    { value: "job", label: "job" }, { value: "function", label: "function" },
+                    { value: "cli", label: "CLI" }, { value: "library", label: "library" },
+                    { value: "data-pipeline", label: "data pipeline" },
+                  ]}
+                />
+              </div>
             </>
           )}
-          <label className="block">
+          <div className="block">
             <span className="label mb-1.5 block">group kind</span>
-            <select
-              className={FIELD}
+            <Select
+              label="Group kind"
+              appearance="detail"
+              className="w-full"
               value={draft.groupKind ?? "system"}
-              onChange={(event) => setDraft({ ...draft, groupKind: event.target.value as ProjectDraft["groupKind"] })}
-            >
-              <option value="bounded-context">bounded context</option>
-              <option value="system">system</option>
-              <option value="product">product</option>
-              <option value="team">team</option>
-              <option value="namespace">namespace</option>
-            </select>
-          </label>
+              onChange={(value) => setDraft({ ...draft, groupKind: value as ProjectDraft["groupKind"] })}
+              options={[
+                { value: "bounded-context", label: "bounded context" }, { value: "system", label: "system" },
+                { value: "product", label: "product" }, { value: "team", label: "team" },
+                { value: "namespace", label: "namespace" },
+              ]}
+            />
+          </div>
           {draft.groupKind === "bounded-context" ? (
-            <label className="block">
+            <div className="block">
               <span className="label mb-1.5 block">classification</span>
-              <select
-                className={FIELD}
+              <Select
+                label="Bounded-context classification"
+                appearance="detail"
+                className="w-full"
                 value={draft.classification ?? "supporting"}
-                onChange={(event) => setDraft({ ...draft, classification: event.target.value as ProjectDraft["classification"] })}
-              >
-                <option value="core">core</option>
-                <option value="supporting">supporting</option>
-                <option value="generic">generic</option>
-              </select>
-            </label>
+                onChange={(value) => setDraft({ ...draft, classification: value as ProjectDraft["classification"] })}
+                options={[{ value: "core", label: "core" }, { value: "supporting", label: "supporting" }, { value: "generic", label: "generic" }]}
+              />
+            </div>
           ) : null}
           <p className="rounded-control bg-surface px-3 py-2 text-muted sm:col-span-2">
             <span className="font-medium text-ink">Tip:</span> {draft.groupKind === "bounded-context"

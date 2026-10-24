@@ -21,10 +21,10 @@ import { CapabilityEmpty, Empty } from "../components/PageHeader";
 import { ContextPill } from "../components/primitives";
 import { FlowTrigger } from "../components/FlowTrigger";
 import { paths } from "../routes";
+import { Select } from "../components/Select";
 
 type Sort = "contexts" | "name" | "steps" | "health";
 type Protocol = "all" | "rpc" | "event" | "call" | "response";
-const CONTROL = "mono rounded-control border border-line bg-canvas px-2 py-1 text-ink outline-none focus:border-accent";
 
 const SORTS: { key: Sort; label: string }[] = [
   { key: "contexts", label: "contexts crossed" },
@@ -139,37 +139,54 @@ export function FlowIndex() {
           className="ml-auto flex flex-wrap items-center gap-2"
           hidden={bare}
         >
-          <select
-            aria-label="Filter by owner"
-            className={CONTROL}
+          <Select
+            label="Filter by owner"
+            prefix="owner"
             value={owner ?? "all"}
-            onChange={(event) => setOwner(event.target.value === "all" ? null : event.target.value)}
-          >
-            <option value="all">all owners</option>
-            {catalog.contexts.map((context) => (
-              <option key={context.id} value={context.id}>{context.id}</option>
-            ))}
-          </select>
-          <select aria-label="Filter by trigger" className={CONTROL} value={trigger} onChange={(event) => setTrigger(event.target.value)}>
-            <option value="all">all triggers</option>
-            <option value="missing">missing trigger</option>
-            {[...new Set(catalog.flows.flatMap((flow) => flow.trigger ? [flow.trigger.kind] : []))].sort().map((kind) => (
-              <option key={kind} value={kind}>{kind}</option>
-            ))}
-          </select>
-          <select aria-label="Filter by protocol" className={CONTROL} value={protocol} onChange={(event) => setProtocol(event.target.value as Protocol)}>
-            <option value="all">all protocols</option>
-            <option value="rpc">rpc</option>
-            <option value="event">event</option>
-            <option value="call">internal call</option>
-            <option value="response">explicit response</option>
-          </select>
-          <select aria-label="Filter by verification" className={CONTROL} value={verification} onChange={(event) => setVerification(event.target.value as FlowHealth | "all")}>
-            <option value="all">all verification</option>
-            <option value="verified">verified</option>
-            <option value="declared">declared</option>
-            <option value="unresolved">unresolved</option>
-          </select>
+            onChange={(value) => setOwner(value === "all" ? null : value)}
+            options={[
+              { value: "all", label: "all" },
+              ...catalog.contexts.map((context) => ({ value: context.id, label: context.id })),
+            ]}
+          />
+          <Select
+            label="Filter by trigger"
+            prefix="trigger"
+            value={trigger}
+            onChange={setTrigger}
+            options={[
+              { value: "all", label: "all" },
+              { value: "missing", label: "missing" },
+              ...[...new Set(catalog.flows.flatMap((flow) => flow.trigger ? [flow.trigger.kind] : []))]
+                .sort()
+                .map((kind) => ({ value: kind, label: kind })),
+            ]}
+          />
+          <Select
+            label="Filter by protocol"
+            prefix="protocol"
+            value={protocol}
+            onChange={(value) => setProtocol(value as Protocol)}
+            options={[
+              { value: "all", label: "all" },
+              { value: "rpc", label: "rpc" },
+              { value: "event", label: "event" },
+              { value: "call", label: "internal call" },
+              { value: "response", label: "explicit response" },
+            ]}
+          />
+          <Select
+            label="Filter by verification"
+            prefix="verification"
+            value={verification}
+            onChange={(value) => setVerification(value as FlowHealth | "all")}
+            options={[
+              { value: "all", label: "all" },
+              { value: "verified", label: "verified" },
+              { value: "declared", label: "declared" },
+              { value: "unresolved", label: "unresolved" },
+            ]}
+          />
           {/* One filter over one list, so one border round it. A pressed
               member keeps its own context colour - that is the thing being
               filtered, and it must not collapse into a single accent. */}

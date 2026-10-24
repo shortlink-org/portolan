@@ -28,6 +28,7 @@ import { useChatAvailable } from "../chat/prefs";
 import { useChatUi } from "../chat/store";
 import { paths } from "../routes";
 import { activeCatalogProfile, catalogProfiles } from "../data";
+import { Select } from "../components/Select";
 
 export function TopBar({
   onOpenPalette,
@@ -171,31 +172,16 @@ function CatalogPicker() {
   if (catalogProfiles.length < 2) return null;
 
   return (
-    <label
-      className="mono flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2 py-1.5 text-muted hover:border-line-strong hover:text-ink"
+    <Select
+      label="Catalog profile"
       title="Catalog profile"
-    >
-      <Layers3 size={16} aria-hidden className="shrink-0" />
-      <span className="sr-only">Catalog</span>
-      <CatalogOptions className="max-w-36 bg-transparent text-ink outline-none" />
-    </label>
-  );
-}
-
-function CatalogOptions({ className }: { className: string }) {
-  return (
-    <select
-      aria-label="Catalog profile"
+      prefix={<Layers3 size={16} aria-hidden />}
       value={activeCatalogProfile.id}
-      onChange={(event) => changeCatalog(event.target.value)}
-      className={className}
-    >
-      {catalogProfiles.map((profile) => (
-        <option key={profile.id} value={profile.id}>
-          {profile.title}
-        </option>
-      ))}
-    </select>
+      onChange={changeCatalog}
+      className="max-w-48 shrink-0 px-2 py-1.5"
+      menuWidth={260}
+      options={catalogProfiles.map((profile) => ({ value: profile.id, label: profile.title }))}
+    />
   );
 }
 
@@ -338,11 +324,15 @@ function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
           <>
             <div className="label mt-1 mb-1 px-2">what is shown</div>
             {catalogProfiles.length > 1 ? (
-              <label className="mono flex min-h-10 w-full items-center gap-2 rounded-control px-2 text-muted hover:bg-surface hover:text-ink has-[select:focus-visible]:text-accent">
-                <Layers3 size={16} aria-hidden className="shrink-0" />
-                <span className="sr-only">Catalog</span>
-                <CatalogOptions className="min-w-0 flex-1 bg-transparent text-ink outline-none" />
-              </label>
+              <Select
+                label="Catalog profile"
+                prefix={<Layers3 size={16} aria-hidden />}
+                value={activeCatalogProfile.id}
+                onChange={changeCatalog}
+                className="min-h-10 w-full border-transparent px-2"
+                menuWidth={260}
+                options={catalogProfiles.map((profile) => ({ value: profile.id, label: profile.title }))}
+              />
             ) : null}
             <BranchSelect onChosen={() => close()} />
 

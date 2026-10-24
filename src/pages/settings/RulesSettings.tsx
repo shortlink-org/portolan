@@ -29,6 +29,7 @@ import { regraded, switched } from "../../lib/rule-entries";
 import { useProblemEvaluation } from "../../lib/use-problems";
 import { useRuleFile } from "../../lib/use-rule-file";
 import { paths } from "../../routes";
+import { Select } from "../../components/Select";
 
 const FIELD = "mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
 // A control that takes its own width: a filter beside other filters.
@@ -145,29 +146,49 @@ export function RulesSettings({ local }: { local: boolean }) {
             spellCheck={false}
           />
         </label>
-        <select aria-label="Filter rules by subject" className={CONTROL} value={over} onChange={(event) => setOver(event.target.value as RuleSubject | "all")}>
-          <option value="all">all subjects</option>
-          {SUBJECT_NAMES.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select aria-label="Filter rules by severity" className={CONTROL} value={severity} onChange={(event) => setSeverity(event.target.value as RuleSeverity | "all")}>
-          <option value="all">all severities</option>
-          <option value="error">error</option>
-          <option value="warning">warning</option>
-        </select>
-        <select aria-label="Filter rules by switch" className={CONTROL} value={state} onChange={(event) => setState(event.target.value as "all" | "on" | "off")}>
-          <option value="all">on and off</option>
-          <option value="on">on</option>
-          <option value="off">off</option>
-        </select>
-        <select aria-label="Filter rules by rows" className={CONTROL} value={rows} onChange={(event) => setRows(event.target.value as "all" | "with" | "without")}>
-          <option value="all">with and without rows</option>
-          <option value="with">with rows</option>
-          <option value="without">without rows</option>
-        </select>
+        <Select
+          label="Filter rules by subject"
+          prefix="subject"
+          value={over}
+          onChange={(value) => setOver(value as RuleSubject | "all")}
+          options={[
+            { value: "all", label: "all" },
+            ...SUBJECT_NAMES.map((name) => ({ value: name, label: name })),
+          ]}
+        />
+        <Select
+          label="Filter rules by severity"
+          prefix="severity"
+          value={severity}
+          onChange={(value) => setSeverity(value as RuleSeverity | "all")}
+          options={[
+            { value: "all", label: "all" },
+            { value: "error", label: "error" },
+            { value: "warning", label: "warning" },
+          ]}
+        />
+        <Select
+          label="Filter rules by switch"
+          prefix="switch"
+          value={state}
+          onChange={(value) => setState(value as "all" | "on" | "off")}
+          options={[
+            { value: "all", label: "on and off" },
+            { value: "on", label: "on" },
+            { value: "off", label: "off" },
+          ]}
+        />
+        <Select
+          label="Filter rules by rows"
+          prefix="rows"
+          value={rows}
+          onChange={(value) => setRows(value as "all" | "with" | "without")}
+          options={[
+            { value: "all", label: "with and without" },
+            { value: "with", label: "with" },
+            { value: "without", label: "without" },
+          ]}
+        />
         {filtered ? (
           <span className="mono ml-auto flex items-center gap-2 text-muted">
             <span>
@@ -396,10 +417,12 @@ function RuleRow({
               <dt>severity</dt>
               <dd>
                 {canWrite ? (
-                  <select aria-label={`Severity of ${rule.id}`} className={CONTROL} value={rule.severity} onChange={(event) => onSeverity(event.target.value as RuleSeverity)}>
-                    <option value="error">error</option>
-                    <option value="warning">warning</option>
-                  </select>
+                  <Select
+                    label={`Severity of ${rule.id}`}
+                    value={rule.severity}
+                    onChange={(value) => onSeverity(value as RuleSeverity)}
+                    options={[{ value: "error", label: "error" }, { value: "warning", label: "warning" }]}
+                  />
                 ) : (
                   <span className={SEVERITY_CHIP[rule.severity]}>{rule.severity}</span>
                 )}

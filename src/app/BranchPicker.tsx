@@ -17,6 +17,7 @@ import { forgetComparison, rememberComparison } from "../lib/comparison-memory";
 import { forgeRefsQuery } from "../lib/queries";
 import { paths } from "../routes";
 import { useForgeAccess } from "./forge-access";
+import { Select } from "../components/Select";
 
 const NO_REFS: ForgeRef[] = [];
 
@@ -164,44 +165,27 @@ function useBranchChoice() {
   return { current, repo, loading, error, branches, tags, selected, comparing, compareHref, choose };
 }
 
-/**
- * The phone's form of the picker: a native select in the overflow menu. A tap
- * opens the system list, which fits a phone better than a listbox anchored
- * under a 40px bar, and the choice opens the changes route as the listbox does.
- */
+/** The phone's branch picker inside the overflow menu. */
 export function BranchSelect({ onChosen }: { onChosen?: () => void }) {
   const { current, repo, loading, error, branches, tags, selected, choose } = useBranchChoice();
 
   return (
-    <label className="mono flex min-h-10 w-full items-center gap-2 rounded-control px-2 text-muted hover:bg-surface hover:text-ink has-[select:focus-visible]:text-accent">
-      <GitBranch size={16} aria-hidden className="shrink-0" />
-      <span className="sr-only">Compare with</span>
-      <select
-        aria-label={`Compare ${current} with a branch or tag`}
+    <div className="flex w-full items-center gap-2">
+      <Select
+        label={`Compare ${current} with a branch or tag`}
+        prefix={<GitBranch size={16} aria-hidden />}
         value={selected}
-        onChange={(event) => {
-          choose(event.target.value);
+        onChange={(value) => {
+          choose(value);
           onChosen?.();
         }}
-        className="min-w-0 flex-1 bg-transparent text-ink outline-none"
-      >
-        <optgroup label={`compare ${current} with`}>
-          {branches.map((ref) => (
-            <option key={`branch:${ref.name}`} value={ref.name}>
-              {ref.name === current ? `${ref.name} (current)` : ref.name}
-            </option>
-          ))}
-        </optgroup>
-        {tags.length > 0 ? (
-          <optgroup label="tags">
-            {tags.map((ref) => (
-              <option key={`tag:${ref.name}`} value={ref.name}>
-                {ref.name}
-              </option>
-            ))}
-          </optgroup>
-        ) : null}
-      </select>
+        className="min-h-10 min-w-0 flex-1 border-transparent px-2"
+        menuWidth={280}
+        options={[
+          ...branches.map((ref) => ({ value: ref.name, label: ref.name === current ? `${ref.name} (current)` : ref.name, group: `compare ${current} with` })),
+          ...tags.map((ref) => ({ value: ref.name, label: ref.name, group: "tags" })),
+        ]}
+      />
       {loading ? (
         <LoaderCircle size={13} aria-label="Loading branches" className="shrink-0 animate-spin" />
       ) : error || !repo ? (
@@ -209,6 +193,6 @@ export function BranchSelect({ onChosen }: { onChosen?: () => void }) {
           only {current}
         </span>
       ) : null}
-    </label>
+    </div>
   );
 }

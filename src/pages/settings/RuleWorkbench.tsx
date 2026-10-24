@@ -19,6 +19,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { Check, ChevronDown, ExternalLink, Trash2, X } from "lucide-react";
 import { catalog, index } from "../../data";
 import { KindIcon } from "../../components/kind";
+import { Select } from "../../components/Select";
 import { ICON_OF, nearPath } from "../../components/ProblemRow";
 import { Empty } from "../../components/PageHeader";
 import type { Problem } from "../../lib/derive";
@@ -280,19 +281,13 @@ function Workbench({
         <div className="flex flex-wrap items-center gap-2 text-md text-ink">
           <span>Flag every</span>
           {editable ? (
-            <select
-              aria-label="Subject"
-              className="mono rounded-control border border-line-strong bg-canvas px-2 py-1 text-ink outline-none focus:border-accent"
+            <Select
+              label="Subject"
               value={draft.over}
-              onChange={(event) => set("over", event.target.value as RuleSubject)}
+              onChange={(value) => set("over", value as RuleSubject)}
               title={SUBJECTS[draft.over].description}
-            >
-              {SUBJECT_NAMES.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+              options={SUBJECT_NAMES.map((name) => ({ value: name, label: name }))}
+            />
           ) : (
             <span className="mono inline-flex items-center gap-1.5 rounded-control border border-line px-2 py-1">
               <KindIcon kind={ICON_OF[draft.over]} size={12} /> {draft.over}

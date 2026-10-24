@@ -5,7 +5,7 @@ import { DjangoAggregateChoices } from "./DjangoAggregateChoices";
 import { djangoAggregateCandidates, djangoAggregateMessage } from "../../lib/django-aggregates";
 import { groupDiagnostics } from "../../lib/warnings";
 import type { WarningDiagnostic, WarningSeverity } from "../../lib/warnings";
-import { FIELD } from "./Field";
+import { Select } from "../../components/Select";
 
 export function WarningPanel({ diagnostics, compact = false }: { diagnostics: WarningDiagnostic[]; compact?: boolean }) {
   const groups = groupDiagnostics(diagnostics);
@@ -31,48 +31,38 @@ export function WarningPanel({ diagnostics, compact = false }: { diagnostics: Wa
         {suppressedCount ? <span className="chip status-verified">{suppressedCount} suppressed</span> : null}
         <div className="flex flex-wrap gap-2 sm:ml-auto">
           {plugins.length > 1 ? (
-            <select
-              aria-label="Filter warnings by plugin"
-              className={`${FIELD} w-auto py-1`}
+            <Select
+              label="Filter warnings by plugin"
+              prefix="plugin"
               value={plugin}
-              onChange={(event) => setPlugin(event.target.value)}
-            >
-              <option value="all">all plugins</option>
-              {plugins.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
+              onChange={setPlugin}
+              options={[{ value: "all", label: "all" }, ...plugins.map((name) => ({ value: name, label: name }))]}
+            />
           ) : null}
           {rules.length > 1 ? (
-            <select
-              aria-label="Filter warnings by rule"
-              className={`${FIELD} w-auto py-1`}
+            <Select
+              label="Filter warnings by rule"
+              prefix="rule"
               value={rule}
-              onChange={(event) => setRule(event.target.value)}
-            >
-              <option value="all">all rules</option>
-              {rules.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
+              onChange={setRule}
+              menuWidth={280}
+              options={[{ value: "all", label: "all" }, ...rules.map((name) => ({ value: name, label: name }))]}
+            />
           ) : null}
-          <select
-            aria-label="Filter warnings by severity"
-            className={`${FIELD} w-auto py-1`}
+          <Select
+            label="Filter warnings by severity"
+            prefix="severity"
             value={severity}
-            onChange={(event) => setSeverity(event.target.value as WarningSeverity | "all")}
-          >
-            <option value="all">all severities</option>
-            <option value="error">error</option>
-            <option value="warning">warning</option>
-            <option value="info">info</option>
-          </select>
-          <select
-            aria-label="Filter active or suppressed warnings"
-            className={`${FIELD} w-auto py-1`}
+            onChange={(value) => setSeverity(value as WarningSeverity | "all")}
+            options={[{ value: "all", label: "all" }, { value: "error", label: "error" }, { value: "warning", label: "warning" }, { value: "info", label: "info" }]}
+          />
+          <Select
+            label="Filter active or suppressed warnings"
+            prefix="visibility"
             value={visibility}
-            onChange={(event) => setVisibility(event.target.value as "active" | "suppressed" | "all")}
-          >
-            <option value="active">active</option>
-            <option value="suppressed">suppressed</option>
-            <option value="all">all</option>
-          </select>
+            onChange={(value) => setVisibility(value as "active" | "suppressed" | "all")}
+            options={[{ value: "active", label: "active" }, { value: "suppressed", label: "suppressed" }, { value: "all", label: "all" }]}
+          />
         </div>
       </div>
       {shown.length ? (

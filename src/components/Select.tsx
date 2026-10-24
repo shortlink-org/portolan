@@ -26,6 +26,7 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import { Check, ChevronDown } from "lucide-react";
+import { Fragment } from "react";
 import type { ReactNode } from "react";
 
 export interface SelectOption {
@@ -33,6 +34,9 @@ export interface SelectOption {
   label: string;
   /** Second line, for the options that need saying rather than naming. */
   note?: string;
+  /** Optional visual section heading, replacing a native optgroup. */
+  group?: string;
+  disabled?: boolean;
 }
 
 export function Select({
@@ -75,12 +79,12 @@ export function Select({
         title={title ?? label}
         className={({ open }) =>
           detailed
-            ? `group flex items-center justify-between gap-2 rounded-control border bg-canvas px-3 py-1.5 shadow-xs outline-none transition-colors ${
+            ? `select-trigger group flex min-h-10 items-center justify-between gap-2 rounded-control border bg-canvas px-3 py-1.5 outline-none transition-colors ${
               open
-                ? "border-accent text-ink"
-                : "border-line text-muted hover:border-line-strong hover:bg-surface"
+                ? "select-trigger-open border-accent text-ink"
+                : "border-line-strong text-muted hover:bg-surface hover:text-ink"
             } ${className}`
-            : `tbtn justify-between gap-1.5 ${open ? "tbtn-on" : ""} ${className}`
+            : `select-trigger tbtn min-h-8 justify-between gap-1.5 bg-canvas ${open ? "select-trigger-open tbtn-on" : ""} ${className}`
         }
       >
         {({ open }) => (
@@ -104,53 +108,64 @@ export function Select({
            letting it hang off the page. */
         anchor={{ to: "bottom start", gap: 4, padding: 8 }}
         className={detailed
-          ? "palette-in z-50 max-h-72 overflow-y-auto rounded-card border bg-canvas p-1.5 border-line-strong shadow-md focus:outline-none"
-          : "palette-in z-50 max-h-64 overflow-y-auto rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"}
-        style={{ ...(menuWidth ? { width: menuWidth } : { minWidth: 160 }), maxWidth: "calc(100vw - 1rem)" }}
+          ? "select-options palette-in z-[60] max-h-72 overflow-y-auto rounded-card border bg-canvas p-1.5 border-line-strong shadow-md focus:outline-none"
+          : "select-options palette-in z-[60] max-h-64 overflow-y-auto rounded-control border bg-canvas p-1 border-line-strong shadow-md focus:outline-none"}
+        style={{
+          width: menuWidth ?? "max(var(--button-width), 10rem)",
+          maxWidth: "calc(100vw - 1rem)",
+        }}
       >
-        {options.map((option) => (
-          <ListboxOption
-            key={option.value}
-            value={option.value}
-            className={({ focus }) =>
-              detailed
-                ? `mono flex cursor-pointer items-start gap-2.5 rounded-control px-2.5 py-2 outline-none ${focus ? "bg-raised" : ""}`
-                : `mono flex cursor-pointer items-start gap-2 px-2 py-1 ${focus ? "bg-raised" : ""}`
-            }
-          >
-            {({ selected: on }) => (
-              <>
-                {detailed ? (
-                  <span
-                    aria-hidden
-                    className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                      on ? "border-accent bg-accent" : "border-line-strong text-transparent"
-                    }`}
-                  >
-                    <Check size={10} strokeWidth={3} style={on ? { color: "var(--bg)" } : undefined} />
-                  </span>
-                ) : (
-                  <Check
-                    size={12}
-                    aria-hidden
-                    className="mt-0.5 shrink-0"
-                    style={{ opacity: on ? 1 : 0, color: "var(--accent)" }}
-                  />
-                )}
-                <span
-                  className="min-w-0"
-                  style={on ? { color: "var(--accent)" } : undefined}
-                >
-                  <span className="block truncate">{option.label}</span>
-                  {option.note ? (
-                    <span className={`block text-muted ${detailed ? "whitespace-normal" : "truncate"}`}>
-                      {option.note}
+        {options.map((option, index) => (
+          <Fragment key={`${option.group ?? ""}:${option.value}:${index}`}>
+            {option.group && option.group !== options[index - 1]?.group ? (
+              <div className="select-group label px-2 pb-1 pt-2 text-faint" role="presentation">
+                {option.group}
+              </div>
+            ) : null}
+            <ListboxOption
+              value={option.value}
+              disabled={option.disabled}
+              title={option.label}
+              className={({ focus }) =>
+                detailed
+                  ? `select-option mono flex min-h-11 cursor-pointer items-start gap-2.5 rounded-control px-2.5 py-2 outline-none ${focus ? "select-option-focus" : ""}`
+                  : `select-option mono flex min-h-8 cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 outline-none ${focus ? "select-option-focus" : ""}`
+              }
+            >
+              {({ selected: on }) => (
+                <>
+                  {detailed ? (
+                    <span
+                      aria-hidden
+                      className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                        on ? "border-accent bg-accent" : "border-line-strong text-transparent"
+                      }`}
+                    >
+                      <Check size={10} strokeWidth={3} style={on ? { color: "var(--bg)" } : undefined} />
                     </span>
-                  ) : null}
-                </span>
-              </>
-            )}
-          </ListboxOption>
+                  ) : (
+                    <Check
+                      size={12}
+                      aria-hidden
+                      className="mt-0.5 shrink-0"
+                      style={{ opacity: on ? 1 : 0, color: "var(--accent)" }}
+                    />
+                  )}
+                  <span
+                    className="min-w-0"
+                    style={on ? { color: "var(--accent)" } : undefined}
+                  >
+                    <span className="block truncate">{option.label}</span>
+                    {option.note ? (
+                      <span className={`block text-muted ${detailed ? "whitespace-normal" : "truncate"}`}>
+                        {option.note}
+                      </span>
+                    ) : null}
+                  </span>
+                </>
+              )}
+            </ListboxOption>
+          </Fragment>
         ))}
       </ListboxOptions>
     </Listbox>

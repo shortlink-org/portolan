@@ -27,6 +27,7 @@ import { paths, servicePath } from "../routes";
 import { CatEmptyState } from "../components/CatIllustration";
 import { KindIcon } from "../components/kind";
 import { ICON_OF, ProblemRow } from "../components/ProblemRow";
+import { Select } from "../components/Select";
 
 const CONTROL = "mono rounded-control border border-line bg-canvas px-2.5 py-1 text-ink outline-none focus:border-accent";
 const FIELD = "mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
@@ -163,23 +164,29 @@ export function Problems() {
               </span>
             ) : null}
             {rulesShown.length > 1 ? (
-              <select aria-label="Filter by rule" className={CONTROL} value={rulesShown.some((candidate) => candidate.id === rule) ? rule : "all"} onChange={(event) => set("rule", event.target.value)}>
-                <option value="all">all rules</option>
-                {rulesShown.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.title}
-                  </option>
-                ))}
-              </select>
+              <Select
+                label="Filter by rule"
+                prefix="rule"
+                value={rulesShown.some((candidate) => candidate.id === rule) ? rule : "all"}
+                onChange={(value) => set("rule", value)}
+                menuWidth={320}
+                options={[
+                  { value: "all", label: "all" },
+                  ...rulesShown.map((candidate) => ({ value: candidate.id, label: candidate.title })),
+                ]}
+              />
             ) : null}
-            <select aria-label="Filter by subject" className={CONTROL} value={over} onChange={(event) => set("subject", event.target.value)}>
-              <option value="all">all subjects</option>
-              {SUBJECT_NAMES.filter((name) => rulesShown.some((candidate) => candidate.over === name)).map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <Select
+              label="Filter by subject"
+              prefix="subject"
+              value={over}
+              onChange={(value) => set("subject", value)}
+              options={[
+                { value: "all", label: "all" },
+                ...SUBJECT_NAMES.filter((name) => rulesShown.some((candidate) => candidate.over === name))
+                  .map((name) => ({ value: name, label: name })),
+              ]}
+            />
             <div className="seg inline-flex" role="group" aria-label="Group by">
               <button type="button" aria-pressed={by === "rule"} className={by === "rule" ? "is-on" : ""} onClick={() => set("by", "rule")}>
                 by rule

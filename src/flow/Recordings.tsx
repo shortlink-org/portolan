@@ -17,6 +17,7 @@ import { Disc3, LoaderCircle, Upload } from "lucide-react";
 import { Link } from "react-router";
 import type { Flow, FlowExample } from "../catalog";
 import { Modal } from "../components/Overlay";
+import { Select } from "../components/Select";
 import { useToastStore } from "../app/toast";
 import { plural, relativeTime } from "../lib/format";
 import { startTraceTrial } from "../lib/local-api";
@@ -121,15 +122,17 @@ export function RecordingsChip({
             ) : local ? (
               <span className="ml-auto flex items-center gap-1.5">
                 {candidates.length > 1 && !project ? (
-                  <select
-                    className="mono rounded-control border border-line bg-canvas px-1 py-0.5 text-ink"
+                  <Select
+                    label="Project to keep the recording under"
+                    prefix="project"
+                    className="min-h-7 px-1 py-0.5"
                     value={chosenProject}
-                    onChange={(e) => setChosenProject(e.target.value)}
-                    aria-label="Project to keep the recording under"
-                  >
-                    <option value="">project…</option>
-                    {candidates.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                    onChange={setChosenProject}
+                    options={[
+                      { value: "", label: "choose…" },
+                      ...candidates.map((project) => ({ value: project.id, label: project.name })),
+                    ]}
+                  />
                 ) : null}
                 <button
                   type="button"

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useDocumentTitle } from "../app/title";
 import { Blank, CapabilityEmpty, Empty } from "../components/PageHeader";
+import { Select } from "../components/Select";
 import { relativeTime } from "../lib/format";
 import { useToastStore } from "../app/toast";
 import { BranchPicker, BranchPickerLoading } from "../drafts/BranchPicker";
@@ -319,24 +320,21 @@ function NewDraft() {
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1">
             <span className="label">project</span>
-            <select
+            <Select
+              label="Project"
+              appearance="detail"
               value={project}
               disabled={busy}
-              onChange={(event) => {
-                setProject(event.target.value);
+              onChange={(value) => {
+                setProject(value);
                 setBranch("");
               }}
-              className="mono rounded-control border border-line bg-canvas px-2 py-1.5 text-sm"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              className="min-w-44 text-sm"
+              options={projects.map((candidate) => ({ value: candidate.id, label: candidate.name }))}
+            />
+          </div>
           <BranchPicker key={project} choices={choices} value={choice} onChange={setBranch} disabled={busy} main={branches.main} now={now} />
           <button
             type="button"

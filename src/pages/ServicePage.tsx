@@ -33,6 +33,7 @@ import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
+import { Select } from "../components/Select";
 import { TabButton, TabCount } from "../components/TabRow";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
@@ -146,33 +147,22 @@ function ServiceNavigation({
         >
           Overview
         </button>
-        <label className="service-nav-select" data-active={tab !== "overview" ? "" : undefined}>
-          <span className="sr-only">Service section</span>
-          <select
-            aria-label="Service section"
+        <div className="service-nav-select" data-active={tab !== "overview" ? "" : undefined}>
+          <Select
+            label="Service section"
             value={tab === "overview" ? "" : tab}
-            onChange={(event) => {
-              if (isTab(event.target.value)) onTab(event.target.value);
+            onChange={(value) => {
+              if (isTab(value)) onTab(value);
             }}
             className="w-full"
-          >
-            <option value="">Explore service…</option>
-            <optgroup label="Interfaces">
-              {INTERFACE_TABS.map((item) => (
-                <option key={item} value={item}>
-                  {TAB_LABEL[item]}{counts[item] === null ? "" : ` (${counts[item]})`}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Architecture">
-              {direct.slice(1).map((item) => (
-                <option key={item} value={item}>
-                  {TAB_LABEL[item]}{counts[item] === null ? "" : ` (${counts[item]})`}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-        </label>
+            menuWidth={240}
+            options={[
+              { value: "", label: "Explore service…" },
+              ...INTERFACE_TABS.map((item) => ({ value: item, label: `${TAB_LABEL[item]}${counts[item] === null ? "" : ` (${counts[item]})`}`, group: "Interfaces" })),
+              ...direct.slice(1).map((item) => ({ value: item, label: `${TAB_LABEL[item]}${counts[item] === null ? "" : ` (${counts[item]})`}`, group: "Architecture" })),
+            ]}
+          />
+        </div>
       </nav>
     );
   }
@@ -192,30 +182,25 @@ function ServiceNavigation({
           {TAB_LABEL[item]}
         </button>
       ))}
-      <label
+      <div
         className="service-nav-select"
         data-active={isInterfaceTab(tab) ? "" : undefined}
       >
-        <span className="sr-only">Interface section</span>
-        <select
-          aria-label="Interface section"
+        <Select
+          label="Interface section"
           value={isInterfaceTab(tab) ? tab : ""}
-          onChange={(event) => {
-            const next = event.target.value;
+          onChange={(next) => {
             if ((INTERFACE_TABS as readonly string[]).includes(next)) {
               onTab(next as InterfaceTab);
             }
           }}
-        >
-          <option value="">Interfaces</option>
-          {INTERFACE_TABS.map((item) => (
-            <option key={item} value={item}>
-              {TAB_LABEL[item]}
-              {counts[item] === null ? "" : ` (${counts[item]})`}
-            </option>
-          ))}
-        </select>
-      </label>
+          menuWidth={220}
+          options={[
+            { value: "", label: "Interfaces" },
+            ...INTERFACE_TABS.map((item) => ({ value: item, label: `${TAB_LABEL[item]}${counts[item] === null ? "" : ` (${counts[item]})`}` })),
+          ]}
+        />
+      </div>
       {direct.slice(1).map((item) => (
         <button
           key={item}

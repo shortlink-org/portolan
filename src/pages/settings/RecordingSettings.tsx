@@ -16,8 +16,8 @@ import { plural } from "../../lib/format";
 import { startTraceTrial } from "../../lib/local-api";
 import type { SetupProject } from "../../lib/setup-info";
 import { paths } from "../../routes";
+import { Select } from "../../components/Select";
 
-const FIELD = "w-full rounded-control border border-line bg-canvas px-2.5 py-1.5 text-ink";
 const SCOPE = "settings";
 
 /** Every recording the catalog names, with the flows it is an example of. */
@@ -73,13 +73,20 @@ export function RecordingSettings({ local, projects }: { local: boolean; project
         </p>
         {local ? (
           <div className="mt-3 flex flex-wrap items-end gap-3">
-            <label className="min-w-56">
+            <div className="min-w-56">
               <span className="label mb-1.5 block">project</span>
-              <select className={FIELD} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                {projects.length ? null : <option value="">no projects in portolan.json</option>}
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.root}</option>)}
-              </select>
-            </label>
+              <Select
+                label="Project"
+                appearance="detail"
+                className="w-full"
+                value={projectId}
+                onChange={setProjectId}
+                disabled={!projects.length}
+                options={projects.length
+                  ? projects.map((project) => ({ value: project.id, label: `${project.name} · ${project.root}` }))
+                  : [{ value: "", label: "no projects in portolan.json", disabled: true }]}
+              />
+            </div>
             <button type="button" className="product-primary" disabled={busy || !projectId || runId !== null} onClick={() => input.current?.click()}>
               <Upload size={14} /> Choose a file
             </button>
