@@ -4,6 +4,7 @@ import { MarkerType } from "@xyflow/react";
 import type { Status } from "../catalog";
 import { layoutWithElk } from "./elk";
 import type { PortolanNode, ServiceNodeData } from "./nodes";
+import type { RoutedEdgeType } from "./RoutedEdge";
 import { EDGE_W, NODE_H, NODE_W, statusColor, statusDash } from "./theme";
 
 export interface FlowSpec {
@@ -25,6 +26,12 @@ export interface FlowSpec {
   layerSpacing?: number;
   /** Keep nodes of one layer in the order the spec lists them. */
   considerModelOrder?: boolean;
+  /**
+   * Pin every source to the right and every target to the left. Layered,
+   * acyclic diagrams want that discipline; participant maps with responses
+   * running back to an earlier node need elk to choose the clear side.
+   */
+  fixedPorts?: boolean;
 }
 
 export interface FlowState {
@@ -44,7 +51,7 @@ export function useElkFlow(spec: FlowSpec): FlowState {
   useEffect(() => {
     let cancelled = false;
     const run = async (): Promise<void> => {
-      const { positions } = await layoutWithElk({
+      const { positions, routes } = await layoutWithElk({
         nodes: spec.nodes.map((n) => ({
           id: n.id,
           width: n.width ?? NODE_W,
@@ -59,6 +66,8 @@ export function useElkFlow(spec: FlowSpec): FlowState {
         ...(spec.direction ? { direction: spec.direction } : {}),
         ...(spec.layerSpacing ? { layerSpacing: spec.layerSpacing } : {}),
         ...(spec.considerModelOrder ? { considerModelOrder: true } : {}),
+        ports: spec.fixedPorts ?? true,
+        edgeRouting: "ORTHOGONAL",
       });
       if (cancelled) return;
 
@@ -75,7 +84,7 @@ export function useElkFlow(spec: FlowSpec): FlowState {
         connectable: false,
       }));
 
-      const edges: Edge[] = spec.edges.map((e) => {
+      const edges: RoutedEdgeType[] = spec.edges.map((e) => {
         const color = statusColor(e.status);
         const dash = statusDash(e.status);
         return {
@@ -83,36 +92,23 @@ export function useElkFlow(spec: FlowSpec): FlowState {
           source: e.source,
           target: e.target,
           label: e.label,
-          type: "bezier",
+          type: "routed",
           animated: false,
           style: {
             stroke: color,
             strokeWidth: EDGE_W,
             ...(dash ? { strokeDasharray: dash } : {}),
           },
-          labelStyle: {
-            fill: "var(--fg-muted)",
-            fontSize: 10,
-            fontFamily: "var(--font-mono)",
-          },
-          // A word printed straight onto a line is a word with a line through
-          // it. The label carries the canvas background and a hairline of its
-          // own, which is the same pill the bundled edges wear.
-          labelBgStyle: {
-            fill: "var(--flow-card)",
-            stroke: "var(--border)",
-            strokeWidth: 1,
-          },
-          labelBgPadding: [6, 3] as [number, number],
-          labelBgBorderRadius: 8,
-          labelShowBg: true,
           markerEnd: {
             type: MarkerType.ArrowClosed,
             color,
             width: 14,
             height: 14,
           },
-          data: e.eventId ? { eventId: e.eventId } : {},
+          data: {
+            points: routes[e.id] ?? [],
+            ...(e.eventId ? { eventId: e.eventId } : {}),
+          },
         };
       });
 

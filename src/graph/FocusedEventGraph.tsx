@@ -15,6 +15,7 @@ import { useElkFlow } from "./useElkFlow";
 import type { FlowSpec } from "./useElkFlow";
 import { ViewportSeg } from "./GraphToolbar";
 import { EVENT_W, NODE_H, NODE_W } from "./theme";
+import { dependencyEdgeTypes } from "./RoutedEdge";
 import { useSelectionStore } from "../selection/store";
 import { useNavigate } from "react-router";
 import { triggersOf } from "../lib/triggers";
@@ -250,6 +251,7 @@ export function FocusedEventGraph({
         nodes={shownNodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={dependencyEdgeTypes}
         onNodeClick={onNodeClick}
         onPaneClick={() => clear("diagram")}
         nodesDraggable={false}

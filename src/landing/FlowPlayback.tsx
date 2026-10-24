@@ -21,6 +21,7 @@ import type { Flow, FlowNode, Step } from "../catalog";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { catalog } from "../data";
 import { nodeTypes } from "../graph/nodes";
+import { dependencyEdgeTypes } from "../graph/RoutedEdge";
 import type { ServiceNodeData } from "../graph/nodes";
 import { EDGE_W, EDGE_W_LIT } from "../graph/theme";
 import { useElkFlow } from "../graph/useElkFlow";
@@ -89,6 +90,10 @@ function Canvas({ flow, steps, at }: { flow: Flow; steps: Step[]; at: number }) 
       })),
       direction: "RIGHT",
       layerSpacing: 48,
+      // A request and its response share participants but run in opposite
+      // directions. Fixed east/west ports make the backward lane cross both
+      // cards; free ports let elk attach it to the clear sides instead.
+      fixedPorts: false,
     };
   }, [flow, steps]);
   const state = useElkFlow(spec);
@@ -136,6 +141,7 @@ function Canvas({ flow, steps, at }: { flow: Flow; steps: Step[]; at: number }) 
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={dependencyEdgeTypes}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}

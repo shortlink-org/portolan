@@ -40,6 +40,7 @@ export function RoutedEdge({
   style,
   markerEnd,
   interactionWidth,
+  label,
 }: EdgeProps<RoutedEdgeType>) {
   const select = useSelectionStore((s) => s.select);
   const points = data?.points ?? [];
@@ -71,6 +72,10 @@ export function RoutedEdge({
           }}
         >
           {data.chip}
+        </EdgeLabel>
+      ) : label ? (
+        <EdgeLabel at={midpoint(points)} opacity={opacity}>
+          {label}
         </EdgeLabel>
       ) : null}
     </>
