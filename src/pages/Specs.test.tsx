@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import type { ChangeSpec } from "../catalog";
 import { SpecDetailView } from "./SpecDetail";
@@ -37,8 +38,10 @@ const spec: ChangeSpec = {
   ],
 };
 
-const render = (node: React.ReactNode) =>
-  renderToStaticMarkup(<MemoryRouter>{node}</MemoryRouter>);
+const render = (node: React.ReactNode) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, enabled: false } } });
+  return renderToStaticMarkup(<QueryClientProvider client={client}><MemoryRouter>{node}</MemoryRouter></QueryClientProvider>);
+};
 
 describe("spec pages", () => {
   it("summarizes lifecycle and checklist progress without calling it implementation evidence", () => {
@@ -68,5 +71,34 @@ describe("spec pages", () => {
     expect(html).toContain("Changed with");
     expect(html).toContain("src/auction.ts");
     expect(html).toContain("impact, not implementation evidence");
+  });
+
+  it("links exact references, leaves similar names as prose, and lists broken exact references", () => {
+    const linked: ChangeSpec = {
+      ...spec,
+      artifacts: [
+        {
+          kind: "proposal",
+          path: "proposal.md",
+          body: "Exact `portolan.host`; source `proposal.md`; requirement `auction:create`; task `1.2`; broken `missing/file.ts:9`. Portolan host stays prose.",
+        },
+        { kind: "design", path: "design.md", body: "Design for `portolan.host`." },
+      ],
+      requirements: [{
+        ...spec.requirements[0]!,
+        title: "`portolan.host` requirement",
+        text: "The exact owner is `portolan.host`.",
+        scenarios: [{ name: "`portolan.host` scenario", when: ["`portolan.host` changes"], then: ["open `portolan.host`"] }],
+      }],
+      tasks: spec.tasks.map((task) => task.id === "1.2" ? { ...task, title: "Update `portolan.host`" } : task),
+    };
+    const html = render(<SpecDetailView spec={linked} />);
+    expect(html.match(/href="\/c\/portolan\/host"/g)).toHaveLength(8);
+    expect(html).toContain(`href="#spec-requirement-${encodeURIComponent("auction:create")}"`);
+    expect(html).toContain('href="#spec-task-1.2"');
+    expect(html).toContain("Portolan host stays prose.");
+    expect(html).not.toContain(">Portolan host</a>");
+    expect(html).toContain("Unresolved references");
+    expect(html).toContain("missing/file.ts:9");
   });
 });

@@ -20,9 +20,9 @@
 
 ## 4. Exact links
 
-- [ ] 4.1 Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers.
-- [ ] 4.2 Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics.
-- [ ] 4.3 Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text.
+- [x] 4.1 Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers.
+- [x] 4.2 Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics.
+- [x] 4.3 Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text.
 
 ## 5. Activity feed
 

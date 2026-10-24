@@ -148,10 +148,12 @@ export function Markdown({
   children,
   mermaid = false,
   sourceRoot,
+  inlineCode,
 }: {
   children: string;
   mermaid?: boolean;
   sourceRoot?: string;
+  inlineCode?: (value: string) => ReactNode;
 }) {
   return (
     <div className="prose">
@@ -166,6 +168,12 @@ export function Markdown({
           // as an index page's - unless it is small enough, or the author
           // said not to.
           table: MarkdownTable,
+          ...(inlineCode ? {
+            code: (props: ComponentPropsWithoutRef<"code">) => {
+              const value = textOf(props.children);
+              return props.className || value.includes("\n") ? <code {...props} /> : <>{inlineCode(value)}</>;
+            },
+          } : {}),
           ...(mermaid ? { pre: Pre } : {}),
           ...(sourceRoot ? {
             a: (props: ComponentPropsWithoutRef<"a">) => {

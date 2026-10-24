@@ -6,4 +6,4 @@ Lifecycle and checklist progress come from the specification; implementation evi
 
 | Change | Format | Lifecycle | Checklist | Requirements |
 | --- | --- | --- | --- | --- |
-| [Automate sdd workflow](automate-sdd-workflow.md) | openspec | implementing | 9 / 21 | 7 requirements |
+| [Automate sdd workflow](automate-sdd-workflow.md) | openspec | implementing | 12 / 21 | 7 requirements |

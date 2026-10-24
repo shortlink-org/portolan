@@ -222,6 +222,15 @@ export const ENUM_ANCHOR = {
  */
 export const LINKS_HERE = "links-here";
 
+/** Stable anchors for authored SDD identities on one specification page. */
+export function specRequirementAnchor(id: string): string {
+  return `spec-requirement-${encodeURIComponent(id)}`;
+}
+
+export function specTaskAnchor(id: string): string {
+  return `spec-task-${encodeURIComponent(id)}`;
+}
+
 /** The section anchors on a context page. */
 export const CONTEXT_ANCHOR = {
   services: "ctx-services",

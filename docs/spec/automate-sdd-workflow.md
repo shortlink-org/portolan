@@ -6,7 +6,7 @@
 - **Format:** openspec
 - **Lifecycle:** implementing
 - **Source:** `openspec/changes/automate-sdd-workflow/proposal.md`
-- **Checklist:** 9 / 21
+- **Checklist:** 12 / 21
 
 > Checklist progress is author intent. It is not proof that code, runtime behavior, or the architecture catalog conforms to this specification.
 
@@ -261,9 +261,9 @@ Portolan SHALL label author intent, changed-with impact, declared architecture, 
 - [x] `3.1` Derive changed repository paths for the active comparison using the existing branch draft/history pipeline. — `openspec/changes/automate-sdd-workflow/tasks.md:17`
 - [x] `3.2` Resolve each path to the longest unique repository/service owner and preserve repository-level ambiguous or unmatched results. — `openspec/changes/automate-sdd-workflow/tasks.md:18`
 - [x] `3.3` Present impact as `changed with` on specification and Changes pages without promoting it to implementation evidence. — `openspec/changes/automate-sdd-workflow/tasks.md:19`
-- [ ] `4.1` Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers. — `openspec/changes/automate-sdd-workflow/tasks.md:23`
-- [ ] `4.2` Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics. — `openspec/changes/automate-sdd-workflow/tasks.md:24`
-- [ ] `4.3` Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text. — `openspec/changes/automate-sdd-workflow/tasks.md:25`
+- [x] `4.1` Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers. — `openspec/changes/automate-sdd-workflow/tasks.md:23`
+- [x] `4.2` Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics. — `openspec/changes/automate-sdd-workflow/tasks.md:24`
+- [x] `4.3` Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text. — `openspec/changes/automate-sdd-workflow/tasks.md:25`
 - [ ] `5.1` Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact. — `openspec/changes/automate-sdd-workflow/tasks.md:29`
 - [ ] `5.2` Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries. — `openspec/changes/automate-sdd-workflow/tasks.md:30`
 - [ ] `5.3` Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels. — `openspec/changes/automate-sdd-workflow/tasks.md:31`
