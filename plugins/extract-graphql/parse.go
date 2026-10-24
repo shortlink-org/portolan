@@ -223,7 +223,7 @@ func (p *parser) document() error {
 func (p *parser) definition(doc string) error {
 	// `extend` says the definition adds to one that already exists, which is
 	// what merging does anyway.
-	p.accept("extend")
+	extension := p.accept("extend")
 
 	keyword := p.peek()
 	if keyword.kind != tokName {
@@ -233,7 +233,7 @@ func (p *parser) definition(doc string) error {
 
 	switch keyword.text {
 	case "schema":
-		return p.schema()
+		return p.schema(extension)
 	case "type", "interface", "input":
 		return p.object(typeKind(keyword.text), doc)
 	case "union":
@@ -249,9 +249,19 @@ func (p *parser) definition(doc string) error {
 	return fmt.Errorf("line %d: %q is not a type system definition", keyword.line, keyword.text)
 }
 
-func (p *parser) schema() error {
+func (p *parser) schema(extension bool) error {
 	if err := p.directives(nil); err != nil {
 		return err
+	}
+	// Federation subgraphs commonly use a directive-only schema extension to
+	// import the federation specification:
+	//
+	//   extend schema @link(url: "...", import: ["@key"])
+	//
+	// Its operation roots remain the default Query/Mutation/Subscription
+	// types declared elsewhere in the document, so there is no block to read.
+	if extension && !p.at("{") {
+		return nil
 	}
 	if err := p.expect("{"); err != nil {
 		return err

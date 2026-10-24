@@ -14,8 +14,10 @@ contains `.generated.` is a generator's copy and is not read.
 
 The parser (`parse.go`, `lex.go`) reads the type system language: `type`,
 `interface`, `input`, `union`, `enum`, `scalar`, `schema { }` renaming the
-roots, fields with arguments and defaults, `!` and `[]` wrappers, block-string
-descriptions (comments are not descriptions) and `@deprecated(reason:)`.
+roots, directive-only schema extensions such as Federation v2
+`extend schema @link(...)`, fields with arguments and defaults, `!` and `[]`
+wrappers, block-string descriptions (comments are not descriptions) and
+`@deprecated(reason:)`.
 Declarations of one type across several files merge; the file each root field
 came from is kept, because that is the module that owns it.
 

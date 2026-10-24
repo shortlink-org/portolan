@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::catalog::{Catalog, Context, Service};
+use crate::clients::{cargo_workspace, read_rpc_calls};
 use crate::domain::read_aggregates;
 use crate::emits::Emitters;
 use crate::flows::{FlowOptions, FlowReader};
@@ -15,6 +16,7 @@ use crate::kafka::read_kafka;
 use crate::operations::{operation_of, read_use_cases};
 use crate::protocol::{Builder, File, Input, Options, Response};
 use crate::source::Crate;
+use crate::temporal::read_temporal;
 use crate::transport::read_transport;
 use crate::wiring::read_bindings;
 
@@ -46,6 +48,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     let bindings = read_bindings(&krate);
     let endpoints = read_transport(&krate, &src.join("infrastructure").join("transport").join("grpc"), &rel, &mut b);
     let kafka = read_kafka(&krate, &context, &svc_id, &rel);
+    let direct_consumes = read_rpc_calls(&krate, &cargo_workspace(&root), &opts.peers, &rel, &mut b);
 
     // Operations belong to the aggregate their use case sits under.
     let mut exposed_by: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -88,6 +91,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     }
 
     let mut flows = kafka.flows;
+    flows.extend(read_temporal(&krate, &context, &svc_id, &direct_consumes, &rel));
     let consumes;
     let referenced;
     {
@@ -111,7 +115,11 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
             flows.push(reader.endpoint_flow(endpoint));
         }
         flows.extend(reader.policy_flows(&src.join("application").join("policy")));
-        consumes = reader.consumes();
+        let mut merged: BTreeMap<String, crate::catalog::RpcCall> = direct_consumes.into_iter().map(|call| (call.id.clone(), call)).collect();
+        for call in reader.consumes() {
+            merged.entry(call.id.clone()).or_insert(call);
+        }
+        consumes = merged.into_values().collect();
         referenced = reader.referenced.clone();
     }
     for agg in &aggregates {

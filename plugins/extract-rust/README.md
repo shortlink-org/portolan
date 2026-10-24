@@ -2,9 +2,10 @@
 
 A Rust service in, a catalog fragment out. The Rust twin of `extract-go` and
 `extract-ts`: it describes one service - its aggregates, what they publish,
-what runs when somebody calls in, what the service calls, and the Kafka topics
-its `rdkafka` adapters use - by reading the tree, and it reads the tree by its
-layout. Nothing is annotated for the catalog; the layout is the claim.
+what runs when somebody calls in, what the service calls, the Kafka topics its
+`rdkafka` adapters use, and the Temporal workflows its workers register - by
+reading the tree, and it reads the tree by its layout. Nothing is annotated
+for the catalog; the source is the claim.
 
 Written in Rust and run as a process plugin, `cargo run --quiet --manifest-path
 plugins/extract-rust/Cargo.toml`, because the right parser for Rust is Rust's
@@ -27,6 +28,8 @@ src/
     port.rs               traits a use case holds: repositories, publishers
     status.rs             optional: `pub const TRANSITIONS: &[(&str, &[&str])] = &[("placed", &["confirmed"]), …]`
     README.md             the aggregate's page, or the doc comment above the root
+  domain/*.rs             flat modules: each public struct with an inherent
+                          public `&mut self` method is an aggregate root
   application/<aggregate>/usecases/<name>/
     mod.rs                `pub struct UseCase` with a `handle(&self, …)` method; its fields are the ports
     README.md             the operation's doc, or the doc comment above the struct
@@ -34,9 +37,10 @@ src/
   infrastructure/transport/grpc/<aggregate>/
     proto/**/*.proto      the contract this service publishes: the service and its rpcs
     *.rs                  `impl <Service> for <Handlers>`: a method per rpc, running use cases held as fields
-  infrastructure/<peer>/
-    proto/**/*.proto + gen/   a gRPC peer: the vendored contract and tonic's output
-    *.rs                  the adapter over the generated client, `impl <Port> for <Adapter>`
+  **/*.rs                 generated gRPC client fields and their method calls
+  **/*.proto              contracts available anywhere in the Cargo workspace
+  **/*.rs                 Temporal `register_workflow`, workflow macros, signals,
+                          durable timers and scheduled activities
   infrastructure/repository/<aggregate>/
     *.rs                  `pub const TOPIC: &str` names the channel the aggregate's events leave on;
     migrations/*.sql      read by extract-sql, with `repositories` pointed at the directory above
@@ -44,13 +48,15 @@ src/
 
 ## What becomes what
 
-**Aggregate.** Every directory under `src/domain/` whose name has a root
-struct in it. The root is the pub struct whose name is the directory's in
-PascalCase (`order` → `Order`); a directory without one is reported and
-skipped. Its fields are the struct's fields with the type as written. Other
-pub structs in the directory's top-level files are entities; structs under
-`vo/` are value objects; `rules/` is skipped. The readme is `README.md` in the
-directory, or the doc comment above the root.
+**Aggregate.** A directory under `src/domain/` may declare its root by name:
+the pub struct whose name is the directory's in PascalCase (`order` →
+`Order`). A flat `src/domain/*.rs` module instead declares roots semantically:
+each public struct with an inherent public method taking `&mut self` is
+stateful and becomes an aggregate, regardless of the file's name. Its fields
+are the struct's fields with the type as written. In a directory aggregate,
+other pub structs in the directory's top-level files are entities, structs
+under `vo/` are value objects, and `rules/` is skipped. The readme is
+`README.md` in the directory, or the doc comment above the root.
 
 **Enum.** A pub enum in the directory's own files or under `vo/` whose every
 variant is a bare name is a closed set of values, id
@@ -147,13 +153,19 @@ a port is each event collected, once. An event handed to a domain port -
 `&placed`, `&[&placed]`, `&events` - is the event leaving for the bus; a field
 read off one is not.
 
-**gRPC peer.** An adapter implements a use case's port and holds tonic's
-generated client; a method call in the adapter's body whose name is an rpc of
-the proto vendored under `proto/` beside `gen/` is that rpc, in the proto's
-own case: `self.inner.authorize(…)` is `payments.v1.PaymentService/Authorize`.
+**gRPC peer.** An adapter holds tonic's generated client; a method call in the
+adapter's body whose name is an rpc of that client's service is that rpc, in
+the proto's own case: `self.inner.authorize(…)` is
+`payments.v1.PaymentService/Authorize`. Contracts are indexed across the
+nearest Cargo workspace, so sibling crates, root-level contract directories
+and registry-generated clients can meet the same checked-in proto without a
+copy beside the adapter. Direct fields, local type aliases and cloned local
+bindings are followed. This service-level dependency is extracted even when
+the application has no recognizable domain/use-case layout. A flow includes
+the same call only when the reader can also prove the path from its endpoint.
 The peer is the manifest's `peers` entry for the proto package; without one
 the lane is `unknown` and the step unresolved, and the call is recorded on the
-service's `consumes` with the vendored proto as its source.
+service's `consumes` with the matched proto as its source.
 
 **Kafka through rdkafka.** Literal topic constants and string literals passed
 to `Consumer::subscribe` become receive channels and one-step inbound flows.
@@ -162,6 +174,20 @@ The channel and handoff use protocol `kafka`, so Debezium and Rust facts with
 the same address share the same broker participant in generated diagrams. The
 client call proves the topic and direction, but not the message name; messages
 remain empty until a contract extractor supplies their wire names.
+
+**Temporal.** Every type passed to `register_workflow::<Type>()` becomes a
+flow when the type also has `#[workflow]` and a `#[workflow_methods]` impl.
+The registration proves the workflow is active; `#[run]` supplies its body,
+`#[signal]` methods become inbound Temporal events, `context.timer(...)`
+becomes a durable-timer step, `wait_condition(...)` becomes a durable wait,
+and `execute_activity(Type::method, ...)` becomes a scheduled activity. A
+phase match in the run method becomes alternative branches rather than a
+misleading linear sequence. Local helper functions reached from `run` are
+followed, and timers inside `select!` are detected from the macro body. When
+an activity delegates through one of its fields to an extracted gRPC client,
+the flow continues from the activity to that RPC peer. The result uses a
+generated Temporal external participant and job handoffs; no workflow names,
+paths or participants are configured manually.
 
 ## Options
 
@@ -193,9 +219,11 @@ These cases do not become facts in the fragment:
 - an rpc in the proto with no method answering it;
 - a policy whose `handle` tests for no event, or for one the repository does
   not declare and the manifest does not place;
-- an adapter with a `gen/` and no `proto/` beside it, whose calls cannot be named;
+- a generated client whose service cannot be matched uniquely to a proto in
+  the Cargo workspace;
 - an event no flow reaches;
 - a proto package the manifest names no peer for.
+- a Temporal workflow type that is declared but never registered by a worker.
 
 ## Manifest
 

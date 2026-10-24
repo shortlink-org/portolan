@@ -7,7 +7,7 @@ import {
 } from "node:fs";
 import { basename, join, posix, relative, resolve, sep } from "node:path";
 
-const SKIP = new Set([".git", ".portolan", "build", "dist", "node_modules", "target", "vendor"]);
+const SKIP = new Set([".git", ".portolan", ".worktrees", ".claude", ".codex", ".agents", ".venv", ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".cache", ".idea", ".vscode", "build", "dist", "node_modules", "target", "vendor"]);
 const MAX_FILES = 12_000;
 const MAX_COMPONENTS = 100;
 const MAX_SOURCE_BYTES = 1024 * 1024;
@@ -60,8 +60,8 @@ export function walk(root) {
   while (pending.length && files.size < MAX_FILES) {
     const current = pending.pop();
     for (const entry of readdirSync(current.absolute, { withFileTypes: true })) {
-      if (SKIP.has(entry.name) || (entry.isDirectory() && entry.name.startsWith("."))) continue;
       const name = current.relative ? `${current.relative}/${entry.name}` : entry.name;
+      if (SKIP.has(entry.name) || /(?:^|\/)\.(?:agents|claude|codex)\/worktrees(?:\/|$)/.test(name)) continue;
       const absolute = join(current.absolute, entry.name);
       const stat = lstatSync(absolute);
       if (stat.isSymbolicLink()) continue;
@@ -167,6 +167,44 @@ function goDeployables(root, files) {
     });
   }
   return out;
+}
+
+function cargoWorkspaceMembers(root, files) {
+  if (!files.has("Cargo.toml")) return [];
+  let manifest = "";
+  try { manifest = readFileSync(join(root, "Cargo.toml"), "utf8"); } catch { return []; }
+  const workspace = /^\s*\[workspace\]\s*$([\s\S]*?)(?=^\s*\[[^\]]+\]\s*$|(?![\s\S]))/m.exec(manifest)?.[1] ?? "";
+  const listed = /\bmembers\s*=\s*\[([\s\S]*?)\]/m.exec(workspace)?.[1] ?? "";
+  const patterns = [...listed.matchAll(/["']([^"']+)["']/g)].map((match) => match[1].replace(/^\.\//, "").replace(/\/$/, ""));
+  if (!patterns.length) return [];
+  const matchers = patterns.map((pattern) => new RegExp(`^${pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replaceAll("**", "§§")
+    .replaceAll("*", "[^/]*")
+    .replaceAll("§§", ".*")}$`));
+  return matches(files, /(^|\/)Cargo\.toml$/)
+    .map((name) => posix.dirname(name))
+    .filter((path) => path !== "." && matchers.some((pattern) => pattern.test(path)))
+    .filter((path) => {
+      const prefix = `${path}/`;
+      const scoped = [...files].filter((name) => name.startsWith(prefix)).map((name) => name.slice(prefix.length));
+      return scoped.includes("src/main.rs")
+        || scoped.some((name) => /^src\/domain\/.*\.rs$/.test(name))
+        || scoped.some((name) => /\.graphqls?$/.test(name))
+        || scoped.some((name) => /\.proto$/.test(name));
+    })
+    .map((path) => {
+      const service = posix.basename(path);
+      return {
+        slug: slug(service),
+        name: titleFromSlug(service),
+        path,
+        kind: "service",
+        technology: "Rust",
+        confidence: "high",
+        evidence: [`${path}/Cargo.toml`],
+      };
+    });
 }
 
 function detected(plugin, candidates, options = {}, label = candidates[0], ambiguous = false, selected = true, preview = []) {
@@ -299,19 +337,25 @@ function goHTTPServerEvidence(root, files) {
 
 function laidOutDomainEvidence(root, files, language) {
   const extension = language === "typescript" ? "ts" : language === "rust" ? "rs" : "java";
-  const prefix = language === "java" ? /(?:^|\/)domain\/([^/]+)\/[^/]+\.java$/i : /^src\/domain\/([^/]+)\/[^/]+\.(?:ts|rs)$/i;
+  const prefix = language === "java"
+    ? /(?:^|\/)domain\/([^/]+)\/[^/]+\.java$/i
+    : language === "rust"
+      ? /(?:^|\/)domain\/.*\.rs$/i
+      : /^src\/domain\/([^/]+)\/[^/]+\.ts$/i;
   for (const name of matches(files, prefix)) {
     if (!name.endsWith(`.${extension}`)) continue;
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    if (language === "rust") {
+      if (/\bpub\s+struct\s+[A-Z][A-Za-z0-9_]*\b/.test(source)) return name;
+      continue;
+    }
     const match = prefix.exec(name);
     if (!match) continue;
     const rootName = match[1].split(/[^a-zA-Z0-9]+|_/).filter(Boolean).map((part) => part[0]?.toUpperCase() + part.slice(1)).join("");
-    let source = "";
-    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
     const claim = language === "typescript"
       ? new RegExp(`\\b(?:export\\s+)?class\\s+${rootName}\\b`)
-      : language === "rust"
-        ? new RegExp(`\\bpub\\s+struct\\s+${rootName}\\b`)
-        : /@AggregateRoot\b/.test(source) || new RegExp(`\\bclass\\s+${rootName}\\b`).test(source);
+      : /@AggregateRoot\b/.test(source) || new RegExp(`\\bclass\\s+${rootName}\\b`).test(source);
     if (claim instanceof RegExp ? claim.test(source) : claim) return name;
   }
   return "";
@@ -374,7 +418,14 @@ function detectionsFor(root, files) {
   const openapi = matches(files, /(^|\/)(openapi|swagger)[^/]*\.(ya?ml|json)$/i);
   const wsdls = matches(files, /\.wsdl$/i);
   const asyncapi = matches(files, /(^|\/)asyncapi[^/]*\.(ya?ml|json)$/i);
-  const graphql = matches(files, /\.graphqls?$/i);
+  const graphql = matches(files, /\.graphqls?$/i).filter((name) => {
+    try {
+      const source = readFileSync(join(root, name), "utf8");
+      return /(?:^|\n)\s*(?:extend\s+)?(?:schema|type|interface|input|enum|union|scalar|directive)\b/m.test(source);
+    } catch {
+      return false;
+    }
+  });
   const protos = matches(files, /\.proto$/i);
   const sql = matches(files, /(^|\/)(migrations?|repository)(\/|.*\/).*\.sql$/i);
   const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i).filter((name) => posix.basename(name).toLowerCase() !== "readme.md");
@@ -484,7 +535,8 @@ export function discoverProject(workspace, input) {
   const files = walk(absolute);
   const detections = detectionsFor(absolute, files);
   const components = componentCandidates(files);
-  const deployables = goDeployables(absolute, files);
+  const deployables = [...goDeployables(absolute, files), ...cargoWorkspaceMembers(absolute, files)]
+    .sort((a, b) => a.slug.localeCompare(b.slug));
   return {
     root,
     filesScanned: files.size,

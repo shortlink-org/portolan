@@ -1,18 +1,23 @@
 //! A call to another service, read off the generated client the adapter
-//! holds. A gRPC peer: the adapter's directory has a `proto/` with the
-//! vendored contract and a `gen/` with tonic's output, and a call on the
-//! client, `self.inner.authorize(…)`, is the rpc of that name in the proto's
-//! own case. The id is the one the callee's extractor would give:
+//! holds. Protos are indexed across the Cargo workspace: a monorepo caller
+//! may compile a sibling crate's contract or use generated bindings from a
+//! registry without copying a proto beside its adapter. A call on a field
+//! typed as a generated client, including through a local type alias and a
+//! cloned local binding, is matched to that client's service. The id is the
+//! one the callee's extractor would give:
 //! `payments.v1.PaymentService/Authorize`.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use syn::visit::Visit;
+use syn::{Expr, ImplItem, Item, ItemImpl, Member, Pat, Type};
 
+use crate::catalog::RpcCall;
 use crate::ids::same_name;
 use crate::protocol::Builder;
-use crate::source::Source;
+use crate::source::{Crate, Source, self_type_name};
 
 /// One call the adapter makes, in the catalog's terms.
 #[derive(Debug, Clone)]
@@ -50,10 +55,178 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
+            if matches!(path.file_name().and_then(|n| n.to_str()), Some("target" | ".git")) {
+                continue;
+            }
             collect(&path, out);
         } else if path.extension().is_some_and(|e| e == "proto") {
             out.push(path);
         }
+    }
+}
+
+/// The Cargo workspace is the contract boundary available to one crate. A
+/// monorepo may compile a sibling crate's proto without copying it into the
+/// caller, so stopping at the service directory loses a real dependency.
+pub fn cargo_workspace(crate_root: &Path) -> PathBuf {
+    let mut current = Some(crate_root);
+    while let Some(dir) = current {
+        let manifest = dir.join("Cargo.toml");
+        if fs::read_to_string(manifest).is_ok_and(|text| text.lines().any(|line| line.trim() == "[workspace]")) {
+            return dir.to_path_buf();
+        }
+        current = dir.parent();
+    }
+    crate_root.to_path_buf()
+}
+
+/// RPC calls made by generated clients, independent of whether the service's
+/// application and domain layers follow any particular directory layout.
+pub fn read_rpc_calls(krate: &Crate, contracts_root: &Path, peers: &BTreeMap<String, String>, rel: &dyn Fn(&Path) -> String, b: &mut Builder) -> Vec<RpcCall> {
+    let services = read_protos(contracts_root, rel);
+    let mut contracts: BTreeMap<String, Vec<&ProtoService>> = BTreeMap::new();
+    for service in &services {
+        contracts.entry(service.name.clone()).or_default().push(service);
+    }
+
+    let mut calls = BTreeMap::new();
+    let mut warned = BTreeSet::new();
+    for src in &krate.sources {
+        let type_aliases: BTreeMap<String, &Type> = src
+            .file
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                Item::Type(alias) => Some((alias.ident.to_string(), &*alias.ty)),
+                _ => None,
+            })
+            .collect();
+        for strukt in src.structs() {
+            let fields: BTreeMap<String, String> = strukt
+                .fields
+                .iter()
+                .filter_map(|field| {
+                    let name = field.ident.as_ref()?.to_string();
+                    client_service(&field.ty, &type_aliases, &mut BTreeSet::new()).map(|service| (name, service))
+                })
+                .collect();
+            if fields.is_empty() {
+                continue;
+            }
+
+            for implementation in src.impls_of(&strukt.ident.to_string()) {
+                let mut finder = ClientCalls {
+                    fields: &fields,
+                    aliases: BTreeMap::new(),
+                    contracts: &contracts,
+                    peers,
+                    calls: &mut calls,
+                    warned: &mut warned,
+                    b,
+                };
+                finder.visit_item_impl(implementation);
+            }
+        }
+    }
+    calls.into_values().collect()
+}
+
+fn client_service(typ: &Type, aliases: &BTreeMap<String, &Type>, seen: &mut BTreeSet<String>) -> Option<String> {
+    let Type::Path(path) = typ else { return None };
+    let name = path.path.segments.last()?.ident.to_string();
+    if let Some(target) = aliases.get(&name)
+        && seen.insert(name.clone())
+    {
+        return client_service(target, aliases, seen);
+    }
+    name.strip_suffix("Client").filter(|service| !service.is_empty()).map(str::to_string)
+}
+
+struct ClientCalls<'a> {
+    fields: &'a BTreeMap<String, String>,
+    aliases: BTreeMap<String, String>,
+    contracts: &'a BTreeMap<String, Vec<&'a ProtoService>>,
+    peers: &'a BTreeMap<String, String>,
+    calls: &'a mut BTreeMap<String, RpcCall>,
+    warned: &'a mut BTreeSet<String>,
+    b: &'a mut Builder,
+}
+
+impl ClientCalls<'_> {
+    fn service_of(&self, expr: &Expr) -> Option<String> {
+        match expr {
+            Expr::Field(field) if matches!(&*field.base, Expr::Path(path) if path.path.is_ident("self")) => match &field.member {
+                Member::Named(name) => self.fields.get(&name.to_string()).cloned(),
+                Member::Unnamed(_) => None,
+            },
+            Expr::Path(path) => path.path.get_ident().and_then(|name| self.aliases.get(&name.to_string()).cloned()),
+            Expr::MethodCall(call) if call.method == "clone" => self.service_of(&call.receiver),
+            Expr::Paren(paren) => self.service_of(&paren.expr),
+            Expr::Reference(reference) => self.service_of(&reference.expr),
+            _ => None,
+        }
+    }
+
+    fn record(&mut self, service_name: &str, method: &str) {
+        let Some(candidates) = self.contracts.get(service_name) else { return };
+        let matching: Vec<&&ProtoService> = candidates
+            .iter()
+            .filter(|service| service.rpcs.iter().any(|rpc| same_name(rpc, method)))
+            .collect();
+        if matching.len() != 1 {
+            return;
+        }
+        let service = matching[0];
+        let rpc = service.rpcs.iter().find(|rpc| same_name(rpc, method)).expect("matching rpc");
+        let id = format!("{}.{}/{}", service.pkg, service.name, rpc);
+        let (peer, status) = match self.peers.get(&service.pkg) {
+            Some(peer) => (peer.clone(), "declared".to_string()),
+            None => {
+                if self.warned.insert(service.pkg.clone()) {
+                    self.b.warn(
+                        &id,
+                        format!("calls {} and the manifest names no peer for that package; add it under `peers` to say which service answers, until then the call is unresolved", service.pkg),
+                    );
+                }
+                (service.pkg.clone(), "unresolved".to_string())
+            }
+        };
+        self.calls.entry(id.clone()).or_insert(RpcCall {
+            id,
+            peer,
+            status,
+            source: service.source.clone(),
+        });
+    }
+}
+
+impl<'ast> Visit<'ast> for ClientCalls<'_> {
+    fn visit_item_impl(&mut self, implementation: &'ast ItemImpl) {
+        if self_type_name(implementation).is_none() {
+            return;
+        }
+        for item in &implementation.items {
+            if let ImplItem::Fn(method) = item {
+                self.aliases.clear();
+                self.visit_block(&method.block);
+            }
+        }
+    }
+
+    fn visit_local(&mut self, local: &'ast syn::Local) {
+        if let (Pat::Ident(name), Some(init)) = (&local.pat, &local.init)
+            && let Some(service) = self.service_of(&init.expr)
+        {
+            self.aliases.insert(name.ident.to_string(), service);
+        }
+        syn::visit::visit_local(self, local);
+    }
+
+    fn visit_expr_method_call(&mut self, call: &'ast syn::ExprMethodCall) {
+        if let Some(service) = self.service_of(&call.receiver) {
+            self.record(&service, &call.method.to_string());
+        }
+        syn::visit::visit_expr_method_call(self, call);
     }
 }
 

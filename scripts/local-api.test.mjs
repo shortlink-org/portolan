@@ -497,6 +497,63 @@ describe("local project setup", { timeout: 30_000 }, () => {
     expect(plan.steps[0].options.groupKind).toBe("system");
   });
 
+  it("plans every Cargo workspace service and infers its contracts and peers", () => {
+    const root = workspace();
+    writeFileSync(join(root, "Cargo.toml"), '[workspace]\nmembers = ["contexts/auction", "contexts/authz"]\n');
+    for (const service of ["auction", "authz"]) {
+      const serviceRoot = join(root, "contexts", service);
+      mkdirSync(join(serviceRoot, "src/domain"), { recursive: true });
+      mkdirSync(join(serviceRoot, "proto/gavel", service, "v1"), { recursive: true });
+      mkdirSync(join(serviceRoot, "graphql"), { recursive: true });
+      writeFileSync(join(serviceRoot, "Cargo.toml"), `[package]\nname = "gavel-${service}"\nversion = "0.1.0"\n`);
+      writeFileSync(join(serviceRoot, "src/domain", `${service}.rs`), `pub struct ${service[0].toUpperCase() + service.slice(1)} { version: u64 }\n`);
+      const rpc = `${service[0].toUpperCase() + service.slice(1)}Service`;
+      writeFileSync(join(serviceRoot, "proto/gavel", service, "v1", `${service}.proto`), `syntax = "proto3"; package gavel.${service}.v1; service ${rpc} { rpc Get(GetRequest) returns (GetResponse); }\n`);
+      writeFileSync(join(serviceRoot, "src/server.rs"), `use rpc::${rpc}Server;\n`);
+      writeFileSync(join(serviceRoot, "graphql/schema.graphql"), "type Query { ping: String! }\n");
+      if (service === "auction") {
+        mkdirSync(join(serviceRoot, "fixtures"), { recursive: true });
+        writeFileSync(join(serviceRoot, "fixtures/ping.graphql"), "query Ping { ping }\n");
+      }
+    }
+    mkdirSync(join(root, "contexts/authz/proto/authzed/api/v1"), { recursive: true });
+    mkdirSync(join(root, "contexts/authz/src/adapters/outbound"), { recursive: true });
+    writeFileSync(join(root, "contexts/authz/proto/authzed/api/v1/permissions.proto"), "syntax = \"proto3\"; package authzed.api.v1; service PermissionsService { rpc Check(CheckRequest) returns (CheckResponse); }\n");
+    writeFileSync(join(root, "contexts/authz/src/adapters/outbound/spicedb.rs"), "use rpc::permissions_service_client::PermissionsServiceClient;\npub struct SpiceDbAdapter { client: PermissionsServiceClient }\n");
+    mkdirSync(join(root, "openspec/changes/add-rpc/."), { recursive: true });
+    writeFileSync(join(root, "openspec/changes/add-rpc/.openspec.yaml"), "schema: spec-driven\n");
+
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    for (const name of ["rust-domain", "proto", "graphql", "sdd"]) manifest.plugins.push({ name, process: { command: "true" } });
+    const plan = planProject(root, manifest, {
+      root: ".", id: "gavel", name: "Gavel", group: "gavel", component: "gavel",
+      plugins: ["project", "rust-domain", "proto", "graphql"],
+    });
+
+    expect(plan.project).toMatchObject({ group: "gavel", components: ["auction", "authz"] });
+    expect(plan.steps.find((step) => step.plugin === "project")?.options).not.toHaveProperty("component");
+    const peers = { "authzed.api.v1": "spicedb", "gavel.auction.v1": "gavel.auction", "gavel.authz.v1": "gavel.authz" };
+    expect(plan.steps.filter((step) => step.plugin === "rust-domain").map((step) => [step.in, step.options.service, step.options.peers, step.options.out])).toEqual([
+      ["contexts/auction", "auction", peers, "rust-domain-auction.json"],
+      ["contexts/authz", "authz", peers, "rust-domain-authz.json"],
+    ]);
+    expect(plan.steps.filter((step) => step.plugin === "proto").map((step) => [step.in, step.options.service, step.options.paths, step.options.out])).toEqual([
+      ["contexts/auction", "auction", ["proto/gavel/auction/v1"], "proto-auction.json"],
+      ["contexts/authz", "authz", ["proto/gavel/authz/v1"], "proto-authz.json"],
+      ["contexts/authz", undefined, ["proto/authzed/api/v1"], "proto-authz-spicedb.json"],
+    ]);
+    expect(plan.steps.find((step) => step.options.external === "spicedb")?.options).toMatchObject({
+      external: "spicedb", externalName: "SpiceDB",
+    });
+    expect(plan.steps.filter((step) => step.plugin === "graphql").map((step) => [step.in, step.options.service, step.options.schema, step.options.out])).toEqual([
+      ["contexts/auction", "auction", "graphql", "graphql-auction.json"],
+      ["contexts/authz", "authz", "graphql", "graphql-authz.json"],
+    ]);
+    expect(plan.steps.find((step) => step.plugin === "sdd")).toEqual({
+      plugin: "sdd", in: ".", out: "portolan", options: { out: "sdd.json" },
+    });
+  });
+
   it("only offers the Go domain extractor when the layout contains an aggregate root", () => {
     const root = workspace();
     mkdirSync(join(root, "services/billing/internal/domain/invoice"), { recursive: true });
@@ -527,6 +584,17 @@ describe("local project setup", { timeout: 30_000 }, () => {
     writeFileSync(join(root, "services/billing/internal/invoice/domain/invoice.go"), "package domain\n\ntype Invoice struct{}\n");
     const discovery = discoverProject(root, "services/billing");
     expect(discovery.detections.find((item) => item.plugin === "go-domain")?.evidence).toBe("internal/invoice/domain/invoice.go");
+  });
+
+  it("offers the Rust extractor for a flat domain module", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/auction/src/domain"), { recursive: true });
+    writeFileSync(join(root, "services/auction/Cargo.toml"), '[package]\nname = "auction"\nversion = "0.1.0"\n');
+    writeFileSync(join(root, "services/auction/src/domain/auction.rs"), "pub struct Auction { pub version: u64 }\n");
+
+    const discovery = discoverProject(root, "services/auction");
+
+    expect(discovery.detections.find((item) => item.plugin === "rust-domain")?.evidence).toBe("src/domain/auction.rs");
   });
 
   it("offers the River extractor when the Go module uses River", () => {

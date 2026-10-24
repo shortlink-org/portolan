@@ -1,0 +1,7 @@
+syntax = "proto3";
+package auction.v1;
+
+service AuctionService {
+  rpc ConfirmWinner (Request) returns (Response);
+  rpc ForfeitSettlementCandidate (Request) returns (Response);
+}

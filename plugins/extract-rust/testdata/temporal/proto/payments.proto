@@ -1,0 +1,7 @@
+syntax = "proto3";
+package payments.v1;
+
+service PaymentsService {
+  rpc AttemptPayment (Request) returns (Response);
+  rpc GetSettlementAttempt (Request) returns (Response);
+}

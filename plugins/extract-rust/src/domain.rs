@@ -1,7 +1,7 @@
 //! Aggregates, read off src/domain: the root by the directory's name, the
 //! entities beside it, the value objects under vo/, the events under event/.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -28,7 +28,69 @@ pub fn read_aggregates(krate: &Crate, domain: &Path, svc_id: &str, rel: &dyn Fn(
     let Ok(entries) = fs::read_dir(domain) else { return vec![] };
     let mut dirs: Vec<PathBuf> = entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
     dirs.sort();
-    dirs.into_iter().filter_map(|dir| read_aggregate(krate, &dir, svc_id, rel, b)).collect()
+    let mut aggregates: Vec<AggregateRead> = dirs.into_iter().filter_map(|dir| read_aggregate(krate, &dir, svc_id, rel, b)).collect();
+    let mut seen: BTreeSet<String> = aggregates.iter().map(|aggregate| aggregate.aggregate.id.clone()).collect();
+    for src in krate.in_dir(domain) {
+        for aggregate in read_flat_aggregates(src, domain, svc_id) {
+            if seen.insert(aggregate.aggregate.id.clone()) {
+                aggregates.push(aggregate);
+            }
+        }
+    }
+    aggregates.sort_by(|left, right| left.aggregate.id.cmp(&right.aggregate.id));
+    aggregates
+}
+
+/// A flat domain module has no directory whose name can declare the root.
+/// In that shape the root is the public stateful struct itself: an inherent
+/// public method mutating `self` distinguishes an aggregate from immutable
+/// values such as Money or identifiers without relying on its file name.
+fn read_flat_aggregates(src: &Source, domain: &Path, svc_id: &str) -> Vec<AggregateRead> {
+    src.structs()
+        .filter(|st| crate::source::is_public(&st.vis) && is_stateful_root(src, st))
+        .map(|st| {
+            let root = st.ident.to_string();
+            let name = slug(&root);
+            let id = aggregate_id(svc_id, &name);
+            AggregateRead {
+                aggregate: Aggregate {
+                    id: id.clone(),
+                    slug: name.clone(),
+                    name: title(&name),
+                    readme: doc_of(&st.attrs),
+                    root: root.clone(),
+                    entities: vec![block(&id, st)],
+                    value_objects: vec![],
+                    operations: vec![],
+                    events: vec![],
+                    enums: vec![],
+                    lifecycle: None,
+                },
+                dir: domain.to_path_buf(),
+                events: BTreeMap::new(),
+                own: vec![root],
+            }
+        })
+        .collect()
+}
+
+fn is_stateful_root(src: &Source, st: &ItemStruct) -> bool {
+    src.impls_of(&st.ident.to_string())
+        .into_iter()
+        .filter(|implementation| implementation.trait_.is_none())
+        .flat_map(|implementation| &implementation.items)
+        .any(|item| {
+            let ImplItem::Fn(method) = item else { return false };
+            crate::source::is_public(&method.vis)
+                && method.sig.inputs.iter().any(|input| {
+                    matches!(
+                        input,
+                        syn::FnArg::Receiver(receiver)
+                            if receiver.mutability.is_some()
+                                || matches!(receiver.kind, syn::ReceiverKind::Reference(_, _, Some(_)))
+                    )
+                })
+        })
 }
 
 fn read_aggregate(krate: &Crate, dir: &Path, svc_id: &str, rel: &dyn Fn(&Path) -> String, b: &mut Builder) -> Option<AggregateRead> {

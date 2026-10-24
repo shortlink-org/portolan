@@ -1,6 +1,7 @@
 package extractgraphql
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -10,6 +11,63 @@ import (
 	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/plugin"
 )
+
+// Federation subgraphs extend the schema only to import federation
+// directives. There is no operation-type block on that extension; the Query,
+// Mutation and Subscription types are declared separately below it.
+func TestFederationSchemaExtensionThroughPluginProtocol(t *testing.T) {
+	root := t.TempDir()
+	schema := `
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key"])
+
+type Query {
+  auction(id: ID!): Auction
+}
+
+type Auction @key(fields: "id") {
+  id: ID!
+}
+`
+	if err := os.WriteFile(filepath.Join(root, "schema.graphql"), []byte(schema), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts, err := json.Marshal(Options{Context: "auction", Service: "auction"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := json.Marshal(plugin.Request{
+		PortolanVersion: plugin.Version,
+		Input:           plugin.Input{Root: root},
+		Options:         opts,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	if err := Serve(bytes.NewReader(req), &stdout); err != nil {
+		t.Fatal(err)
+	}
+
+	var resp plugin.Response
+	if err := json.Unmarshal(stdout.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Files) != 1 {
+		t.Fatalf("expected one fragment, got %d files", len(resp.Files))
+	}
+
+	var out catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+		t.Fatal(err)
+	}
+	methods := out.Contexts[0].Services[0].Provides[0].Methods
+	if len(methods) != 1 || methods[0].Name != "Query.auction" {
+		t.Fatalf("federated query methods = %+v, want Query.auction", methods)
+	}
+}
 
 func fragment(t *testing.T) catalog.Catalog {
 	t.Helper()

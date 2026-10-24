@@ -22,7 +22,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   if (plugin === "project") {
     return {
       group,
-      component,
+      ...(component ? { component } : {}),
       ...detectedOptions,
       componentName: project.name,
       ...(project.groupKind ? { groupKind: project.groupKind } : {}),
@@ -95,6 +95,103 @@ function deployableProtoPeers(root, files, deployables, context) {
   return Object.fromEntries([...peers].sort(([a], [b]) => a.localeCompare(b)));
 }
 
+function relativeToDeployable(paths, deployable) {
+  if (!deployable.path) return paths ?? [];
+  const prefix = `${deployable.path}/`;
+  return (paths ?? []).filter((path) => path.startsWith(prefix)).map((path) => path.slice(prefix.length));
+}
+
+function compactDirectories(paths) {
+  const directories = [...new Set((paths ?? []).map((name) => posix.dirname(name)))]
+    .sort((a, b) => a.length - b.length || a.localeCompare(b));
+  return directories.filter((directory, index) => !directories.some((parent, parentIndex) =>
+    parentIndex < index && (directory === parent || directory.startsWith(`${parent}/`)),
+  ));
+}
+
+function titleFromId(value) {
+  return value.split(/[-_]+/).filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
+}
+
+function cargoProtoLayout(root, files, deployables, context) {
+  const rust = deployables.filter((deployable) => deployable.technology === "Rust" && deployable.path);
+  const peers = new Map();
+  const ambiguous = new Set();
+  const paths = new Map();
+  const externals = [];
+  for (const owner of rust) {
+    const prefix = `${owner.path}/`;
+    const protoFiles = matches(files, /\.proto$/i).filter((name) => name.startsWith(prefix));
+    const rustFiles = matches(files, /\.rs$/).filter((name) => name.startsWith(`${prefix}src/`));
+    let source = "";
+    const sources = [];
+    for (const name of rustFiles) {
+      try {
+        const text = readFileSync(join(root, name), "utf8");
+        source += `\n${text}`;
+        sources.push([name, text]);
+      } catch {}
+    }
+    const parsed = protoFiles.map((name) => {
+      let text = "";
+      try { text = readFileSync(join(root, name), "utf8"); } catch {}
+      const packageName = /(?:^|[;\n])\s*package\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;/m.exec(text)?.[1] ?? "";
+      const services = [...text.matchAll(/\bservice\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/g)].map((match) => match[1]);
+      return { name, packageName, services };
+    });
+    const ownedPackages = new Set();
+    for (const file of parsed) {
+      const owns = file.services.some((service) => {
+        const escaped = service.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`\\b${escaped}Server\\b`).test(source)
+          || new RegExp(`\\bimpl(?:\\s*<[^>]+>)?\\s+${escaped}\\s+for\\b`).test(source);
+      });
+      if (owns && file.packageName) {
+        ownedPackages.add(file.packageName);
+        const service = `${context}.${owner.slug}`;
+        const existing = peers.get(file.packageName);
+        if (existing && existing !== service) {
+          peers.delete(file.packageName);
+          ambiguous.add(file.packageName);
+        } else if (!ambiguous.has(file.packageName)) {
+          peers.set(file.packageName, service);
+        }
+      }
+    }
+    const ownedFiles = parsed
+      .filter((file) => file.packageName && ownedPackages.has(file.packageName))
+      .map((file) => file.name.slice(prefix.length));
+    paths.set(owner.slug, compactDirectories(ownedFiles));
+    for (const packageName of [...new Set(parsed.map((file) => file.packageName).filter(Boolean))]) {
+      if (ownedPackages.has(packageName)) continue;
+      const packageFiles = parsed.filter((file) => file.packageName === packageName);
+      const clientFile = sources.find(([, text]) => packageFiles.some((file) => file.services.some((service) => {
+        const escaped = service.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`\\b${escaped}Client\\b`).test(text);
+      })));
+      if (!clientFile) continue;
+      const adapter = posix.basename(clientFile[0], posix.extname(clientFile[0]));
+      const fallback = packageName.split(".")[0];
+      const external = slug(["client", "mod", "lib", "main"].includes(adapter) ? fallback : adapter);
+      if (!external) continue;
+      const adapterType = /\b(?:pub\s+)?struct\s+([A-Z][A-Za-z0-9_]*)Adapter\b/.exec(clientFile[1])?.[1];
+      peers.set(packageName, external);
+      externals.push({
+        owner,
+        packageName,
+        external,
+        externalName: adapterType ? adapterType.replace(/Db\b/g, "DB") : titleFromId(external),
+        paths: compactDirectories(packageFiles.map((file) => file.name.slice(prefix.length))),
+      });
+    }
+  }
+  return {
+    peers: Object.fromEntries([...peers].sort(([a], [b]) => a.localeCompare(b))),
+    paths,
+    externals: externals.sort((a, b) => a.owner.slug.localeCompare(b.owner.slug) || a.external.localeCompare(b.external)),
+  };
+}
+
 function goModule(root) {
   try {
     const match = /^\s*module\s+(\S+)/m.exec(readFileSync(join(root, "go.mod"), "utf8"));
@@ -160,7 +257,8 @@ export function planProject(workspace, manifest, request) {
   const finalRoot = plannedRoot;
   if ((manifest.projects ?? []).some((project) => project.root === finalRoot)) throw new Error(`Project path "${finalRoot}" already exists.`);
   const requestedComponent = slug(String(request.component ?? request.service ?? ""));
-  const splitDeployables = confirmedDeployables.length > 1 && requestedComponent === discovery.defaults.component;
+  const requestedDeployable = confirmedDeployables.some((candidate) => candidate.slug === requestedComponent);
+  const splitDeployables = confirmedDeployables.length > 1 && !requestedDeployable;
   const project = {
     id,
     name: String(request.name ?? "").trim() || discovery.defaults.name,
@@ -192,6 +290,10 @@ export function planProject(workspace, manifest, request) {
   const rootAbsolute = resolve(workspace, inspectedRoot);
   const rootFiles = splitDeployables ? walk(rootAbsolute) : new Set();
   const protoPeers = splitDeployables ? deployableProtoPeers(rootAbsolute, rootFiles, confirmedDeployables, project.group ?? project.context ?? id) : {};
+  const cargoLayout = splitDeployables
+    ? cargoProtoLayout(rootAbsolute, rootFiles, confirmedDeployables, project.group ?? project.context ?? id)
+    : { peers: {}, paths: new Map(), externals: [] };
+  const inferredPeers = { ...protoPeers, ...cargoLayout.peers };
   const redisOwners = splitDeployables
     ? new Set(deployableEvidenceOwners(rootAbsolute, rootFiles, confirmedDeployables, detectionByPlugin.get("redis")?.candidates).map((owner) => owner.slug))
     : new Set();
@@ -207,27 +309,66 @@ export function planProject(workspace, manifest, request) {
     if (plugin === "project") {
       return [{ plugin, in: finalRoot, out, options: pluginOptions(plugin, project, projectDetectionOptions) }];
     }
+    if (["adr", "rfc", "sdd", "glossary"].includes(plugin)) {
+      return [{ plugin, in: finalRoot, out, options: pluginOptions(plugin, project, detectionByPlugin.get(plugin)?.options) }];
+    }
     const detectedOptions = detectionByPlugin.get(plugin)?.options ?? {};
     let owners = confirmedDeployables;
-    if (plugin === "proto") owners = confirmedDeployables.filter((candidate) => deployableProtoPaths(detectedOptions.paths, candidate).length > 0);
+    if (plugin === "proto") owners = confirmedDeployables.filter((candidate) =>
+      candidate.technology === "Rust"
+        ? (cargoLayout.paths.get(candidate.slug)?.length ?? 0) > 0
+        : deployableProtoPaths(detectedOptions.paths, candidate).length > 0,
+    );
     else if (plugin === "redis") owners = deployableEvidenceOwners(rootAbsolute, rootFiles, confirmedDeployables, detectionByPlugin.get(plugin)?.candidates);
-    else if (plugin === "go-domain") owners = confirmedDeployables;
+    else if (plugin === "go-domain") owners = confirmedDeployables.filter((candidate) => candidate.technology !== "Rust");
+    else if (plugin === "rust-domain") owners = confirmedDeployables.filter((candidate) => candidate.technology === "Rust");
+    else if (plugin === "graphql") owners = confirmedDeployables.filter((candidate) =>
+      relativeToDeployable(detectionByPlugin.get(plugin)?.candidates, candidate).length > 0,
+    );
     else owners = confirmedDeployables.slice(0, 1);
     return owners.map((owner) => {
       const scopedProject = { ...project, component: owner.slug, componentKind: owner.kind, name: owner.name };
       const scopedOptions = plugin === "proto"
-        ? { ...detectedOptions, paths: deployableProtoPaths(detectedOptions.paths, owner) }
+        ? {
+            ...detectedOptions,
+            paths: owner.technology === "Rust" ? cargoLayout.paths.get(owner.slug) : deployableProtoPaths(detectedOptions.paths, owner),
+            ...(Object.keys(inferredPeers).length ? { peers: inferredPeers } : {}),
+          }
         : plugin === "go-domain"
-          ? { ...detectedOptions, scope: owner.slug, ...(Object.keys(protoPeers).length ? { peers: protoPeers } : {}), ...(redisOwners.has(owner.slug) ? { store: "redis" } : {}) }
-          : detectedOptions;
+          ? { ...detectedOptions, scope: owner.slug, ...(Object.keys(inferredPeers).length ? { peers: inferredPeers } : {}), ...(redisOwners.has(owner.slug) ? { store: "redis" } : {}) }
+          : plugin === "rust-domain"
+            ? { ...detectedOptions, ...(Object.keys(inferredPeers).length ? { peers: inferredPeers } : {}) }
+            : plugin === "graphql"
+              ? (() => {
+                  const schemas = relativeToDeployable(detectionByPlugin.get(plugin)?.candidates, owner);
+                  const directories = compactDirectories(schemas);
+                  return { ...detectedOptions, schema: directories.length === 1 ? directories[0] : schemas[0] };
+                })()
+              : detectedOptions;
+      const componentRoot = owner.path ? posix.join(finalRoot, owner.path) : finalRoot;
       return {
         plugin,
-        in: finalRoot,
+        in: componentRoot,
         out,
         options: { ...pluginOptions(plugin, scopedProject, scopedOptions), out: `${plugin}-${owner.slug}.json` },
       };
     });
   });
+  if (splitDeployables && plugins.includes("proto")) {
+    for (const external of cargoLayout.externals) {
+      steps.push({
+        plugin: "proto",
+        in: posix.join(finalRoot, external.owner.path),
+        out,
+        options: {
+          paths: external.paths,
+          external: external.external,
+          externalName: external.externalName,
+          out: `proto-${external.owner.slug}-${external.external}.json`,
+        },
+      });
+    }
+  }
   const source = external ? "vendor/repos/**/portolan/*.json" : `${out}/*.json`;
   const fetch = external ? { repo: repo.value, commit: String(request.commit), ...(sourcePath ? { paths: [sourcePath] } : {}) } : null;
   return { project, plugins, steps, source, discovery, fetch };

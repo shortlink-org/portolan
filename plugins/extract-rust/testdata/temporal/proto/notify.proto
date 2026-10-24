@@ -1,0 +1,6 @@
+syntax = "proto3";
+package notify.v1;
+
+service NotifyService {
+  rpc SendNotification (Request) returns (Response);
+}
