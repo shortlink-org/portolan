@@ -4,11 +4,11 @@
 # check, diff, and comment need; `site` adds the optional toolchain that only
 # build and dev load, and ships as the `-site` tag.
 #
-# Node is the runtime. Go and Rust appear only in build stages: every built-in
-# Go plugin is one wasm module (portolan.0006) and the fetchers run inside the
-# host (portolan.0008), so nothing runs `go` once the image is built. Java is
-# linked down to the modules its extractor needs, and the Rust extractor
-# arrives as a binary built in its own stage.
+# Node is the host runtime. Most built-in Go plugins are one wasm module
+# (portolan.0006), but the typed HTTP client analyzer deliberately runs as a
+# native sidecar because go/packages invokes the project Go toolchain
+# (portolan.0009). Rust arrives as a binary built in its own stage. Java is
+# linked down to the modules its extractor needs.
 FROM rust:1.99.1-trixie AS rust-builder
 
 WORKDIR /opt/portolan
@@ -56,7 +56,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=java-builder /opt/java /opt/java
-ENV PATH="/opt/java/bin:${PATH}"
+# http-clients builds its native sidecar from the shipped module, then uses the
+# same toolchain through go/packages while loading the workspace module. Copy
+# the pinned toolchain and Portolan's downloaded modules rather than Debian's
+# independently versioned Go package or a runtime download.
+COPY --from=wasm-builder /usr/local/go /usr/local/go
+COPY --from=wasm-builder /go/pkg/mod /opt/go/pkg/mod
+ENV GOMODCACHE="/opt/go/pkg/mod" \
+    PATH="/usr/local/go/bin:/opt/java/bin:${PATH}"
 
 WORKDIR /opt/portolan
 

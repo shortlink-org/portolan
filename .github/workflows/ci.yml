@@ -50,5 +50,8 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: .
+          load: true
           push: false
           tags: portolan:ci
+      - run: docker run --rm --entrypoint go portolan:ci version
+      - run: docker run --rm --network none --entrypoint sh portolan:ci -c 'cd /opt/portolan && go build -mod=mod -o /tmp/portolan-http-clients ./plugins/cmd/portolan-http-clients'

@@ -271,15 +271,16 @@ deployable static site.
 | `portolan diff BASE` | describe the architecture change from a branch, tag, or commit |
 | `portolan doctor` | show which toolchains the manifest's plugins need and which are on `PATH` |
 
-Node.js 24 is required, and for a repository the built-in extractors can
-read on their own it is the only requirement: every Go plugin runs as one
-wasm module over the workspace (`adr/0006`), the fetchers run inside the
-host (`adr/0008`), and the package ships no Go at all. A Go, TypeScript,
-OpenAPI, proto, SQL or GraphQL tree is read, and another repository or a
-schema registry is vendored, with Node and git alone. An extractor that runs
-in its own runtime still needs it: Python 3 for Django and Celery, Java 21
-for Java, Cargo for Rust. `portolan doctor` reports what the manifest asks
-for against what is on `PATH`. The Docker image contains all of them.
+Node.js 24 is required, and most built-in Go extractors run as one wasm module
+over the workspace (`adr/0006`). The typed `http-clients` analyzer is the
+exception: `go/packages` invokes the project toolchain, so it runs as a native
+sidecar and needs Go (`adr/0009`). Fetchers run inside the host (`adr/0008`). A
+Go, TypeScript, OpenAPI, proto, SQL or GraphQL tree is otherwise read, and
+another repository or a schema registry is vendored, with Node and git alone.
+An extractor that runs in its own runtime still needs it: Python 3 for Django
+and Celery, Java 21 for Java, Cargo for Rust. `portolan doctor` reports what
+the manifest asks for against what is on `PATH`. The Docker image contains all
+of them, including the Go version pinned by this release.
 
 ### Connect an AI agent
 
