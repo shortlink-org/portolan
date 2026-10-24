@@ -10,7 +10,8 @@
 // every row would say only that most methods are ordinary.
 
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useLocation } from "react-router";
 import type {
   Field,
   RpcDiscriminator,
@@ -20,6 +21,7 @@ import type {
 } from "../catalog";
 import { catalog } from "../data";
 import { streamingKind } from "../lib/api";
+import { groupHttpMethods } from "../lib/method-groups";
 import { messageAnchor, methodAnchor } from "../routes";
 import { Ident } from "./Ident";
 import { RowActions } from "./RowActions";
@@ -125,6 +127,148 @@ function Shape({
   );
 }
 
+function MethodRow({
+  provided,
+  method,
+  open,
+  onToggle,
+  runs,
+  reference,
+}: {
+  provided: RpcService;
+  method: RpcMethod;
+  open: ReadonlySet<string>;
+  onToggle: (key: string) => void;
+  runs?: (method: RpcMethod) => ReactNode;
+  reference?: (method: RpcMethod) => ReactNode;
+}) {
+  const id = `${provided.id}/${method.name}`;
+  const reqKey = `${id}/req`;
+  const resKey = `${id}/res`;
+  const streaming = streamingKind(method);
+  const reqFields = shapeFor(provided, method.request, method.requestRef);
+  const resFields = shapeFor(
+    provided,
+    method.response,
+    method.responseRef,
+  );
+  const reqDiscriminator = discriminatorFor(provided, method.request);
+  const resDiscriminator = discriminatorFor(provided, method.response);
+
+  return (
+    <li
+      id={methodAnchor(provided.id, method.name)}
+      className="row rounded-none border-x-0 border-t-0 last:border-b-0 target:bg-raised"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2">
+          <Ident
+            value={id}
+            className={method.deprecated ? "line-through" : undefined}
+          />
+          {method.http ? (
+            <span
+              className="chip mono"
+              title={
+                !method.http.method
+                  ? "the route this operation answers on; the HTTP verb is not declared in source"
+                  : method.http.methodBasis === "inferred"
+                    ? `the route this operation answers on; the HTTP verb is inferred, not declared${method.http.methodEvidence ? `: ${method.http.methodEvidence.rule} at ${method.http.methodEvidence.source}` : ""}`
+                    : "the route this operation answers on"
+              }
+            >
+              {method.http.method ? `${method.http.method} ${method.http.path}` : method.http.path}
+            </span>
+          ) : null}
+          {method.http?.method && method.http.methodBasis === "inferred" ? (
+            <span
+              className="chip status-declared"
+              title={method.http.methodEvidence ? `${method.http.methodEvidence.rule} at ${method.http.methodEvidence.source}` : "no declaration names this verb"}
+            >
+              verb inferred
+            </span>
+          ) : null}
+          {method.soap ? (
+            <span
+              className="chip mono"
+              title={method.soap.endpoint || "SOAP operation"}
+            >
+              SOAP{method.soap.version ? ` ${method.soap.version}` : ""}
+              {method.soap.action ? ` · ${method.soap.action}` : ""}
+            </span>
+          ) : null}
+          {method.deprecated ? (
+            <span className="chip">deprecated</span>
+          ) : null}
+          {streaming !== "unary" ? (
+            <span className="chip">{STREAM_LABEL[streaming]}</span>
+          ) : null}
+        </div>
+
+        {method.request || method.response ? (
+          <p className="mono mt-0.5 flex flex-wrap items-center gap-x-1.5 text-muted">
+            <Shape
+              provided={provided}
+              label="sends"
+              name={method.request}
+              refKey={method.requestRef}
+              open={open.has(reqKey)}
+              onToggle={() => onToggle(reqKey)}
+            />
+            <span aria-hidden>→</span>
+            <Shape
+              provided={provided}
+              label="returns"
+              name={method.response}
+              refKey={method.responseRef}
+              open={open.has(resKey)}
+              onToggle={() => onToggle(resKey)}
+            />
+          </p>
+        ) : null}
+
+        {method.doc ? (
+          <p className="mt-0.5 text-muted">{method.doc}</p>
+        ) : null}
+
+        {method.soap?.faults?.length || method.soap?.headers?.length ? (
+          <p className="mono mt-0.5 text-muted">
+            {method.soap.headers?.length
+              ? `headers ${method.soap.headers.join(", ")}`
+              : null}
+            {method.soap.headers?.length && method.soap.faults?.length
+              ? " · "
+              : null}
+            {method.soap.faults?.length
+              ? `faults ${method.soap.faults.join(", ")}`
+              : null}
+          </p>
+        ) : null}
+
+        {runs?.(method)}
+
+        {reference?.(method)}
+
+        {open.has(reqKey) && reqFields ? (
+          <div className="mt-2">
+            <DiscriminatorRows discriminator={reqDiscriminator} />
+            <ShapeRows fields={reqFields} enums={provided.enums} />
+          </div>
+        ) : null}
+        {open.has(resKey) && resFields ? (
+          <div className="mt-2">
+            <DiscriminatorRows discriminator={resDiscriminator} />
+            <ShapeRows fields={resFields} enums={provided.enums} />
+          </div>
+        ) : null}
+      </div>
+      <span className="self-start pt-0.5">
+        <RowActions copy={id} />
+      </span>
+    </li>
+  );
+}
+
 export function MethodRows({
   provided,
   open,
@@ -141,133 +285,113 @@ export function MethodRows({
   /** Protocol-specific tools shown below the method, when its reference has one. */
   reference?: (method: RpcMethod) => ReactNode;
 }) {
+  const location = useLocation();
+  const sections = useMemo(
+    () => groupHttpMethods(provided.methods),
+    [provided.methods],
+  );
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(new Set());
+  const targetId = decodeURIComponent(location.hash.replace(/^#/, ""));
+  const targetGroup = useMemo(
+    () =>
+      sections.find(
+        (section) =>
+          section.kind === "group" &&
+          section.methods.some(
+            (method) => methodAnchor(provided.id, method.name) === targetId,
+          ),
+      ),
+    [provided.id, sections, targetId],
+  );
+
+  // A method reached from a message usage or another catalog link must not be
+  // hidden behind its route family.
+  useEffect(() => {
+    if (!targetGroup || targetGroup.kind !== "group") return;
+
+    setOpenGroups((current) => {
+      if (current.has(targetGroup.key)) return current;
+      const next = new Set(current);
+      next.add(targetGroup.key);
+      return next;
+    });
+  }, [targetGroup]);
+
+  // The app-level hash scroller can finish before a large catalog has loaded.
+  // Once this component has mounted the target row, make the direct link land
+  // on the method instead of merely opening its family above the fold.
+  useEffect(() => {
+    if (
+      !targetId ||
+      !targetGroup ||
+      targetGroup.kind !== "group" ||
+      !openGroups.has(targetGroup.key)
+    ) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() =>
+      document
+        .getElementById(targetId)
+        ?.scrollIntoView({ block: "start", behavior: "smooth" }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [openGroups, targetGroup, targetId]);
+
+  const toggleGroup = (key: string) =>
+    setOpenGroups((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+
+  const row = (method: RpcMethod) => (
+    <MethodRow
+      key={method.name}
+      provided={provided}
+      method={method}
+      open={open}
+      onToggle={onToggle}
+      runs={runs}
+      reference={reference}
+    />
+  );
+
   return (
     <ul data-nav-list>
-      {provided.methods.map((method) => {
-        const id = `${provided.id}/${method.name}`;
-        const reqKey = `${id}/req`;
-        const resKey = `${id}/res`;
-        const streaming = streamingKind(method);
-        const reqFields = shapeFor(provided, method.request, method.requestRef);
-        const resFields = shapeFor(
-          provided,
-          method.response,
-          method.responseRef,
-        );
-        const reqDiscriminator = discriminatorFor(provided, method.request);
-        const resDiscriminator = discriminatorFor(provided, method.response);
+      {sections.map((section) => {
+        if (section.kind === "method") return row(section.method);
 
+        const shown = openGroups.has(section.key);
+        const contentId = methodAnchor(provided.id, `group-${section.key}`);
         return (
           <li
-            key={method.name}
-            id={methodAnchor(provided.id, method.name)}
-            className="row rounded-none border-x-0 border-t-0 last:border-b-0 target:bg-raised"
+            key={`group:${section.key}`}
+            className="border-b border-line last:border-b-0"
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-x-2">
-                <Ident
-                  value={id}
-                  className={method.deprecated ? "line-through" : undefined}
-                />
-                {method.http ? (
-                  <span
-                    className="chip mono"
-                    title={
-                      !method.http.method
-                        ? "the route this operation answers on; the HTTP verb is not declared in source"
-                        : method.http.methodBasis === "inferred"
-                          ? `the route this operation answers on; the HTTP verb is inferred, not declared${method.http.methodEvidence ? `: ${method.http.methodEvidence.rule} at ${method.http.methodEvidence.source}` : ""}`
-                          : "the route this operation answers on"
-                    }
-                  >
-                    {method.http.method ? `${method.http.method} ${method.http.path}` : method.http.path}
-                  </span>
-                ) : null}
-                {method.http?.method && method.http.methodBasis === "inferred" ? (
-                  <span
-                    className="chip status-declared"
-                    title={method.http.methodEvidence ? `${method.http.methodEvidence.rule} at ${method.http.methodEvidence.source}` : "no declaration names this verb"}
-                  >
-                    verb inferred
-                  </span>
-                ) : null}
-                {method.soap ? (
-                  <span
-                    className="chip mono"
-                    title={method.soap.endpoint || "SOAP operation"}
-                  >
-                    SOAP{method.soap.version ? ` ${method.soap.version}` : ""}
-                    {method.soap.action ? ` · ${method.soap.action}` : ""}
-                  </span>
-                ) : null}
-                {method.deprecated ? (
-                  <span className="chip">deprecated</span>
-                ) : null}
-                {streaming !== "unary" ? (
-                  <span className="chip">{STREAM_LABEL[streaming]}</span>
-                ) : null}
-              </div>
-
-              {method.request || method.response ? (
-                <p className="mono mt-0.5 flex flex-wrap items-center gap-x-1.5 text-muted">
-                  <Shape
-                    provided={provided}
-                    label="sends"
-                    name={method.request}
-                    refKey={method.requestRef}
-                    open={open.has(reqKey)}
-                    onToggle={() => onToggle(reqKey)}
-                  />
-                  <span aria-hidden>→</span>
-                  <Shape
-                    provided={provided}
-                    label="returns"
-                    name={method.response}
-                    refKey={method.responseRef}
-                    open={open.has(resKey)}
-                    onToggle={() => onToggle(resKey)}
-                  />
-                </p>
-              ) : null}
-
-              {method.doc ? (
-                <p className="mt-0.5 text-muted">{method.doc}</p>
-              ) : null}
-
-              {method.soap?.faults?.length || method.soap?.headers?.length ? (
-                <p className="mono mt-0.5 text-muted">
-                  {method.soap.headers?.length
-                    ? `headers ${method.soap.headers.join(", ")}`
-                    : null}
-                  {method.soap.headers?.length && method.soap.faults?.length
-                    ? " · "
-                    : null}
-                  {method.soap.faults?.length
-                    ? `faults ${method.soap.faults.join(", ")}`
-                    : null}
-                </p>
-              ) : null}
-
-              {runs?.(method)}
-
-              {reference?.(method)}
-
-              {open.has(reqKey) && reqFields ? (
-                <div className="mt-2">
-                  <DiscriminatorRows discriminator={reqDiscriminator} />
-                  <ShapeRows fields={reqFields} enums={provided.enums} />
-                </div>
-              ) : null}
-              {open.has(resKey) && resFields ? (
-                <div className="mt-2">
-                  <DiscriminatorRows discriminator={resDiscriminator} />
-                  <ShapeRows fields={resFields} enums={provided.enums} />
-                </div>
-              ) : null}
-            </div>
-            <span className="self-start pt-0.5">
-              <RowActions copy={id} />
-            </span>
+            <button
+              type="button"
+              onClick={() => toggleGroup(section.key)}
+              aria-expanded={shown}
+              aria-controls={contentId}
+              data-nav-item
+              className="mono flex w-full items-center gap-1.5 bg-surface px-3 py-1.5 text-left hover:text-ink"
+            >
+              {shown ? (
+                <ChevronDown size={12} aria-hidden className="text-muted" />
+              ) : (
+                <ChevronRight size={12} aria-hidden className="text-muted" />
+              )}
+              <span>{section.label}</span>
+              <span className="tnum ml-auto text-muted">
+                {section.methods.length}
+              </span>
+            </button>
+            {shown ? (
+              <ul id={contentId} data-nav-list>
+                {section.methods.map(row)}
+              </ul>
+            ) : null}
           </li>
         );
       })}

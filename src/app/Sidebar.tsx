@@ -28,6 +28,7 @@ import { contextStats } from "../lib/derive";
 import { vocabularies } from "../language/cards";
 import { groupFlowsByOwner } from "../lib/flow-tree";
 import type { LeafKind } from "../lib/kinds";
+import { groupHttpMethods } from "../lib/method-groups";
 import { plural } from "../lib/format";
 import {
   FLOW_GROUPS_KEY,
@@ -39,7 +40,7 @@ import type { Flags } from "../lib/sidebar-prefs";
 import { KindIcon } from "../components/kind";
 import { Wordmark } from "../components/logo";
 import { isStruck } from "../components/primitives";
-import { packageAnchor, paths } from "../routes";
+import { methodAnchor, packageAnchor, paths } from "../routes";
 import { STORE_KIND_LABEL, StoreKindMark } from "../er/StoreHeader";
 import { resolveSelection } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
@@ -548,11 +549,10 @@ export function Sidebar({
                                   ))}
                               {/* Between the model and where it is kept: an
                                 endpoint is how the outside reaches the first and
-                                eventually moves the second. Methods are listed
-                                flat rather than nested under their interface -
-                                an operationId is unique across a document, so
-                                the extra level would carry no information and
-                                cost a line of indent in a narrow tree. */}
+                                eventually moves the second. Small interfaces stay
+                                flat. Large HTTP interfaces fold repeated route
+                                families so opening `api` never produces hundreds
+                                of indistinguishable siblings. */}
                               {endpoints.length > 0 ? (
                                 <Group
                                   kind="endpoint"
@@ -566,19 +566,45 @@ export function Sidebar({
                                   onToggle={() => toggle(`${skey}:api`, false)}
                                 >
                                   {endpoints.flatMap(({ provided, methods }) =>
-                                    methods.map((method) => (
-                                      <Leaf
-                                        key={`${provided.id}/${method.name}`}
-                                        to={`${paths.service(context.id, service.slug)}?tab=provides`}
-                                        depth={3}
-                                        title={`${provided.id}/${method.name} — ${provided.source}`}
-                                      >
-                                        <KindIcon kind="endpoint" />
-                                        <span className="mono truncate">
-                                          {method.name}
-                                        </span>
-                                      </Leaf>
-                                    )),
+                                    groupHttpMethods(methods).map((section) => {
+                                      const methodLeaf = (
+                                        method: RpcMethod,
+                                        depth: number,
+                                      ) => (
+                                        <Leaf
+                                          key={`${provided.id}/${method.name}`}
+                                          to={`${paths.service(context.id, service.slug)}?tab=provides#${methodAnchor(provided.id, method.name)}`}
+                                          depth={depth}
+                                          title={`${provided.id}/${method.name} — ${provided.source}`}
+                                        >
+                                          <KindIcon kind="endpoint" />
+                                          <span className="mono truncate">
+                                            {method.name}
+                                          </span>
+                                        </Leaf>
+                                      );
+
+                                      if (section.kind === "method") {
+                                        return methodLeaf(section.method, 3);
+                                      }
+
+                                      const key = `${skey}:api:${provided.id}:${section.key}`;
+                                      return (
+                                        <Group
+                                          key={key}
+                                          kind="endpoint"
+                                          label={section.label}
+                                          count={section.methods.length}
+                                          depth={3}
+                                          open={isOpen(key, false)}
+                                          onToggle={() => toggle(key, false)}
+                                        >
+                                          {section.methods.map((method) =>
+                                            methodLeaf(method, 4),
+                                          )}
+                                        </Group>
+                                      );
+                                    }),
                                   )}
                                 </Group>
                               ) : null}
