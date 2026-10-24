@@ -46,6 +46,8 @@ const HINT_KINDS: Kind[] = [
   "aggregate",
   "command",
   "query",
+  "channel",
+  "message",
 ];
 
 /** One row of the list, drawn the same whether it was searched for or recalled. */

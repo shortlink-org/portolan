@@ -21,6 +21,8 @@ const STATUSES = new Set<string>(["verified", "declared", "unresolved"]);
 const KINDS = new Set<string>([
   "context",
   "service",
+  "channel",
+  "message",
   "aggregate",
   "event",
   "vo",

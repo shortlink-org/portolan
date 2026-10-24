@@ -5,6 +5,8 @@ import {
   adrPath,
   allCatalogPaths,
   blockPath,
+  channelAnchor,
+  channelMessageAnchor,
   eventPath,
   eventVersionPath,
   isLandingPath,
@@ -12,6 +14,7 @@ import {
   paths,
   rfcPath,
   servicePath,
+  serviceBusPath,
   tablePath,
   viewPath,
   enumPath,
@@ -55,6 +58,25 @@ describe("routes", () => {
       "/ownership?owner=%40acme%2Fshop%20team",
     );
     expect(isRoutable(paths.owner("@acme/shop team"))).toBe(true);
+  });
+
+  it("routes the messaging inventory and exact Bus declarations", () => {
+    expect(paths.messaging()).toBe("/messaging");
+    expect(isRoutable("/messaging?view=messages")).toBe(true);
+    expect(channelAnchor("orders/created")).toBe(
+      "bus-channel-orders-created",
+    );
+    expect(channelMessageAnchor("orders/created", "Order Placed", "send")).toBe(
+      "bus-message-orders-created-send-Order-Placed",
+    );
+    expect(
+      serviceBusPath("shop", "oms", "orders/created", {
+        name: "Order Placed",
+        direction: "send",
+      }),
+    ).toBe(
+      "/c/shop/oms?tab=bus#bus-message-orders-created-send-Order-Placed",
+    );
   });
 
   it("routes every URL the catalog can produce", () => {

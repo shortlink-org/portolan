@@ -34,6 +34,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Pricing](shop/pricing/README.md): in Shop. Aggregates: PriceList, Quote
 - [Storefront BFF](storefront/bff/README.md): in Storefront
 
+## Messaging
+
+- [Channels and messages](messaging.md): 11 service-scoped channel claims. 25 message claims
+
 ## Aggregates
 
 - [Lockout](auth/auth/aggregates/lockout.md): in [Authentication & Sessions](auth/auth/README.md). root `Lockout`. 2 commands, 1 query, 1 event. How many wrong passwords in a row an account has taken, and whether it is refusing logins because of them

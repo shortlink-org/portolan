@@ -136,6 +136,7 @@
     "flows/pricing-list-price-lists.md",
     "llms-full.txt",
     "llms.txt",
+    "messaging.md",
     "modules/README.md",
     "modules/shortlink-org-portolan-delivery-route.md",
     "modules/shortlink-org-portolan-delivery-shipment.md",

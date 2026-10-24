@@ -77,6 +77,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 
 	s.layout()
 	s.renderIndex()
+	s.renderMessaging()
 	s.renderTypes()
 	s.renderModules()
 	for i := range s.cat.Contexts {
@@ -309,6 +310,12 @@ func (s *site) renderIndex() {
 		})
 	}
 	section(&b, "Schema modules", table([]string{"Module", "Publisher", "Registry", "Packages"}, modules))
+
+	channelCount, messageCount := s.messagingCounts()
+	if channelCount > 0 {
+		section(&b, "Messaging", "- "+link("Channels and messages", self, messagingPage)+
+			" — "+plural(channelCount, "channel claim")+", "+plural(messageCount, "message claim")+"\n")
+	}
 
 	flows := make([][]string, 0, len(s.cat.Flows))
 	for i := range s.cat.Flows {

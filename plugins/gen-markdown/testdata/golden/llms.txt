@@ -18,6 +18,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 - [Invoices](billing/invoices/README.md): in Billing. Aggregates: Invoice
 
+## Messaging
+
+- [Channels and messages](messaging.md): 1 service-scoped channel claim. 1 message claim
+
 ## Aggregates
 
 - [Invoice](billing/invoices/aggregates/invoice.md): in [Invoices](billing/invoices/README.md). root `Invoice`. 1 command, 1 query, 1 event. One invoice, one customer, one currency

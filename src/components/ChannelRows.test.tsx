@@ -70,6 +70,21 @@ describe("ChannelRows Kafka UI integration", () => {
 });
 
 describe("ChannelRows direction", () => {
+  it("gives channels and service-scoped message declarations stable anchors", () => {
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <ChannelRowsContent channels={[queue]} service="shop.app" kafkaUi="" />
+      </MemoryRouter>,
+    );
+    expect(markup).toContain('id="bus-channel-default"');
+    expect(markup).toContain(
+      'id="bus-message-default-send-App-Jobs-IndexOrder"',
+    );
+    expect(markup).toContain(
+      'id="bus-message-default-receive-App-Jobs-ImportBatch"',
+    );
+  });
+
   it("draws each direction as its own chip", () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>

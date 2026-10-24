@@ -242,6 +242,20 @@ export function Sidebar({
     setCollapsed((c) => ({ ...c, [key]: !(c[key] ?? def) }));
   const flowGroups = useMemo(() => groupFlowsByOwner(catalog.flows), []);
   const flowCount = flowGroups.reduce((n, g) => n + g.entries.length, 0);
+  const messagingCount = useMemo(
+    () =>
+      catalog.contexts.reduce(
+        (count, context) =>
+          count +
+          context.services.reduce(
+            (serviceCount, service) =>
+              serviceCount + (service.channels?.length ?? 0),
+            0,
+          ),
+        0,
+      ),
+    [],
+  );
 
   // One row per vocabulary, not per word: thirty-eight terms in the tree would
   // be a dictionary nobody scrolls past to reach the model. The row opens the
@@ -436,6 +450,24 @@ export function Sidebar({
               );
             })}
           </Section>
+
+          {messagingCount > 0 ? (
+            <Section
+              title="Messaging"
+              count={messagingCount}
+              open={sectionOpen("messaging")}
+              onToggle={() => toggleSection("messaging")}
+            >
+              <Leaf
+                to={paths.messaging()}
+                depth={0}
+                title="Browse every service-scoped channel and message declaration"
+              >
+                <KindIcon kind="channel" />
+                <span>channels and messages</span>
+              </Leaf>
+            </Section>
+          ) : null}
 
           <Section
             title="Contexts"

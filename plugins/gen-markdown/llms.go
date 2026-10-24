@@ -88,6 +88,15 @@ func (s *site) llmsIndex() string {
 
 	section(&b, "Services", list(services))
 
+	channelCount, messageCount := s.messagingCounts()
+	if channelCount > 0 {
+		section(&b, "Messaging", list([]string{entry(
+			link("Channels and messages", self, messagingPage),
+			plural(channelCount, "service-scoped channel claim"),
+			plural(messageCount, "message claim"),
+		)}))
+	}
+
 	// The pages a model has most to learn from: the shape of the data, the
 	// commands and the events of the estate all live here, and nowhere else
 	// on the site is the readme of an aggregate printed in full.

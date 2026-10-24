@@ -32,6 +32,8 @@ describe("palette index", () => {
         "context",
         "external",
         "service",
+        "channel",
+        "message",
         "aggregate",
         "event",
         "vo",
@@ -136,6 +138,16 @@ describe("prefix filters", () => {
     expect(result.kind).toBe("event");
     expect(result.prefix).toBe("e");
     expect(result.term).toBe("item");
+  });
+
+  it("indexes service-scoped channels and AsyncAPI message names", () => {
+    const live = paletteItems(shipped);
+    const channel = search(live, "channel: shop.cart.basket").hits[0]?.item;
+    const message = search(live, "msg: oms.OrderPlaced").hits[0]?.item;
+    expect(channel?.kind).toBe("channel");
+    expect(channel?.detail).toMatch(/^shop\./);
+    expect(message?.kind).toBe("message");
+    expect(message?.path).toContain("/messaging?view=messages");
   });
 });
 

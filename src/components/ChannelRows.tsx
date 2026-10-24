@@ -33,7 +33,7 @@ import {
   kafkaUiTopicUrl,
   useKafkaUi,
 } from "../lib/kafka-ui";
-import { eventPath } from "../routes";
+import { channelAnchor, channelMessageAnchor, eventPath } from "../routes";
 import { Ident } from "./Ident";
 import { RowActions } from "./RowActions";
 
@@ -133,11 +133,13 @@ function MessageRow({
   message,
   directions,
   mine,
+  channel,
 }: {
   message: ChannelMessage;
   directions: readonly ChannelDirection[];
   /** The service this channel belongs to, so a row can say when the publisher is someone else. */
   mine: string;
+  channel: string;
 }) {
   const published = publisherOf(message.name);
   const elsewhere =
@@ -146,7 +148,14 @@ function MessageRow({
       : null;
 
   return (
-    <li className="row rounded-none border-x-0 border-t-0 last:border-b-0">
+    <li
+      id={channelMessageAnchor(
+        channel,
+        message.name,
+        directions[0] ?? message.direction,
+      )}
+      className="row scroll-mt-16 rounded-none border-x-0 border-t-0 last:border-b-0"
+    >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2">
           {directions.map((direction) => (
@@ -354,7 +363,11 @@ export function ChannelRowsContent({
       {channels.map((channel) => {
         const rows = rowsOf(channel.messages, filter, grouped);
         return (
-          <div key={channel.address} className="rounded-card border border-line">
+          <div
+            key={channel.address}
+            id={channelAnchor(channel.address)}
+            className="scroll-mt-16 rounded-card border border-line"
+          >
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-3 py-2">
               <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
                 <Ident value={channel.address} />
@@ -398,6 +411,7 @@ export function ChannelRowsContent({
                     message={message}
                     directions={directions}
                     mine={service}
+                    channel={channel.address}
                   />
                 ))}
               </ul>

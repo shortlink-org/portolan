@@ -21,6 +21,10 @@
 | --- | --- | --- | --- |
 | [Billing contracts](modules/example-billing.md) | [billing.invoices](billing/invoices/README.md) | buf.build | 1 package |
 
+## Messaging
+
+- [Channels and messages](messaging.md) — 1 channel claim, 1 message claim
+
 ## Flows
 
 | Flow | Owner | Summary |

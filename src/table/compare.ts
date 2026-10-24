@@ -34,24 +34,26 @@ const KIND_RANK: Record<Kind, number> = {
   // What the outside can call sits between the model and where it is kept: it
   // is not one of the building blocks, and it is not infrastructure either.
   endpoint: 7,
+  channel: 8,
+  message: 8,
   // The schema an interface was declared in, between what it offers and where
   // its state is kept - the same place the palette ranks it.
-  module: 8,
+  module: 9,
   // Where the model is kept comes after the model itself, and a store before
   // the tables in it - the same order the palette ranks them in.
-  store: 9,
-  table: 10,
-  view: 11,
-  service: 12,
-  context: 13,
-  external: 13,
-  flow: 14,
-  adr: 15,
-  rfc: 15,
-  spec: 16,
-  requirement: 17,
-  scenario: 18,
-  term: 19,
+  store: 10,
+  table: 11,
+  view: 12,
+  service: 13,
+  context: 14,
+  external: 14,
+  flow: 15,
+  adr: 16,
+  rfc: 16,
+  spec: 17,
+  requirement: 18,
+  scenario: 19,
+  term: 20,
 };
 
 /** Case-insensitive, then case-sensitive, so the order is never arbitrary. */

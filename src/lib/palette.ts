@@ -22,6 +22,7 @@ import type {
 } from "../catalog";
 import { allTerms, enumsOf, walkSteps } from "../catalog";
 import { flowHealth } from "./flow-tree";
+import { messagingClaims } from "./messaging";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
 import { paths, specRequirementAnchor, specScenarioAnchor, storePath, tablePath, viewPath } from "../routes";
@@ -442,6 +443,36 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
     }
   }
 
+  // Async declarations stay service-scoped even when their wire names match.
+  // The messaging page compares those claims without inventing a global owner.
+  const messaging = messagingClaims(catalog);
+  for (const channel of messaging.channels) {
+    const params = new URLSearchParams({ selected: channel.id });
+    items.push({
+      kind: "channel",
+      id: channel.id,
+      name: channel.address,
+      detail: channel.serviceId,
+      path: `${paths.messaging()}?${params.toString()}`,
+      context: channel.contextId,
+      badge: channel.protocol,
+      text: flattenProse(`${channel.title ?? ""} ${channel.doc ?? ""} ${channel.source ?? ""}`),
+    });
+  }
+  for (const message of messaging.messages) {
+    const params = new URLSearchParams({ view: "messages", selected: message.id });
+    items.push({
+      kind: "message",
+      id: message.id,
+      name: message.name,
+      detail: `${message.serviceId} · ${message.address}`,
+      path: `${paths.messaging()}?${params.toString()}`,
+      context: message.contextId,
+      badge: message.direction,
+      text: flattenProse(`${message.title ?? ""} ${message.doc ?? ""} ${message.source ?? ""}`),
+    });
+  }
+
   // Shared types have no page: picking one opens the detail panel where it is.
   // They are listed all the same, because "which events carry a Money?" is a
   // question people arrive with.
@@ -798,29 +829,31 @@ const KIND_RANK: Record<Kind, number> = {
   // After the operation it exposes: a reader searching for "register" wants
   // the command first and the door to it second.
   endpoint: 8,
+  channel: 9,
+  message: 9,
   // A set of values after the shapes that hold it and the calls that move
   // it: "status" wants the lifecycle's aggregate before the enum's list.
-  enum: 9,
-  def: 9,
+  enum: 10,
+  def: 10,
   // A module is a contract, so it sits with the shared types rather than with
   // the infrastructure: what it holds is shapes other services are promised.
-  module: 10,
+  module: 11,
   // Where the model is kept comes after the model itself: a reader looking for
   // "orders" wants the aggregate first and the table that holds it second.
-  store: 11,
-  table: 12,
+  store: 12,
+  table: 13,
   // A view after the tables it is computed from, for the same reason.
-  view: 13,
-  flow: 14,
-  adr: 15,
-  rfc: 15,
-  spec: 15,
-  requirement: 16,
-  scenario: 17,
+  view: 14,
+  flow: 15,
+  adr: 16,
+  rfc: 16,
+  spec: 16,
+  requirement: 17,
+  scenario: 18,
   // Last, and on purpose. A reader typing "session" wants the aggregate they
   // can open, not the sentence about what the word means; the term is what
   // they fall back to when nothing they clicked explained it.
-  term: 18,
+  term: 19,
 };
 
 /**

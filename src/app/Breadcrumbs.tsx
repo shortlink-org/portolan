@@ -125,6 +125,9 @@ export function crumbsFor(pathname: string, hash = ""): Crumb[] {
   if (parts[0] === "ownership")
     return [{ label: "ownership", to: paths.ownership() }];
 
+  if (parts[0] === "messaging")
+    return [{ label: "messaging", to: paths.messaging() }];
+
   if (parts[0] === "problems")
     return [{ label: "problems", to: paths.problems() }];
 

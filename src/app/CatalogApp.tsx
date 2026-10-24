@@ -40,6 +40,7 @@ import {
   GraphPage,
   Language,
   ModulePage,
+  MessagingIndex,
   OwnershipPage,
   PluginIndex,
   PluginSettings,
@@ -218,6 +219,7 @@ function AppRoutes({
       <Route path="/plugins" element={<PluginIndex />} />
       <Route path="/plugins/:name/settings" element={<PluginSettings />} />
       <Route path="/ownership" element={<OwnershipPage />} />
+      <Route path="/messaging" element={<MessagingIndex />} />
       <Route path="/adrs/new" element={<AdrCreate />} />
       <Route path="/adrs/:adr/edit" element={<AdrCreate />} />
       <Route

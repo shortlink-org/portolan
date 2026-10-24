@@ -32,6 +32,10 @@
 | [shortlink-org/portolan-shop-price-list](modules/shortlink-org-portolan-shop-price-list.md) | [shop.pricing](shop/pricing/README.md) | buf.build | 1 package |
 | [shortlink-org/portolan-shop-quote](modules/shortlink-org-portolan-shop-quote.md) | [shop.pricing](shop/pricing/README.md) | buf.build | 1 package |
 
+## Messaging
+
+- [Channels and messages](messaging.md) — 11 channel claims, 25 message claims
+
 ## Flows
 
 | Flow | Owner | Summary |

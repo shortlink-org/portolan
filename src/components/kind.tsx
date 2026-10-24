@@ -9,6 +9,8 @@ import {
   Hexagon,
   ListChecks,
   MessagesSquare,
+  MessageSquare,
+  RadioTower,
   ListTree,
   Package,
   Route,
@@ -53,6 +55,8 @@ const KIND_ICON: Record<Kind, IconComponent> = {
   // Outside the estate, so the one mark that says "the rest of the world".
   external: Globe,
   service: Server,
+  channel: RadioTower,
+  message: MessageSquare,
   aggregate: Hexagon,
   // A store and a table are infrastructure, not domain objects, so they take
   // lucide's furniture rather than one of portolan's five domain marks.
@@ -98,6 +102,8 @@ export const KIND_COLOR: Record<Kind, string> = {
   context: "var(--ctx)",
   external: "var(--fg-muted)",
   service: "var(--fg-muted)",
+  channel: "var(--fg-muted)",
+  message: "var(--fg-muted)",
   aggregate: "var(--fg)",
   store: "var(--fg-muted)",
   table: "var(--fg-muted)",

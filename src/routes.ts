@@ -58,6 +58,8 @@ export const paths = {
   /** One plugin on that page, by the name the manifest declares it under. */
   plugin: (name: string) => `/plugins#plugin-${name}`,
   ownership: () => "/ownership",
+  /** Every service-scoped channel and message declaration in the estate. */
+  messaging: () => "/messaging",
   owner: (handle: string) => `/ownership?owner=${encodeURIComponent(handle)}`,
   problems: () => "/problems",
   changes: () => "/changes",
@@ -201,6 +203,37 @@ export function messageAnchor(interfaceId: string, message: string): string {
 /** One method row on a module or service interface panel. */
 export function methodAnchor(interfaceId: string, method: string): string {
   return `method-${interfaceId}-${method}`.replace(/[^A-Za-z0-9_.:-]/g, "-");
+}
+
+/** One declared channel on a service's Bus tab. */
+export function channelAnchor(address: string): string {
+  return `bus-channel-${address}`.replace(/[^A-Za-z0-9_.:-]/g, "-");
+}
+
+/** One service-scoped message declaration on a service's Bus tab. */
+export function channelMessageAnchor(
+  address: string,
+  name: string,
+  direction: string,
+): string {
+  return `bus-message-${address}-${direction}-${name}`.replace(
+    /[^A-Za-z0-9_.:-]/g,
+    "-",
+  );
+}
+
+export function serviceBusPath(
+  contextId: string,
+  serviceSlug: string,
+  address?: string,
+  message?: { name: string; direction: string },
+): string {
+  const base = `${paths.service(contextId, serviceSlug)}?tab=bus`;
+  if (!address) return base;
+  const anchor = message
+    ? channelMessageAnchor(address, message.name, message.direction)
+    : channelAnchor(address);
+  return `${base}#${anchor}`;
 }
 
 /** The section anchors on a value object or entity page. */
@@ -471,6 +504,7 @@ const ROUTES: RegExp[] = [
   /^\/language$/,
   /^\/plugins$/,
   /^\/ownership$/,
+  /^\/messaging$/,
   /^\/problems$/,
   /^\/changes$/,
   /^\/drafts$/,
@@ -519,6 +553,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.language(),
     paths.plugins(),
     paths.ownership(),
+    paths.messaging(),
     paths.problems(),
     paths.changes(),
     paths.settings(),

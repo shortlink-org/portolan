@@ -11,6 +11,9 @@ export type Kind =
    */
   | "external"
   | "service"
+  /** One service's declaration of a broker destination or a message on it. */
+  | "channel"
+  | "message"
   | "aggregate"
   | "store"
   | "table"
@@ -86,6 +89,8 @@ export const KIND_LABEL: Record<Kind, string> = {
   context: "context",
   external: "external API",
   service: "service",
+  channel: "channel",
+  message: "message",
   aggregate: "aggregate",
   store: "store",
   table: "table",
@@ -112,6 +117,8 @@ export const KIND_PLURAL: Record<Kind, string> = {
   context: "contexts",
   external: "external APIs",
   service: "services",
+  channel: "channels",
+  message: "messages",
   aggregate: "aggregates",
   store: "stores",
   table: "tables",
@@ -166,6 +173,8 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   // rather than to "tbl": a reader who types one is not asking for the other.
   view: ["view", "views", "vw"],
   service: ["svc", "service", "services"],
+  channel: ["ch", "channel", "channels", "topic", "queue"],
+  message: ["msg", "message", "messages"],
   context: ["ctx", "context", "contexts"],
   external: ["ext", "external", "externals"],
   flow: ["flow", "flows"],

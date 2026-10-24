@@ -26,6 +26,7 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import { Check, ChevronDown } from "lucide-react";
+import type { ReactNode } from "react";
 
 export interface SelectOption {
   value: string;
@@ -40,6 +41,7 @@ export function Select({
   onChange,
   label,
   title,
+  prefix,
   className = "",
   menuWidth,
   disabled = false,
@@ -51,6 +53,8 @@ export function Select({
   /** Accessible name. Rendered by the caller when it is visible. */
   label: string;
   title?: string;
+  /** Visible context such as “service” or “sort”, kept quiet beside the value. */
+  prefix?: ReactNode;
   className?: string;
   /** Width of the panel. Defaults to "as wide as the button, at least 160px". */
   menuWidth?: number;
@@ -81,6 +85,7 @@ export function Select({
       >
         {({ open }) => (
           <>
+            {prefix ? <span className="shrink-0 text-faint">{prefix}</span> : null}
             <span className="min-w-0 truncate">{selected?.label ?? value}</span>
             <ChevronDown
               size={13}
