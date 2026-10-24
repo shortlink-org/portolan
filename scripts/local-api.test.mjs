@@ -363,6 +363,58 @@ describe("local project setup", { timeout: 30_000 }, () => {
     expect(discovery.detections.find((item) => item.plugin === "adr")?.selected).toBe(false);
   });
 
+  it("does not treat integration-test migrations as a production store", () => {
+    const root = workspace();
+    rmSync(join(root, "services/billing/migrations"), { recursive: true });
+    mkdirSync(join(root, "services/billing/tests/integration/migrations"), { recursive: true });
+    writeFileSync(
+      join(root, "services/billing/tests/integration/migrations/001_test.sql"),
+      "create table test_invoices(id bigint);\n",
+    );
+
+    const plugins = discoverProject(root, "services/billing").detections.map(
+      (item) => item.plugin,
+    );
+    expect(plugins).not.toContain("sql");
+  });
+
+  it("lets the OpenAPI extractor classify every document when several are present", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/billing/internal/connector/acme/client"), { recursive: true });
+    writeFileSync(
+      join(root, "services/billing/internal/connector/acme/client/openapi.yaml"),
+      "openapi: 3.1.0\ninfo: { title: Acme API, version: 1.0.0 }\npaths: {}\n",
+    );
+    writeFileSync(
+      join(root, "services/billing/internal/connector/acme/client/client.go"),
+      "package client\ntype ClientInterface interface{}\n",
+    );
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.find((item) => item.plugin === "openapi")).toMatchObject({
+      candidates: [
+        "api/openapi.yaml",
+        "internal/connector/acme/client/openapi.yaml",
+      ],
+      options: {},
+    });
+
+    const plan = planProject(root, manifest, {
+      root: "services/billing",
+      id: "billing",
+      name: "Billing",
+      group: "finance",
+      component: "billing",
+      plugins: ["openapi"],
+    });
+    expect(plan.steps[0].options).toEqual({
+      context: "finance",
+      service: "billing",
+      out: "api.json",
+    });
+  });
+
   it("recognizes common ADR markdown variants and previews extracted fields", () => {
     const root = workspace();
     const adrRoot = join(root, "services/billing/docs/adr");

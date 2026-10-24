@@ -61,6 +61,9 @@ func TestExtractsConfiguredHandlerAndHelperPublications(t *testing.T) {
 	if !strings.Contains(byAddress["mail.input"].Doc, "MAIL_INPUT_TOPIC") {
 		t.Fatalf("channel doc = %q", byAddress["mail.input"].Doc)
 	}
+	if got := byAddress["mail.input"].AddressBinding; got == nil || got.EnvironmentVariable != "MAIL_INPUT_TOPIC" || got.DefaultValue != "mail.input" || !strings.Contains(got.Source, "app/router.go:26") {
+		t.Fatalf("channel address binding = %+v", got)
+	}
 	if len(out.Flows) != 1 {
 		t.Fatalf("flows = %+v", out.Flows)
 	}

@@ -36,6 +36,12 @@ function, a CLI, a library or a data pipeline, said by its kind. The wire and
 the code say service; the README and the setup wizard say component when the
 kind is neutral. Decided in portolan.0004.
 
+**Configuration binding.** One deployment environment's value for an
+environment variable source code names, with the file and line that supplied
+it. It may refine an already-observed call, channel or store, but never creates
+one by itself. Secret values are never kept; only safe references or a redacted
+marker reach the catalog.
+
 **Context.** The estate's top grouping level and nothing more: it owns
 services and states no relationship to its neighbours, because the map of who
 talks to whom is drawn from the calls and events themselves. Its kind says

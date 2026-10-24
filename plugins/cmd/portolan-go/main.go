@@ -22,6 +22,7 @@ import (
 	extractcommands "github.com/shortlink-org/portolan/plugins/extract-commands"
 	extractcsr "github.com/shortlink-org/portolan/plugins/extract-csr"
 	extractdebezium "github.com/shortlink-org/portolan/plugins/extract-debezium"
+	extractdeploymentvalues "github.com/shortlink-org/portolan/plugins/extract-deployment-values"
 	extractflows "github.com/shortlink-org/portolan/plugins/extract-flows"
 	extractglossary "github.com/shortlink-org/portolan/plugins/extract-glossary"
 	extractgo "github.com/shortlink-org/portolan/plugins/extract-go"
@@ -37,8 +38,8 @@ import (
 	extractproto "github.com/shortlink-org/portolan/plugins/extract-proto"
 	extractredis "github.com/shortlink-org/portolan/plugins/extract-redis"
 	extractrfc "github.com/shortlink-org/portolan/plugins/extract-rfc"
-	extractsdd "github.com/shortlink-org/portolan/plugins/extract-sdd"
 	extractriver "github.com/shortlink-org/portolan/plugins/extract-river"
+	extractsdd "github.com/shortlink-org/portolan/plugins/extract-sdd"
 	extractsql "github.com/shortlink-org/portolan/plugins/extract-sql"
 	extractterraform "github.com/shortlink-org/portolan/plugins/extract-terraform"
 	extractwatermill "github.com/shortlink-org/portolan/plugins/extract-watermill"
@@ -55,40 +56,41 @@ import (
 // Plugins maps a manifest plugin name to what answers it. The names are the
 // ones portolan.json declares as built-ins; a test holds the two in step.
 var Plugins = map[string]func(io.Reader, io.Writer) error{
-	"project":       extractproject.Serve,
-	"commands":      extractcommands.Serve,
-	"go-domain":     extractgo.Serve,
-	"go-eventgrid":  extractgoeventgrid.Serve,
-	"openapi":       extractopenapi.Serve,
-	"wsdl":          extractwsdl.Serve,
-	"redis":         extractredis.Serve,
-	"river":         extractriver.Serve,
-	"watermill":     extractwatermill.Serve,
-	"go-nats":       extractgonats.Serve,
-	"go-sqs":        extractgosqs.Serve,
-	"go-kafka":      extractgokafka.Serve,
-	"go-amqp":       extractgoamqp.Serve,
-	"terraform":     extractterraform.Serve,
-	"k8s":           extractk8s.Serve,
-	"argocd-gitops": extractargocd.Serve,
-	"asyncapi":      extractasyncapi.Serve,
-	"graphql":       extractgraphql.Serve,
-	"sql":           extractsql.Serve,
-	"proto":         extractproto.Serve,
-	"csr-schemas":   extractcsr.Serve,
-	"debezium":      extractdebezium.Serve,
-	"adr":           extractadr.Serve,
-	"rfc":           extractrfc.Serve,
-	"sdd":           extractsdd.Serve,
-	"glossary":      extractglossary.Serve,
-	"flows":         extractflows.Serve,
-	"otel":          verifyotel.Serve,
-	"codeowners":    verifycodeowners.Serve,
-	"markdown":      genmarkdown.Serve,
-	"mermaid":       genmermaid.Serve,
-	"reference":     genreference.Serve,
-	"backstage":     genbackstage.Serve,
-	"dx-export":     gendx.Serve,
+	"project":           extractproject.Serve,
+	"commands":          extractcommands.Serve,
+	"go-domain":         extractgo.Serve,
+	"go-eventgrid":      extractgoeventgrid.Serve,
+	"openapi":           extractopenapi.Serve,
+	"wsdl":              extractwsdl.Serve,
+	"redis":             extractredis.Serve,
+	"river":             extractriver.Serve,
+	"watermill":         extractwatermill.Serve,
+	"go-nats":           extractgonats.Serve,
+	"go-sqs":            extractgosqs.Serve,
+	"go-kafka":          extractgokafka.Serve,
+	"go-amqp":           extractgoamqp.Serve,
+	"terraform":         extractterraform.Serve,
+	"k8s":               extractk8s.Serve,
+	"argocd-gitops":     extractargocd.Serve,
+	"asyncapi":          extractasyncapi.Serve,
+	"graphql":           extractgraphql.Serve,
+	"sql":               extractsql.Serve,
+	"proto":             extractproto.Serve,
+	"csr-schemas":       extractcsr.Serve,
+	"debezium":          extractdebezium.Serve,
+	"deployment-values": extractdeploymentvalues.Serve,
+	"adr":               extractadr.Serve,
+	"rfc":               extractrfc.Serve,
+	"sdd":               extractsdd.Serve,
+	"glossary":          extractglossary.Serve,
+	"flows":             extractflows.Serve,
+	"otel":              verifyotel.Serve,
+	"codeowners":        verifycodeowners.Serve,
+	"markdown":          genmarkdown.Serve,
+	"mermaid":           genmermaid.Serve,
+	"reference":         genreference.Serve,
+	"backstage":         genbackstage.Serve,
+	"dx-export":         gendx.Serve,
 }
 
 func main() {

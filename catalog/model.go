@@ -34,23 +34,36 @@ type Catalog struct {
 	// and a mirror that wrote `"generatedAt": ""` would be inventing an answer
 	// to a question the file does not answer. The merge dates the estate from
 	// the sources that do carry one.
-	GeneratedAt   string              `json:"generatedAt,omitempty"`
-	Commit        string              `json:"commit,omitempty"`
-	Contexts      []BoundedContext    `json:"contexts"`
-	Defs          map[string]TypeDef  `json:"defs"`
-	Flows         []Flow              `json:"flows"`
-	Adrs          []Adr               `json:"adrs"`
-	Rfcs          []Rfc               `json:"rfcs,omitempty"`
-	Specs         []ChangeSpec        `json:"specs,omitempty"`
-	Stores        []Store             `json:"stores,omitempty"`
-	Modules       []ProtoModule       `json:"modules,omitempty"`
-	Terms         []Term              `json:"terms,omitempty"`
-	Repos         []RepoPin           `json:"repos,omitempty"`
-	Deployments   []Deployment        `json:"deployments,omitempty"`
-	Externals     []External          `json:"externals,omitempty"`
-	WorkItems     []WorkItem          `json:"workItems,omitempty"`
-	WorkItemLinks []WorkItemLink      `json:"workItemLinks,omitempty"`
-	Annotations   []CatalogAnnotation `json:"annotations,omitempty"`
+	GeneratedAt           string                 `json:"generatedAt,omitempty"`
+	Commit                string                 `json:"commit,omitempty"`
+	Contexts              []BoundedContext       `json:"contexts"`
+	Defs                  map[string]TypeDef     `json:"defs"`
+	Flows                 []Flow                 `json:"flows"`
+	Adrs                  []Adr                  `json:"adrs"`
+	Rfcs                  []Rfc                  `json:"rfcs,omitempty"`
+	Specs                 []ChangeSpec           `json:"specs,omitempty"`
+	Stores                []Store                `json:"stores,omitempty"`
+	Modules               []ProtoModule          `json:"modules,omitempty"`
+	Terms                 []Term                 `json:"terms,omitempty"`
+	Repos                 []RepoPin              `json:"repos,omitempty"`
+	Deployments           []Deployment           `json:"deployments,omitempty"`
+	ConfigurationBindings []ConfigurationBinding `json:"configurationBindings,omitempty"`
+	Externals             []External             `json:"externals,omitempty"`
+	WorkItems             []WorkItem             `json:"workItems,omitempty"`
+	WorkItemLinks         []WorkItemLink         `json:"workItemLinks,omitempty"`
+	Annotations           []CatalogAnnotation    `json:"annotations,omitempty"`
+}
+
+// ConfigurationBinding is one deployment environment's value for a variable
+// source code names. It is evidence that can refine an already-observed call,
+// channel or store; it does not create one by itself.
+type ConfigurationBinding struct {
+	Service     string `json:"service"`
+	Environment string `json:"environment"`
+	Variable    string `json:"variable"`
+	Value       string `json:"value,omitempty"`
+	SecretRef   string `json:"secretRef,omitempty"`
+	Source      string `json:"source"`
 }
 
 // ChangeSpec is one spec-driven change, normalized from an authoring tool's
@@ -579,14 +592,22 @@ type HTTPDestinationJoin struct {
 	Source     string `json:"source"`
 }
 type HTTPDestinationResolution struct {
-	Basis    string `json:"basis"`
-	Provider string `json:"provider"`
-	Route    string `json:"route"`
+	Basis        string                      `json:"basis"`
+	Provider     string                      `json:"provider"`
+	Route        string                      `json:"route"`
+	Environments []HTTPConfiguredEnvironment `json:"environments,omitempty"`
 	// Confidence is absent for a link whose route and verb are both declared,
 	// and reads "high". "medium" is a link to a route whose verb is inferred;
 	// MethodEvidence then carries the provider route's reading.
 	Confidence     string              `json:"confidence,omitempty"`
 	MethodEvidence *HTTPMethodEvidence `json:"methodEvidence,omitempty"`
+}
+
+type HTTPConfiguredEnvironment struct {
+	Environment string `json:"environment"`
+	Variable    string `json:"variable"`
+	Value       string `json:"value"`
+	Source      string `json:"source"`
 }
 
 type RpcCall struct {
@@ -793,6 +814,10 @@ type Channel struct {
 	// the same string an event's Wire.Channel carries, and comparing the two is
 	// how a document and the code it belongs to are held against each other.
 	Address string `json:"address"`
+	// AddressBinding names the source-code variable whose default supplied
+	// Address. ConfiguredAddresses are the deployment values later joined to it.
+	AddressBinding      *ChannelAddressBinding     `json:"addressBinding,omitempty"`
+	ConfiguredAddresses []ConfiguredChannelAddress `json:"configuredAddresses,omitempty"`
 	// Kind distinguishes domain-event channels, work queues, and generic message
 	// streams. Only event channels are checked against the domain event model.
 	Kind ChannelKind `json:"kind,omitempty"`
@@ -807,6 +832,18 @@ type Channel struct {
 
 	// Source is the document this was read out of.
 	Source string `json:"source,omitempty"`
+}
+
+type ChannelAddressBinding struct {
+	EnvironmentVariable string `json:"environmentVariable"`
+	DefaultValue        string `json:"defaultValue,omitempty"`
+	Source              string `json:"source"`
+}
+
+type ConfiguredChannelAddress struct {
+	Environment string `json:"environment"`
+	Address     string `json:"address"`
+	Source      string `json:"source"`
 }
 
 type ChannelKind string

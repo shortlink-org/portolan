@@ -86,7 +86,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 
 ## Language
 
-- [Glossary](glossary.md) — 48 terms this context spells one way
+- [Glossary](glossary.md) — 49 terms this context spells one way
 
 ## Decisions
 
@@ -133,7 +133,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
-- **Terms:** 48
+- **Terms:** 49
 - **Read from:** [`GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -147,6 +147,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Catalog** — One source of facts in the shape `src/catalog.ts` decides: contexts, defs, flows, adrs, stores, modules, terms, repos and externals. A reader never sees one; the estate is the merge of several.
 - **Chain** — What happens after an event, as far as the flows can say: each consumer followed into the flow where it hears the event, what it publishes after that, and the same question asked of those events.
 - **Component** — The neutral reading of a service, for a repository that was not laid out for a domain model: an application, a webapp, a worker, a job, a function, a CLI, a library or a data pipeline, said by its kind. The wire and the code say service; the README and the setup wizard say component when the kind is neutral. Decided in portolan.0004.
+- **Configuration binding** — One deployment environment's value for an environment variable source code names, with the file and line that supplied it. It may refine an already-observed call, channel or store, but never creates one by itself. Secret values are never kept; only safe references or a redacted marker reach the catalog.
 - **Context** — The estate's top grouping level and nothing more: it owns services and states no relationship to its neighbours, because the map of who talks to whom is drawn from the calls and events themselves. Its kind says whether it is a bounded context, a system, a product, a team or a namespace.
 - **Declared** — The status of a fact a fragment states and nothing has yet shown happening.
 - **Deployment** — One place a service runs: an Argo CD Application reduced to what a deploy changes - environment, cluster, namespace, the repository and directory it deploys from, the revision that stands there, the images. Two readers say it: an extractor over the GitOps tree says what should run (basis `manifest`), a fetcher over the deployer says what does (basis `api`), and the merge lays the two over each other (basis `both`). A list on the catalog, joined to a service by the labels the Application carries, else by repository and directory; never a health or a sync state, which move without a commit.

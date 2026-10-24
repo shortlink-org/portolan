@@ -112,6 +112,7 @@
               "go-eventgrid",
               "terraform",
               "k8s",
+              "deployment-values",
               "argocd-gitops",
               "asyncapi",
               "graphql",
@@ -656,6 +657,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.k8s"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "deployment-values"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.deployment-values"
                 }
               }
             }
@@ -3648,6 +3668,47 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "k8s.json"
+        }
+      }
+    },
+    "options.deployment-values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context",
+        "service",
+        "paths",
+        "variables"
+      ],
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Top-level group that owns the component."
+        },
+        "service": {
+          "type": "string",
+          "description": "Component whose deployment values are read."
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "YAML values documents, selected by discovery from exact overlap with variables used by source code."
+        },
+        "variables": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "description": "Exact environment variable names observed in source code; other YAML keys are ignored."
+        },
+        "out": {
+          "type": "string",
+          "default": "deployment-values.json"
         }
       }
     },

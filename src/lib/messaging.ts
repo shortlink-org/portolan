@@ -73,8 +73,18 @@ export function messageClaimId(
   return `message|${part(serviceId)}|${part(address)}|${direction}|${part(name)}`;
 }
 
-function messageKey(address: string, name: string): string {
-  return `${address}\u0000${name}`;
+function messageKey(address: string, name: string, environment = ""): string {
+  return `${environment}\u0000${address}\u0000${name}`;
+}
+
+function channelAddresses(channel: Channel): Array<{ address: string; environment: string }> {
+  if (channel.configuredAddresses?.length) {
+    return channel.configuredAddresses.map(({ address, environment }) => ({
+      address,
+      environment,
+    }));
+  }
+  return [{ address: channel.address, environment: "" }];
 }
 
 function usage(messages: readonly ChannelMessage[]): ChannelUsage {
@@ -109,10 +119,12 @@ export function messagingClaims(catalog: Catalog): {
       for (const channel of service.channels ?? []) {
         for (const message of channel.messages) {
           if (message.direction !== "send") continue;
-          const key = messageKey(channel.address, message.name);
-          const services = publishers.get(key) ?? new Set<string>();
-          services.add(service.id);
-          publishers.set(key, services);
+          for (const configured of channelAddresses(channel)) {
+            const key = messageKey(configured.address, message.name, configured.environment);
+            const services = publishers.get(key) ?? new Set<string>();
+            services.add(service.id);
+            publishers.set(key, services);
+          }
         }
       }
     }
@@ -124,9 +136,14 @@ export function messagingClaims(catalog: Catalog): {
     for (const service of context.services) {
       for (const channel of service.channels ?? []) {
         const messageIssues = channel.messages.map((message): MessagingIssue => {
-          const count = publishers.get(messageKey(channel.address, message.name))?.size ?? 0;
-          if (count > 1) return "multiple publishers";
-          if (message.direction === "receive" && count === 0) return "no publisher";
+          const counts = channelAddresses(channel).map(
+            ({ address, environment }) =>
+              publishers.get(messageKey(address, message.name, environment))?.size ?? 0,
+          );
+          if (counts.some((count) => count > 1)) return "multiple publishers";
+          if (message.direction === "receive" && counts.some((count) => count === 0)) {
+            return "no publisher";
+          }
           return "clear";
         });
         const issue: MessagingIssue =

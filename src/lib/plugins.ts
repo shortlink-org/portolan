@@ -184,6 +184,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   "go-eventgrid": { label: "Azure Event Grid", icon: { lucide: "message" } },
   terraform: { label: "Terraform", icon: { brand: "Terraform" } },
   k8s: { label: "Kubernetes manifests", icon: { brand: "Kubernetes" } },
+  "deployment-values": { label: "Deployment configuration", icon: { lucide: "file-code" } },
   "k8s-cluster": { label: "Kubernetes cluster", icon: { brand: "Kubernetes" } },
   asyncapi: { label: "AsyncAPI", icon: { lucide: "file-code" } },
   graphql: { label: "GraphQL", icon: { brand: "GraphQL" } },
@@ -202,6 +203,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   "github-rfcs": { label: "GitHub proposals", icon: { lucide: "message" } },
   glossary: { label: "Glossary", icon: { lucide: "spell-check" } },
   flows: { label: "Flows", icon: { lucide: "route" } },
+  sdd: { label: "OpenSpec changes", icon: { lucide: "file-code" } },
   bsr: { label: "Buf Schema Registry", icon: { lucide: "package" } },
   git: { label: "Git", icon: { brand: "Git" } },
   csr: { label: "Confluent Schema Registry", icon: { lucide: "package" } },
@@ -210,6 +212,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   eventbridge: { label: "Amazon EventBridge", icon: { lucide: "cloud" } },
   "csr-schemas": { label: "Registry schemas", icon: { lucide: "file-code" } },
   proto: { label: "Protobuf", icon: { lucide: "file-code" } },
+  reference: { label: "Architecture reference", icon: { lucide: "book" } },
 };
 
 export function pluginLabel(name: string): string {

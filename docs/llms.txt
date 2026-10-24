@@ -12,7 +12,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 ## Glossaries
 
-- [Glossary of Portolan](portolan/glossary.md): 48 terms. ADR, Aggregate, Answer, Bridge, Catalog, Chain, Component, Context, Declared, Deployment, Drift, Estate, Event, External, Extractor, Fetcher, Flow, Fragment, Generator, Group, Hop, Host, Lifecycle, Manifest, Module, Owner, Participant, Peer, Phase, Pin, Plugin, Problem, Project, Recording, Repository pin, Service, Source, Stamp, Status, Step, Store, Term, Trail, Unknown, Unresolved, Verified, Verifier, Wire format
+- [Glossary of Portolan](portolan/glossary.md): 49 terms. ADR, Aggregate, Answer, Bridge, Catalog, Chain, Component, Configuration binding, Context, Declared, Deployment, Drift, Estate, Event, External, Extractor, Fetcher, Flow, Fragment, Generator, Group, Hop, Host, Lifecycle, Manifest, Module, Owner, Participant, Peer, Phase, Pin, Plugin, Problem, Project, Recording, Repository pin, Service, Source, Stamp, Status, Step, Store, Term, Trail, Unknown, Unresolved, Verified, Verifier, Wire format
 
 ## Services
 

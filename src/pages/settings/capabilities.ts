@@ -10,6 +10,7 @@ export const CAPABILITIES: Record<string, { title: string; summary: string }> = 
   openapi: { title: "HTTP API contract", summary: "Operations and messages declared by OpenAPI or Swagger." },
   wsdl: { title: "SOAP contract", summary: "Services, operations and messages declared by WSDL." },
   "http-clients": { title: "Outbound integrations", summary: "HTTP and SOAP calls, provider branches and code flows." },
+  "deployment-values": { title: "Deployment configuration", summary: "Environment-scoped values that refine variables observed in service code." },
   redis: { title: "Redis data model", summary: "Clients, key patterns and stored value hints." },
   river: { title: "River jobs", summary: "Job producers, workers and their code flows." },
   watermill: { title: "Watermill messaging", summary: "Publishers, handlers, topics and their code flows." },

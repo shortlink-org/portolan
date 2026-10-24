@@ -19,6 +19,11 @@
           "channels": [
             {
               "address": "mail.error",
+              "addressBinding": {
+                "environmentVariable": "MAIL_ERROR_TOPIC",
+                "defaultValue": "mail.error",
+                "source": "testdata/mailer/app/router.go:30"
+              },
               "title": "Watermill topic",
               "doc": "Messages routed through github.com/ThreeDotsLabs/watermill. Configured by `MAIL_ERROR_TOPIC`; extracted address is its source default.",
               "messages": [
@@ -33,6 +38,11 @@
             },
             {
               "address": "mail.input",
+              "addressBinding": {
+                "environmentVariable": "MAIL_INPUT_TOPIC",
+                "defaultValue": "mail.input",
+                "source": "testdata/mailer/app/router.go:26"
+              },
               "title": "Watermill topic",
               "doc": "Messages routed through github.com/ThreeDotsLabs/watermill. Configured by `MAIL_INPUT_TOPIC`; extracted address is its source default.",
               "messages": [
@@ -47,6 +57,11 @@
             },
             {
               "address": "mail.output",
+              "addressBinding": {
+                "environmentVariable": "MAIL_OUTPUT_TOPIC",
+                "defaultValue": "mail.output",
+                "source": "testdata/mailer/app/router.go:36"
+              },
               "title": "Watermill topic",
               "doc": "Messages routed through github.com/ThreeDotsLabs/watermill. Configured by `MAIL_OUTPUT_TOPIC`; extracted address is its source default.",
               "messages": [

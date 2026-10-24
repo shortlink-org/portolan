@@ -2231,6 +2231,58 @@
     }
   },
   {
+    "name": "deployment-values",
+    "plugin": "extract-deployment-values",
+    "summary": "Reads environment-scoped deployment values into safe configuration bindings.",
+    "category": "infrastructure",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-deployment-values",
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context",
+        "service",
+        "paths",
+        "variables"
+      ],
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Top-level group that owns the component."
+        },
+        "service": {
+          "type": "string",
+          "description": "Component whose deployment values are read."
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "YAML values documents, selected by discovery from exact overlap with variables used by source code."
+        },
+        "variables": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "description": "Exact environment variable names observed in source code; other YAML keys are ignored."
+        },
+        "out": {
+          "type": "string",
+          "default": "deployment-values.json"
+        }
+      }
+    }
+  },
+  {
     "name": "argocd-gitops",
     "plugin": "extract-argocd",
     "summary": "Reads the Argo CD Applications and ApplicationSets in a GitOps tree into the deployments they declare - which service, from where, into which cluster and namespace - expanding list, git and matrix generators against the tree.",

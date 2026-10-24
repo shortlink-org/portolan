@@ -6,6 +6,26 @@ import type { Catalog } from "./catalog.ts";
 import type { Service } from "./contexts.ts";
 
 /**
+ * One environment-specific value supplied to a service by deployment
+ * configuration. It refines an environment variable already observed in
+ * code; by itself it does not assert that an integration exists.
+ */
+export interface ConfigurationBinding {
+  /** Catalog service id, for example `avia.aviacore`. */
+  service: string;
+  /** Deployment environment inferred from the values document. */
+  environment: string;
+  /** Environment variable name used by the service. */
+  variable: string;
+  /** Non-secret configured value. */
+  value?: string;
+  /** Safe reference to a secret, never the secret's resolved value. */
+  secretRef?: string;
+  /** Source path and line that supplied this binding. */
+  source: string;
+}
+
+/**
  * A repository the estate was read at, and the commit it was read at.
  *
  * It exists so a source path can be a link when the code is not in this

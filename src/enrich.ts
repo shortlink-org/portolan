@@ -26,6 +26,7 @@ import type {
   FlowNode,
   RpcCall,
   HTTPDestination,
+  HTTPConfiguredEnvironment,
   HttpMethodEvidence,
   Service,
   Status,
@@ -66,7 +67,7 @@ export function enrichCatalog(input: Catalog): Enriched {
       resolveStoreAccesses(
         composeExecutionContinuations(
           hydrateFlowSummaries(
-            resolveWireNames(nameServedMethods(resolveHTTPCalls(input))),
+            resolveWireNames(nameServedMethods(resolveHTTPCalls(resolveConfiguredChannelAddresses(input)))),
           ),
         ),
       ),
@@ -238,6 +239,50 @@ export function enrichCatalog(input: Catalog): Enriched {
 }
 
 /**
+ * Applies deployment values only to channels whose extractor proved the
+ * environment-variable binding. A single effective address can safely replace
+ * the source default; divergent environments remain explicit and uncollapsed.
+ */
+function resolveConfiguredChannelAddresses(input: Catalog): Catalog {
+  const byServiceVariable = new Map<string, NonNullable<Catalog["configurationBindings"]>>();
+  for (const binding of input.configurationBindings ?? []) {
+    if (!binding.value) continue;
+    const key = `${binding.service}|${binding.variable}`;
+    const held = byServiceVariable.get(key) ?? [];
+    held.push(binding);
+    byServiceVariable.set(key, held);
+  }
+  if (byServiceVariable.size === 0) return input;
+
+  let changed = false;
+  const contexts = input.contexts.map((context) => ({
+    ...context,
+    services: context.services.map((service) => {
+      if (!service.channels?.some((channel) => channel.addressBinding)) return service;
+      let serviceChanged = false;
+      const channels = service.channels.map((channel) => {
+        const variable = channel.addressBinding?.environmentVariable;
+        if (!variable) return channel;
+        const bindings = byServiceVariable.get(`${service.id}|${variable}`) ?? [];
+        if (bindings.length === 0) return channel;
+        const configuredAddresses = bindings
+          .map((binding) => ({ environment: binding.environment, address: binding.value!, source: binding.source }))
+          .sort((a, b) => a.environment.localeCompare(b.environment));
+        const addresses = new Set(configuredAddresses.map((item) => item.address));
+        const address = addresses.size === 1 ? configuredAddresses[0]!.address : channel.address;
+        const sameEvidence = JSON.stringify(channel.configuredAddresses ?? []) === JSON.stringify(configuredAddresses);
+        if (address === channel.address && sameEvidence) return channel;
+        serviceChanged = true;
+        changed = true;
+        return { ...channel, address, configuredAddresses };
+      });
+      return serviceChanged ? { ...service, channels } : service;
+    }),
+  }));
+  return changed ? { ...input, contexts } : input;
+}
+
+/**
  * Uses a provided operation's own documentation when an extracted flow has
  * no summary of its own. Exact refs win; a transport label is used only when
  * that method name occurs once on the receiving service. This lets a GraphQL
@@ -298,7 +343,8 @@ interface HTTPProvider {
   method: string;
   path: string;
   /** Set when the manifests, not the route alone, chose this provider. */
-  basis?: "kubernetes-host";
+  basis?: "kubernetes-host" | "deployment-config";
+  configuredEnvironments?: HTTPConfiguredEnvironment[];
   /**
    * Set when the route's verb is inferred from what the handler reads rather
    * than declared; a link to it is kept at medium confidence.
@@ -364,9 +410,68 @@ function resolveHTTPCalls(input: Catalog): Catalog {
   }
   if (providers.length === 0) return input;
 
+  const configured = new Map<string, NonNullable<Catalog["configurationBindings"]>>();
+  for (const binding of input.configurationBindings ?? []) {
+    if (!binding.value) continue;
+    const key = `${binding.service}|${binding.variable}`;
+    const held = configured.get(key) ?? [];
+    held.push(binding);
+    configured.set(key, held);
+  }
+
+  const resolveConfigured = (caller: string, call: RpcCall): HTTPProvider | undefined => {
+    const destination = call.destination;
+    const variable = destination?.baseURL?.environmentVariable;
+    if (!destination || !variable) return undefined;
+    const bindings = configured.get(`${caller}|${variable}`) ?? [];
+    if (bindings.length === 0) return undefined;
+
+    const selected: Array<{ provider: HTTPProvider; evidence: HTTPConfiguredEnvironment }> = [];
+    for (const binding of bindings) {
+      let url: URL;
+      try {
+        url = new URL(binding.value!);
+      } catch {
+        return undefined;
+      }
+      if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+      const path = joinHTTPPath(url.pathname, destination.localPath ?? rawHTTPRoute(call.id)?.path ?? "");
+      const matches = uniqueHTTPProviders(providers.filter((provider) =>
+        provider.service !== caller &&
+        provider.method === destination.method.toUpperCase() &&
+        sameHTTPShape(provider.path, path),
+      ));
+      const byHost = matches.filter((provider) => configuredHostNames(provider, url.hostname, hostsByService));
+      const candidates = byHost.length > 0 ? byHost : matches;
+      if (candidates.length !== 1) return undefined;
+      selected.push({
+        provider: candidates[0]!,
+        evidence: {
+          environment: binding.environment,
+          variable: binding.variable,
+          value: binding.value!,
+          source: binding.source,
+        },
+      });
+    }
+    const first = selected[0]?.provider;
+    if (!first || selected.some(({ provider }) => provider.service !== first.service || provider.ref !== first.ref)) {
+      return undefined;
+    }
+    return {
+      ...first,
+      basis: "deployment-config",
+      configuredEnvironments: selected
+        .map(({ evidence }) => evidence)
+        .sort((a, b) => a.environment.localeCompare(b.environment)),
+    };
+  };
+
   const resolvedByCaller = new Map<string, Map<string, HTTPProvider>>();
   const resolve = (caller: string, call: RpcCall): HTTPProvider | undefined => {
     if (call.status !== "unresolved") return undefined;
+    const configuredProvider = resolveConfigured(caller, call);
+    if (configuredProvider) return configuredProvider;
     const raw = rawHTTPRoute(call.id);
     const route = call.destination?.fullPath
       ? { method: call.destination.method, path: call.destination.fullPath }
@@ -418,6 +523,9 @@ function resolveHTTPCalls(input: Catalog): Catalog {
       // declared verb, and carries the reading to be checked.
       ...(provider.inferredMethod
         ? { confidence: "medium" as const, methodEvidence: { ...provider.inferredMethod } }
+        : {}),
+      ...(provider.configuredEnvironments
+        ? { environments: provider.configuredEnvironments.map((item) => ({ ...item })) }
         : {}),
     } };
   };
@@ -483,6 +591,23 @@ function resolveHTTPCalls(input: Catalog): Catalog {
   });
 
   return { ...input, contexts, flows };
+}
+
+function joinHTTPPath(base: string, local: string): string {
+  const left = base === "/" ? "" : base.replace(/\/+$/, "");
+  const right = local.replace(/^\/+/, "");
+  return `/${[left.replace(/^\/+/, ""), right].filter(Boolean).join("/")}`;
+}
+
+function configuredHostNames(
+  provider: HTTPProvider,
+  hostname: string,
+  hostsByService: Map<string, Set<string>>,
+): boolean {
+  const declaredHosts = hostsByService.get(provider.service);
+  if (declaredHosts && answersOn(declaredHosts, hostname)) return true;
+  const serviceName = provider.service.split(".").pop()?.toLowerCase();
+  return Boolean(serviceName && hostname.toLowerCase().split(".")[0] === serviceName);
 }
 
 function answersOn(hosts: Set<string>, candidate: string): boolean {

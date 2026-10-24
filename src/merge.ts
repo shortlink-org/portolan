@@ -28,6 +28,7 @@ import type {
   BoundedContext,
   Catalog,
   Channel,
+  ConfigurationBinding,
   Event,
   External,
   Field,
@@ -136,6 +137,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const repoOrigin = new Map<string, string>();
   const deployments: NonNullable<Catalog["deployments"]> = [];
   const deploymentOrigin = new Map<string, Map<DeploymentBasis, string>>(); // id -> basis -> source path
+  const configurationBindings = new Map<string, ConfigurationBinding>();
+  const configurationBindingOrigin = new Map<string, string>();
   const externals = new Map<string, External>();
   const externalOrigin = new Map<string, string>();
   const seen = new Map<string, string>(); // flow/adr/store/module/term id -> source path
@@ -301,6 +304,24 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     for (const deployment of catalog.deployments ?? []) {
       foldDeployment(deployments, deploymentOrigin, deployment, path, conflicts);
     }
+    // The identity includes the environment because one variable normally has
+    // a different value in each overlay. Repeated agreement is harmless;
+    // disagreement is kept visible and resolved by deterministic source order.
+    for (const binding of catalog.configurationBindings ?? []) {
+      const key = configurationBindingKey(binding);
+      const held = configurationBindings.get(key);
+      if (!held) {
+        configurationBindings.set(key, { ...binding });
+        configurationBindingOrigin.set(key, path);
+        continue;
+      }
+      if (held.value === binding.value && held.secretRef === binding.secretRef) continue;
+      conflicts.push({
+        path,
+        where: key,
+        message: `configuration binding "${key}" differs from ${configurationBindingOrigin.get(key)}; the first value is used`,
+      });
+    }
     // Claimed by id like everything else at this level, and that is exactly why
     // a module's id is its registry-global name rather than one derived from an
     // owner: the producer and each consumer describe the same module from
@@ -379,6 +400,11 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   if (terms.length > 0) merged.terms = terms;
   if (repos.length > 0) merged.repos = repos;
   if (deployments.length > 0) merged.deployments = deployments;
+  if (configurationBindings.size > 0) {
+    merged.configurationBindings = [...configurationBindings.values()].sort((a, b) =>
+      configurationBindingKey(a).localeCompare(configurationBindingKey(b)),
+    );
+  }
   if (externals.size > 0) merged.externals = [...externals.values()];
   if (workItems.size > 0) merged.workItems = [...workItems.values()];
   if (workItemLinks.size > 0) merged.workItemLinks = [...workItemLinks.values()];
@@ -386,6 +412,10 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   if (annotations.length) merged.annotations = structuredClone(annotations);
 
   return { catalog: merged, sources: stamps, conflicts };
+}
+
+function configurationBindingKey(binding: ConfigurationBinding): string {
+  return `${binding.service}/${binding.environment}/${binding.variable}`;
 }
 
 /**
@@ -719,6 +749,19 @@ function mergeService(
             });
           }
         }
+        if (!mine.addressBinding && theirs.addressBinding) {
+          mine.addressBinding = { ...theirs.addressBinding };
+        } else if (
+          mine.addressBinding &&
+          theirs.addressBinding &&
+          JSON.stringify(mine.addressBinding) !== JSON.stringify(theirs.addressBinding)
+        ) {
+          conflicts.push({
+            path,
+            where: incoming.id,
+            message: `channel "${mine.address}" of service "${incoming.id}" has a different address binding here than in ${owner}; the first one is used`,
+          });
+        }
         appendNew(
           mine.messages,
           theirs.messages,
@@ -805,6 +848,10 @@ function layGatewayManifestUnderAPI(
 function copyChannel(channel: Channel): Channel {
   return {
     ...channel,
+    ...(channel.addressBinding ? { addressBinding: { ...channel.addressBinding } } : {}),
+    ...(channel.configuredAddresses
+      ? { configuredAddresses: channel.configuredAddresses.map((address) => ({ ...address })) }
+      : {}),
     messages: channel.messages.map((message) => ({
       ...message,
       ...(message.schema ? { schema: copySchema(message.schema) } : {}),

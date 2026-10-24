@@ -313,6 +313,12 @@
       }
     },
     {
+      "name": "deployment-values",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "argocd-gitops",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"

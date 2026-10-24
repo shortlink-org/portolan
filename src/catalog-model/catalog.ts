@@ -5,7 +5,7 @@
 import type { TypeDef } from "./shared.ts";
 import type { BoundedContext, External } from "./contexts.ts";
 import type { ProtoModule } from "./interfaces.ts";
-import type { Deployment, RepoPin } from "./deployments.ts";
+import type { ConfigurationBinding, Deployment, RepoPin } from "./deployments.ts";
 import type { Store } from "./stores.ts";
 import type { Flow } from "./flows.ts";
 import type { Term } from "./terms.ts";
@@ -62,6 +62,8 @@ export interface Catalog {
    * was anything to place.
    */
   deployments?: Deployment[];
+  /** Environment-specific values that refine variables observed in service code. */
+  configurationBindings?: ConfigurationBinding[];
   /**
    * The systems outside the estate that a service calls on a contract: a
    * payment provider, a tax API, a carrier. Nobody here builds one, so it has

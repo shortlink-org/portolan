@@ -48,6 +48,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   if (plugin === "openapi") return { ...common, ...detectedOptions, out: "api.json" };
   if (plugin === "wsdl") return { ...common, ...detectedOptions, out: "wsdl.json" };
   if (plugin === "http-clients") return { ...common, ...detectedOptions, out: "http-clients.json" };
+  if (plugin === "deployment-values") return { ...common, ...detectedOptions, out: "deployment-values.json" };
   if (plugin === "river") return { ...common, ...detectedOptions, out: "river.json" };
   if (plugin === "watermill") return { ...common, ...detectedOptions, out: "watermill.json" };
   if (plugin === "asyncapi") return { ...common, ...detectedOptions, out: "bus.json" };

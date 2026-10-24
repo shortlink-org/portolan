@@ -6,6 +6,7 @@ import {
   statSync,
 } from "node:fs";
 import { basename, join, posix, relative, resolve, sep } from "node:path";
+import { parseAllDocuments } from "yaml";
 
 const SKIP = new Set([".git", ".portolan", ".worktrees", ".claude", ".codex", ".agents", ".venv", ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".cache", ".idea", ".vscode", "build", "dist", "node_modules", "target", "vendor"]);
 const MAX_FILES = 12_000;
@@ -387,6 +388,89 @@ function goSOAPClientEvidence(root, files) {
   return "";
 }
 
+function goKafkaEvidence(root, files) {
+  const supportedImport = /"github\.com\/(?:IBM\/sarama|Shopify\/sarama|segmentio\/kafka-go|confluentinc\/confluent-kafka-go(?:\/v\d+)?\/kafka|twmb\/franz-go\/pkg\/kgo)"/;
+  const supportedUse = /\b(?:ProducerMessage|WriterConfig|ReaderConfig|TopicPartition|ConsumeTopics|DefaultProduceTopic)\b/;
+  for (const name of matches(files, /\.go$/).filter((name) =>
+    !name.endsWith("_test.go")
+    && !/(?:^|\/)(?:test|tests|testdata|fixtures?|vendor)(?:\/|$)/i.test(name))) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    if (supportedImport.test(source) && supportedUse.test(source)) return name;
+  }
+  return "";
+}
+
+function pythonKafkaEvidence(root, files) {
+  const supportedImport = /(?:^|\n)\s*(?:from\s+(?:confluent_kafka|kafka|aiokafka)\b|import\s+(?:confluent_kafka|kafka|aiokafka)\b)/m;
+  const supportedUse = /\b(?:Producer|Consumer|KafkaProducer|KafkaConsumer|AIOKafkaProducer|AIOKafkaConsumer)\b/;
+  for (const name of matches(files, /\.py$/).filter((name) =>
+    !/(?:^|\/)(?:test|tests|testdata|fixtures?|\.venv|venv)(?:\/|$)/i.test(name)
+    && !/(?:^|\/)test_[^/]+\.py$|_test\.py$/i.test(name))) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    if (supportedImport.test(source) && supportedUse.test(source)) return name;
+  }
+  return "";
+}
+
+function environmentVariablesInCode(root, files) {
+  const variables = new Set();
+  const patterns = [
+    /\benvconfig\s*:\s*["']([A-Z][A-Z0-9_]*)/g,
+    /\b(?:os\.environ\.get|os\.getenv|getenv)\s*\(\s*["']([A-Z][A-Z0-9_]*)["']/g,
+    /\bprocess\.env\.([A-Z][A-Z0-9_]*)\b/g,
+    /\bprocess\.env\[\s*["']([A-Z][A-Z0-9_]*)["']\s*\]/g,
+  ];
+  for (const name of matches(files, /\.(?:go|py|[cm]?[jt]sx?|java|rs|cs|php)$/i).filter((name) =>
+    !/(?:^|\/)(?:test|tests|testdata|fixtures?|vendor)(?:\/|$)/i.test(name))) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0;
+      for (const match of source.matchAll(pattern)) variables.add(match[1]);
+    }
+  }
+  return variables;
+}
+
+function yamlKeys(value, out = new Set()) {
+  if (Array.isArray(value)) {
+    for (const item of value) yamlKeys(item, out);
+    return out;
+  }
+  if (!value || typeof value !== "object") return out;
+  for (const [key, child] of Object.entries(value)) {
+    out.add(key);
+    yamlKeys(child, out);
+  }
+  return out;
+}
+
+function deploymentValueCandidates(root, files) {
+  const variables = environmentVariablesInCode(root, files);
+  if (variables.size < 2) return { paths: [], variables: [] };
+  const candidates = [];
+  const matchedVariables = new Set();
+  for (const name of matches(files, /\.ya?ml$/i)) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    let documents;
+    try { documents = parseAllDocuments(source); } catch { continue; }
+    const keys = new Set();
+    for (const document of documents) {
+      if (document.errors.length) continue;
+      yamlKeys(document.toJS(), keys);
+    }
+    const overlap = [...variables].filter((variable) => keys.has(variable));
+    if (overlap.length >= 2) {
+      candidates.push(name);
+      for (const variable of overlap) matchedVariables.add(variable);
+    }
+  }
+  return { paths: candidates, variables: [...matchedVariables].sort() };
+}
+
 function goRedisEvidence(root, files) {
   const redisImport = /github\.com\/(?:redis\/go-redis(?:\/v\d+)?|go-redis\/redis(?:\/v\d+)?|redis\/rueidis|gomodule\/redigo\/redis)(?=")/g;
   for (const name of matches(files, /\.go$/).filter((name) => !name.endsWith("_test.go"))) {
@@ -427,7 +511,9 @@ function detectionsFor(root, files) {
     }
   });
   const protos = matches(files, /\.proto$/i);
-  const sql = matches(files, /(^|\/)(migrations?|repository)(\/|.*\/).*\.sql$/i);
+  const sql = matches(files, /(^|\/)(migrations?|repository)(\/|.*\/).*\.sql$/i).filter(
+    (name) => !/(?:^|\/)(?:test|tests|testdata|fixtures?)(?:\/|$)/i.test(name),
+  );
   const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i).filter((name) => posix.basename(name).toLowerCase() !== "readme.md");
   const adrPreviews = compatibleAdrs(root, adrs);
   const supportedAdrs = adrPreviews.map((item) => item.file);
@@ -464,7 +550,10 @@ function detectionsFor(root, files) {
   const goDomain = files.has("go.mod") ? goDomainEvidence(root, files) || goHTTPServerEvidence(root, files) : "";
   const goHTTPClient = files.has("go.mod") ? goHTTPClientEvidence(root, files) : "";
   const goSOAPClient = files.has("go.mod") ? goSOAPClientEvidence(root, files) : "";
+  const goKafka = files.has("go.mod") ? goKafkaEvidence(root, files) : "";
   const goRedis = files.has("go.mod") ? goRedisEvidence(root, files) : "";
+  const pythonKafka = pythonKafkaEvidence(root, files);
+  const deploymentValues = deploymentValueCandidates(root, files);
   const tsDomain = files.has("package.json") ? laidOutDomainEvidence(root, files, "typescript") : "";
   const rustDomain = files.has("Cargo.toml") ? laidOutDomainEvidence(root, files, "rust") : "";
   const javaDomain = ["pom.xml", "build.gradle", "build.gradle.kts"].some((name) => files.has(name)) ? laidOutDomainEvidence(root, files, "java") : "";
@@ -488,7 +577,20 @@ function detectionsFor(root, files) {
     detected("php-ddd", phpDdd ? [phpDdd] : [], {}, phpDdd),
     detected("csharp-ddd", csharpDdd ? [csharpDdd] : [], {}, csharpDdd),
     detected("celery", celery, {}, celery[0]),
-    detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
+    detected("python-kafka", pythonKafka ? [pythonKafka] : [], {}, pythonKafka),
+    detected(
+      "deployment-values",
+      deploymentValues.paths,
+      { paths: deploymentValues.paths, variables: deploymentValues.variables },
+      deploymentValues.paths.join(", "),
+    ),
+    detected(
+      "openapi",
+      openapi,
+      openapi.length === 1 ? { spec: openapi[0] } : {},
+      openapi.length === 1 ? openapi[0] : `${openapi.length} OpenAPI documents`,
+      true,
+    ),
     detected(
       "wsdl",
       wsdls,
@@ -500,6 +602,7 @@ function detectionsFor(root, files) {
       true,
     ),
     detected("http-clients", goHTTPClient ? [goHTTPClient] : [], {}, goHTTPClient),
+    detected("go-kafka", goKafka ? [goKafka] : [], {}, goKafka),
     detected("redis", goRedis ? [goRedis] : [], {}, goRedis),
     detected("river", goMod.includes("github.com/riverqueue/river") ? ["go.mod"] : [], {}, "go.mod · github.com/riverqueue/river"),
     detected("watermill", goMod.includes("github.com/ThreeDotsLabs/watermill") ? ["go.mod"] : [], {}, "go.mod · github.com/ThreeDotsLabs/watermill"),

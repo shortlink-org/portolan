@@ -171,9 +171,11 @@ export interface HTTPDestination {
   resolution?: HTTPDestinationResolution;
 }
 export interface HTTPDestinationResolution {
-  basis: "full-path" | "exact-route" | "unique-suffix" | "kubernetes-host";
+  basis: "full-path" | "exact-route" | "unique-suffix" | "kubernetes-host" | "deployment-config";
   provider: string;
   route: string;
+  /** Values that selected the same provider in each configured environment. */
+  environments?: HTTPConfiguredEnvironment[];
   /**
    * Absent for a link whose route and verb are both declared, and reads
    * `high`. `medium` is a link to a route whose verb is inferred; the status
@@ -182,6 +184,12 @@ export interface HTTPDestinationResolution {
   confidence?: "high" | "medium" | "low";
   /** The provider route's reading, when its verb is inferred. */
   methodEvidence?: HttpMethodEvidence;
+}
+export interface HTTPConfiguredEnvironment {
+  environment: string;
+  variable: string;
+  value: string;
+  source: string;
 }
 export interface HTTPBaseURL {
   expression: string;

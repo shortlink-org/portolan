@@ -133,4 +133,84 @@ describe("messagingClaims", () => {
       )?.issue,
     ).toBe("clear");
   });
+
+  it("matches publishers and consumers by deployment environment", () => {
+    const configuredCatalog: Catalog = {
+      ...catalog,
+      contexts: catalog.contexts.map((context) => ({
+        ...context,
+        services: context.services.map((service) => ({
+          ...service,
+          aggregates: [],
+          channels:
+            service.id === "sales.checkout"
+              ? [
+                  {
+                    address: "checkout-source-default",
+                    configuredAddresses: [
+                      { environment: "dev", address: "orders-dev", source: "configmap.dev.yaml:1" },
+                      { environment: "prod", address: "orders-prod", source: "configmap.prod.yaml:1" },
+                    ],
+                    messages: [{ name: "Placed", direction: "send" }],
+                  },
+                ]
+              : [
+                  {
+                    address: "fulfilment-source-default",
+                    configuredAddresses: [
+                      { environment: "dev", address: "orders-dev", source: "configmap.dev.yaml:1" },
+                      { environment: "prod", address: "orders-prod", source: "configmap.prod.yaml:1" },
+                    ],
+                    messages: [{ name: "Placed", direction: "receive" }],
+                  },
+                ],
+        })),
+      })),
+    };
+
+    const consumer = messagingClaims(configuredCatalog).messages.find(
+      (claim) => claim.serviceId === "sales.fulfilment" && claim.name === "Placed",
+    );
+    expect(consumer?.issue).toBe("clear");
+  });
+
+  it("does not match the same configured address across different environments", () => {
+    const configuredCatalog: Catalog = {
+      ...catalog,
+      contexts: catalog.contexts.map((context) => ({
+        ...context,
+        services: context.services.map((service) => ({
+          ...service,
+          aggregates: [],
+          channels:
+            service.id === "sales.checkout"
+              ? [
+                  {
+                    address: "same-source-default",
+                    configuredAddresses: [
+                      { environment: "dev", address: "orders-dev", source: "configmap.dev.yaml:1" },
+                      { environment: "prod", address: "orders-prod", source: "configmap.prod.yaml:1" },
+                    ],
+                    messages: [{ name: "Placed", direction: "send" }],
+                  },
+                ]
+              : [
+                  {
+                    address: "same-source-default",
+                    configuredAddresses: [
+                      { environment: "dev", address: "orders-prod", source: "configmap.dev.yaml:1" },
+                      { environment: "prod", address: "orders-dev", source: "configmap.prod.yaml:1" },
+                    ],
+                    messages: [{ name: "Placed", direction: "receive" }],
+                  },
+                ],
+        })),
+      })),
+    };
+
+    const consumer = messagingClaims(configuredCatalog).messages.find(
+      (claim) => claim.serviceId === "sales.fulfilment" && claim.name === "Placed",
+    );
+    expect(consumer?.issue).toBe("no publisher");
+  });
 });

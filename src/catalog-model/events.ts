@@ -53,6 +53,10 @@ export interface Channel {
    * the code beside it are held against each other.
    */
   address: string;
+  /** Source-code variable and default from which the address was read. */
+  addressBinding?: ChannelAddressBinding;
+  /** Deployment values observed for that variable, sorted by environment. */
+  configuredAddresses?: ConfiguredChannelAddress[];
   /** Domain event by default; jobs are work queues and messages are generic streams. */
   kind?: "event" | "job" | "message";
   /**
@@ -65,6 +69,16 @@ export interface Channel {
   messages: ChannelMessage[];
   /** The document this was read out of. */
   source?: string;
+}
+export interface ChannelAddressBinding {
+  environmentVariable: string;
+  defaultValue?: string;
+  source: string;
+}
+export interface ConfiguredChannelAddress {
+  environment: string;
+  address: string;
+  source: string;
 }
 /**
  * Which way a message travels, from this service's side.

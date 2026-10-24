@@ -647,6 +647,57 @@ describe("enrichCatalog: HTTP route correlation", () => {
     );
   });
 
+  it("uses deployment values to resolve an observed HTTP call in every environment", () => {
+    const caller = httpCaller("/book");
+    caller.consumes[0]!.destination = {
+      callSite: "client.go:10",
+      endpointExpression: "c.baseURL + path",
+      method: "POST",
+      localPath: "/book",
+      baseURL: {
+        expression: "cfg.SupplierAddr",
+        environmentVariable: "SUPPLIER_ADDR",
+        kind: "symbolic",
+        source: "config.go:20",
+      },
+    };
+    const supp = httpProvider("aviasupp", "book", "/book");
+    const other = httpProvider("other", "book", "/book");
+    const input = estate([], [caller, supp, other]);
+    input.configurationBindings = [
+      { service: "shop.oms", environment: "dev", variable: "SUPPLIER_ADDR", value: "http://aviasupp.dev.svc", source: ".helm/configmap.dev.yaml:2" },
+      { service: "shop.oms", environment: "prod", variable: "SUPPLIER_ADDR", value: "http://aviasupp.prod.svc", source: ".helm/configmap.prod.yaml:2" },
+    ];
+
+    const resolved = enrichCatalog(input).catalog;
+    expect(serviceOf(resolved, "shop.oms").consumes[0]).toMatchObject({
+      peer: "shop.aviasupp",
+      status: "declared",
+      destination: {
+        resolution: {
+          basis: "deployment-config",
+          provider: "shop.aviasupp",
+          route: "/book",
+          environments: [
+            { environment: "dev", variable: "SUPPLIER_ADDR", value: "http://aviasupp.dev.svc", source: ".helm/configmap.dev.yaml:2" },
+            { environment: "prod", variable: "SUPPLIER_ADDR", value: "http://aviasupp.prod.svc", source: ".helm/configmap.prod.yaml:2" },
+          ],
+        },
+      },
+    });
+    expect(enrichCatalog(resolved).catalog).toEqual(resolved);
+  });
+
+  it("does not invent an HTTP call from deployment configuration alone", () => {
+    const caller = service("shop", "oms");
+    const input = estate([], [caller, httpProvider("aviasupp", "book", "/book")]);
+    input.configurationBindings = [
+      { service: "shop.oms", environment: "prod", variable: "SUPPLIER_ADDR", value: "http://aviasupp.prod.svc", source: ".helm/configmap.prod.yaml:2" },
+    ];
+
+    expect(serviceOf(enrichCatalog(input).catalog, "shop.oms").consumes).toEqual([]);
+  });
+
   // PORTOLAN-19: the extractor qualifies a raw call with its destination, so
   // the same route addressed to two hosts arrives as two consumes. They must
   // stay two - resolved to two providers when the estate has them, or two
@@ -1669,6 +1720,62 @@ describe("enrichCatalog: calls from rpc steps", () => {
       flow("a", [step("shop.oms", "oms-db", "call", { ref: EVENT })]),
     ]);
     expect(enrichCatalog(c).derived).toEqual([]);
+  });
+});
+
+describe("enrichCatalog: deployment-configured channel addresses", () => {
+  it("replaces source defaults when every environment configures the same broker address", () => {
+    const producer = service("avia", "aviasupp", {
+      channels: [{
+        address: "email-publish-default",
+        protocol: "kafka",
+        messages: [{ name: "message", direction: "send" }],
+        addressBinding: { environmentVariable: "EMAIL_PUBLISH_TOPIC", defaultValue: "email-publish-default", source: "config.go:10" },
+      }],
+    });
+    const consumer = service("avia", "aviacore", {
+      channels: [{
+        address: "booking-update-default",
+        protocol: "kafka",
+        messages: [{ name: "message", direction: "receive" }],
+        addressBinding: { environmentVariable: "KAFKA_BOOKING_UPDATE_IN_TOPIC", defaultValue: "booking-update-default", source: "config.go:20" },
+      }],
+    });
+    const input = estate([], [producer, consumer]);
+    input.configurationBindings = [
+      { service: "avia.aviasupp", environment: "dev", variable: "EMAIL_PUBLISH_TOPIC", value: "avia-suppliers-events", source: "configmap.dev.yaml:2" },
+      { service: "avia.aviasupp", environment: "prod", variable: "EMAIL_PUBLISH_TOPIC", value: "avia-suppliers-events", source: "configmap.prod.yaml:2" },
+      { service: "avia.aviacore", environment: "dev", variable: "KAFKA_BOOKING_UPDATE_IN_TOPIC", value: "avia-suppliers-events", source: "configmap.dev.yaml:3" },
+      { service: "avia.aviacore", environment: "prod", variable: "KAFKA_BOOKING_UPDATE_IN_TOPIC", value: "avia-suppliers-events", source: "configmap.prod.yaml:3" },
+    ];
+
+    const catalog = enrichCatalog(input).catalog;
+    for (const serviceId of ["avia.aviasupp", "avia.aviacore"]) {
+      const channel = serviceOf(catalog, serviceId).channels![0]!;
+      expect(channel.address).toBe("avia-suppliers-events");
+      expect(channel.configuredAddresses?.map(({ environment, address }) => ({ environment, address }))).toEqual([
+        { environment: "dev", address: "avia-suppliers-events" },
+        { environment: "prod", address: "avia-suppliers-events" },
+      ]);
+    }
+    expect(enrichCatalog(catalog).catalog).toEqual(catalog);
+  });
+
+  it("keeps the source default when environments disagree", () => {
+    const app = service("avia", "app", {
+      channels: [{
+        address: "events-default",
+        messages: [],
+        addressBinding: { environmentVariable: "EVENTS_TOPIC", defaultValue: "events-default", source: "config.go:10" },
+      }],
+    });
+    const input = estate([], [app]);
+    input.configurationBindings = [
+      { service: "avia.app", environment: "dev", variable: "EVENTS_TOPIC", value: "events-dev", source: "dev.yaml:2" },
+      { service: "avia.app", environment: "prod", variable: "EVENTS_TOPIC", value: "events-prod", source: "prod.yaml:2" },
+    ];
+
+    expect(serviceOf(enrichCatalog(input).catalog, "avia.app").channels![0]!.address).toBe("events-default");
   });
 });
 
