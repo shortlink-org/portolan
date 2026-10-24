@@ -12,17 +12,19 @@ nothing.
 
 ## What it reads
 
-`file`, relative to the input root, or - left out - the three places a forge
-looks, in order: `CODEOWNERS`, `.github/CODEOWNERS`, `docs/CODEOWNERS`. A
-named file that is not there, or nothing found, fails the run.
+No forge option is needed. The verifier inspects the conventional locations
+and GitLab-only syntax, then uses GitHub's order (`.github/CODEOWNERS`, root,
+`docs/CODEOWNERS`) or GitLab's order (root, `docs/CODEOWNERS`,
+`.gitlab/CODEOWNERS`). Explicit `file` remains available for an existing manifest
+or a non-standard location. A named file that is absent, or nothing found,
+fails the run.
 
-The grammar (`parse.go`): a pattern and the handles that own what it
-matches; blank lines and `#` comments skipped, an escaped `\#` kept; the
-last matching rule wins. A pattern with no owners is kept, because taking
-ownership back is what it is written for. GitLab section headers
-(`[Backend]`, `^[Optional]`, `[Name][2]`) are noticed and the file is read
-the flatter way GitHub means, with a warning. `!` negation and character
-ranges are not implemented.
+GitHub uses flat last-match-wins rules, including an ownerless rule taking
+ownership back. GitLab applies last-match-wins independently in every section
+and unions the winners; section defaults, optional/count annotations, roles,
+escaped spaces and `!` exclusions are understood. Duplicate GitLab section
+names are case-insensitive. Unsupported GitHub negation, character ranges and
+escaped leading hashes are skipped as GitHub skips them.
 
 Patterns are matched against each service's `path` as the catalog holds it,
 so they are repository-relative wherever the file sits.
@@ -34,8 +36,8 @@ each such service only its `id`, `slug` and `owners` - the handles of the
 last rule that matched. Nothing else about the service is restated.
 
 Warnings name a service with no path, a service no rule matches, a rule that
-matches no service, a rule that matches something but never wins, a file
-with sections, and a file with no rules.
+matches no service, a rule that matches something but never wins, and a file
+with no rules.
 
 ## Options
 
@@ -65,8 +67,9 @@ manifest name `codeowners` in the `verify` phase, after the merge; or
 ## Limits
 
 - Handles are not resolved to people or teams.
-- GitLab's per-section precedence is not implemented; an owner may be
-  missing for a service a section would have claimed.
+- Matching projects file-level CODEOWNERS onto catalog service directories is
+  intentionally a projection: a rule about only an internal file does not own
+  the whole service page.
 
 ## Tests
 

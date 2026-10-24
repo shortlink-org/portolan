@@ -124,6 +124,12 @@ export function ContextPage() {
                 ) : null}
               </Ident>
             ))}
+            <Link
+              to={`${paths.ownership()}?by=context&q=${encodeURIComponent(context.id)}`}
+              className="rounded-control text-accent hover:underline"
+            >
+              ownership →
+            </Link>
           </div>
         ) : null}
       </PageHeader>

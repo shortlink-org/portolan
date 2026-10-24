@@ -45,3 +45,15 @@ func TestOwns(t *testing.T) {
 		}
 	}
 }
+
+func TestGitLabPatternsWithSlashesFloatUnlessRooted(t *testing.T) {
+	if !ownsFor(gitLab, "shop/oms", "examples/shop/oms") {
+		t.Error("GitLab should match an unrooted slash pattern at any depth")
+	}
+	if ownsFor(gitLab, "/shop/oms", "examples/shop/oms") {
+		t.Error("a leading slash should keep a GitLab pattern rooted")
+	}
+	if ownsFor(gitHub, "shop/oms", "examples/shop/oms") {
+		t.Error("GitHub slash patterns are rooted")
+	}
+}

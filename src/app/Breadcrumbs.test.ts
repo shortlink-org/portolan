@@ -8,7 +8,7 @@ import { catalog } from "../data";
 import { paths, specRequirementAnchor, specScenarioAnchor } from "../routes";
 
 describe("crumbsFor", () => {
-  it("names the four index pages that used to have no trail", () => {
+  it("names the estate-level index pages", () => {
     expect(crumbsFor("/language")).toEqual([
       { label: "language", to: "/language" },
     ]);
@@ -17,6 +17,9 @@ describe("crumbsFor", () => {
     ]);
     expect(crumbsFor("/problems")).toEqual([
       { label: "problems", to: "/problems" },
+    ]);
+    expect(crumbsFor("/ownership")).toEqual([
+      { label: "ownership", to: "/ownership" },
     ]);
     expect(crumbsFor("/registry")).toEqual([
       { label: "registry", to: "/registry" },

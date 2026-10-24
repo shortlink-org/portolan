@@ -19,23 +19,21 @@
 // both reported - the second being the failure a CODEOWNERS file has and can
 // never report about itself, a team believing it owns something it does not.
 //
-// Nothing here is forge-specific. GitHub, GitLab and Gitea read the same file
-// from the same three places; where GitLab's sections change whose rule wins,
-// the file is read the flatter way and said so out loud.
+// No forge setting is required. The verifier detects GitHub or GitLab from the
+// conventional location and syntax unique to GitLab, then applies that
+// forge's discovery order and matching semantics.
 //
 //	{
 //	  "plugins": [
 //	    { "name": "codeowners", "process": { "command": "go", "args": ["run", "./plugins/verify-codeowners"] } }
 //	  ],
 //	  "verify": [
-//	    { "plugin": "codeowners", "in": ".github", "out": "data", "options": { "out": "owners.json" } }
+//	    { "plugin": "codeowners", "in": ".", "out": "data", "options": { "out": "owners.json" } }
 //	  ]
 //	}
 //
-// Point `in` at the directory the file is in rather than at the repository
-// root. The host dates a fragment from the last commit to touch the step's
-// input, and the subject of this one is the CODEOWNERS file: rooted at the
-// repository, it would be restamped by every commit ever made.
+// Point `in` at the repository tree whose conventional locations should be
+// inspected. No forge or file option is needed.
 package verifycodeowners
 
 import (
@@ -48,8 +46,8 @@ import (
 // Options are what the manifest tells the verifier.
 type Options struct {
 	// File is the CODEOWNERS to read, relative to the input root. Left out,
-	// the three places a forge looks: CODEOWNERS, .github/CODEOWNERS and
-	// docs/CODEOWNERS, in that order.
+	// the verifier detects GitHub or GitLab and finds the file automatically.
+	// Kept for manifests that already name a non-standard location.
 	File string `json:"file,omitempty"`
 
 	// Out names the fragment file.

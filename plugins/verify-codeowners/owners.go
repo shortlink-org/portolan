@@ -11,8 +11,8 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-// Where a forge looks for the file, in the order it looks.
-var places = []string{"CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"}
+var githubPlaces = []string{".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"}
+var gitlabPlaces = []string{"CODEOWNERS", "docs/CODEOWNERS", ".gitlab/CODEOWNERS"}
 
 // verify reads the file and answers with who owns each service.
 //
@@ -25,16 +25,13 @@ var places = []string{"CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"}
 func verify(req plugin.Request, opts Options) (plugin.Response, error) {
 	b := &plugin.Builder{}
 
-	at, src, err := read(req.Input.Root, opts.File)
+	at, src, kind, err := read(req.Input.Root, opts.File)
 	if err != nil {
 		return plugin.Response{}, err
 	}
 	rel := filepath.ToSlash(at)
 
-	parsed := parseCodeowners(src)
-	if parsed.Sections {
-		b.Warn(rel, "uses section headers, which change whose rule wins; owners are resolved the way a forge without sections resolves them, so a service may be missing one")
-	}
+	parsed := parseCodeownersFor(src, kind)
 	if len(parsed.Rules) == 0 {
 		b.Warn(rel, "states no rules; no service is owned by anybody")
 	}
@@ -58,22 +55,7 @@ func verify(req plugin.Request, opts Options) (plugin.Response, error) {
 				continue
 			}
 
-			// LAST match wins, so the search runs backwards and stops at the
-			// first hit. A rule that matches and names nobody still wins:
-			// taking ownership back is what an empty rule is written for.
-			handles := []string{}
-			first := true
-			for i := len(parsed.Rules) - 1; i >= 0; i-- {
-				if !owns(parsed.Rules[i].Pattern, service.Path) {
-					continue
-				}
-				matched[i] = true
-				if first {
-					first = false
-					won[i] = true
-					handles = append(handles, parsed.Rules[i].Owners...)
-				}
-			}
+			handles := resolveOwners(parsed, kind, service.Path, matched, won)
 			if len(handles) == 0 {
 				b.Warn(service.ID, "is owned by nobody in "+rel)
 
@@ -108,8 +90,10 @@ func verify(req plugin.Request, opts Options) (plugin.Response, error) {
 		switch {
 		case !matched[i]:
 			b.Warn(where, rule.Pattern+" matches no service in the catalog")
-		case !won[i]:
+		case !won[i] && kind == gitHub:
 			b.Warn(where, rule.Pattern+" owns no service: everything it matches is claimed by a rule below it")
+		case !won[i]:
+			b.Warn(where, rule.Pattern+" owns no service: it is overridden or excluded in its GitLab section")
 		}
 	}
 
@@ -140,23 +124,133 @@ func verify(req plugin.Request, opts Options) (plugin.Response, error) {
 // wrong that is only noticed when a page has been missing an owner for a
 // month. Nothing named and nothing found is the same failure said differently,
 // because a step declared at all is a step that expected a file.
-func read(root, named string) (string, string, error) {
-	tried := places
+func read(root, named string) (string, string, dialect, error) {
 	if named != "" {
-		tried = []string{named}
+		at := filepath.Join(root, filepath.FromSlash(named))
+		body, err := os.ReadFile(at)
+		if err != nil {
+			return "", "", gitHub, err
+		}
+		src := string(body)
+		return at, src, detectDialect(named, src), nil
 	}
 
-	for _, place := range tried {
+	allPlaces := []string{".github/CODEOWNERS", "CODEOWNERS", ".gitlab/CODEOWNERS", "docs/CODEOWNERS"}
+	found := map[string]string{}
+	for _, place := range allPlaces {
 		at := filepath.Join(root, filepath.FromSlash(place))
-		src, err := os.ReadFile(at)
+		body, err := os.ReadFile(at)
 		if err == nil {
-			return at, string(src), nil
+			found[place] = string(body)
+			continue
 		}
 		if !os.IsNotExist(err) {
-			return "", "", err
+			return "", "", gitHub, err
+		}
+	}
+	if len(found) == 0 {
+		return "", "", gitHub, fmt.Errorf("no CODEOWNERS under %s: looked for %s",
+			filepath.ToSlash(root), strings.Join(allPlaces, ", "))
+	}
+
+	kind := gitHub
+	for _, src := range found {
+		if hasGitLabSyntax(src) {
+			kind = gitLab
+			break
+		}
+	}
+	if kind == gitHub {
+		_, hasGitHub := found[".github/CODEOWNERS"]
+		_, hasGitLab := found[".gitlab/CODEOWNERS"]
+		if !hasGitHub && hasGitLab {
+			kind = gitLab
 		}
 	}
 
-	return "", "", fmt.Errorf("no CODEOWNERS under %s: looked for %s",
-		filepath.ToSlash(root), strings.Join(tried, ", "))
+	places := githubPlaces
+	if kind == gitLab {
+		places = gitlabPlaces
+	}
+	for _, place := range places {
+		if src, ok := found[place]; ok {
+			return filepath.Join(root, filepath.FromSlash(place)), src, kind, nil
+		}
+	}
+	// A dialect-specific file with syntax from the other forge is unusual but
+	// still unambiguous input. Use the file that supplied the syntax signal.
+	for _, place := range allPlaces {
+		if src, ok := found[place]; ok {
+			return filepath.Join(root, filepath.FromSlash(place)), src, kind, nil
+		}
+	}
+	panic("unreachable")
+}
+
+func detectDialect(place, src string) dialect {
+	if hasGitLabSyntax(src) {
+		return gitLab
+	}
+	place = filepath.ToSlash(place)
+	if strings.Contains("/"+place, "/.gitlab/CODEOWNERS") {
+		return gitLab
+	}
+	return gitHub
+}
+
+func resolveOwners(parsed Parsed, kind dialect, target string, matched, won []bool) []string {
+	if kind == gitHub {
+		for i := len(parsed.Rules) - 1; i >= 0; i-- {
+			if !ownsFor(kind, parsed.Rules[i].Pattern, target) {
+				continue
+			}
+			matched[i] = true
+			for j := i - 1; j >= 0; j-- {
+				if ownsFor(kind, parsed.Rules[j].Pattern, target) {
+					matched[j] = true
+				}
+			}
+			won[i] = true
+			return append([]string(nil), parsed.Rules[i].Owners...)
+		}
+		return nil
+	}
+
+	handles := []string{}
+	seen := map[string]bool{}
+	for _, section := range parsed.Order {
+		winner := -1
+		excluded := false
+		for i, rule := range parsed.Rules {
+			if rule.Section != section || !ownsFor(kind, rule.Pattern, target) {
+				continue
+			}
+			matched[i] = true
+			if excluded {
+				continue
+			}
+			if rule.Exclude {
+				excluded = true
+				winner = -1
+				won[i] = true
+				continue
+			}
+			winner = i
+		}
+		if winner < 0 {
+			continue
+		}
+		won[winner] = true
+		owners := parsed.Rules[winner].Owners
+		if len(owners) == 0 {
+			owners = parsed.Defaults[section]
+		}
+		for _, owner := range owners {
+			if !seen[owner] {
+				seen[owner] = true
+				handles = append(handles, owner)
+			}
+		}
+	}
+	return handles
 }

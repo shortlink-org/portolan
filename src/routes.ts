@@ -57,6 +57,8 @@ export const paths = {
   plugins: () => "/plugins",
   /** One plugin on that page, by the name the manifest declares it under. */
   plugin: (name: string) => `/plugins#plugin-${name}`,
+  ownership: () => "/ownership",
+  owner: (handle: string) => `/ownership?owner=${encodeURIComponent(handle)}`,
   problems: () => "/problems",
   changes: () => "/changes",
   /** Every saved branch draft of every project. */
@@ -468,6 +470,7 @@ const ROUTES: RegExp[] = [
   /^\/specs$/,
   /^\/language$/,
   /^\/plugins$/,
+  /^\/ownership$/,
   /^\/problems$/,
   /^\/changes$/,
   /^\/drafts$/,
@@ -515,6 +518,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.specs(),
     paths.language(),
     paths.plugins(),
+    paths.ownership(),
     paths.problems(),
     paths.changes(),
     paths.settings(),

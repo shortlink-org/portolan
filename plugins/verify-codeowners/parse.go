@@ -1,90 +1,201 @@
 package verifycodeowners
 
-// The CODEOWNERS grammar, which is smaller than its reputation.
-//
-// A line is a path pattern and the handles that own what it matches. Blank
-// lines and `#` comments are skipped. Later lines win: the file is read top to
-// bottom and the LAST rule that matches a path is the one that owns it, which
-// is what lets a broad rule at the top be narrowed underneath.
-//
-// GitLab adds sections - `[Backend]`, `^[Optional]`, `[Frontend][2]` - and
-// under them the last-match rule applies per section rather than per file. It
-// is read here as the flatter thing GitHub means, and a file that uses them is
-// warned about rather than half-understood in silence, because the difference
-// only ever shows up as an owner quietly missing from a page.
-//
-// Two pieces of gitignore syntax that CODEOWNERS does not have are not
-// implemented, on purpose: `!` negation, which no forge supports here, and
-// character ranges, which they do but nobody writes.
+import "strings"
 
-import (
-	"strings"
+type dialect uint8
+
+const (
+	gitHub dialect = iota
+	gitLab
 )
 
-// Rule is one line: what it matches, who owns it, and where it was written.
 type Rule struct {
 	Pattern string
 	Owners  []string
 	Line    int
+	Section string
+	Exclude bool
 }
 
-// Parsed is a file's rules and what was odd about it.
 type Parsed struct {
-	Rules []Rule
-
-	// Sections is true when the file uses GitLab's section headers, which
-	// change the precedence rule this does not implement.
+	Rules    []Rule
 	Sections bool
+	Defaults map[string][]string
+	Order    []string
 }
 
-// parseCodeowners reads the file. It does not fail: a line that is not a rule
-// is not a rule, and refusing to describe an estate over a stray word in a
-// file the forge itself skips would be a worse answer than the ownership the
-// rest of the file states.
 func parseCodeowners(src string) Parsed {
-	out := Parsed{Rules: []Rule{}}
+	return parseCodeownersFor(src, gitHub)
+}
+
+func parseCodeownersFor(src string, kind dialect) Parsed {
+	out := Parsed{Rules: []Rule{}, Defaults: map[string][]string{}, Order: []string{}}
+	section := ""
+	seenSections := map[string]bool{}
 
 	for i, raw := range strings.Split(src, "\n") {
-		line := strings.TrimSpace(stripComment(raw))
-		if line == "" {
-			continue
-		}
-		if isSection(line) {
-			out.Sections = true
-
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
 
-		fields := strings.Fields(line)
-		// A pattern with no owners is how a forge takes ownership BACK: it
-		// matches, and names nobody. Kept as a rule so that it can win over an
-		// earlier one, which is the only reason anybody writes it.
+		if kind == gitLab {
+			if name, defaults, ok := parseSection(trimmed); ok {
+				out.Sections = true
+				section = name
+				if !seenSections[name] {
+					seenSections[name] = true
+					out.Order = append(out.Order, name)
+					out.Defaults[name] = defaults
+				}
+				continue
+			}
+		} else {
+			// GitHub does not support escaping a hash, negation, or ranges.
+			if strings.Contains(raw, `\#`) {
+				continue
+			}
+			trimmed = strings.TrimSpace(stripGitHubComment(raw))
+			if trimmed == "" || isSection(trimmed) {
+				continue
+			}
+		}
+
+		fields := splitFields(trimmed)
+		if len(fields) == 0 {
+			continue
+		}
+		pattern := fields[0]
+		exclude := false
+		if kind == gitLab && strings.HasPrefix(pattern, "!") {
+			exclude = true
+			pattern = strings.TrimPrefix(pattern, "!")
+		}
+		if pattern == "" {
+			continue
+		}
+		if kind == gitHub && (strings.HasPrefix(pattern, "!") || strings.ContainsAny(pattern, "[]")) {
+			continue
+		}
+
+		owners := validOwners(fields[1:], kind)
+		if kind == gitLab && !exclude && len(owners) == 0 && len(out.Defaults[section]) == 0 {
+			continue
+		}
+		if section == "" && kind == gitLab && !seenSections[section] {
+			seenSections[section] = true
+			out.Order = append(out.Order, section)
+		}
 		out.Rules = append(out.Rules, Rule{
-			Pattern: fields[0],
-			Owners:  append([]string(nil), fields[1:]...),
+			Pattern: pattern,
+			Owners:  owners,
 			Line:    i + 1,
+			Section: section,
+			Exclude: exclude,
 		})
 	}
 
 	return out
 }
 
-// stripComment removes a trailing comment. An escaped `\#` is a literal in a
-// path, and paths with a `#` in them exist, so the escape is honoured.
-func stripComment(line string) string {
-	for i := 0; i < len(line); i++ {
-		if line[i] == '#' && (i == 0 || line[i-1] != '\\') {
-			return line[:i]
-		}
+func stripGitHubComment(line string) string {
+	if at := strings.IndexByte(line, '#'); at >= 0 {
+		return line[:at]
 	}
-
 	return line
 }
 
-// isSection reports a GitLab section header: `[Name]`, optionally required
-// with `^`, optionally with an approval count `[Name][2]`.
-func isSection(line string) bool {
-	line = strings.TrimPrefix(line, "^")
+// splitFields is strings.Fields plus the escaped spaces supported by GitLab.
+func splitFields(line string) []string {
+	fields := []string{}
+	var field strings.Builder
+	escaped := false
+	flush := func() {
+		if field.Len() != 0 {
+			fields = append(fields, field.String())
+			field.Reset()
+		}
+	}
+	for _, r := range line {
+		switch {
+		case escaped:
+			field.WriteRune(r)
+			escaped = false
+		case r == '\\':
+			escaped = true
+		case r == ' ' || r == '\t':
+			flush()
+		default:
+			field.WriteRune(r)
+		}
+	}
+	if escaped {
+		field.WriteByte('\\')
+	}
+	flush()
+	return fields
+}
 
-	return strings.HasPrefix(line, "[") && strings.Contains(line, "]")
+func validOwners(fields []string, kind dialect) []string {
+	owners := []string{}
+	for _, owner := range fields {
+		valid := strings.HasPrefix(owner, "@") && len(owner) > 1
+		if strings.HasPrefix(owner, "@@") && kind != gitLab {
+			valid = false
+		}
+		if at := strings.IndexByte(owner, '@'); at > 0 && at < len(owner)-1 {
+			valid = true
+		}
+		if !valid {
+			continue
+		}
+		owners = append(owners, owner)
+	}
+	return owners
+}
+
+func parseSection(line string) (string, []string, bool) {
+	line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "^"))
+	if !strings.HasPrefix(line, "[") {
+		return "", nil, false
+	}
+	end := strings.IndexByte(line, ']')
+	if end <= 1 {
+		return "", nil, false
+	}
+	name := strings.ToLower(strings.TrimSpace(line[1:end]))
+	rest := strings.TrimSpace(line[end+1:])
+	if strings.HasPrefix(rest, "[") {
+		if countEnd := strings.IndexByte(rest, ']'); countEnd >= 1 {
+			rest = strings.TrimSpace(rest[countEnd+1:])
+		}
+	}
+	return name, validOwners(splitFields(rest), gitLab), true
+}
+
+func isSection(line string) bool {
+	_, _, ok := parseSection(line)
+	return ok
+}
+
+func hasGitLabSyntax(src string) bool {
+	for _, raw := range strings.Split(src, "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if isSection(line) {
+			return true
+		}
+		fields := splitFields(line)
+		if len(fields) > 0 && strings.HasPrefix(fields[0], "!") {
+			return true
+		}
+		for _, field := range fields[1:] {
+			if strings.HasPrefix(field, "@@") {
+				return true
+			}
+		}
+	}
+	return false
 }

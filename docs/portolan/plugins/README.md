@@ -1234,19 +1234,18 @@ enforces: a team that owns a directory is a team that gets the pull request.
 {
   "plugins": [{ "name": "codeowners", "process": { "command": "go", "args": ["run", "./plugins/verify-codeowners"] } }],
   "verify": [
-    { "plugin": "codeowners", "in": ".github", "out": "data", "options": { "out": "owners.json" } }
+    { "plugin": "codeowners", "in": ".", "out": "data", "options": { "out": "owners.json" } }
   ]
 }
 ```
 
-Point `in` at the directory the file is in, not at the repository root: the
-subject of this step is the `CODEOWNERS` file, and `gen --check` explains a
-changed fragment by what moved under the step's input. Rooted at the
-repository, every commit ever made would be named. Left with no `file`, the three
-places a forge looks are tried in order - `CODEOWNERS`, `.github/CODEOWNERS`,
-`docs/CODEOWNERS` - and a `file` that names something absent fails the run,
-because answering "nobody owns anything" to a typo is only noticed a month
-later.
+Point `in` at the repository tree to inspect. No forge option is required:
+location and GitLab-only syntax select GitHub or GitLab automatically, then the
+forge's own discovery order is used. GitHub tries `.github/CODEOWNERS`, root,
+then `docs/CODEOWNERS`; GitLab tries root, `docs/CODEOWNERS`, then
+`.gitlab/CODEOWNERS`. The optional `file` remains for non-standard locations and
+existing manifests; if it names something absent the run fails, because
+answering "nobody owns anything" to a typo is only noticed a month later.
 
 It is a verifier and not an extractor because a rule is a path and only the
 merged catalog knows where each service is; an extractor would have to be told,
@@ -1266,15 +1265,15 @@ differently tomorrow, and a handle is what a reviewer types anyway. Two sources
 naming owners are unioned, because two rules that both matched are two facts
 and not two answers.
 
-The grammar is gitignore's, minus the parts CODEOWNERS does not have. A
+The grammar follows the detected forge's CODEOWNERS dialect. A
 pattern owns a directory when it names the directory or anything above it, and
 does not when it names only something inside it: `services/oms/internal` is a
 rule about part of a service, and reading it as ownership of the whole would
-hand a team a page it never asked for. Later rules win. A pattern with no
-owners after it wins too - taking ownership back is the only reason anybody
-writes one. GitLab's sections change which rule wins and are read the flatter
-way GitHub means, with a warning saying so, because the difference only ever
-shows up as an owner quietly missing from a page.
+hand a team a page it never asked for. GitHub uses flat last-match-wins rules,
+including an ownerless rule taking ownership back. GitLab resolves every
+section independently and unions its winners; section defaults, optional and
+approval annotations, roles, escaped spaces, duplicate names and `!`
+exclusions are understood.
 
 The demo estate's file is `data/codeowners/CODEOWNERS`, which is deliberately
 not one of the three places a forge reads: this repository is both the tool and

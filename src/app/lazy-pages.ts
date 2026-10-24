@@ -33,6 +33,7 @@ const load = {
   language: () => import("../pages/Language"),
   pluginIndex: () => import("../pages/PluginIndex"),
   pluginSettings: () => import("../pages/PluginSettings"),
+  ownership: () => import("../pages/OwnershipPage"),
   problems: () => import("../pages/Problems"),
   settings: () => import("../pages/Settings"),
   changes: () => import("../pages/Changes"),
@@ -65,6 +66,7 @@ export const SpecDetail = lazyPage(() => load.specDetail().then((m) => m.SpecDet
 export const Language = lazyPage(() => load.language().then((m) => m.Language));
 export const PluginIndex = lazyPage(() => load.pluginIndex().then((m) => m.PluginIndex));
 export const PluginSettings = lazyPage(() => load.pluginSettings().then((m) => m.PluginSettings));
+export const OwnershipPage = lazyPage(() => load.ownership().then((m) => m.OwnershipPage));
 export const Problems = lazyPage(() => load.problems().then((m) => m.Problems));
 export const Settings = lazyPage(() => load.settings().then((m) => m.Settings));
 export const Changes = lazyPage(() => load.changes().then((m) => m.Changes));
@@ -107,6 +109,7 @@ const ROUTES: [pattern: string, preload: () => unknown][] = [
   ["/language", load.language],
   ["/plugins", load.pluginIndex],
   ["/plugins/:name/settings", load.pluginSettings],
+  ["/ownership", load.ownership],
   ["/problems", load.problems],
   ["/settings/*", load.settings],
   ["/changes", load.changes],

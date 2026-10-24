@@ -5,6 +5,7 @@ import {
   Puzzle,
   Settings2,
   TriangleAlert,
+  Users,
 } from "lucide-react";
 
 import { allModules } from "../catalog";
@@ -35,6 +36,22 @@ export function SidebarBottomGroup() {
 
   return (
     <div className="shrink-0 border-t bg-canvas border-line py-0.5">
+      <NavLink
+        to={paths.ownership()}
+        data-nav-item
+        title="Ownership — who to ask, and what else they cover"
+        style={({ isActive }) => ({
+          paddingLeft: indent(0),
+          background: isActive ? "var(--surface-2)" : undefined,
+          borderLeftWidth: 2,
+          borderLeftStyle: "solid",
+          borderLeftColor: isActive ? "var(--accent)" : "transparent",
+        })}
+        className="tree-row flex items-center gap-1.5 py-[3px] pr-2 text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+      >
+        <Users size={14} aria-hidden className="block shrink-0" />
+        <span className="truncate">Ownership</span>
+      </NavLink>
       <NavLink
         to={paths.problems()}
         end

@@ -38,7 +38,7 @@ examples/legacy
 
 func TestParseNoticesSections(t *testing.T) {
 	for _, header := range []string{"[Backend]", "^[Optional]", "[Frontend][2]"} {
-		parsed := parseCodeowners(header + "\n* @acme/platform\n")
+		parsed := parseCodeownersFor(header+"\n* @acme/platform\n", gitLab)
 		if !parsed.Sections {
 			t.Errorf("%q was not read as a section header", header)
 		}
@@ -48,15 +48,47 @@ func TestParseNoticesSections(t *testing.T) {
 	}
 }
 
-// A `#` inside a path is a path, not a comment, when it is escaped - which is
-// the one place the grammar is not "split on the first hash".
-func TestParseKeepsAnEscapedHash(t *testing.T) {
-	parsed := parseCodeowners(`docs/c\#sharp @acme/writers`)
+// GitHub does not support escaping a leading hash. The forge skips this line,
+// so the catalog must not invent ownership from it.
+func TestGitHubParseRejectsAnEscapedLeadingHash(t *testing.T) {
+	parsed := parseCodeowners(`\#docs @acme/writers`)
 
-	if len(parsed.Rules) != 1 || parsed.Rules[0].Pattern != `docs/c\#sharp` {
+	if len(parsed.Rules) != 0 {
+		t.Fatalf("rules = %+v, want GitHub to skip the unsupported pattern", parsed.Rules)
+	}
+}
+
+func TestGitLabParseKeepsEscapedSpaces(t *testing.T) {
+	parsed := parseCodeownersFor(`docs/user\ guides @acme/writers`, gitLab)
+
+	if len(parsed.Rules) != 1 || parsed.Rules[0].Pattern != `docs/user guides` {
 		t.Fatalf("rules = %+v", parsed.Rules)
 	}
-	if len(parsed.Rules[0].Owners) != 1 {
+	if len(parsed.Rules[0].Owners) != 1 || parsed.Rules[0].Owners[0] != "@acme/writers" {
 		t.Errorf("owners = %v", parsed.Rules[0].Owners)
+	}
+}
+
+func TestGitLabParseRecognisesRolesAsOwners(t *testing.T) {
+	parsed := parseCodeownersFor(`* @@maintainer`, gitLab)
+
+	if len(parsed.Rules) != 1 || len(parsed.Rules[0].Owners) != 1 || parsed.Rules[0].Owners[0] != "@@maintainer" {
+		t.Fatalf("rules = %+v", parsed.Rules)
+	}
+}
+
+func TestGitLabParsesOwnersAfterAnInlineHash(t *testing.T) {
+	parsed := parseCodeownersFor(`* @acme/platform # @acme/not-a-comment-owner`, gitLab)
+
+	if len(parsed.Rules) != 1 || len(parsed.Rules[0].Owners) != 2 || parsed.Rules[0].Owners[1] != "@acme/not-a-comment-owner" {
+		t.Fatalf("rules = %+v", parsed.Rules)
+	}
+}
+
+func TestGitHubParseDoesNotTreatGitLabExclusionAsANegatedRule(t *testing.T) {
+	parsed := parseCodeowners(`!docs @acme/writers`)
+
+	if len(parsed.Rules) != 0 {
+		t.Fatalf("rules = %+v, want the unsupported negation skipped", parsed.Rules)
 	}
 }

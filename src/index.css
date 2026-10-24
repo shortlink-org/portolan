@@ -730,6 +730,12 @@
       min-width: 0;
       max-width: 100%;
     }
+    /* Ownership keeps the decision fields - service, context and handles -
+       on the phone. The source path is useful supporting evidence on a wide
+       scan, but repeating it turns every compact row into a third line. */
+    .ownership-rows .ownership-path {
+      display: none;
+    }
   }
 
   /* Toolbar and filter buttons share a visible surface, border and ink change.

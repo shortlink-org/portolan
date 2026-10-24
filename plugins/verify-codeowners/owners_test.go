@@ -51,6 +51,22 @@ func request(t *testing.T, codeowners string) plugin.Request {
 	}
 }
 
+func requestFiles(t *testing.T, files map[string]string) plugin.Request {
+	t.Helper()
+	root := t.TempDir()
+	for name, contents := range files {
+		at := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(at), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(at, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	return plugin.Request{Input: plugin.Input{Root: root}, Catalog: estate()}
+}
+
 func fragmentOf(t *testing.T, resp plugin.Response) catalog.Catalog {
 	t.Helper()
 	if len(resp.Files) != 1 {
@@ -149,17 +165,102 @@ func TestARuleAlwaysOverriddenIsReportedAsSuch(t *testing.T) {
 	}
 }
 
-func TestSectionsAreReadFlatAndSaidSoOutLoud(t *testing.T) {
-	resp, err := verify(request(t, "[Backend]\n*  @acme/platform\n"), Options{})
+func TestGitLabSectionsContributeOwnersIndependently(t *testing.T) {
+	resp, err := verify(requestFiles(t, map[string]string{
+		"CODEOWNERS": "[Backend] @acme/backend\nexamples/shop/oms\n[Security]\nexamples/shop/oms @acme/security\n",
+	}), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !warned(resp, "CODEOWNERS", "section headers") {
-		t.Errorf("diagnostics = %+v, want the one about sections", resp.Warnings())
+	if got := strings.Join(ownersOf(fragmentOf(t, resp), "shop.oms"), " "); got != "@acme/backend @acme/security" {
+		t.Errorf("owners = %q, want the winner from each GitLab section", got)
 	}
-	if got := ownersOf(fragmentOf(t, resp), "shop.oms"); len(got) != 1 {
-		t.Errorf("owners = %v; the rules under a section are still read", got)
+}
+
+func TestDiscoveryUsesGitHubPrecedenceWithoutConfiguration(t *testing.T) {
+	resp, err := verify(requestFiles(t, map[string]string{
+		"CODEOWNERS":         "* @acme/root\n",
+		".github/CODEOWNERS": "* @acme/github\n",
+		"docs/CODEOWNERS":    "* @acme/docs\n",
+	}), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := ownersOf(fragmentOf(t, resp), "shop.oms"); len(got) != 1 || got[0] != "@acme/github" {
+		t.Errorf("owners = %v, want GitHub's .github/CODEOWNERS", got)
+	}
+}
+
+func TestDiscoveryUsesGitLabPrecedenceWithoutConfiguration(t *testing.T) {
+	resp, err := verify(requestFiles(t, map[string]string{
+		"CODEOWNERS":         "[Backend]\n* @acme/root\n",
+		".github/CODEOWNERS": "* @acme/github\n",
+		".gitlab/CODEOWNERS": "* @acme/gitlab\n",
+	}), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := ownersOf(fragmentOf(t, resp), "shop.oms"); len(got) != 1 || got[0] != "@acme/root" {
+		t.Errorf("owners = %v, want GitLab's root CODEOWNERS selected from its syntax", got)
+	}
+}
+
+func TestGitLabLocationDetectsTheDialectWithoutSpecialSyntax(t *testing.T) {
+	resp, err := verify(requestFiles(t, map[string]string{
+		".gitlab/CODEOWNERS": "* @@maintainer\n",
+	}), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := ownersOf(fragmentOf(t, resp), "shop.oms"); len(got) != 1 || got[0] != "@@maintainer" {
+		t.Errorf("owners = %v, want the GitLab role from .gitlab/CODEOWNERS", got)
+	}
+}
+
+func TestDiscoveryUsesDocsBeforeDotGitLab(t *testing.T) {
+	resp, err := verify(requestFiles(t, map[string]string{
+		"docs/CODEOWNERS":    "* @acme/docs\n",
+		".gitlab/CODEOWNERS": "* @acme/gitlab\n",
+	}), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := ownersOf(fragmentOf(t, resp), "shop.oms"); len(got) != 1 || got[0] != "@acme/docs" {
+		t.Errorf("owners = %v, want GitLab's docs/CODEOWNERS precedence", got)
+	}
+}
+
+func TestDuplicateGitLabSectionNamesAreCombinedCaseInsensitively(t *testing.T) {
+	resp, err := verify(requestFiles(t, map[string]string{
+		"CODEOWNERS": "[Backend]\nexamples/shop @acme/shop\n[BACKEND]\nexamples/shop/oms @acme/oms\n",
+	}), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := ownersOf(fragmentOf(t, resp), "shop.oms"); len(got) != 1 || got[0] != "@acme/oms" {
+		t.Errorf("owners = %v, want one section whose last rule wins", got)
+	}
+}
+
+func TestGitLabExclusionCannotBeReincludedInTheSameSection(t *testing.T) {
+	resp, err := verify(requestFiles(t, map[string]string{
+		".gitlab/CODEOWNERS": "[Backend] @acme/backend\n*\n!examples/shop/oms\nexamples/shop/oms @acme/other\n",
+	}), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := ownersOf(fragmentOf(t, resp), "shop.oms"); len(got) != 0 {
+		t.Errorf("owners = %v, want the GitLab exclusion to remain final", got)
+	}
+	if got := ownersOf(fragmentOf(t, resp), "shop.cart"); len(got) != 1 || got[0] != "@acme/backend" {
+		t.Errorf("shop.cart owners = %v, want the section default", got)
 	}
 }
 

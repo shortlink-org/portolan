@@ -403,6 +403,13 @@ export function ServicePage() {
                 {middleTruncate(handle, 28)}
               </Ident>
             ))}
+            <Link
+              to={paths.owner(owners[0]!)}
+              className="mono rounded-control text-accent hover:underline"
+              title={`See everything declared for ${owners[0]}`}
+            >
+              coverage →
+            </Link>
           </span>
         ) : null}
         {technologiesOf(service).map((technology) => {

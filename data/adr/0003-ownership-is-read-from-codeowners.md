@@ -13,9 +13,9 @@ reader who found the page they wanted still had to go and ask somebody where to
 ask.
 
 Every repository in the estate already answers it. Review rules are a file the
-forge enforces: GitHub, GitLab and Gitea all read `CODEOWNERS` from the root,
-from `.github/` and from `docs/`, and a team that owns a directory is a team
-that gets the pull request. The answer exists; it was simply not in the catalog.
+forge enforces: GitHub and GitLab find `CODEOWNERS` in their conventional
+locations, and a team that owns a directory is a team that gets the pull
+request. The answer exists; it was simply not in the catalog.
 
 ## Decision Drivers
 
@@ -60,14 +60,13 @@ report about itself, a team believing it owns something that is not there.
 
 - Good: ownership costs nothing to maintain. The file is already correct,
   because the forge enforces it on every pull request.
-- Good: forge-agnostic. The same file means the same thing on three forges, and
-  nothing here talks to any of them.
+- Good: no forge setting or credential. Location and syntax select GitHub or
+  GitLab semantics automatically, and nothing here talks to either forge.
 - Good: a rule that owns nothing is now visible, which it never was.
 - Bad: a handle is opaque. The page cannot say who is in a team, and a reader
   who needs the people has to open the forge.
-- Bad: GitLab's sections change whose rule wins, and the file is read the
-  flatter way GitHub means. A file that uses them is warned about rather than
-  half-understood in silence.
+- Good: GitLab sections retain their independent precedence and contribute
+  their winning owners together; defaults, roles and exclusions remain useful.
 - Bad: an estate that keeps no `CODEOWNERS` gets no owners, and there is
   nothing to fall back on. That is the honest answer — ownership that is
   nowhere written down is ownership the estate cannot report.

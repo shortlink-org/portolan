@@ -49,6 +49,14 @@ describe("routes", () => {
     expect(isRoutable(paths.plugin("go-nats"))).toBe(true);
   });
 
+  it("routes the ownership index and exact owner filters", () => {
+    expect(paths.ownership()).toBe("/ownership");
+    expect(paths.owner("@acme/shop team")).toBe(
+      "/ownership?owner=%40acme%2Fshop%20team",
+    );
+    expect(isRoutable(paths.owner("@acme/shop team"))).toBe(true);
+  });
+
   it("routes every URL the catalog can produce", () => {
     const unroutable = allCatalogPaths(catalog).filter((p) => !isRoutable(p));
     expect(unroutable).toEqual([]);

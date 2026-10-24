@@ -11,14 +11,15 @@ package verifycodeowners
 // part of the service, and reading it as ownership of the whole would hand a
 // team a page they never asked for.
 //
-// The two shapes a pattern comes in are the whole of the rule:
+// GitHub's two pattern shapes are:
 //
 //   - anchored, when it has a `/` anywhere but the end - `services/oms`,
 //     `/docs` - and is matched against the path from the repository root;
 //   - floating, when it is a single segment - `*.go`, `internal` - and matches
 //     that segment at any depth, which is how gitignore has always read one.
 //
-// `*` and `?` stay inside a segment, `**` spans any number of them.
+// GitLab additionally lets an unrooted pattern containing slashes float at
+// any depth. `*` and `?` stay inside a segment, `**` spans any number of them.
 
 import (
 	"path"
@@ -28,6 +29,10 @@ import (
 // owns reports whether pattern owns the directory at target, both written
 // repository-relative and with forward slashes.
 func owns(pattern, target string) bool {
+	return ownsFor(gitHub, pattern, target)
+}
+
+func ownsFor(kind dialect, pattern, target string) bool {
 	pattern = strings.TrimSpace(pattern)
 	target = strings.Trim(target, "/")
 	if pattern == "" || target == "" {
@@ -35,18 +40,28 @@ func owns(pattern, target string) bool {
 	}
 
 	// A pattern that is only a `/*` or `*` owns everything at that level.
-	anchored := strings.HasPrefix(pattern, "/") || strings.Contains(strings.TrimSuffix(pattern, "/"), "/")
+	anchored := strings.HasPrefix(pattern, "/") || kind == gitHub && strings.Contains(strings.TrimSuffix(pattern, "/"), "/")
 	pattern = strings.Trim(pattern, "/")
 	if pattern == "" {
 		return true // "/" - the whole repository.
 	}
 
 	segments := strings.Split(target, "/")
-	if !anchored {
+	if !anchored && !strings.Contains(pattern, "/") {
 		// Any segment matching means the directory it names is owned, and so
 		// is everything under it - including this one.
 		for _, segment := range segments {
 			if ok, _ := path.Match(pattern, segment); ok {
+				return true
+			}
+		}
+
+		return false
+	}
+	if !anchored {
+		parts := strings.Split(pattern, "/")
+		for i := range segments {
+			if matchPrefix(parts, segments[i:]) {
 				return true
 			}
 		}

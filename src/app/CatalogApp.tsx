@@ -40,6 +40,7 @@ import {
   GraphPage,
   Language,
   ModulePage,
+  OwnershipPage,
   PluginIndex,
   PluginSettings,
   Problems,
@@ -216,6 +217,7 @@ function AppRoutes({
       <Route path="/language" element={<Language />} />
       <Route path="/plugins" element={<PluginIndex />} />
       <Route path="/plugins/:name/settings" element={<PluginSettings />} />
+      <Route path="/ownership" element={<OwnershipPage />} />
       <Route path="/adrs/new" element={<AdrCreate />} />
       <Route path="/adrs/:adr/edit" element={<AdrCreate />} />
       <Route
