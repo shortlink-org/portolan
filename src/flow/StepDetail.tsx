@@ -3,6 +3,7 @@ import { WorkItems } from "../components/WorkItems";
 import { stepRelationEvidence } from "./evidence";
 import { exampleRowsFor, formatMs, noteDuplicatesRecorded } from "./examples";
 import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
+import { StepNote, StepNoteEvidence } from "./StepNote";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { AlertTriangle, ChevronRight, FileCode2 } from "lucide-react";
@@ -349,6 +350,12 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
               <div className="label mb-1">Observed at</div>
               <SourceWhere where={step.line} flow={flow} structured />
             </div>
+          ) : null}
+          {step.note ? (
+            <StepNoteEvidence
+              note={step.note}
+              omitEndpoint={Boolean(step.destination)}
+            />
           ) : null}
           {step.destination ? (
             <HTTPDestinationEvidence destination={step.destination} />
@@ -994,21 +1001,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
       )}
 
       {note ? (
-        <div>
-          <div className="label mb-1">Note</div>
-          <p
-            className="border-l-2 pl-2"
-            style={{
-              borderColor:
-                step.status === "unresolved"
-                  ? "var(--status-unresolved)"
-                  : "var(--border-strong)",
-              color: "var(--fg-muted)",
-            }}
-          >
-            {note}
-          </p>
-        </div>
+        <StepNote note={note} unresolved={step.status === "unresolved"} />
       ) : null}
 
       {step.line &&
