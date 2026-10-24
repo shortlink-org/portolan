@@ -296,18 +296,20 @@ export function FlowIndex() {
                   borderLeftWidth: 3,
                 }}
               >
-                <div className="flex items-baseline gap-2">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-2">
                   <Link
                     to={`/flows/${flow.slug}`}
                     data-nav-item
-                    className="card-link rounded-control font-semibold"
+                    className="card-link min-w-0 max-w-full break-words rounded-control font-semibold"
                     title={flow.name}
                   >
                     {flow.name}
                   </Link>
-                  <Ident value={flow.id} className="text-muted">
-                    {flow.slug}
-                  </Ident>
+                  <span className="min-w-0 max-w-full flex-1">
+                    <Ident value={flow.id} className="text-muted" block>
+                      {flow.slug}
+                    </Ident>
+                  </span>
                   <RowActions copy={flow.id} label={flow.name} />
                   <DraftEventMark id={flow.id} />
                   {/* How far the flow can be believed, as one dot and the
@@ -356,16 +358,18 @@ export function FlowIndex() {
                     same way, so the only thing worth printing is WHICH source
                     said so. */}
                 {flow.source ? (
-                  <div className="mt-4 flex items-center gap-2">
-                    <Ident value={flow.source} className="text-muted">
-                      {middleTruncate(flow.source, 44)}
-                    </Ident>
+                  <div className="mt-4 flex min-w-0 items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Ident value={flow.source} className="text-muted" block>
+                        {middleTruncate(flow.source, 44)}
+                      </Ident>
+                    </div>
                     {source ? (
                       <a
                         href={source}
                         target="_blank"
                         rel="noreferrer"
-                        className="mono rounded-control text-accent hover:underline"
+                        className="mono shrink-0 rounded-control text-accent hover:underline"
                         title="Open the file on the forge, at the built commit"
                       >
                         open ↗
