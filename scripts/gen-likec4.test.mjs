@@ -60,6 +60,107 @@ describe("the LikeC4 generator as a step of gen", () => {
 });
 
 describe("the LikeC4 generator", () => {
+  it("renders a unique path-only HTTP destination as its catalog service", () => {
+    const baseService = (id) => ({
+      id,
+      slug: id.split(".").at(-1),
+      name: id,
+      repo: "example/estate",
+      path: id,
+      readme: "",
+      provides: [],
+      consumes: [],
+      aggregates: [],
+    });
+    const caller = {
+      ...baseService("shop.oms"),
+      consumes: [
+        {
+          id: "http-client/HTTP /settings/get-admin-settings @ localhost:8000",
+          peer: "localhost",
+          status: "unresolved",
+          source: "client.go:10",
+          destination: {
+            callSite: "client.go:10",
+            endpointExpression: "http://localhost:8000/settings/get-admin-settings",
+            method: "",
+            localPath: "/settings/get-admin-settings",
+            fullPath: "/settings/get-admin-settings",
+            serviceDiscoveryAlias: "localhost",
+          },
+        },
+      ],
+    };
+    const provider = {
+      ...baseService("shop.aviaadmin"),
+      provides: [
+        {
+          id: "api",
+          source: "openapi.yaml",
+          methods: [
+            {
+              name: "settings_get_admin_settings_post",
+              doc: "",
+              request: "",
+              response: "",
+              http: { method: "POST", path: "/settings/get-admin-settings" },
+            },
+          ],
+        },
+      ],
+    };
+    const { model, views } = generate({
+      contexts: [
+        {
+          id: "shop",
+          slug: "shop",
+          name: "Shop",
+          summary: "",
+          services: [caller, provider],
+        },
+      ],
+      flows: [
+        {
+          id: "flow.settings",
+          slug: "settings",
+          name: "Settings",
+          summary: "",
+          owner: "shop",
+          participants: [
+            { id: "shop.oms", kind: "service", context: "shop" },
+            {
+              id: "localhost",
+              kind: "unknown",
+              context: null,
+              label: "http://localhost:8000/settings/get-admin-settings",
+            },
+          ],
+          steps: [
+            {
+              type: "step",
+              id: "s1",
+              from: "shop.oms",
+              to: "localhost",
+              kind: "rpc",
+              ref: "http-client/HTTP /settings/get-admin-settings @ localhost:8000",
+              label: "http://localhost:8000/settings/get-admin-settings",
+              status: "unresolved",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(model).not.toContain("unknown localhost");
+    expect(model).not.toContain("http://localhost:8000/settings/get-admin-settings");
+    const renderedFlow = views.slice(
+      views.indexOf("dynamic view flow_settings"),
+      views.indexOf("dynamic view flow_settings_cross"),
+    );
+    expect(renderedFlow).toContain("shop.oms -> shop.aviaadmin");
+    expect(renderedFlow).toContain("color declared");
+  });
+
   it("emits valid fallback views for an empty catalog", () => {
     const { model, views } = generate({ contexts: [], flows: [] });
     expect(model).toContain("model {");

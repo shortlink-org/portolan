@@ -388,7 +388,109 @@ describe("enrichCatalog: HTTP route correlation", () => {
       kind: "service",
       context: "shop",
     });
+    expect(
+      once.flows[0]!.participants.some(
+        (participant) => participant.id === "http-peer",
+      ),
+    ).toBe(false);
     expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("maps an unknown HTTP method by a unique full path", () => {
+    const caller = service("shop", "oms", {
+      consumes: [
+        {
+          id: "http-client/HTTP /settings/get-admin-settings @ localhost:8000",
+          peer: "localhost",
+          status: "unresolved",
+          source: "client.go:10",
+          destination: {
+            callSite: "client.go:10",
+            endpointExpression:
+              '"http://localhost:8000/settings/get-admin-settings"',
+            method: "",
+            localPath: "/settings/get-admin-settings",
+            fullPath: "/settings/get-admin-settings",
+            serviceDiscoveryAlias: "localhost",
+          },
+        },
+      ],
+    });
+    const admin = httpProvider(
+      "aviaadmin",
+      "settings_get_admin_settings_post",
+      "/settings/get-admin-settings",
+    );
+    const outbound = {
+      ...flow("settings", [
+        step("shop.oms", "localhost", "rpc", {
+          ref: "http-client/HTTP /settings/get-admin-settings @ localhost:8000",
+          label: "http://localhost:8000/settings/get-admin-settings",
+          status: "unresolved",
+        }),
+      ]),
+      participants: [
+        { id: "shop.oms", kind: "service" as const, context: "shop" },
+        {
+          id: "localhost",
+          kind: "unknown" as const,
+          context: null,
+          label: "http://localhost:8000/settings/get-admin-settings",
+        },
+      ],
+    };
+
+    const result = enrichCatalog(estate([outbound], [caller, admin])).catalog;
+    expect(serviceOf(result, "shop.oms").consumes[0]).toMatchObject({
+      id: "api/settings_get_admin_settings_post",
+      peer: "shop.aviaadmin",
+      status: "declared",
+      destination: {
+        resolution: {
+          basis: "full-path",
+          provider: "shop.aviaadmin",
+          route: "/settings/get-admin-settings",
+        },
+      },
+    });
+    expect(walkSteps(result.flows[0]!.steps)[0]).toMatchObject({
+      to: "shop.aviaadmin",
+      ref: "api/settings_get_admin_settings_post",
+      status: "declared",
+    });
+    expect(result.flows[0]!.participants).not.toContainEqual(
+      expect.objectContaining({ id: "localhost", kind: "unknown" }),
+    );
+    expect(result.flows[0]!.participants).toContainEqual({
+      id: "shop.aviaadmin",
+      kind: "service",
+      context: "shop",
+    });
+  });
+
+  it("does not guess when an unknown HTTP method has multiple path matches", () => {
+    const caller = service("shop", "oms", {
+      consumes: [
+        {
+          id: "http-client/HTTP /settings",
+          peer: "http-peer",
+          status: "unresolved",
+          source: "client.go:10",
+        },
+      ],
+    });
+    const post = httpProvider("admin", "updateSettings", "/settings");
+    const get = structuredClone(post);
+    get.provides[0]!.methods[0] = {
+      ...get.provides[0]!.methods[0]!,
+      name: "getSettings",
+      http: { method: "GET", path: "/settings" },
+    };
+
+    const result = enrichCatalog(estate([], [caller, post, get])).catalog;
+    expect(serviceOf(result, "shop.oms").consumes[0]).toEqual(
+      caller.consumes[0],
+    );
   });
 
   it("never confirms a link against a mounted route whose verb is unknown", () => {

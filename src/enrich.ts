@@ -478,10 +478,16 @@ function resolveHTTPCalls(input: Catalog): Catalog {
       : raw;
     if (!route) return undefined;
 
+    // A source call whose method expression cannot be resolved is emitted as
+    // `HTTP /path`. The path is still evidence: when it names exactly one
+    // provided operation, it is enough to identify the destination. If two
+    // verbs or two services expose the same path, the candidates stay
+    // ambiguous and the call remains unresolved.
+    const methodKnown = route.method !== "" && route.method !== "HTTP";
     const candidates = providers.filter(
       (provider) =>
         provider.service !== caller &&
-        provider.method === route.method &&
+        (!methodKnown || provider.method === route.method) &&
         (call.destination?.fullPath
           ? sameHTTPShape(provider.path, route.path)
           : sameHTTPPath(provider.path, route.path)),
@@ -560,11 +566,13 @@ function resolveHTTPCalls(input: Catalog): Catalog {
   const flows = input.flows.map((flow) => {
     let flowChanged = false;
     const targets = new Map<string, HTTPProvider>();
+    const replacedParticipants = new Set<string>();
     const steps = mapSteps(flow.steps, (step) => {
       if (step.kind !== "rpc" || !step.ref) return step;
       const provider = resolvedByCaller.get(step.from)?.get(step.ref);
       if (!provider) return step;
       flowChanged = true;
+      replacedParticipants.add(step.to);
       targets.set(provider.service, provider);
       return {
         ...step,
@@ -576,7 +584,18 @@ function resolveHTTPCalls(input: Catalog): Catalog {
     });
     if (!flowChanged) return flow;
 
-    const participants = [...flow.participants];
+    const usedParticipants = new Set(
+      walkSteps(steps).flatMap((step) => [step.from, step.to]),
+    );
+    // The extractor had to create an unknown lane before the merged catalog
+    // could resolve the call. Once every step has moved off that lane, keeping
+    // it would leave an orphan `unknown:localhost` element in LikeC4.
+    const participants = flow.participants.filter(
+      (participant) =>
+        participant.kind !== "unknown" ||
+        !replacedParticipants.has(participant.id) ||
+        usedParticipants.has(participant.id),
+    );
     const seen = new Set(participants.map((participant) => participant.id));
     for (const target of targets.values()) {
       if (seen.has(target.service)) continue;
