@@ -1266,6 +1266,36 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
     ).toBe(true);
   });
 
+  it("composes a named send into a unique topic-level receiver", () => {
+    const publisher = flow("publisher", [
+      step("platform.payments", "kafka", "event", {
+        handoff: {
+          kind: "message",
+          transport: "kafka",
+          channel: "gavel.payments.attempts.v1",
+          message: "gavel.payments.v1.PaymentEventEnvelope",
+          direction: "send",
+        },
+      }),
+    ]);
+    const consumer = flow("processes-consumer", [
+      step("kafka", "gavel.processes", "event", {
+        handoff: {
+          kind: "message",
+          transport: "kafka",
+          channel: "gavel.payments.attempts.v1",
+          direction: "receive",
+        },
+      }),
+    ]);
+
+    const result = enrichCatalog(estate([publisher, consumer])).catalog;
+    expect(result.flows[0]!.includes).toEqual(["processes-consumer"]);
+    expect(result.flows[0]!.composition?.[0]?.seam.basis).toBe(
+      "unique topic-level asynchronous handoff",
+    );
+  });
+
   it("stops recursive handoff cycles and remains idempotent", () => {
     const chained = (slug: string, input: string, output: string): Flow => ({
       ...flow(slug, [

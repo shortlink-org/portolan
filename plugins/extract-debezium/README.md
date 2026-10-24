@@ -1,7 +1,8 @@
 # Debezium extractor
 
 `extract-debezium` reads PostgreSQL Debezium declarations from Kafka Connect
-JSON request bodies and Strimzi `KafkaConnector` YAML. It emits one
+JSON request bodies, deploy-time `*.json.tpl` templates whose placeholders do
+not affect topology, and Strimzi `KafkaConnector` YAML. It emits one
 `data-pipeline` component per connector, the store it reads when the manifest
 maps one, Kafka channels whose exact names the configuration proves, and a flow
 from the source table through the connector to Kafka.
@@ -39,9 +40,11 @@ service plus the finite route values that only the rows themselves contain:
 ```
 
 The first release intentionally requires literal `schema.table` entries in
-`table.include.list` and the default topic naming strategy. A regular-expression
-capture set or a topic-routing SMT can describe an unbounded set, so the
-extractor reports it instead of inventing finite channels. It recognizes
+`table.include.list`. The default topic naming strategy is read directly; a
+`RegexRouter` whose regex matches every source topic and whose replacement is
+one literal topic is also exact. Other regular-expression capture sets and
+topic-routing SMTs can describe an unbounded set, so the extractor reports
+them instead of inventing finite channels. It recognizes
 `ExtractNewRecordState` and the Outbox Event Router. Only PostgreSQL connectors
 are read; other Debezium connector classes are reported and left alone.
 

@@ -49,7 +49,7 @@ func discover(root string, paths []string, b *plugin.Builder) ([]connector, erro
 		source := filepath.ToSlash(rel)
 
 		var found []connector
-		switch strings.ToLower(filepath.Ext(path)) {
+		switch configFormat(path) {
 		case ".json":
 			found, err = readJSON(raw, source)
 		case ".yaml", ".yml":
@@ -122,11 +122,19 @@ func candidateFiles(root string, paths []string) ([]string, error) {
 }
 
 func supportedFile(path string) bool {
-	switch strings.ToLower(filepath.Ext(path)) {
+	switch configFormat(path) {
 	case ".json", ".yaml", ".yml":
 		return true
 	}
 	return false
+}
+
+func configFormat(path string) string {
+	lower := strings.ToLower(path)
+	if strings.HasSuffix(lower, ".json.tpl") {
+		return ".json"
+	}
+	return strings.ToLower(filepath.Ext(path))
 }
 
 func skippedDir(name string) bool {
@@ -198,7 +206,12 @@ func connectorFrom(doc map[string]any, source string) (connector, bool) {
 	}
 	if name == "" {
 		path := strings.Split(source, ":")[0]
-		base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		base := filepath.Base(path)
+		if strings.HasSuffix(strings.ToLower(base), ".json.tpl") {
+			base = base[:len(base)-len(".json.tpl")]
+		} else {
+			base = strings.TrimSuffix(base, filepath.Ext(base))
+		}
 		name = base
 	}
 

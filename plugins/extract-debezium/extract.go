@@ -11,7 +11,10 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-var literalTable = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_$-]*\.[A-Za-z_][A-Za-z0-9_$-]*$`)
+var (
+	literalTable = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_$-]*\.[A-Za-z_][A-Za-z0-9_$-]*$`)
+	literalTopic = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+)
 
 type estate struct {
 	groups    map[string]*groupState
@@ -117,9 +120,13 @@ func (e *estate) add(found connector, opts ConnectorOptions) {
 	}
 
 	transforms := transformsOf(found)
+	routedTopic := ""
 	if transforms.topicRouting != "" && transforms.outboxAlias == "" {
-		e.warnings.Warn(found.source, found.name+" uses topic-routing SMT "+transforms.topicRouting+"; exact topics after that transform are not inferred")
-		return
+		routedTopic = literalRoutedTopic(found, transforms)
+		if routedTopic == "" {
+			e.warnings.Warn(found.source, found.name+" uses topic-routing SMT "+transforms.topicRouting+"; exact topics after that transform are not inferred")
+			return
+		}
 	}
 
 	if transforms.outboxAlias != "" {
@@ -134,8 +141,13 @@ func (e *estate) add(found connector, opts ConnectorOptions) {
 	encoding := encodingOf(found.config["value.converter"])
 	for _, table := range tables {
 		topic := prefix + "." + table
-		message := schemaName(topic, shape, found.config["schema.name.adjustment.mode"])
-		if message == "" {
+		message := ""
+		if routedTopic != "" {
+			topic = routedTopic
+		} else {
+			message = schemaName(topic, shape, found.config["schema.name.adjustment.mode"])
+		}
+		if message == "" && routedTopic == "" {
 			e.warnings.Warn(found.source, topic+" is an exact topic, but its generated schema name cannot be derived safely; the channel is kept without a message")
 		}
 		channel := service.channel(topic, catalog.ChannelKindMessage, found.where, "Debezium change-data-capture topic.")
@@ -150,6 +162,7 @@ type transforms struct {
 	outboxAlias  string
 	unwrap       bool
 	topicRouting string
+	routingAlias string
 }
 
 func transformsOf(found connector) transforms {
@@ -163,9 +176,23 @@ func transformsOf(found connector) transforms {
 			out.unwrap = true
 		case strings.Contains(kind, "RegexRouter"), strings.Contains(kind, "ByLogicalTableRouter"), strings.Contains(kind, "ContentBasedRouter"), strings.Contains(kind, "TopicRouting"):
 			out.topicRouting = kind
+			out.routingAlias = alias
 		}
 	}
 	return out
+}
+
+func literalRoutedTopic(found connector, transforms transforms) string {
+	if !strings.HasSuffix(transforms.topicRouting, ".RegexRouter") {
+		return ""
+	}
+	prefix := "transforms." + transforms.routingAlias + "."
+	regex := strings.TrimSpace(found.config[prefix+"regex"])
+	replacement := strings.TrimSpace(found.config[prefix+"replacement"])
+	if (regex != ".*" && regex != "^.*$") || !literalTopic.MatchString(replacement) {
+		return ""
+	}
+	return replacement
 }
 
 func (e *estate) addOutbox(found connector, opts ConnectorOptions, connectorID string, tables []string, alias string) {

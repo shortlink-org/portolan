@@ -53,7 +53,7 @@ func (c *channelState) add(message catalog.ChannelMessage) {
 
 func (e *estate) flow(found connector, opts ConnectorOptions, connectorID, table, topic, message string, outbox bool) catalog.Flow {
 	connectorContext, _ := serviceParts(connectorID)
-	storeLane := goscan.Slug(found.name) + "-source"
+	storeLane := goscan.Slug(found.name + "-" + table + "-source")
 	storeContext := connectorContext
 	storeParticipant := catalog.Participant{ID: storeLane, Kind: catalog.ParticipantStore, Context: &storeContext, Label: table}
 	if opts.Store != "" {
@@ -63,7 +63,7 @@ func (e *estate) flow(found connector, opts ConnectorOptions, connectorID, table
 			storeParticipant.Context = &storeContext
 		}
 	}
-	brokerLane := goscan.Slug(found.name) + "-kafka"
+	brokerLane := goscan.Slug(e.broker)
 	participants := []catalog.Participant{
 		storeParticipant,
 		{ID: connectorID, Kind: catalog.ParticipantService, Context: &connectorContext, EntityRef: connectorID},

@@ -11,6 +11,7 @@ use crate::domain::read_aggregates;
 use crate::emits::Emitters;
 use crate::flows::{FlowOptions, FlowReader};
 use crate::ids::{service_id, title};
+use crate::kafka::read_kafka;
 use crate::operations::{operation_of, read_use_cases};
 use crate::protocol::{Builder, File, Input, Options, Response};
 use crate::source::Crate;
@@ -44,6 +45,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     let use_cases = read_use_cases(&krate, &src.join("application"), &rel, &mut b);
     let bindings = read_bindings(&krate);
     let endpoints = read_transport(&krate, &src.join("infrastructure").join("transport").join("grpc"), &rel, &mut b);
+    let kafka = read_kafka(&krate, &context, &svc_id, &rel);
 
     // Operations belong to the aggregate their use case sits under.
     let mut exposed_by: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -85,7 +87,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         agg.aggregate.operations.sort_by(|a, c| a.id.cmp(&c.id));
     }
 
-    let mut flows = Vec::new();
+    let mut flows = kafka.flows;
     let consumes;
     let referenced;
     {
@@ -135,6 +137,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
         provides: vec![],
         consumes,
         aggregates: aggregates.into_iter().map(|a| a.aggregate).collect(),
+        channels: kafka.channels,
     };
     if svc.aggregates.is_empty() {
         b.warn(&svc_id, "no aggregates found under domain; the fragment describes a service with no model");

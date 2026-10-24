@@ -22,10 +22,11 @@ model {
   cart_pg = store 'cart-pg'
   scheduler = actor 'Scheduler'
   core_pg = store 'core-pg'
-  oms_cdc_source = store 'public.orders'
-  oms_cdc_kafka = broker 'Kafka' {
+  oms_cdc_public_order_lines_source = store 'public.order_lines'
+  kafka = broker 'Kafka' {
     technology 'Kafka'
   }
+  oms_cdc_public_orders_source = store 'public.orders'
   oms_pg = store 'oms-pg'
   pricing_pg = store 'pricing-pg'
 
@@ -494,7 +495,7 @@ payment was captured, and what that means for a parcel is decided here.'
     technology 'NATS'
     style { color declared  line dashed  head onormal }
   }
-  shop.oms_cdc -[bus]-> oms_cdc_kafka 'publishes 2 events' {
+  shop.oms_cdc -[bus]-> kafka 'publishes 2 events' {
     technology 'Kafka'
     style { color declared  line dashed  head onormal }
   }

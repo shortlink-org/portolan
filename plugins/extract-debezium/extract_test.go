@@ -73,12 +73,50 @@ func TestPostgresCDCBecomesADataPipelineWithTopicsAndFlows(t *testing.T) {
 	if len(fragment.Flows) != 2 {
 		t.Fatalf("flows: %+v", fragment.Flows)
 	}
+	if fragment.Flows[0].Participants[0].ID == fragment.Flows[1].Participants[0].ID {
+		t.Fatalf("table source lanes collapse in generated diagrams: %+v", fragment.Flows)
+	}
 	last := fragment.Flows[1].Steps[1].(*catalog.Step)
 	if last.Handoff == nil || last.Handoff.Channel != "shop.public.orders" || last.Handoff.Message != "shop.public.orders.Value" {
 		t.Fatalf("handoff: %+v", last.Handoff)
 	}
 	if strings.Contains(resp.Files[0].Contents, "must-not-leak") || strings.Contains(resp.Files[0].Contents, "database.password") {
 		t.Fatal("connector secret leaked into the fragment")
+	}
+}
+
+func TestKafkaConnectJSONTemplateIsDiscovered(t *testing.T) {
+	fragment, resp := extracted(t, []string{"template.json.tpl"}, Options{})
+	if got := warningText(resp); got != "" {
+		t.Fatalf("unexpected warnings: %s", got)
+	}
+	service := serviceNamed(t, fragment, "platform.templated-cdc")
+	if len(service.Channels) != 1 || service.Channels[0].Address != "gavel.public.orders" {
+		t.Fatalf("channels: %+v", service.Channels)
+	}
+}
+
+func TestLiteralRegexRouterKeepsTheExactKafkaTopic(t *testing.T) {
+	fragment, resp := extracted(t, []string{"literal-router.json.tpl"}, Options{})
+	if got := warningText(resp); got != "" {
+		t.Fatalf("unexpected warnings: %s", got)
+	}
+	service := serviceNamed(t, fragment, "platform.literal-router")
+	if len(service.Channels) != 1 || service.Channels[0].Address != "gavel.auction.public.v1" {
+		t.Fatalf("channels: %+v", service.Channels)
+	}
+	if len(service.Channels[0].Messages) != 0 {
+		t.Fatalf("an ExtractField payload does not prove a message schema: %+v", service.Channels[0].Messages)
+	}
+	if len(fragment.Flows) != 1 || len(fragment.Flows[0].Steps) != 2 {
+		t.Fatalf("flow: %+v", fragment.Flows)
+	}
+	publish := fragment.Flows[0].Steps[1].(*catalog.Step)
+	if publish.Handoff == nil || publish.Handoff.Channel != "gavel.auction.public.v1" || publish.Handoff.Message != "" {
+		t.Fatalf("handoff: %+v", publish.Handoff)
+	}
+	if fragment.Flows[0].Participants[2].ID != "kafka" {
+		t.Fatalf("broker participant does not join other Kafka flows: %+v", fragment.Flows[0].Participants)
 	}
 }
 

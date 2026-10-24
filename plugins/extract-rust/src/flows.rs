@@ -111,6 +111,7 @@ impl Draft {
             reference,
             note: self.note(note),
             line,
+            handoff: None,
         };
         self.sink().push(FlowNode::Step(step));
     }

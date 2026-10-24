@@ -1521,8 +1521,9 @@ beside the real one forever.
 
 ## Debezium: the database log is a message source
 
-`extract-debezium` reads PostgreSQL Kafka Connect JSON and Strimzi
-`KafkaConnector` YAML. A connector becomes a `data-pipeline` component; an
+`extract-debezium` reads PostgreSQL Kafka Connect JSON, deploy-time
+`*.json.tpl` connector templates and Strimzi `KafkaConnector` YAML. A connector
+becomes a `data-pipeline` component; an
 explicit `table.include.list` becomes one source-backed flow per table, from the
 store through Debezium to the exact Kafka topic derived from `topic.prefix`.
 `value.converter` supplies the channel encoding, and
@@ -1540,7 +1541,9 @@ cannot enumerate.
 The reader is conservative at the two places a finite architecture cannot be
 proved. A regex in `table.include.list`, a custom topic naming strategy, or a
 topic-routing SMT produces a diagnostic rather than an invented channel. The
-first release reads PostgreSQL only. Live Kafka Connect state and lag are not
+one bounded routing form is a `RegexRouter` matching every input and replacing
+it with one literal topic; that exact address is retained without inventing a
+payload schema. The first release reads PostgreSQL only. Live Kafka Connect state and lag are not
 configuration facts and belong in a later verifier.
 
 No connector configuration is copied into the fragment. Only topology facts

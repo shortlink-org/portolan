@@ -35,6 +35,27 @@ pub struct Service {
     pub provides: Vec<serde_json::Value>,
     pub consumes: Vec<RpcCall>,
     pub aggregates: Vec<Aggregate>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub channels: Vec<Channel>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Channel {
+    pub address: String,
+    pub kind: String,
+    pub protocol: String,
+    pub title: String,
+    pub doc: String,
+    pub messages: Vec<ChannelMessage>,
+    pub source: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChannelMessage {
+    pub name: String,
+    pub title: String,
+    pub doc: String,
+    pub direction: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -209,6 +230,17 @@ pub struct Step {
     pub note: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub line: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handoff: Option<FlowHandoff>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FlowHandoff {
+    pub kind: String,
+    pub transport: String,
+    pub channel: String,
+    pub message: String,
+    pub direction: String,
 }
 
 #[derive(Debug, Serialize)]

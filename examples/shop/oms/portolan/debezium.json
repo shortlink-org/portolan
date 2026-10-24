@@ -81,7 +81,7 @@
       "owner": "shop",
       "participants": [
         {
-          "id": "oms-cdc-source",
+          "id": "oms-cdc-public-order-lines-source",
           "kind": "store",
           "context": "shop",
           "label": "public.order_lines",
@@ -94,7 +94,7 @@
           "entityRef": "shop.oms-cdc"
         },
         {
-          "id": "oms-cdc-kafka",
+          "id": "kafka",
           "kind": "broker",
           "context": null,
           "label": "Kafka"
@@ -112,7 +112,7 @@
           ],
           "type": "step",
           "id": "capture",
-          "from": "oms-cdc-source",
+          "from": "oms-cdc-public-order-lines-source",
           "to": "shop.oms-cdc",
           "kind": "call",
           "label": "capture public.order_lines",
@@ -132,7 +132,7 @@
           "type": "step",
           "id": "publish",
           "from": "shop.oms-cdc",
-          "to": "oms-cdc-kafka",
+          "to": "kafka",
           "kind": "event",
           "label": "publish shop.oms.public.order_lines.Envelope",
           "status": "declared",
@@ -161,7 +161,7 @@
       "owner": "shop",
       "participants": [
         {
-          "id": "oms-cdc-source",
+          "id": "oms-cdc-public-orders-source",
           "kind": "store",
           "context": "shop",
           "label": "public.orders",
@@ -174,7 +174,7 @@
           "entityRef": "shop.oms-cdc"
         },
         {
-          "id": "oms-cdc-kafka",
+          "id": "kafka",
           "kind": "broker",
           "context": null,
           "label": "Kafka"
@@ -192,7 +192,7 @@
           ],
           "type": "step",
           "id": "capture",
-          "from": "oms-cdc-source",
+          "from": "oms-cdc-public-orders-source",
           "to": "shop.oms-cdc",
           "kind": "call",
           "label": "capture public.orders",
@@ -212,7 +212,7 @@
           "type": "step",
           "id": "publish",
           "from": "shop.oms-cdc",
-          "to": "oms-cdc-kafka",
+          "to": "kafka",
           "kind": "event",
           "label": "publish shop.oms.public.orders.Envelope",
           "status": "declared",

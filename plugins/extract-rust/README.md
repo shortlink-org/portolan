@@ -2,9 +2,9 @@
 
 A Rust service in, a catalog fragment out. The Rust twin of `extract-go` and
 `extract-ts`: it describes one service - its aggregates, what they publish,
-what runs when somebody calls in, what the service calls - by reading the
-tree, and it reads the tree by its layout. Nothing is annotated for the
-catalog; the layout is the claim.
+what runs when somebody calls in, what the service calls, and the Kafka topics
+its `rdkafka` adapters use - by reading the tree, and it reads the tree by its
+layout. Nothing is annotated for the catalog; the layout is the claim.
 
 Written in Rust and run as a process plugin, `cargo run --quiet --manifest-path
 plugins/extract-rust/Cargo.toml`, because the right parser for Rust is Rust's
@@ -154,6 +154,14 @@ own case: `self.inner.authorize(…)` is `payments.v1.PaymentService/Authorize`.
 The peer is the manifest's `peers` entry for the proto package; without one
 the lane is `unknown` and the step unresolved, and the call is recorded on the
 service's `consumes` with the vendored proto as its source.
+
+**Kafka through rdkafka.** Literal topic constants and string literals passed
+to `Consumer::subscribe` become receive channels and one-step inbound flows.
+Topics passed to `FutureRecord::to` become send channels and outbound flows.
+The channel and handoff use protocol `kafka`, so Debezium and Rust facts with
+the same address share the same broker participant in generated diagrams. The
+client call proves the topic and direction, but not the message name; messages
+remain empty until a contract extractor supplies their wire names.
 
 ## Options
 

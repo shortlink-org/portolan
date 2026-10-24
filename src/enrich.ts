@@ -791,8 +791,10 @@ function linkFlowParticipants(input: Catalog): Catalog {
  * There are three deliberately exact seams: a source function entered after a
  * step, a source function proven reachable on the same path, and an
  * asynchronous handoff whose kind/channel/message tuple matches a receiving
- * flow's opening step. Display labels and ordinary domain-event refs never
- * participate. Ambiguous seams compose nothing.
+ * flow's opening step. A named send may also enter one unique receiver that
+ * proves only the topic and accepts every message on it. Display labels and
+ * ordinary domain-event refs never participate. Ambiguous seams compose
+ * nothing.
  */
 function composeExecutionContinuations(input: Catalog): Catalog {
   const responses = synchronousResponses(input);
@@ -1103,13 +1105,21 @@ function continuationsFor(
     });
   }
   if (step.handoff?.direction === "send") {
-    const continuation = byHandoff.get(handoffKey(step.handoff));
+    const exactKey = handoffKey(step.handoff);
+    const exact = byHandoff.get(exactKey);
+    const topicKey = step.handoff.message
+      ? handoffKey({ ...step.handoff, message: "" })
+      : exactKey;
+    const topicLevel = !byHandoff.has(exactKey) && topicKey !== exactKey;
+    const continuation = topicLevel ? byHandoff.get(topicKey) : exact;
     if (continuation) found.push({
       flow: continuation,
       synchronous: false,
       kind: "handoff",
       target: `${step.handoff.transport}:${step.handoff.channel}${step.handoff.message ? `:${step.handoff.message}` : ""}`,
-      basis: "exact asynchronous handoff",
+      basis: topicLevel
+        ? "unique topic-level asynchronous handoff"
+        : "exact asynchronous handoff",
       confidence: "high",
     });
   }

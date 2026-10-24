@@ -63,7 +63,7 @@ starts Remove item' }
   view containers {
     title 'Containers'
     description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -116,7 +116,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -152,14 +152,14 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
     rank source { client, scheduler }
   }
 
   view containers_without_store {
     title 'Containers'
     description 'Every service and the visible infrastructure between them.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include auth.auth with { description '' }
     include storefront.bff with { description '' }
     include payments.ledger with { description '' }
@@ -205,7 +205,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -241,7 +241,7 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
     rank source { client, scheduler }
   }
 
@@ -319,7 +319,7 @@ QuoteIssued' }
   view containers_without_external {
     title 'Containers'
     description 'Every service and the visible infrastructure between them.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -372,7 +372,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -408,13 +408,13 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
   }
 
   view containers_without_store_external {
     title 'Containers'
     description 'Every service and the visible infrastructure between them.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, kafka
     include auth.auth with { description '' }
     include storefront.bff with { description '' }
     include payments.ledger with { description '' }
@@ -460,7 +460,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -496,7 +496,7 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
   }
 
   view containers_without_broker_external {
@@ -631,7 +631,7 @@ starts Remove item' }
   view containers_example {
     title 'Example estate containers'
     description 'The services, stores and transports selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -684,7 +684,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -720,14 +720,14 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
     rank source { client, scheduler }
   }
 
   view containers_example_without_store {
     title 'Example estate containers'
     description 'The services and visible infrastructure selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include auth.auth with { description '' }
     include storefront.bff with { description '' }
     include payments.ledger with { description '' }
@@ -773,7 +773,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -809,7 +809,7 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
     rank source { client, scheduler }
   }
 
@@ -887,7 +887,7 @@ QuoteIssued' }
   view containers_example_without_external {
     title 'Example estate containers'
     description 'The services and visible infrastructure selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront.bff with { description '' }
@@ -940,7 +940,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -976,13 +976,13 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
   }
 
   view containers_example_without_store_external {
     title 'Example estate containers'
     description 'The services and visible infrastructure selected by this catalog profile.'
-    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.oms_cdc, shop.pricing, delivery.core, bus, celery_billing, celery_billing_mail, kafka
     include auth.auth with { description '' }
     include storefront.bff with { description '' }
     include payments.ledger with { description '' }
@@ -1028,7 +1028,7 @@ ShipmentLost
 ShipmentReleased' }
     include bus -> delivery.core where kind is bus with { title 'delivers 2 events'  notes 'OrderConfirmed
 PaymentCaptured' }
-    include shop.oms_cdc -> oms_cdc_kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
+    include shop.oms_cdc -> kafka where kind is bus with { title 'publishes 2 events'  notes 'publish shop.oms.public.order_lines.Envelope
 publish shop.oms.public.orders.Envelope' }
     include shop.oms -> bus where kind is bus with { title 'publishes 3 events'  notes 'OrderCancelled
 OrderConfirmed
@@ -1064,7 +1064,7 @@ QuoteIssued' }
     style * { size sm  textSize xl }
     style element.kind = store { size xs  textSize lg }
     rank same { shop, celery_billing, celery_billing_mail }
-    rank same { shop, oms_cdc_kafka }
+    rank same { shop, kafka }
   }
 
   view containers_example_without_broker_external {
@@ -1220,7 +1220,7 @@ starts Validate session' }
   view ctx_auth_without_broker of auth {
     title 'Authentication'
     include *, auth._store_auth_auth_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude bus, celery_billing, celery_billing_mail, kafka
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include auth.auth -> risk with { title 'calls Assess' }
@@ -1239,7 +1239,7 @@ starts Validate session' }
   view ctx_auth_without_store_broker of auth {
     title 'Authentication'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka
     include auth.auth with { description '' }
     include auth.auth -> risk with { title 'calls Assess' }
     include storefront -> auth.auth with { title 'calls validateSession' }
@@ -1280,7 +1280,7 @@ starts Validate session' }
   view ctx_auth_without_broker_external of auth {
     title 'Authentication'
     include *, auth._store_auth_auth_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include auth.auth with { description '' }
     include auth._store_auth_auth_pg with { description '' }
     include storefront -> auth.auth with { title 'calls validateSession' }
@@ -1292,7 +1292,7 @@ starts Validate session' }
   view ctx_auth_without_store_broker_external of auth {
     title 'Authentication'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include auth.auth with { description '' }
     include storefront -> auth.auth with { title 'calls validateSession' }
     include shop -> auth.auth with { title 'calls validateSession' }
@@ -1421,7 +1421,7 @@ starts Subscription order status' }
   view ctx_storefront_without_broker of storefront {
     title 'Storefront'
     include *
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude bus, celery_billing, celery_billing_mail, kafka
     include storefront.bff with { description '' }
     include bff -> auth with { title 'calls validateSession' }
     include bff -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
@@ -1447,7 +1447,7 @@ starts Subscription order status' }
   view ctx_storefront_without_store_broker of storefront {
     title 'Storefront'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka
     include storefront.bff with { description '' }
     include bff -> auth with { title 'calls validateSession' }
     include bff -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
@@ -1507,7 +1507,7 @@ calls removeItem' }
   view ctx_storefront_without_broker_external of storefront {
     title 'Storefront'
     include *
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include storefront.bff with { description '' }
     include bff -> auth with { title 'calls validateSession' }
     include bff -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
@@ -1524,7 +1524,7 @@ calls removeItem' }
   view ctx_storefront_without_store_broker_external of storefront {
     title 'Storefront'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include storefront.bff with { description '' }
     include bff -> auth with { title 'calls validateSession' }
     include bff -> shop with { title 'calls 6 methods'  notes 'calls CancelOrder
@@ -1630,7 +1630,7 @@ publishes OrderCancelled' }
   view ctx_payments_without_broker of payments {
     title 'Payments'
     include *, payments._store_payments_ledger_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude bus, celery_billing, celery_billing_mail, kafka
     include payments.ledger with { description '' }
     include payments._store_payments_ledger_pg with { description '' }
     include ledger -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
@@ -1652,7 +1652,7 @@ publishes OrderCancelled' }
   view ctx_payments_without_store_broker of payments {
     title 'Payments'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka
     include payments.ledger with { description '' }
     include ledger -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
 publishes PaymentAuthorized
@@ -1708,7 +1708,7 @@ publishes OrderCancelled' }
   view ctx_payments_without_broker_external of payments {
     title 'Payments'
     include *, payments._store_payments_ledger_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include payments.ledger with { description '' }
     include payments._store_payments_ledger_pg with { description '' }
     include ledger -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
@@ -1726,7 +1726,7 @@ publishes OrderCancelled' }
   view ctx_payments_without_store_broker_external of payments {
     title 'Payments'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include payments.ledger with { description '' }
     include ledger -> shop with { title 'calls GetOrder · publishes 3 events'  notes 'calls GetOrder
 publishes PaymentAuthorized
@@ -1922,7 +1922,7 @@ starts Get order' }
   view ctx_shop_without_broker of shop {
     title 'Shop'
     include *, shop._store_shop_billing_pg, shop._store_shop_cart_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude bus, celery_billing, celery_billing_mail, kafka
     include shop.billing with { description '' }
     include shop._store_shop_billing_pg with { description '' }
     include shop.cart with { description '' }
@@ -1971,7 +1971,7 @@ starts Get order' }
   view ctx_shop_without_store_broker of shop {
     title 'Shop'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka
     include shop.billing with { description '' }
     include shop.cart with { description '' }
     include shop.oms with { description '' }
@@ -2084,7 +2084,7 @@ publishes OrderCancelled' }
   view ctx_shop_without_broker_external of shop {
     title 'Shop'
     include *, shop._store_shop_billing_pg, shop._store_shop_cart_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include shop.billing with { description '' }
     include shop._store_shop_billing_pg with { description '' }
     include shop.cart with { description '' }
@@ -2118,7 +2118,7 @@ publishes OrderCancelled' }
   view ctx_shop_without_store_broker_external of shop {
     title 'Shop'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include shop.billing with { description '' }
     include shop.cart with { description '' }
     include shop.oms with { description '' }
@@ -2301,7 +2301,7 @@ publishes OrderCancelled' }
   view ctx_delivery_without_broker of delivery {
     title 'Delivery'
     include *, delivery._store_delivery_core_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude bus, celery_billing, celery_billing_mail, kafka
     include delivery.core with { description '' }
     include delivery._store_delivery_core_pg with { description '' }
     include storefront -> core with { title 'calls GetShipment' }
@@ -2316,7 +2316,7 @@ publishes OrderCancelled' }
   view ctx_delivery_without_store_broker of delivery {
     title 'Delivery'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka
     include delivery.core with { description '' }
     include storefront -> core with { title 'calls GetShipment' }
     include payments -> core with { title 'publishes PaymentCaptured' }
@@ -2359,7 +2359,7 @@ publishes OrderCancelled' }
   view ctx_delivery_without_broker_external of delivery {
     title 'Delivery'
     include *, delivery._store_delivery_core_pg
-    exclude bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include delivery.core with { description '' }
     include delivery._store_delivery_core_pg with { description '' }
     include storefront -> core with { title 'calls GetShipment' }
@@ -2374,7 +2374,7 @@ publishes OrderCancelled' }
   view ctx_delivery_without_store_broker_external of delivery {
     title 'Delivery'
     include *
-    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, oms_cdc_kafka, client, risk, stripe, scheduler
+    exclude auth._store_auth_auth_pg, payments._store_payments_ledger_pg, shop._store_shop_billing_pg, shop._store_shop_cart_pg, delivery._store_delivery_core_pg, shop._store_shop_oms_pg, shop._store_shop_pricing_pg, bus, celery_billing, celery_billing_mail, kafka, client, risk, stripe, scheduler
     include delivery.core with { description '' }
     include storefront -> core with { title 'calls GetShipment' }
     include payments -> core with { title 'publishes PaymentCaptured' }
@@ -3810,11 +3810,11 @@ persists scans' }
   dynamic view flow_oms_cdc_public_order_lines_shop_oms_public_order_lines_shop_oms_public_order_lines_envelope {
     title 'oms-cdc · public.order_lines · CDC'
     description 'Debezium captures public.order_lines and relays it to Kafka from the connector configuration.'
-    oms_cdc_source -> shop.oms_cdc 'capture public.order_lines' {
+    oms_cdc_public_order_lines_source -> shop.oms_cdc 'capture public.order_lines' {
       color declared  line solid  head none
       notes 'The connector configuration declares this table in table.include.list. — examples/shop/oms/connectors/oms-cdc.yaml:1'
     }
-    shop.oms_cdc -> oms_cdc_kafka 'publish shop.oms.public.order_lines.Envelope' {
+    shop.oms_cdc -> kafka 'publish shop.oms.public.order_lines.Envelope' {
       color declared  line solid  head onormal
       notes 'examples/shop/oms/connectors/oms-cdc.yaml:1'
     }
@@ -3823,11 +3823,11 @@ persists scans' }
   dynamic view flow_oms_cdc_public_orders_shop_oms_public_orders_shop_oms_public_orders_envelope {
     title 'oms-cdc · public.orders · CDC'
     description 'Debezium captures public.orders and relays it to Kafka from the connector configuration.'
-    oms_cdc_source -> shop.oms_cdc 'capture public.orders' {
+    oms_cdc_public_orders_source -> shop.oms_cdc 'capture public.orders' {
       color declared  line solid  head none
       notes 'The connector configuration declares this table in table.include.list. — examples/shop/oms/connectors/oms-cdc.yaml:1'
     }
-    shop.oms_cdc -> oms_cdc_kafka 'publish shop.oms.public.orders.Envelope' {
+    shop.oms_cdc -> kafka 'publish shop.oms.public.orders.Envelope' {
       color declared  line solid  head onormal
       notes 'examples/shop/oms/connectors/oms-cdc.yaml:1'
     }

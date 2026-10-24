@@ -11,6 +11,7 @@ pub mod enums;
 pub mod extract;
 pub mod flows;
 pub mod ids;
+pub mod kafka;
 pub mod lifecycle;
 pub mod operations;
 pub mod protocol;
@@ -25,7 +26,7 @@ const OPTIONS_SCHEMA: &str = include_str!("../options.schema.json");
 pub fn descriptor() -> Descriptor {
     Descriptor {
         name: "extract-rust".into(),
-        summary: "Reads a Rust service by its layout - aggregates, events, use cases, gRPC endpoints, policies, clients - into a catalog fragment.".into(),
+        summary: "Reads a Rust service by its layout - aggregates, events, use cases, gRPC endpoints, policies, clients and rdkafka topics - into a catalog fragment.".into(),
         category: "code".into(),
         phases: vec!["extract".into()],
         options: serde_json::from_str(OPTIONS_SCHEMA).expect("options.schema.json is JSON"),
