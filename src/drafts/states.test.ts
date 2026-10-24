@@ -4,7 +4,8 @@
 import { describe, expect, it } from "vitest";
 import { walkSteps } from "../catalog";
 import { LOGIN, SESSION_STARTED, addField, estateWith, flowIn, relabelStep, savedDraft, shownDraft } from "../testing/drafts";
-import { healthFrom } from "./model";
+import { healthFrom, specMarks } from "./model";
+import type { ChangeSpec } from "../catalog";
 
 const entity = (draft: ReturnType<typeof shownDraft>, id: string) => {
   const found = draft.entities.find((candidate) => candidate.id === id);
@@ -100,5 +101,27 @@ describe("what dev says about a draft's branch", () => {
       step: failure.step,
       log: ["base (af83021): go-domain ← examples/auth", "error: expected ';'"],
     });
+  });
+});
+
+describe("specification draft lines", () => {
+  it("keys lifecycle, requirements, scenarios, and tasks independently", () => {
+    const base: ChangeSpec = {
+      id: "add-budget", slug: "add-budget", title: "Add budget", format: "openspec", lifecycle: "planned", source: "proposal.md", artifacts: [],
+      requirements: [{ id: "add-budget:budget", title: "Budget", text: "A budget exists.", source: "spec.md:3", scenarios: [] }],
+      tasks: [{ id: "1.1", title: "Implement budget", done: false, source: "tasks.md:3" }],
+    };
+    const branch = JSON.parse(JSON.stringify(base)) as ChangeSpec;
+    branch.lifecycle = "implementing";
+    branch.requirements[0]!.scenarios.push({ name: "Budget exhausted", when: ["none remains"], then: ["reject"] });
+    branch.requirements.push({ id: "add-budget:headers", title: "Headers", text: "Expose the budget.", source: "spec.md:9", scenarios: [] });
+    branch.tasks[0]!.done = true;
+
+    expect(specMarks(base, branch)).toEqual([
+      { subject: "lifecycle", line: "~ lifecycle planned → implementing" },
+      { subject: "scenario add-budget:budget#Budget exhausted", line: "+ scenario add-budget:budget#Budget exhausted" },
+      { subject: "requirement add-budget:headers", line: "+ requirement add-budget:headers Headers" },
+      { subject: "task add-budget#1.1", line: "~ task 1.1 completed" },
+    ]);
   });
 });

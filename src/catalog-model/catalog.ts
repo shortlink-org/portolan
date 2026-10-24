@@ -10,6 +10,7 @@ import type { Store } from "./stores.ts";
 import type { Flow } from "./flows.ts";
 import type { Term } from "./terms.ts";
 import type { Adr, Rfc } from "./decisions.ts";
+import type { ChangeSpec } from "./specs.ts";
 
 export interface Catalog {
   generatedAt: string; // ISO 8601
@@ -25,6 +26,8 @@ export interface Catalog {
    * written before RFC extraction existed; readers treat absence as none.
    */
   rfcs?: Rfc[];
+  /** Spec-driven change records; intent and task progress, never implementation evidence. */
+  specs?: ChangeSpec[];
   /**
    * Where the estate keeps its state. Optional in the file and never optional
    * downstream: a catalog written before the extractor learned to read

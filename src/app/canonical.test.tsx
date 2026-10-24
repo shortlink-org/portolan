@@ -10,6 +10,7 @@ import { render } from "../testing/render";
 import type { Rendered } from "../testing/render";
 import { CanonicalSlug, IdEntry, pathForId, slugForId, withArrival } from "./canonical";
 import { paths } from "../routes";
+import { buildIndex } from "../catalog";
 
 let rendered: Rendered | undefined;
 afterEach(() => {
@@ -80,6 +81,20 @@ describe("CanonicalSlug", () => {
     for (const [id, external] of index.externalById) {
       expect(slugForId.external(index, id)).toBe(external.slug === id ? undefined : external.slug);
     }
+  });
+
+  it("resolves a specification id to its canonical page", () => {
+    const catalog = structuredClone(index.catalog);
+    catalog.specs = [{
+      id: "gavel.change.deliver-local-auction-mvp", slug: "deliver-local-auction-mvp", title: "Deliver local auction MVP",
+      format: "openspec", lifecycle: "implementing", source: "openspec/changes/deliver-local-auction-mvp",
+      artifacts: [], requirements: [], tasks: [],
+    }];
+    const withSpec = buildIndex(catalog);
+    expect(slugForId.spec(withSpec, "gavel.change.deliver-local-auction-mvp")).toBe("deliver-local-auction-mvp");
+    expect(pathForId(withSpec, "gavel.change.deliver-local-auction-mvp")).toBe(
+      "/specs/deliver-local-auction-mvp",
+    );
   });
 });
 

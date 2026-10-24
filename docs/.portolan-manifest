@@ -43,6 +43,8 @@
     "portolan/glossary.md",
     "portolan/host/README.md",
     "portolan/plugins/README.md",
-    "portolan/site/README.md"
+    "portolan/site/README.md",
+    "spec/README.md",
+    "spec/automate-sdd-workflow.md"
   ]
 }

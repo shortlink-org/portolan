@@ -15,9 +15,10 @@ export const KIND_LABEL: Record<DraftEntityKind, string> = {
   service: "Services",
   aggregate: "Aggregates",
   event: "Events",
+  spec: "Specifications",
 };
 
-export const KINDS: DraftEntityKind[] = ["flow", "service", "aggregate", "event"];
+export const KINDS: DraftEntityKind[] = ["flow", "service", "aggregate", "event", "spec"];
 
 export function EntityRows({ draft, entities }: { draft: Draft; entities: DraftEntity[] }) {
   const drafts = useDrafts((state) => state.drafts);

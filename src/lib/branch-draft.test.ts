@@ -80,6 +80,19 @@ describe("diffBranch", () => {
     expect(changes[0]!.branch).toBeUndefined();
     expect(sameEntity(changes[0]!.base, gone)).toBe(true);
   });
+
+  it("reports a changed specification as one draft entity", () => {
+    const base = branched((c) => {
+      c.specs = [{ id: "add-budget", slug: "add-budget", title: "Add budget", format: "openspec", lifecycle: "planned", source: "proposal.md", artifacts: [], requirements: [], tasks: [] }];
+    });
+    const branch = JSON.parse(JSON.stringify(base)) as Catalog;
+    branch.specs![0]!.lifecycle = "implementing";
+    branch.specs![0]!.tasks.push({ id: "1.1", title: "Implement budget", done: false, source: "tasks.md:3" });
+
+    expect(diffBranch(base, branch).map((entity) => `${entity.change} ${entity.kind} ${entity.id}`)).toEqual([
+      "changed spec add-budget",
+    ]);
+  });
 });
 
 describe("stateAgainstMain", () => {

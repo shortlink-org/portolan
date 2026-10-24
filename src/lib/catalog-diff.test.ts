@@ -332,3 +332,39 @@ describe("diffCatalogs: order", () => {
     ));
   });
 });
+
+describe("diffCatalogs: specification intent", () => {
+  it("reports lifecycle, requirement, scenario, and task changes by stable identifiers", () => {
+    const before = JSON.parse(JSON.stringify(catalog)) as Catalog;
+    before.specs = [{
+      id: "add-request-budget",
+      slug: "add-request-budget",
+      title: "Add request budget",
+      format: "openspec",
+      lifecycle: "planned",
+      source: "openspec/changes/add-request-budget/proposal.md",
+      artifacts: [],
+      requirements: [{
+        id: "add-request-budget:budget",
+        title: "Requests have a budget",
+        text: "The gateway SHALL enforce a budget.",
+        source: "openspec/changes/add-request-budget/specs/budget/spec.md:3",
+        scenarios: [{ name: "Budget remains", when: ["budget remains"], then: ["the request proceeds"] }],
+      }],
+      tasks: [{ id: "1.1", title: "Add gateway budget", done: false, source: "openspec/changes/add-request-budget/tasks.md:3" }],
+    }];
+    const after = JSON.parse(JSON.stringify(before)) as Catalog;
+    const spec = after.specs![0]!;
+    spec.lifecycle = "implementing";
+    spec.requirements[0]!.scenarios.push({ name: "Budget exhausted", when: ["no budget remains"], then: ["the request is rejected"] });
+    spec.requirements.push({ id: "add-request-budget:headers", title: "Budget headers", text: "Responses SHALL expose the remaining budget.", source: "spec.md:20", scenarios: [] });
+    spec.tasks[0]!.done = true;
+
+    expect(diffCatalogs(before, after).map(({ kind, where }) => [kind, where])).toEqual([
+      ["scenario.added", "add-request-budget:budget#scenario:Budget exhausted"],
+      ["requirement.added", "add-request-budget:headers"],
+      ["spec.lifecycle", "add-request-budget"],
+      ["task.completed", "add-request-budget#task:1.1"],
+    ]);
+  });
+});

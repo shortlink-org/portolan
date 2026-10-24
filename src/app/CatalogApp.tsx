@@ -46,6 +46,8 @@ import {
   RegistryIndex,
   RfcDetail,
   RfcIndex,
+  SpecDetail,
+  SpecIndex,
   ServicePage,
   Settings,
   StorePage,
@@ -194,6 +196,15 @@ function AppRoutes({
       />
       <Route path="/adrs" element={<AdrIndex />} />
       <Route path="/rfcs" element={<RfcIndex />} />
+      <Route path="/specs" element={<SpecIndex />} />
+      <Route
+        path="/specs/:spec"
+        element={
+          <CanonicalSlug index={index} param="spec" slugFor={slugForId.spec} path={paths.spec}>
+            <SpecDetail />
+          </CanonicalSlug>
+        }
+      />
       <Route
         path="/rfcs/:rfc"
         element={

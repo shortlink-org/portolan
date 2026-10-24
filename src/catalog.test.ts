@@ -15,7 +15,7 @@ import {
   validateCatalog,
   walkSteps,
 } from "./catalog";
-import type { Adr, Alt, Catalog, Classification, Flow, Rfc } from "./catalog";
+import type { Adr, Alt, Catalog, ChangeSpec, Classification, Flow, Rfc } from "./catalog";
 
 const catalog = raw as unknown as Catalog;
 
@@ -704,6 +704,43 @@ describe("validateCatalog: requests for comments", () => {
   it("rejects an ambiguous or credential-bearing RFC repository", () => {
     expect(() => validateCatalog(withRfc({ repository: "architecture" }))).toThrow(/use host\/owner\/name/);
     expect(() => validateCatalog(withRfc({ repository: "https://secret@github.com/acme/architecture" }))).toThrow(/invalid repository/);
+  });
+});
+
+describe("validateCatalog: spec-driven changes", () => {
+  function withSpec(overrides: Partial<ChangeSpec> = {}): Catalog {
+    const next = clone();
+    next.specs = [{
+      id: "deliver-local-auction-mvp",
+      slug: "deliver-local-auction-mvp",
+      title: "Deliver local auction mvp",
+      format: "openspec",
+      lifecycle: "implementing",
+      source: "openspec/changes/deliver-local-auction-mvp/proposal.md",
+      artifacts: [{ kind: "proposal", path: "openspec/changes/deliver-local-auction-mvp/proposal.md", body: "# Proposal" }],
+      requirements: [{
+        id: "deliver-local-auction-mvp/workspace/public-boundary",
+        title: "Workspace uses the public boundary",
+        text: "The browser SHALL use the BFF.",
+        source: "openspec/changes/deliver-local-auction-mvp/specs/workspace/spec.md:5",
+        scenarios: [{ name: "Open a lot", when: ["the page opens"], then: ["the BFF answers"] }],
+      }],
+      tasks: [{ id: "1.1", title: "Implement the query", done: false, source: "openspec/changes/deliver-local-auction-mvp/tasks.md:5" }],
+      ...overrides,
+    }];
+    return next;
+  }
+
+  it("accepts intent separately from implementation evidence", () => {
+    expect(() => validateCatalog(withSpec())).not.toThrow();
+  });
+
+  it("rejects an unknown lifecycle and duplicate nested identities", () => {
+    expect(() => validateCatalog(withSpec({ lifecycle: "verified" as never }))).toThrow(/unknown lifecycle "verified"/);
+    const requirement = withSpec().specs![0]!.requirements[0]!;
+    expect(() => validateCatalog(withSpec({ requirements: [requirement, requirement] }))).toThrow(/requirement id .* is not unique/);
+    const task = withSpec().specs![0]!.tasks[0]!;
+    expect(() => validateCatalog(withSpec({ tasks: [task, task] }))).toThrow(/task id .* is not unique/);
   });
 });
 

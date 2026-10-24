@@ -383,6 +383,18 @@ function detectionsFor(root, files) {
   const rfcs = matches(files, /(^|\/)(docs\/rfcs?|docs\/rfd|rfcs?|rfd)\/.*\.md$/i).filter((name) => posix.basename(name).toLowerCase() !== "readme.md");
   const rfcPreviews = rfcs.map((name) => rfcPreview(root, name)).filter(Boolean);
   const supportedRfcs = rfcPreviews.map((item) => item.file);
+  const sdd = matches(
+    files,
+    /^openspec\/changes\/(?:archive\/)?[^/]+\/\.openspec\.yaml$/,
+  ).filter((name) => {
+    try {
+      return /^\s*schema\s*:\s*spec-driven\s*(?:#.*)?$/m.test(
+        readFileSync(join(root, name), "utf8"),
+      );
+    } catch {
+      return false;
+    }
+  });
   const glossaries = matches(files, /(^|\/)glossary\.md$/i);
   // The app module is the one file a Celery project always has; the tasks
   // and the calls that enqueue them are found from there.
@@ -462,6 +474,7 @@ function detectionsFor(root, files) {
       supportedRfcs.length > 0,
       rfcPreviews,
     ),
+    detected("sdd", sdd, {}, "openspec/changes"),
     detected("glossary", glossaries, glossaries.length ? { files: glossaries } : {}, glossaries.join(", ")),
   ].filter(Boolean);
 }

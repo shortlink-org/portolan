@@ -78,6 +78,10 @@ const MAIN = mainEntities(catalog);
 const KNOWN_LANES = new Set(catalog.flows.flatMap((flow) => flow.participants.map((participant) => participant.id)));
 
 function hrefOf(kind: DraftEntityKind, id: string): string | undefined {
+  if (kind === "spec") {
+    const spec = (catalog.specs ?? []).find((candidate) => candidate.id === id);
+    return spec ? paths.spec(spec.slug) : undefined;
+  }
   if (kind === "flow") {
     const flow = catalog.flows.find((candidate) => candidate.id === id);
     return flow ? paths.flow(flow.slug) : undefined;

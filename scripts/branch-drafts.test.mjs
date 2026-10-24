@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { cloneOf, deleteDraft, discardDraft, draftPath, fetchClone, generateDraft, listBranches, listDrafts, pendingPath, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, touchedBy, validBranch, vendorOf } from "./branch-drafts.mjs";
+import { cloneOf, deleteDraft, discardDraft, draftPath, fetchClone, generateDraft, listBranches, listDrafts, pendingPath, projectRepository, projectSteps, projectsTouched, readDrafts, readPending, restoreDraft, saveDraft, touchedBy, validBranch, vendorOf } from "./branch-drafts.mjs";
 
 const created = [];
 afterEach(() => {
@@ -57,6 +57,18 @@ describe("projectsTouched", () => {
   it("gives a path to the most specific project whose root holds it", () => {
     expect(projectsTouched(PROJECTS, ["examples/auth/go.mod", "examples/shop/cart/src/a.ts", "README.md"])).toEqual(["auth", "cart", "portolan"]);
     expect(projectsTouched(PROJECTS, ["examples/authz/x"])).toEqual(["portolan"]);
+  });
+});
+
+describe("projectRepository", () => {
+  it("uses an explicit repository, then the uniquely selected catalog service", () => {
+    const catalog = { contexts: [{ services: [
+      { id: "shop.cart", repo: "github.com/acme/shop" },
+      { id: "shop.oms", repo: "github.com/acme/other" },
+    ] }] };
+    expect(projectRepository({ repository: "https://github.com/acme/declared" }, catalog)).toBe("https://github.com/acme/declared");
+    expect(projectRepository({ context: "shop", service: "cart" }, catalog)).toBe("github.com/acme/shop");
+    expect(projectRepository({ group: "shop", components: ["cart", "oms"] }, catalog)).toBe("");
   });
 });
 
@@ -272,8 +284,16 @@ describe("a project vendored from another repository", { timeout: 30_000 }, () =
 
     // The snapshot takes internal/ only, so the ADR is not the project's file.
     const { want } = vendorOf(VENDORED, VENDORED.projects[0]);
-    expect(touchedBy(clone.root, base, tip, { want })).toEqual({ files: 1, dirs: ["internal/"] });
-    expect(touchedBy(clone.root, base, tip, { want: { ...want, paths: [] } })).toEqual({ files: 3, dirs: ["docs/", "internal/", "pkg/"] });
+    expect(touchedBy(clone.root, base, tip, { want })).toEqual({
+      files: 1,
+      dirs: ["internal/"],
+      paths: ["internal/app/b.go"],
+    });
+    expect(touchedBy(clone.root, base, tip, { want: { ...want, paths: [] } })).toEqual({
+      files: 3,
+      dirs: ["docs/", "internal/", "pkg/"],
+      paths: ["docs/ADR/2-void.md", "internal/app/b.go", "pkg/events/void.go"],
+    });
     expect(listDrafts(workspace.root)).toEqual([]);
   });
 

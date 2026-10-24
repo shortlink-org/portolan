@@ -1,6 +1,6 @@
 import type { Adr, Catalog } from "../catalog-model.ts";
 import { safeWorkItemUrl } from "../lib/work-items.ts";
-import { allRfcs, allServices, allTerms } from "../catalog-model.ts";
+import { allRfcs, allServices, allSpecs, allTerms } from "../catalog-model.ts";
 import { assertUniqueSlugs, fail } from "./errors.ts";
 
 /**
@@ -229,6 +229,56 @@ export function validateRfcs(catalog: Catalog, eventIds: Set<string>): void {
       if (link.kind === "rfc" && !rfcIds.has(link.id)) fail(`rfc "${rfc.id}" links to unknown rfc "${link.id}"`, where);
       if (link.kind !== "adr" && link.kind !== "rfc") fail(`rfc "${rfc.id}" links to unknown record kind`, where);
       if (link.kind === "rfc" && link.id === rfc.id) fail(`rfc "${rfc.id}" links to itself`, where);
+    }
+  }
+}
+
+export function validateSpecs(catalog: Catalog): void {
+  const specs = allSpecs(catalog);
+  const ids = new Set<string>();
+  const formats = new Set(["openspec", "spec-kit", "kiro"]);
+  const lifecycles = new Set(["draft", "planned", "implementing", "complete", "archived"]);
+  const artifactKinds = new Set(["proposal", "design", "tasks", "requirements"]);
+
+  assertUniqueSlugs(specs.map((spec) => spec.slug), "catalog", "specification");
+  for (const spec of specs) {
+    const where = `specification ${spec.id || "?"}`;
+    if (!spec.id) fail("a specification has no id", where);
+    if (ids.has(spec.id)) fail(`specification id "${spec.id}" is not unique`, where);
+    ids.add(spec.id);
+    if (!spec.title) fail(`specification "${spec.id}" has no title`, where);
+    if (!formats.has(spec.format)) fail(`specification "${spec.id}" has unknown format "${spec.format}"`, where);
+    if (!lifecycles.has(spec.lifecycle)) fail(`specification "${spec.id}" has unknown lifecycle "${spec.lifecycle}"`, where);
+    if (!spec.source) fail(`specification "${spec.id}" has no source`, where);
+
+    const artifactPaths = new Set<string>();
+    for (const artifact of spec.artifacts) {
+      if (!artifactKinds.has(artifact.kind)) fail(`specification "${spec.id}" has unknown artifact kind "${artifact.kind}"`, where);
+      if (!artifact.path) fail(`specification "${spec.id}" has an artifact with no path`, where);
+      if (artifactPaths.has(artifact.path)) fail(`specification "${spec.id}" carries artifact "${artifact.path}" twice`, where);
+      artifactPaths.add(artifact.path);
+    }
+
+    const requirementIds = new Set<string>();
+    for (const requirement of spec.requirements) {
+      if (!requirement.id || requirementIds.has(requirement.id)) fail(`requirement id "${requirement.id}" is not unique in specification "${spec.id}"`, where);
+      requirementIds.add(requirement.id);
+      if (!requirement.title) fail(`requirement "${requirement.id}" has no title`, where);
+      if (!requirement.source) fail(`requirement "${requirement.id}" has no source`, where);
+      const scenarioNames = new Set<string>();
+      for (const scenario of requirement.scenarios) {
+        if (!scenario.name || scenarioNames.has(scenario.name)) fail(`requirement "${requirement.id}" has duplicate or empty scenario name`, where);
+        scenarioNames.add(scenario.name);
+        if (scenario.when.length === 0 || scenario.then.length === 0) fail(`scenario "${scenario.name}" of requirement "${requirement.id}" needs WHEN and THEN`, where);
+      }
+    }
+
+    const taskIds = new Set<string>();
+    for (const task of spec.tasks) {
+      if (!task.id || taskIds.has(task.id)) fail(`task id "${task.id}" is not unique in specification "${spec.id}"`, where);
+      taskIds.add(task.id);
+      if (!task.title) fail(`task "${task.id}" has no title`, where);
+      if (!task.source) fail(`task "${task.id}" has no source`, where);
     }
   }
 }

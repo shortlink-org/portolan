@@ -290,6 +290,23 @@ export function repositoryOf(dir) {
   return git(dir, ["rev-parse", "--show-toplevel"]);
 }
 
+/** Whether the repository containing `dir` has only truncated history. */
+export function repositoryIsShallow(dir) {
+  const repo = repositoryOf(dir);
+  return Boolean(repo) && git(repo, ["rev-parse", "--is-shallow-repository"]) === "true";
+}
+
+/** The repository's browser URL when its origin can be normalized safely. */
+export function repositoryRemote(dir) {
+  const repo = repositoryOf(dir);
+  if (!repo) return "";
+  const remote = git(repo, ["remote", "get-url", "origin"])
+    .replace(/^git@([^:]+):/, "https://$1/")
+    .replace(/^ssh:\/\/git@/, "https://")
+    .replace(/\.git$/, "");
+  return /^https?:\/\//.test(remote) ? remote : "";
+}
+
 function git(dir, args) {
   try {
     return execFileSync("git", ["-C", dir, ...args], {

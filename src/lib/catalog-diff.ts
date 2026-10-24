@@ -30,6 +30,7 @@ import {
   allModules,
   allRepos,
   allRfcs,
+  allSpecs,
   allServices,
   allStores,
   allTerms,
@@ -48,6 +49,8 @@ import type {
   RpcMethod,
   RpcService,
   Rfc,
+  ChangeSpec,
+  SpecRequirement,
   Service,
   Status,
   Step,
@@ -96,6 +99,7 @@ export function diffCatalogs(before: Catalog, after: Catalog): Change[] {
   diffFlows(before, after, add);
   diffAdrs(before, after, add);
   diffRfcs(before, after, add);
+  diffSpecs(before, after, add);
   diffTerms(before, after, add);
   diffRepos(before, after, add);
 
@@ -667,6 +671,82 @@ function diffRfcs(before: Catalog, after: Catalog, add: Add): void {
 
 function settledRfc(rfc: Rfc): boolean {
   return ["accepted", "implemented", "rejected", "withdrawn", "abandoned", "superseded"].includes(rfc.lifecycle);
+}
+
+function scenarioId(requirement: SpecRequirement, name: string): string {
+  return `${requirement.id}#scenario:${name}`;
+}
+
+function diffSpecs(before: Catalog, after: Catalog, add: Add): void {
+  const was = byId(allSpecs(before), (spec) => spec.id);
+  const now = byId(allSpecs(after), (spec) => spec.id);
+  const { added, removed, kept } = partition(was, now);
+
+  for (const id of added) add("spec.added", "addition", id, `specification "${id}" is new`);
+  for (const id of removed) add("spec.removed", "change", id, `specification "${id}" is gone`);
+  for (const id of kept) diffSpec(was.get(id)!, now.get(id)!, add);
+}
+
+function diffSpec(before: ChangeSpec, after: ChangeSpec, add: Add): void {
+  if (before.lifecycle !== after.lifecycle) {
+    add("spec.lifecycle", "change", before.id, `${before.id} is ${after.lifecycle}, was ${before.lifecycle}`);
+  }
+
+  const requirements = {
+    was: byId(before.requirements, (requirement) => requirement.id),
+    now: byId(after.requirements, (requirement) => requirement.id),
+  };
+  const requirementChanges = partition(requirements.was, requirements.now);
+  for (const id of requirementChanges.added) {
+    add("requirement.added", "addition", id, `${id} — ${requirements.now.get(id)!.title}`);
+  }
+  for (const id of requirementChanges.removed) {
+    add("requirement.removed", "change", id, `${id} is no longer required`);
+  }
+  for (const id of requirementChanges.kept) {
+    const a = requirements.was.get(id)!;
+    const b = requirements.now.get(id)!;
+    if (a.title !== b.title || a.text !== b.text) {
+      add("requirement.changed", "change", id, `${id} changed`);
+    }
+    const scenarios = {
+      was: byId(a.scenarios, (scenario) => scenario.name),
+      now: byId(b.scenarios, (scenario) => scenario.name),
+    };
+    const scenarioChanges = partition(scenarios.was, scenarios.now);
+    for (const name of scenarioChanges.added) {
+      const where = scenarioId(b, name);
+      add("scenario.added", "addition", where, `${where} is new`);
+    }
+    for (const name of scenarioChanges.removed) {
+      const where = scenarioId(a, name);
+      add("scenario.removed", "change", where, `${where} is gone`);
+    }
+    for (const name of scenarioChanges.kept) {
+      if (JSON.stringify(scenarios.was.get(name)) !== JSON.stringify(scenarios.now.get(name))) {
+        const where = scenarioId(b, name);
+        add("scenario.changed", "change", where, `${where} changed`);
+      }
+    }
+  }
+
+  const tasks = {
+    was: byId(before.tasks, (task) => task.id),
+    now: byId(after.tasks, (task) => task.id),
+  };
+  const taskChanges = partition(tasks.was, tasks.now);
+  const taskId = (id: string) => `${before.id}#task:${id}`;
+  for (const id of taskChanges.added) add("task.added", "addition", taskId(id), `${id} — ${tasks.now.get(id)!.title}`);
+  for (const id of taskChanges.removed) add("task.removed", "change", taskId(id), `${id} was removed`);
+  for (const id of taskChanges.kept) {
+    const a = tasks.was.get(id)!;
+    const b = tasks.now.get(id)!;
+    if (a.done !== b.done) {
+      add(b.done ? "task.completed" : "task.reopened", "change", taskId(id), `${id} was ${b.done ? "completed" : "reopened"}`);
+    } else if (a.title !== b.title) {
+      add("task.changed", "change", taskId(id), `${id} changed`);
+    }
+  }
 }
 
 function diffTerms(before: Catalog, after: Catalog, add: Add): void {

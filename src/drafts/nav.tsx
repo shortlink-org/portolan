@@ -39,7 +39,7 @@ export function useDraftPaletteItems(): PaletteItem[] {
       added
         .filter(({ entity }) => entity.kind === "flow" || entity.kind === "event")
         .map(({ draft, entity }) => ({
-          kind: entity.kind,
+          kind: entity.kind === "flow" ? "flow" : "event",
           id: `draft:${draft.branch}:${entity.id}`,
           name: entity.name,
           detail: `${entity.id} · only in ${draft.branch}`,

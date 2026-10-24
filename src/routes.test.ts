@@ -180,6 +180,33 @@ describe("routes", () => {
     expect(rfcPath("not-in-the-loaded-catalog")).toBeNull();
   });
 
+  it("routes normalized specifications independently from RFCs", () => {
+    const withSpec = structuredClone(catalog);
+    withSpec.specs = [
+      {
+        id: "deliver-local-auction-mvp",
+        slug: "deliver-local-auction-mvp",
+        title: "Deliver local auction MVP",
+        format: "openspec",
+        lifecycle: "implementing",
+        source: "openspec/changes/deliver-local-auction-mvp",
+        artifacts: [],
+        requirements: [],
+        tasks: [],
+      },
+    ];
+
+    expect(paths.specs()).toBe("/specs");
+    expect(paths.spec("deliver-local-auction-mvp")).toBe(
+      "/specs/deliver-local-auction-mvp",
+    );
+    expect(allCatalogPaths(withSpec)).toContain(
+      "/specs/deliver-local-auction-mvp",
+    );
+    expect(isRoutable(paths.specs())).toBe(true);
+    expect(isRoutable(paths.spec("deliver-local-auction-mvp"))).toBe(true);
+  });
+
   it("links every supersession to a routable page", () => {
     for (const adr of catalog.adrs) {
       for (const id of [adr.supersededBy, ...(adr.supersedes ?? [])]) {

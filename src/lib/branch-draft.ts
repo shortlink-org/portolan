@@ -11,13 +11,14 @@
 // Everything here is a pure function over catalogs, shared by the generator
 // and the site.
 
-import type { Aggregate, Catalog, Flow, Service, Step } from "../catalog.ts";
-import { walkSteps } from "../catalog.ts";
+import type { Aggregate, Catalog, ChangeSpec, Flow, Service, Step } from "../catalog.ts";
+import { allSpecs, walkSteps } from "../catalog.ts";
+import type { PathImpact } from "./path-impact.ts";
 
 export const DRAFT_SCHEMA = "portolan.draft/v1";
 
 /** The entities a draft reports on: the ones a reader has a page for. */
-export type DraftKind = "flow" | "service" | "aggregate" | "event";
+export type DraftKind = "flow" | "service" | "aggregate" | "event" | "spec";
 
 export type DraftChange = "added" | "changed" | "removed";
 
@@ -55,7 +56,14 @@ export interface BranchDraft {
    * touched this much and none of it is modelled - and it can only be read
    * that way if the files are counted (portolan.0019).
    */
-  touched?: { files: number; dirs: string[] };
+  touched?: {
+    files: number;
+    dirs: string[];
+    /** Changed paths relative to the repository the branch belongs to. */
+    paths?: string[];
+  };
+  /** Explainable ownership of changed paths; never implementation evidence. */
+  impact?: PathImpact[];
   entities: DraftEntity[];
   /** Layouted LikeC4 views of the flows the branch touched, by view id. */
   views?: Record<string, unknown>;
@@ -145,10 +153,11 @@ export function entitiesOf(catalog: Catalog): Map<string, Located> {
     }
   }
   for (const flow of catalog.flows) put({ kind: "flow", id: flow.id, entity: flow });
+  for (const spec of allSpecs(catalog)) put({ kind: "spec", id: spec.id, entity: spec as ChangeSpec });
   return out;
 }
 
-const KIND_ORDER: DraftKind[] = ["flow", "service", "aggregate", "event"];
+const KIND_ORDER: DraftKind[] = ["flow", "service", "aggregate", "event", "spec"];
 
 /** What the branch did, entity by entity, from its base to its tip. */
 export function diffBranch(base: Catalog, branch: Catalog): DraftEntity[] {
@@ -291,4 +300,3 @@ export function draftedFlows(draft: BranchDraft): { entity: DraftEntity; base?: 
     .filter((entity) => entity.kind === "flow")
     .map((entity) => ({ entity, ...(entity.base ? { base: entity.base as Flow } : {}), ...(entity.branch ? { branch: entity.branch as Flow } : {}) }));
 }
-

@@ -182,6 +182,17 @@ func (s *site) llmsIndex() string {
 	}
 	section(&b, "Requests for comments", list(rfcs))
 
+	specs := make([]string, 0, len(s.cat.Specs))
+	for i := range s.cat.Specs {
+		spec := &s.cat.Specs[i]
+		specs = append(specs, entry(
+			s.ref(self, spec.ID, spec.Title),
+			spec.Format+" specification", spec.Lifecycle,
+			plural(len(spec.Requirements), "requirement"),
+		))
+	}
+	section(&b, "Specifications", list(specs))
+
 	// What llmstxt.org calls Optional: pages a reader short on context can
 	// skip. The shape of a shared type or a table matters once a page above
 	// has named it, and not before.

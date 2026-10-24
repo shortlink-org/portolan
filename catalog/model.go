@@ -41,6 +41,7 @@ type Catalog struct {
 	Flows         []Flow              `json:"flows"`
 	Adrs          []Adr               `json:"adrs"`
 	Rfcs          []Rfc               `json:"rfcs,omitempty"`
+	Specs         []ChangeSpec        `json:"specs,omitempty"`
 	Stores        []Store             `json:"stores,omitempty"`
 	Modules       []ProtoModule       `json:"modules,omitempty"`
 	Terms         []Term              `json:"terms,omitempty"`
@@ -50,6 +51,47 @@ type Catalog struct {
 	WorkItems     []WorkItem          `json:"workItems,omitempty"`
 	WorkItemLinks []WorkItemLink      `json:"workItemLinks,omitempty"`
 	Annotations   []CatalogAnnotation `json:"annotations,omitempty"`
+}
+
+// ChangeSpec is one spec-driven change, normalized from an authoring tool's
+// files without treating the proposal as implemented architecture.
+type ChangeSpec struct {
+	ID           string            `json:"id"`
+	Slug         string            `json:"slug"`
+	Title        string            `json:"title"`
+	Format       string            `json:"format"`
+	Lifecycle    string            `json:"lifecycle"`
+	Source       string            `json:"source"`
+	Artifacts    []SpecArtifact    `json:"artifacts"`
+	Requirements []SpecRequirement `json:"requirements"`
+	Tasks        []SpecTask        `json:"tasks"`
+}
+
+type SpecArtifact struct {
+	Kind string `json:"kind"`
+	Path string `json:"path"`
+	Body string `json:"body"`
+}
+
+type SpecRequirement struct {
+	ID        string         `json:"id"`
+	Title     string         `json:"title"`
+	Text      string         `json:"text"`
+	Source    string         `json:"source"`
+	Scenarios []SpecScenario `json:"scenarios"`
+}
+
+type SpecScenario struct {
+	Name string   `json:"name"`
+	When []string `json:"when"`
+	Then []string `json:"then"`
+}
+
+type SpecTask struct {
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Done   bool   `json:"done"`
+	Source string `json:"source"`
 }
 
 type AnnotationTarget struct {

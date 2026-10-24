@@ -164,9 +164,9 @@ function taken(path, want) {
  */
 export function touchedBy(source, base, tip, scope) {
   const changed = git(source, ["diff", "--name-only", base, tip], { allowFailure: true });
-  const paths = (changed ?? "").split("\n").filter(Boolean).filter((path) => scope.want
+  const paths = [...new Set((changed ?? "").split("\n").filter(Boolean).filter((path) => scope.want
     ? taken(path, scope.want)
-    : projectsTouched(scope.projects, [path])[0] === scope.project?.id);
+    : projectsTouched(scope.projects, [path])[0] === scope.project?.id))].sort();
   const root = scope.want ? "" : rootPath(scope.project?.root);
   const dirs = new Map();
   for (const path of paths) {
@@ -178,7 +178,23 @@ export function touchedBy(source, base, tip, scope) {
   // Where the change is, not what sorts first: a branch that touches ten files
   // in internal/ and one .gitlab-ci.yml is about internal/.
   const ranked = [...dirs].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
-  return { files: paths.length, dirs: ranked.slice(0, 6).map(([dir]) => dir) };
+  return { files: paths.length, dirs: ranked.slice(0, 6).map(([dir]) => dir), paths };
+}
+
+/** The repository identity used by the project's selected catalog services. */
+export function projectRepository(project, catalog) {
+  if (typeof project?.repository === "string" && project.repository.trim()) return project.repository.trim();
+  const group = project?.group ?? project?.context;
+  const components = project?.components ?? [project?.component ?? project?.service].filter(Boolean);
+  if (!group || components.length === 0) return "";
+  const wanted = new Set(components.map((component) => `${group}.${component}`));
+  const repositories = new Set();
+  for (const context of catalog.contexts ?? []) {
+    for (const service of context.services ?? []) {
+      if (wanted.has(service.id) && typeof service.repo === "string" && service.repo.trim()) repositories.add(service.repo.trim());
+    }
+  }
+  return repositories.size === 1 ? [...repositories][0] : "";
 }
 
 /**
@@ -566,7 +582,10 @@ export async function generateDraft(workspace, { project, branch, pending = fals
   // Imported here, not at the top: local-api.mjs loads this file from the
   // published package too, where Node strips no TypeScript, and listing or
   // deleting a draft needs none.
-  const { DRAFT_SCHEMA, diffBranch } = await import("../src/lib/branch-draft.ts");
+  const [{ DRAFT_SCHEMA, diffBranch }, { resolvePathImpact }] = await Promise.all([
+    import("../src/lib/branch-draft.ts"),
+    import("../src/lib/path-impact.ts"),
+  ]);
   const target = pending ? pendingPath(project, branch) : draftPath(project, branch);
   const failed = (message) => {
     recordFailure(workspace, project, branch, message);
@@ -610,6 +629,10 @@ export async function generateDraft(workspace, { project, branch, pending = fals
     const after = await catalogAt(workspace, here ?? tip, project, holder, "branch", side(tip));
     progress("compare the catalogs");
     const entities = diffBranch(before.catalog, after.catalog);
+    const repository = projectRepository(declared, after.catalog)
+      || git(source, ["config", "--get", "remote.origin.url"], { allowFailure: true })
+      || "";
+    const impact = resolvePathImpact(after.catalog, repository, touched.paths);
     const { views, elements } = await draftViews(entities, { branch: after, base: before });
     const draft = {
       schema: DRAFT_SCHEMA,
@@ -619,6 +642,7 @@ export async function generateDraft(workspace, { project, branch, pending = fals
       base,
       generatedAt: new Date().toISOString(),
       ...(touched.files > 0 ? { touched } : {}),
+      ...(impact.length > 0 ? { impact } : {}),
       entities,
       ...(Object.keys(views).length > 0 ? { views, elements } : {}),
     };

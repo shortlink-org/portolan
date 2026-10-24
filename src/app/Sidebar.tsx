@@ -3,6 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TREE_KEYS, treeKey } from "./tree-keys";
 import type { TreeRow } from "./tree-keys";
 import { Link, NavLink, useLocation } from "react-router";
+import { FileCheck2 } from "lucide-react";
 import { DURATION, LayoutGroup, Unfold } from "../lib/motion";
 import { catalog } from "../data";
 import type {
@@ -279,6 +280,10 @@ export function Sidebar({
   // A standing list of what currently holds; every decision is on its page.
   const adrs = useMemo(() => newestAccepted(catalog, 5), []);
   const rfcs = useMemo(() => activeRfcs(catalog, 5), []);
+  const specs = useMemo(
+    () => [...(catalog.specs ?? [])].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 5),
+    [],
+  );
 
   // --- following the selection --------------------------------------------
 
@@ -750,6 +755,35 @@ export function Sidebar({
                 className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
               >
                 view all {catalog.rfcs?.length ?? 0} →
+              </NavLink>
+            </Section>
+          ) : null}
+
+          {(catalog.specs?.length ?? 0) > 0 ? (
+            <Section
+              title="Specifications"
+              count={catalog.specs?.length ?? 0}
+              open={sectionOpen("specs")}
+              onToggle={() => toggleSection("specs")}
+            >
+              {specs.map((spec) => (
+                <Leaf
+                  key={spec.id}
+                  to={paths.spec(spec.slug)}
+                  depth={0}
+                  title={`${spec.title} · ${spec.lifecycle} · ${spec.format}`}
+                >
+                  <FileCheck2 size={14} aria-hidden className="shrink-0 text-muted" />
+                  <span className="truncate">{spec.title}</span>
+                  <span className="sb-count">{spec.tasks.filter((task) => task.done).length}/{spec.tasks.length}</span>
+                </Leaf>
+              ))}
+              <NavLink
+                to={paths.specs()}
+                data-nav-item
+                className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+              >
+                view all {catalog.specs?.length ?? 0} →
               </NavLink>
             </Section>
           ) : null}

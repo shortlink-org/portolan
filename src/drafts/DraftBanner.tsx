@@ -99,6 +99,8 @@ export function DraftBanner({ id, className = "" }: { id: string; className?: st
               ? "the steps and the canvas below are the branch version; + ~ − ! mark what differs"
               : current.entity.kind === "event"
                 ? "the schema below is the branch version; new, changed and removed are against main"
+                : current.entity.kind === "spec"
+                  ? "the requirements and tasks below are the branch version; marks say what differs"
                 : current.entity.kind === "aggregate"
                   ? "the operations and the root below are the branch version; marks say what differs"
                   : "the integrations below are the branch version; draft systems are marked"}</div>

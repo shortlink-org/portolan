@@ -16,3 +16,4 @@ export * from "./catalog-model/stores.ts";
 export * from "./catalog-model/flows.ts";
 export * from "./catalog-model/terms.ts";
 export * from "./catalog-model/decisions.ts";
+export * from "./catalog-model/specs.ts";

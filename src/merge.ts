@@ -126,6 +126,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const flows: Catalog["flows"] = [];
   const adrs: Catalog["adrs"] = [];
   const rfcs: NonNullable<Catalog["rfcs"]> = [];
+  const specs: NonNullable<Catalog["specs"]> = [];
   const workItems = new Map<string, NonNullable<Catalog["workItems"]>[number]>();
   const workItemLinks = new Map<string, NonNullable<Catalog["workItemLinks"]>[number]>();
   const stores: NonNullable<Catalog["stores"]> = [];
@@ -285,6 +286,9 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     for (const rfc of catalog.rfcs ?? []) {
       if (claim(seen, rfc.id, path, conflicts, "RFC")) rfcs.push(rfc);
     }
+    for (const spec of catalog.specs ?? []) {
+      if (claim(seen, spec.id, path, conflicts, "specification")) specs.push(spec);
+    }
     for (const store of catalog.stores ?? []) {
       if (claim(seen, store.id, path, conflicts, "store")) stores.push(store);
     }
@@ -369,6 +373,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     adrs,
   };
   if (rfcs.length > 0) merged.rfcs = rfcs;
+  if (specs.length > 0) merged.specs = specs;
   if (stores.length > 0) merged.stores = foldMaps(merged, stores);
   if (modules.length > 0) merged.modules = modules;
   if (terms.length > 0) merged.terms = terms;

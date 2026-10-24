@@ -389,6 +389,12 @@
       }
     },
     {
+      "name": "sdd",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "glossary",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"
@@ -442,6 +448,14 @@
     }
   ],
   "extract": [
+    {
+      "plugin": "sdd",
+      "in": ".",
+      "out": "portolan",
+      "options": {
+        "out": "sdd.json"
+      }
+    },
     {
       "plugin": "adr",
       "in": "data/adr",

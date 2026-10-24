@@ -51,6 +51,16 @@ export function crumbsFor(pathname: string): Crumb[] {
     return crumbs;
   }
 
+  if (parts[0] === "specs") {
+    const crumbs: Crumb[] = [{ label: "specs", to: paths.specs() }];
+    const slug = parts[1];
+    if (slug) {
+      const spec = (catalog.specs ?? []).find((candidate) => candidate.slug === slug);
+      crumbs.push({ label: spec?.title ?? slug, to: paths.spec(slug) });
+    }
+    return crumbs;
+  }
+
   if (parts[0] === "graph") return [{ label: "graph", to: "/graph" }];
 
   if (parts[0] === "map") return [{ label: "map", to: "/map" }];

@@ -5,6 +5,7 @@ import type {
   BlockKind,
   BoundedContext,
   Catalog,
+  ChangeSpec,
   Column,
   Deployment,
   Enum,
@@ -187,6 +188,8 @@ export interface CatalogIndex {
   rfcBySlug: Map<string, Rfc>;
   /** event id -> RFCs that name it in relates.events, newest activity first */
   rfcsByEvent: Map<string, Rfc[]>;
+  specById: Map<string, ChangeSpec>;
+  specBySlug: Map<string, ChangeSpec>;
   termById: Map<string, Term>;
   /** context id -> its vocabulary, alphabetical, as the glossary was written */
   termsByContext: Map<string, Term[]>;
@@ -242,6 +245,8 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const rfcById = new Map<string, Rfc>();
   const rfcBySlug = new Map<string, Rfc>();
   const rfcsByEvent = new Map<string, Rfc[]>();
+  const specById = new Map<string, ChangeSpec>();
+  const specBySlug = new Map<string, ChangeSpec>();
   const termById = new Map<string, Term>();
   const termsByContext = new Map<string, Term[]>();
   const storeById = new Map<string, Store>();
@@ -477,6 +482,11 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     }
   }
 
+  for (const spec of catalog.specs ?? []) {
+    specById.set(spec.id, spec);
+    specBySlug.set(spec.slug, spec);
+  }
+
   for (const term of allTerms(catalog)) {
     termById.set(term.id, term);
     const list = termsByContext.get(term.context) ?? [];
@@ -509,6 +519,8 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     rfcById,
     rfcBySlug,
     rfcsByEvent,
+    specById,
+    specBySlug,
     termById,
     termsByContext,
     storeById,

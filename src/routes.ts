@@ -25,6 +25,8 @@ export const paths = {
     })}`,
   adrs: () => "/adrs",
   rfcs: () => "/rfcs",
+  specs: () => "/specs",
+  spec: (slug: string) => `/specs/${slug}`,
   newAdr: () => "/adrs/new",
   editAdr: (slug: string) => `/adrs/${slug}/edit`,
   /**
@@ -444,6 +446,7 @@ const ROUTES: RegExp[] = [
   /^\/flows\/[^/]+$/,
   /^\/adrs$/,
   /^\/rfcs$/,
+  /^\/specs$/,
   /^\/language$/,
   /^\/plugins$/,
   /^\/problems$/,
@@ -460,6 +463,7 @@ const ROUTES: RegExp[] = [
   /^\/adrs\/[^/]+\/edit$/,
   /^\/adrs\/[^/]+$/,
   /^\/rfcs\/[^/]+$/,
+  /^\/specs\/[^/]+$/,
   /^\/c\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/[^/]+$/,
@@ -489,6 +493,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.map(),
     paths.adrs(),
     paths.rfcs(),
+    paths.specs(),
     paths.language(),
     paths.plugins(),
     paths.problems(),
@@ -505,6 +510,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
   for (const flow of catalog.flows) out.push(paths.flow(flow.slug));
   for (const adr of catalog.adrs) out.push(paths.adr(adr.slug));
   for (const rfc of catalog.rfcs ?? []) out.push(paths.rfc(rfc.slug));
+  for (const spec of catalog.specs ?? []) out.push(paths.spec(spec.slug));
   for (const context of catalog.contexts) {
     out.push(paths.context(context.id));
     for (const service of context.services) {

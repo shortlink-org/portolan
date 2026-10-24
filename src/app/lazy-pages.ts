@@ -28,6 +28,8 @@ const load = {
   adrCreate: () => import("../pages/AdrCreate"),
   rfcIndex: () => import("../pages/RfcIndex"),
   rfcDetail: () => import("../pages/RfcDetail"),
+  specIndex: () => import("../pages/SpecIndex"),
+  specDetail: () => import("../pages/SpecDetail"),
   language: () => import("../pages/Language"),
   pluginIndex: () => import("../pages/PluginIndex"),
   pluginSettings: () => import("../pages/PluginSettings"),
@@ -58,6 +60,8 @@ export const AdrDetail = lazyPage(() => load.adrDetail().then((m) => m.AdrDetail
 export const AdrCreate = lazyPage(() => load.adrCreate().then((m) => m.default));
 export const RfcIndex = lazyPage(() => load.rfcIndex().then((m) => m.RfcIndex));
 export const RfcDetail = lazyPage(() => load.rfcDetail().then((m) => m.RfcDetail));
+export const SpecIndex = lazyPage(() => load.specIndex().then((m) => m.SpecIndex));
+export const SpecDetail = lazyPage(() => load.specDetail().then((m) => m.SpecDetail));
 export const Language = lazyPage(() => load.language().then((m) => m.Language));
 export const PluginIndex = lazyPage(() => load.pluginIndex().then((m) => m.PluginIndex));
 export const PluginSettings = lazyPage(() => load.pluginSettings().then((m) => m.PluginSettings));
@@ -98,6 +102,8 @@ const ROUTES: [pattern: string, preload: () => unknown][] = [
   ["/adrs/:adr", load.adrDetail],
   ["/rfcs", load.rfcIndex],
   ["/rfcs/:rfc", load.rfcDetail],
+  ["/specs", load.specIndex],
+  ["/specs/:spec", load.specDetail],
   ["/language", load.language],
   ["/plugins", load.pluginIndex],
   ["/plugins/:name/settings", load.pluginSettings],

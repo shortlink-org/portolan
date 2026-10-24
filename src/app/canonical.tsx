@@ -30,6 +30,7 @@ export const slugForId = {
   flow: bySlugOrId((i) => i.flowBySlug, (i) => i.flowById),
   adr: bySlugOrId((i) => i.adrBySlug, (i) => i.adrById),
   rfc: bySlugOrId((i) => i.rfcBySlug, (i) => i.rfcById),
+  spec: bySlugOrId((i) => i.specBySlug, (i) => i.specById),
   module: bySlugOrId((i) => i.moduleBySlug, (i) => i.moduleById),
   external: ((index, value) => {
     if ((index.catalog.externals ?? []).some((external) => external.slug === value)) return undefined;
@@ -123,6 +124,8 @@ export function pathForId(index: CatalogIndex, id: string): string | undefined {
   if (adr) return paths.adr(adr.slug);
   const rfc = index.rfcById.get(id);
   if (rfc) return paths.rfc(rfc.slug);
+  const spec = index.specById.get(id);
+  if (spec) return paths.spec(spec.slug);
   const module = index.moduleById.get(id);
   if (module) return paths.module(module.slug);
   const external = index.externalById.get(id);

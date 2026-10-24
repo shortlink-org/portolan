@@ -6,12 +6,13 @@
 // it is, and a line or two saying what changed - so the file is presented
 // once, here, and every surface reads the same answer.
 
-import type { Aggregate, Event, Field, Flow, Service, Step } from "../catalog";
+import type { Aggregate, ChangeSpec, Event, Field, Flow, Service, SpecRequirement, Step } from "../catalog";
 import { walkSteps } from "../catalog";
 import { alignSteps, comparable, sameEntity, stateAgainstMain } from "../lib/branch-draft";
 import { forgeCompareHref } from "../lib/branch-compare";
 import type { BranchDraft, DraftEntity as SavedEntity } from "../lib/branch-draft";
 import type { SavedDraftStatus } from "../lib/local-api";
+import type { PathImpact } from "../lib/path-impact";
 
 /**
  * How a drafted entity reads against main. `grown` is the branch and main
@@ -19,7 +20,7 @@ import type { SavedDraftStatus } from "../lib/local-api";
  * to one service, say - which is not a conflict anybody has to resolve.
  */
 export type DraftState = "added" | "changed" | "grown" | "conflict" | "removed";
-export type DraftEntityKind = "flow" | "service" | "aggregate" | "event";
+export type DraftEntityKind = "flow" | "service" | "aggregate" | "event" | "spec";
 
 export interface DraftEntity {
   id: string;
@@ -75,7 +76,14 @@ export interface Draft {
   savedAt: string;
   health: DraftHealth;
   /** What the branch changed in the project's files, whether the catalog saw it or not. */
-  touched?: { files: number; dirs: string[] };
+  touched?: {
+    files: number;
+    dirs: string[];
+    /** Changed paths relative to the repository the branch belongs to. */
+    paths?: string[];
+  };
+  /** Explainable ownership of changed paths; never implementation evidence. */
+  impact?: PathImpact[];
   /** For a project drafted from a clone: where it is and when it last fetched. */
   clone?: { path: string; fetchedAt?: string };
   /** The base-to-tip comparison on the project's forge, when the manifest names one. */
@@ -311,10 +319,69 @@ export function serviceLines(base: Service | undefined, branch: Service | undefi
   return linesOf(serviceMarks(base, branch));
 }
 
+const scenarioKey = (requirement: SpecRequirement, name: string) => `${requirement.id}#${name}`;
+
+export function specMarks(base: ChangeSpec | undefined, branch: ChangeSpec | undefined): Mark[] {
+  if (!base && branch) return [mark("spec", `+ specification ${branch.id}`)];
+  if (base && !branch) return [mark("spec", `- specification ${base.id}`)];
+  if (!base || !branch) return [];
+  const marks: Mark[] = [];
+  if (base.lifecycle !== branch.lifecycle) marks.push(mark("lifecycle", `~ lifecycle ${base.lifecycle} → ${branch.lifecycle}`));
+
+  const beforeRequirements = list(base.requirements, (requirement) => requirement.id);
+  const afterRequirements = list(branch.requirements, (requirement) => requirement.id);
+  for (const requirement of branch.requirements) {
+    const was = beforeRequirements.get(requirement.id);
+    if (!was) {
+      marks.push(mark(`requirement ${requirement.id}`, `+ requirement ${requirement.id} ${requirement.title}`));
+      continue;
+    }
+    if (was.title !== requirement.title || was.text !== requirement.text) {
+      marks.push(mark(`requirement ${requirement.id}`, `~ requirement ${requirement.id}`));
+    }
+    const beforeScenarios = list(was.scenarios, (scenario) => scenario.name);
+    const afterScenarios = list(requirement.scenarios, (scenario) => scenario.name);
+    for (const scenario of requirement.scenarios) {
+      const key = scenarioKey(requirement, scenario.name);
+      const previous = beforeScenarios.get(scenario.name);
+      if (!previous) marks.push(mark(`scenario ${key}`, `+ scenario ${key}`));
+      else if (!sameEntity(previous, scenario)) marks.push(mark(`scenario ${key}`, `~ scenario ${key}`));
+    }
+    for (const scenario of was.scenarios) {
+      if (!afterScenarios.has(scenario.name)) {
+        const key = scenarioKey(was, scenario.name);
+        marks.push(mark(`scenario ${key}`, `- scenario ${key}`));
+      }
+    }
+  }
+  for (const requirement of base.requirements) {
+    if (!afterRequirements.has(requirement.id)) marks.push(mark(`requirement ${requirement.id}`, `- requirement ${requirement.id}`));
+  }
+
+  const beforeTasks = list(base.tasks, (task) => task.id);
+  const afterTasks = list(branch.tasks, (task) => task.id);
+  for (const task of branch.tasks) {
+    const key = `${branch.id}#${task.id}`;
+    const was = beforeTasks.get(task.id);
+    if (!was) marks.push(mark(`task ${key}`, `+ task ${task.id} ${task.title}`));
+    else if (was.done !== task.done) marks.push(mark(`task ${key}`, `~ task ${task.id} ${task.done ? "completed" : "reopened"}`));
+    else if (was.title !== task.title) marks.push(mark(`task ${key}`, `~ task ${task.id}`));
+  }
+  for (const task of base.tasks) {
+    if (!afterTasks.has(task.id)) marks.push(mark(`task ${base.id}#${task.id}`, `- task ${task.id}`));
+  }
+  return marks.length > 0 ? marks : otherKeys(base, branch, ["lifecycle", "requirements", "tasks"]);
+}
+
+export function specLines(base: ChangeSpec | undefined, branch: ChangeSpec | undefined): string[] {
+  return linesOf(specMarks(base, branch));
+}
+
 function marksFor(kind: DraftEntityKind, base: unknown, other: unknown): Mark[] {
   if (kind === "flow") return flowMarks(base as Flow | undefined, other as Flow | undefined);
   if (kind === "event") return eventMarks(base as Event | undefined, other as Event | undefined);
   if (kind === "aggregate") return aggregateMarks(base as Aggregate | undefined, other as Aggregate | undefined);
+  if (kind === "spec") return specMarks(base as ChangeSpec | undefined, other as ChangeSpec | undefined);
   return serviceMarks(base as Service | undefined, other as Service | undefined);
 }
 
@@ -360,6 +427,7 @@ export interface PresentContext {
 const parentOf = (id: string): string => id.split(".").slice(0, -1).join(".");
 
 function nameOf(kind: DraftEntityKind, id: string, value: unknown): string {
+  if (kind === "spec") return (value as ChangeSpec | undefined)?.title ?? id;
   const named = value as { name?: string } | undefined;
   return named?.name ?? (kind === "flow" ? id.replace(/^flow\./, "") : id.split(".").at(-1) ?? id);
 }
@@ -395,7 +463,7 @@ export function presentDraft(file: BranchDraft, context: PresentContext): Draft 
       kind: saved.kind,
       name: nameOf(saved.kind, saved.id, value ?? main),
       state,
-      owner: (saved.kind === "flow" ? (value as Flow | undefined)?.owner : undefined) ?? saved.place?.context ?? saved.id.split(".")[0] ?? "",
+      owner: (saved.kind === "flow" ? (value as Flow | undefined)?.owner : saved.kind === "spec" ? "specifications" : undefined) ?? saved.place?.context ?? saved.id.split(".")[0] ?? "",
       branch: linesFor(saved.kind, saved.base, saved.branch),
       versions: { ...(saved.base !== undefined ? { base: saved.base } : {}), ...(saved.branch !== undefined ? { branch: saved.branch } : {}), ...(main !== undefined ? { main } : {}) },
     };
@@ -445,6 +513,7 @@ export function presentDraft(file: BranchDraft, context: PresentContext): Draft 
     savedAt: file.generatedAt,
     health: context.health ?? { kind: "fresh" },
     ...(file.touched ? { touched: file.touched } : {}),
+    ...(file.impact ? { impact: file.impact } : {}),
     ...(context.clone ? { clone: context.clone } : {}),
     ...(diffHref ? { diffHref } : {}),
     entities,

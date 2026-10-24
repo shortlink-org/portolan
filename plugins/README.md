@@ -494,6 +494,28 @@ focused `docs/flows-authoring.md` guide. Keeping that
 contract beside its test fixture prevents this plugin protocol overview from
 becoming a second, stale language reference.
 
+## Spec-driven changes
+
+`extract-sdd` reads an OpenSpec workspace without modifying it. By default it
+discovers changes under `openspec/changes/`, including archived changes, and
+normalizes proposals, designs, requirements, scenarios, and task checklists
+into `specs[]`. Set `options.root` when the OpenSpec directory has another
+name.
+
+```json
+{ "plugin": "sdd", "in": ".", "out": ".portolan/fragments/sdd.json" }
+```
+
+The lifecycle is derived from the source layout and checklist: a change moves
+from `draft` or `planned` to `implementing`, `complete`, or `archived`. This is
+the authoring lifecycle, not a conformance result. Portolan keeps it separate
+from code, deployment, and runtime evidence, so checking the last task cannot
+silently turn intended architecture into verified architecture.
+
+The normalized model is format-independent so Spec Kit and Kiro adapters can
+be added without changing the catalog or UI. The first adapter intentionally
+supports OpenSpec only; an unfamiliar SDD layout is not guessed.
+
 ## Decisions written by hand
 
 Every decision worth keeping is already written down, in a file beside the code

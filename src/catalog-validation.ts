@@ -13,6 +13,7 @@ import {
 import {
   validateAdrs,
   validateRfcs,
+  validateSpecs,
   validateTerms,
 } from "./catalog-validation/records.ts";
 import {
@@ -85,6 +86,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateModules(catalog);
   validateAdrs(catalog, eventIds);
   validateRfcs(catalog, eventIds);
+  validateSpecs(catalog);
   validateTerms(catalog);
   validateRepos(catalog);
   validateWorkItems(catalog);

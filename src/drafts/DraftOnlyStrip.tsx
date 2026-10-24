@@ -14,7 +14,7 @@ export function DraftOnlyStrip({ draft, entity, className = "" }: { draft: Draft
         <DraftChip branch={draft.branch} />
         <StateChip state={entity.state} />
         <span>
-          only in <span className="text-ink">{draft.branch}</span> · not on main · every {entity.kind === "flow" ? "step" : "field"} below is new
+          only in <span className="text-ink">{draft.branch}</span> · not on main · every {entity.kind === "flow" ? "step" : entity.kind === "spec" ? "requirement and task" : "field"} below is new
         </span>
         <span>
           {draft.projectName} · generated at {draft.tip}, saved {when(draft.savedAt)}

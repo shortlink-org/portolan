@@ -21,6 +21,9 @@ import { siteDocsPlugin } from "./scripts/site-docs.mjs";
 // served to the app as one virtual module (portolan.0010).
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { provenancePlugin } from "./scripts/provenance.mjs";
+// Specification artifact history is derived from Git beside the catalog.
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { specHistoryPlugin } from "./scripts/spec-history.mjs";
 // The catalog sources, one module per profile: src/data.ts loads the one on
 // screen, in one request, and no other profile's bytes.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
@@ -197,6 +200,7 @@ export default defineConfig({
     localApiPlugin(workspace, publicSetupFrom),
     siteDocsPlugin(workspace),
     provenancePlugin(workspace),
+    specHistoryPlugin(workspace),
     siteSourcesPlugin(),
     workItemsPlugin(workspace),
     annotationsPlugin(workspace),

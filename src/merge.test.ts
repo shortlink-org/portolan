@@ -527,6 +527,32 @@ describe("mergeCatalogs: requests for comments", () => {
   });
 });
 
+describe("mergeCatalogs: spec-driven changes", () => {
+  const spec = {
+    id: "add-rate-limits",
+    slug: "add-rate-limits",
+    title: "Add rate limits",
+    format: "openspec" as const,
+    lifecycle: "planned" as const,
+    source: "openspec/changes/add-rate-limits/proposal.md",
+    artifacts: [],
+    requirements: [],
+    tasks: [],
+  };
+
+  it("keeps a specification once and reports a duplicate identity", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { specs: [spec] }),
+      source("b.json", { specs: [{ ...spec, title: "A conflicting change" }] }),
+    ]);
+
+    expect(merged.catalog.specs).toEqual([spec]);
+    expect(merged.conflicts).toEqual([
+      expect.objectContaining({ path: "b.json", where: spec.id, message: expect.stringContaining("specification") }),
+    ]);
+  });
+});
+
 describe("mergeCatalogs: glossary terms", () => {
   const term = (id: string, context: string, slug: string) => ({
     id,

@@ -119,6 +119,7 @@
               "dx-source",
               "adr",
               "rfc",
+              "sdd",
               "glossary",
               "flows",
               "bsr",
@@ -788,6 +789,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.rfc"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "sdd"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.sdd"
                 }
               }
             }
@@ -4137,6 +4157,21 @@
         "out": {
           "type": "string",
           "description": "Fragment file name. Defaults to rfc.json."
+        }
+      }
+    },
+    "options.sdd": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "type": "string",
+          "description": "OpenSpec directory relative to the input root. Defaults to openspec."
+        },
+        "out": {
+          "type": "string",
+          "description": "Generated catalog fragment name. Defaults to sdd.json."
         }
       }
     },

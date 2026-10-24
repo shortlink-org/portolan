@@ -13,6 +13,9 @@ import { index } from "../data";
 import { useDrafts } from "../drafts/store";
 import { DraftChip, StateChip, when } from "../drafts/ui";
 import { paths } from "../routes";
+import { DraftOnlyStrip } from "../drafts/DraftOnlyStrip";
+import { SpecDetailView } from "./SpecDetail";
+import type { ChangeSpec } from "../catalog";
 
 export function DraftEntityPage() {
   const { project = "", branch: encodedBranch = "", entity: encodedEntity = "" } = useParams();
@@ -61,6 +64,15 @@ export function DraftEntityPage() {
 
   if (entity.kind === "event") {
     return <EventPage key={`${draft.branch}:${entity.id}`} draftOnly={{ draft, entity }} />;
+  }
+
+  if (entity.kind === "spec") {
+    return (
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        <div className="shrink-0 px-gutter pt-3"><DraftOnlyStrip draft={draft} entity={entity} /></div>
+        <div className="min-h-0 flex-1"><SpecDetailView spec={(entity.versions.branch ?? entity.versions.base) as ChangeSpec} /></div>
+      </div>
+    );
   }
 
   const aggregate = entity.parent ? index.aggregateById.get(entity.parent) : undefined;

@@ -53,6 +53,8 @@ func canonicalCatalog(cat catalog.Catalog) catalog.Catalog {
 	slices.SortFunc(out.Adrs, func(a, b catalog.Adr) int { return strings.Compare(a.ID, b.ID) })
 	out.Rfcs = slices.Clone(cat.Rfcs)
 	slices.SortFunc(out.Rfcs, func(a, b catalog.Rfc) int { return strings.Compare(a.ID, b.ID) })
+	out.Specs = slices.Clone(cat.Specs)
+	slices.SortFunc(out.Specs, func(a, b catalog.ChangeSpec) int { return strings.Compare(a.ID, b.ID) })
 	out.Modules = slices.Clone(cat.Modules)
 	slices.SortFunc(out.Modules, func(a, b catalog.ProtoModule) int { return strings.Compare(a.ID, b.ID) })
 	for i := range out.Modules {

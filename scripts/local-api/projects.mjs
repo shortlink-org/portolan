@@ -62,6 +62,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
     ...detectedOptions,
     out: "rfc.json",
   };
+  if (plugin === "sdd") return { ...detectedOptions, out: "sdd.json" };
   return {};
 }
 
@@ -141,15 +142,22 @@ export function planProject(workspace, manifest, request) {
     ...(manifest.plugins ?? []).map((plugin) => plugin.name),
   ]);
   const detected = new Set(discovery.detections.map((item) => item.plugin));
-  const requested = Array.isArray(request.plugins) ? request.plugins : [];
+  const plannedRoot = external
+    ? ["vendor", "repos", repo.owner, repo.name, sourcePath].filter(Boolean).join("/")
+    : discovery.root;
+  const requested = Array.isArray(request.plugins) ? [...request.plugins] : [];
+  const explicitSdd = (manifest.extract ?? []).some(
+    (step) => step.plugin === "sdd" && step.in === plannedRoot,
+  );
+  if (!explicitSdd && discovery.detections.some((item) => item.plugin === "sdd" && item.selected)) {
+    requested.push("sdd");
+  }
   const plugins = [...new Set(requested)].filter((plugin) => detected.has(plugin) && declared.has(plugin));
   if (plugins.length === 0) throw new Error("Select at least one detected plugin that is declared in portolan.json.");
   const id = slug(String(request.id ?? ""));
   if (!id) throw new Error("Project id must contain letters or numbers.");
   if ((manifest.projects ?? []).some((project) => project.id === id)) throw new Error(`Project id "${id}" already exists.`);
-  const finalRoot = external
-    ? ["vendor", "repos", repo.owner, repo.name, sourcePath].filter(Boolean).join("/")
-    : discovery.root;
+  const finalRoot = plannedRoot;
   if ((manifest.projects ?? []).some((project) => project.root === finalRoot)) throw new Error(`Project path "${finalRoot}" already exists.`);
   const requestedComponent = slug(String(request.component ?? request.service ?? ""));
   const splitDeployables = confirmedDeployables.length > 1 && requestedComponent === discovery.defaults.component;

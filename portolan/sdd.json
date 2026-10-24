@@ -1,0 +1,359 @@
+{
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "specs": [
+    {
+      "id": "automate-sdd-workflow",
+      "slug": "automate-sdd-workflow",
+      "title": "Automate sdd workflow",
+      "format": "openspec",
+      "lifecycle": "implementing",
+      "source": "openspec/changes/automate-sdd-workflow/proposal.md",
+      "artifacts": [
+        {
+          "kind": "proposal",
+          "path": "openspec/changes/automate-sdd-workflow/proposal.md",
+          "body": "# Proposal\n\n## Why\n\nPortolan can already read normalized OpenSpec changes, but users still have to connect the extractor manually, and a specification remains an isolated screen without history, automatically derived impact, or shared navigation. SDD should become useful as soon as a standard directory appears in a repository, without `portolan.yaml`, hand-authored catalog IDs, or additional configuration.\n\n## What Changes\n\n- Detect supported SDD layouts automatically and connect the built-in extractor with safe defaults.\n- Show the Git history of a change and its artifacts without writing provenance into the generated fragment.\n- Identify affected components from changed paths and known repository and service path boundaries.\n- Turn only exact textual references—catalog IDs, file paths, `path:line`, URLs, and known identifiers—into verifiable links.\n- Build a deterministic activity feed from Git, specification diffs, checklists, and automatically derived impact.\n- Include changes, requirements, and scenarios in global search, the command palette, breadcrumbs, and backlinks.\n\n## Capabilities\n\n### New Capabilities\n\n- `automatic-sdd-workflow`: zero-config discovery, history, exact links, path impact, activity feed, search and navigation for supported SDD artifacts.\n\n### Modified Capabilities\n\nNone. Existing extractor, catalog merge, architecture evidence, and branch draft semantics are extended without changing their current contracts.\n\n## Impact\n\n- **Local discovery/setup:** a standard `openspec/` layout becomes a high-confidence detection and creates an SDD extraction step automatically.\n- **Catalog host:** Git history and branch diff remain external enrichment so identical source files continue to produce byte-identical fragments.\n- **Catalog model:** SDD links, path impact, and activity are derived facts; author lifecycle and implementation evidence remain separate dimensions.\n- **UI:** `/specs`, global search, the command palette, breadcrumbs, Changes, and backlinks gain SDD entries.\n- **Safety:** free-form text is not used for semantic matching. Ambiguous names remain plain text or unresolved exact references.\n- **Out of scope:** editing OpenSpec from Portolan, changing task checkboxes automatically, generating requirements with an LLM, Spec Kit or Kiro adapters, and claiming runtime conformance from path co-change alone.\n"
+        },
+        {
+          "kind": "design",
+          "path": "openspec/changes/automate-sdd-workflow/design.md",
+          "body": "# Design\n\n## Context\n\nSDD in Portolan is a read-only control plane. Source artifacts belong to OpenSpec; Portolan extracts them, joins them to known facts, and exposes the provenance of every relationship. Zero-config means following standard conventions, not applying hidden heuristics.\n\n## Goals\n\n- Provide a useful SDD experience as soon as `openspec/` is added to a Git repository.\n- Reuse the existing history, branch draft, catalog index, source-link, and command-palette mechanisms.\n- Preserve strict boundaries between intent, related change, declared architecture, test evidence, and runtime observation.\n- Make every automatically derived conclusion reproducible and explainable.\n\n## Non-goals\n\n- Do not infer conformance from task completion, co-commit history, or similar text.\n- Do not guess an architecture entity from its display name.\n- Do not write Git metadata into a source fragment.\n- Do not modify OpenSpec files, task state, or archive layout.\n\n## Decisions\n\n### 1. Discovery follows a standard layout\n\nLocal discovery considers SDD present only when `openspec/changes/\u003cchange\u003e/.openspec.yaml` exists. The detection is selected automatically and creates an `sdd` step with the project root as input; the `root` option is omitted when the standard name is used. An empty directory or a Markdown file with a similar name does not count as SDD.\n\nCLI generation outside setup also gains a convention-based implicit step when the manifest does not already contain SDD output for the same project root. An explicit step always takes precedence and prevents duplicate extraction.\n\n### 2. Git history is derived beside the fragment\n\nThe extractor remains a deterministic tree → fragment function. The host reads history for the source paths of the change, proposal, design, requirements, and tasks, then provides the UI with derived records: first commit, latest commit, author, date, and current uncommitted state. Shallow or absent history produces an explicit unavailable state, not invented dates.\n\n### 3. Path impact is ownership, not conformance\n\nFor the selected branch/range the host obtains changed paths. A path affects a service only when it is inside that service's repository and declared `path`; the longest matching service path wins. Contract, deployment and documentation paths use their existing catalog owners. Shared or ambiguous paths remain repository-level impact.\n\nThe UI labels this relation `changed with`, never `implements`. It can support prioritization and navigation but cannot satisfy a requirement.\n\n### 4. Text links require exact syntax\n\nThe linker recognizes:\n\n- absolute web URLs;\n- repository-relative file paths, optionally with `:line`;\n- exact catalog IDs resolved through the catalog index;\n- exact route-safe slugs only when the entity kind is stated by the source syntax;\n- requirement/task identifiers defined inside the same change.\n\nUnresolved exact references are retained and surfaced as problems. Ordinary prose and display-name similarity are never converted into links.\n\n### 5. One derived activity model feeds every presentation\n\nActivity events are normalized from Git commits, spec diffs, lifecycle transitions, task state transitions and path impact. Each event carries stable key, timestamp when known, source, kind and links. Stable ordering is timestamp descending, then kind and key. The `/specs/:id` feed, `/changes`, Markdown output and summaries consume the same model.\n\n### 6. Search indexes intent as intent\n\nPalette/search entries are added for change, requirement and scenario. Results retain their kind and route to the exact change section. Search ranking may use title, ID and exact source text, but must not manufacture relationships. Breadcrumbs and backlinks use the same stable anchors.\n\n## Data flow\n\n1. Discovery identifies a standard SDD root.\n2. `extract-sdd` emits normalized author intent.\n3. Merge and validation establish unique change, requirement and task identities.\n4. Host-side Git enrichment derives history, branch diff and changed paths.\n5. Exact-link resolution and ownership matching join intent to known catalog facts.\n6. Activity, search and navigation project those derived facts without mutating the source model.\n\n## Failure modes\n\n- Missing Git history: specifications remain readable; history states why it is unavailable.\n- Duplicate explicit/implicit step: the explicit step is used once.\n- Ambiguous service ownership: impact stays at repository level and names the ambiguity.\n- Broken exact reference: source text remains visible and Problems links back to its location.\n- Removed requirement: branch diff retains the removed side without adding it to the current search index.\n\n## Rollout\n\nImplement vertically: discovery first, then history/impact, exact links, shared activity, and finally search/navigation. Each slice is tested against this repository's own OpenSpec change and the external Gavel fixture without modifying Gavel.\n"
+        },
+        {
+          "kind": "tasks",
+          "path": "openspec/changes/automate-sdd-workflow/tasks.md",
+          "body": "# Tasks\n\n## 1. Zero-config SDD discovery\n\n- [x] 1.1 Add high-confidence OpenSpec detection to local project discovery using `.openspec.yaml` markers and cover standard, empty and malformed layouts.\n- [x] 1.2 Add an automatically selected `sdd` extraction plan with project-root input and omitted default options; ensure an explicit step suppresses the implicit duplicate.\n- [x] 1.3 Run discovery and extraction against Portolan's own change and the read-only Gavel project fixture.\n\n## 2. Git history and branch model\n\n- [x] 2.1 Define a derived specification-history model that references source artifacts without adding Git metadata to `specs[]`.\n- [x] 2.2 Reuse the host history reader to resolve first/latest commit, author, date and uncommitted state for change artifacts, including unavailable reasons.\n- [x] 2.3 Extend branch catalog diff with requirement, scenario, task and lifecycle changes using stable identifiers.\n\n## 3. Automatic path impact\n\n- [x] 3.1 Derive changed repository paths for the active comparison using the existing branch draft/history pipeline.\n- [x] 3.2 Resolve each path to the longest unique repository/service owner and preserve repository-level ambiguous or unmatched results.\n- [ ] 3.3 Present impact as `changed with` on specification and Changes pages without promoting it to implementation evidence.\n\n## 4. Exact links\n\n- [ ] 4.1 Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers.\n- [ ] 4.2 Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics.\n- [ ] 4.3 Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text.\n\n## 5. Activity feed\n\n- [ ] 5.1 Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact.\n- [ ] 5.2 Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries.\n- [ ] 5.3 Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels.\n\n## 6. Search and navigation\n\n- [ ] 6.1 Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors.\n- [ ] 6.2 Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog.\n- [ ] 6.3 Verify keyboard navigation and responsive rendering for list, detail, activity and search results.\n\n## 7. Integrated verification\n\n- [ ] 7.1 Run focused extractor, discovery, history, diff, link-resolution, search and UI tests.\n- [ ] 7.2 Run `npm run typecheck`, schema generation/check, catalog generation and the required rendered UI verification with cache busting.\n- [ ] 7.3 Confirm the external Gavel tree is unchanged and document which results are source intent, derived impact and independent evidence.\n"
+        },
+        {
+          "kind": "requirements",
+          "path": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md",
+          "body": "# Spec Delta\n\n## ADDED Requirements\n\n### Requirement: Standard OpenSpec layouts are connected automatically\nPortolan SHALL detect a project containing `openspec/changes/\u003cchange\u003e/.openspec.yaml` and SHALL include its normalized SDD fragment without requiring plugin options or a manually authored extraction step. An explicit SDD step for the same project SHALL take precedence and SHALL run only once.\n\n#### Scenario: Standard OpenSpec repository is discovered\n- **WHEN** project discovery scans a repository with at least one standard OpenSpec change\n- **THEN** SDD is selected with the project root as input and no redundant default options\n\n#### Scenario: Explicit configuration already exists\n- **WHEN** the manifest already contains an SDD extraction step for the project\n- **THEN** Portolan uses that step and does not add or run an implicit duplicate\n\n### Requirement: Specification history comes from Git\nPortolan SHALL derive first and latest change metadata for a specification and its source artifacts from repository history without writing that metadata into the extracted fragment.\n\n#### Scenario: Full history is available\n- **WHEN** a specification source path has committed history\n- **THEN** its page shows the first commit, latest commit, author and date with links to the exact source revision when repository information is available\n\n#### Scenario: History is unavailable\n- **WHEN** the checkout is shallow, uncommitted-only or not a Git repository\n- **THEN** the specification remains available and history is shown as unavailable with the reason\n\n### Requirement: Changed paths produce explainable impact\nPortolan SHALL relate branch changes to catalog components using repository identity and the longest exact owning path. The relation SHALL be presented as change impact and SHALL NOT be presented as implementation or conformance evidence.\n\n#### Scenario: Changed file belongs to one service\n- **WHEN** a changed repository-relative file is under exactly one known service path\n- **THEN** the specification activity links that service and explains the matching path\n\n#### Scenario: Changed file has no unique owner\n- **WHEN** no service path matches or multiple owners remain equally specific\n- **THEN** impact stays at repository level and Portolan does not choose a service\n\n### Requirement: Only exact textual references become links\nPortolan SHALL recognize web URLs, repository-relative paths with optional lines, exact catalog IDs, and same-change requirement or task IDs. Portolan SHALL preserve unresolved exact references and SHALL NOT link ordinary prose by semantic similarity.\n\n#### Scenario: Exact catalog ID resolves\n- **WHEN** a specification artifact contains an exact ID present in the merged catalog\n- **THEN** the rendered text links to that entity's canonical Portolan route\n\n#### Scenario: Similar display name is ambiguous\n- **WHEN** prose contains a name that resembles one or more catalog entities but is not an exact identifier\n- **THEN** the text remains prose and no relationship is created\n\n#### Scenario: Source path includes a line\n- **WHEN** an artifact mentions a repository-relative `path:line` that exists inside the project root\n- **THEN** the rendered link opens that exact source location\n\n### Requirement: Activity is deterministic and shared\nPortolan SHALL build one activity stream from Git history, spec diffs, lifecycle transitions, task transitions and path impact. The same normalized events SHALL feed the specification page, Changes presentation and generated summaries.\n\n#### Scenario: Several event kinds have the same timestamp\n- **WHEN** activity events cannot be ordered by time alone\n- **THEN** Portolan orders them deterministically by kind and stable key\n\n#### Scenario: A branch changes requirements and tasks\n- **WHEN** the compared branch adds a requirement and completes a task\n- **THEN** both events appear in the activity feed and Changes view with links to their source sections\n\n### Requirement: Specifications participate in global navigation\nPortolan SHALL index changes, requirements and scenarios for global search and command palette navigation. Results SHALL retain their SDD kind and SHALL navigate to a stable route or section anchor.\n\n#### Scenario: Requirement is found by title or ID\n- **WHEN** a reader searches for an exact requirement ID or words from its title\n- **THEN** the result is labeled as a requirement and opens that requirement on its specification page\n\n#### Scenario: Removed requirement exists only in a branch diff\n- **WHEN** a requirement exists on the comparison base but not in the current catalog\n- **THEN** it remains visible in Changes but is not added to the current global search index\n\n### Requirement: Automatic conclusions preserve evidence boundaries\nPortolan SHALL label author intent, changed-with impact, declared architecture, test evidence and runtime observation as separate states. Task completion, co-change and exact links SHALL NOT independently produce verified conformance.\n\n#### Scenario: Every task is checked\n- **WHEN** a specification has a complete checklist but no runtime observation\n- **THEN** lifecycle may be complete while conformance remains unverified\n\n#### Scenario: Code and specification changed together\n- **WHEN** Git shows a code path and specification artifact in the same commit\n- **THEN** Portolan records related change impact without claiming that the requirement is implemented\n"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "automate-sdd-workflow/automatic-sdd-workflow/standard-openspec-layouts-are-connected-automatically",
+          "title": "Standard OpenSpec layouts are connected automatically",
+          "text": "Portolan SHALL detect a project containing `openspec/changes/\u003cchange\u003e/.openspec.yaml` and SHALL include its normalized SDD fragment without requiring plugin options or a manually authored extraction step. An explicit SDD step for the same project SHALL take precedence and SHALL run only once.",
+          "source": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md:5",
+          "scenarios": [
+            {
+              "name": "Standard OpenSpec repository is discovered",
+              "when": [
+                "project discovery scans a repository with at least one standard OpenSpec change"
+              ],
+              "then": [
+                "SDD is selected with the project root as input and no redundant default options"
+              ]
+            },
+            {
+              "name": "Explicit configuration already exists",
+              "when": [
+                "the manifest already contains an SDD extraction step for the project"
+              ],
+              "then": [
+                "Portolan uses that step and does not add or run an implicit duplicate"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "automate-sdd-workflow/automatic-sdd-workflow/specification-history-comes-from-git",
+          "title": "Specification history comes from Git",
+          "text": "Portolan SHALL derive first and latest change metadata for a specification and its source artifacts from repository history without writing that metadata into the extracted fragment.",
+          "source": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md:16",
+          "scenarios": [
+            {
+              "name": "Full history is available",
+              "when": [
+                "a specification source path has committed history"
+              ],
+              "then": [
+                "its page shows the first commit, latest commit, author and date with links to the exact source revision when repository information is available"
+              ]
+            },
+            {
+              "name": "History is unavailable",
+              "when": [
+                "the checkout is shallow, uncommitted-only or not a Git repository"
+              ],
+              "then": [
+                "the specification remains available and history is shown as unavailable with the reason"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "automate-sdd-workflow/automatic-sdd-workflow/changed-paths-produce-explainable-impact",
+          "title": "Changed paths produce explainable impact",
+          "text": "Portolan SHALL relate branch changes to catalog components using repository identity and the longest exact owning path. The relation SHALL be presented as change impact and SHALL NOT be presented as implementation or conformance evidence.",
+          "source": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md:27",
+          "scenarios": [
+            {
+              "name": "Changed file belongs to one service",
+              "when": [
+                "a changed repository-relative file is under exactly one known service path"
+              ],
+              "then": [
+                "the specification activity links that service and explains the matching path"
+              ]
+            },
+            {
+              "name": "Changed file has no unique owner",
+              "when": [
+                "no service path matches or multiple owners remain equally specific"
+              ],
+              "then": [
+                "impact stays at repository level and Portolan does not choose a service"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "automate-sdd-workflow/automatic-sdd-workflow/only-exact-textual-references-become-links",
+          "title": "Only exact textual references become links",
+          "text": "Portolan SHALL recognize web URLs, repository-relative paths with optional lines, exact catalog IDs, and same-change requirement or task IDs. Portolan SHALL preserve unresolved exact references and SHALL NOT link ordinary prose by semantic similarity.",
+          "source": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md:38",
+          "scenarios": [
+            {
+              "name": "Exact catalog ID resolves",
+              "when": [
+                "a specification artifact contains an exact ID present in the merged catalog"
+              ],
+              "then": [
+                "the rendered text links to that entity's canonical Portolan route"
+              ]
+            },
+            {
+              "name": "Similar display name is ambiguous",
+              "when": [
+                "prose contains a name that resembles one or more catalog entities but is not an exact identifier"
+              ],
+              "then": [
+                "the text remains prose and no relationship is created"
+              ]
+            },
+            {
+              "name": "Source path includes a line",
+              "when": [
+                "an artifact mentions a repository-relative `path:line` that exists inside the project root"
+              ],
+              "then": [
+                "the rendered link opens that exact source location"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "automate-sdd-workflow/automatic-sdd-workflow/activity-is-deterministic-and-shared",
+          "title": "Activity is deterministic and shared",
+          "text": "Portolan SHALL build one activity stream from Git history, spec diffs, lifecycle transitions, task transitions and path impact. The same normalized events SHALL feed the specification page, Changes presentation and generated summaries.",
+          "source": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md:53",
+          "scenarios": [
+            {
+              "name": "Several event kinds have the same timestamp",
+              "when": [
+                "activity events cannot be ordered by time alone"
+              ],
+              "then": [
+                "Portolan orders them deterministically by kind and stable key"
+              ]
+            },
+            {
+              "name": "A branch changes requirements and tasks",
+              "when": [
+                "the compared branch adds a requirement and completes a task"
+              ],
+              "then": [
+                "both events appear in the activity feed and Changes view with links to their source sections"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "automate-sdd-workflow/automatic-sdd-workflow/specifications-participate-in-global-navigation",
+          "title": "Specifications participate in global navigation",
+          "text": "Portolan SHALL index changes, requirements and scenarios for global search and command palette navigation. Results SHALL retain their SDD kind and SHALL navigate to a stable route or section anchor.",
+          "source": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md:64",
+          "scenarios": [
+            {
+              "name": "Requirement is found by title or ID",
+              "when": [
+                "a reader searches for an exact requirement ID or words from its title"
+              ],
+              "then": [
+                "the result is labeled as a requirement and opens that requirement on its specification page"
+              ]
+            },
+            {
+              "name": "Removed requirement exists only in a branch diff",
+              "when": [
+                "a requirement exists on the comparison base but not in the current catalog"
+              ],
+              "then": [
+                "it remains visible in Changes but is not added to the current global search index"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "automate-sdd-workflow/automatic-sdd-workflow/automatic-conclusions-preserve-evidence-boundaries",
+          "title": "Automatic conclusions preserve evidence boundaries",
+          "text": "Portolan SHALL label author intent, changed-with impact, declared architecture, test evidence and runtime observation as separate states. Task completion, co-change and exact links SHALL NOT independently produce verified conformance.",
+          "source": "openspec/changes/automate-sdd-workflow/specs/automatic-sdd-workflow/spec.md:75",
+          "scenarios": [
+            {
+              "name": "Every task is checked",
+              "when": [
+                "a specification has a complete checklist but no runtime observation"
+              ],
+              "then": [
+                "lifecycle may be complete while conformance remains unverified"
+              ]
+            },
+            {
+              "name": "Code and specification changed together",
+              "when": [
+                "Git shows a code path and specification artifact in the same commit"
+              ],
+              "then": [
+                "Portolan records related change impact without claiming that the requirement is implemented"
+              ]
+            }
+          ]
+        }
+      ],
+      "tasks": [
+        {
+          "id": "1.1",
+          "title": "Add high-confidence OpenSpec detection to local project discovery using `.openspec.yaml` markers and cover standard, empty and malformed layouts.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:5"
+        },
+        {
+          "id": "1.2",
+          "title": "Add an automatically selected `sdd` extraction plan with project-root input and omitted default options; ensure an explicit step suppresses the implicit duplicate.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:6"
+        },
+        {
+          "id": "1.3",
+          "title": "Run discovery and extraction against Portolan's own change and the read-only Gavel project fixture.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:7"
+        },
+        {
+          "id": "2.1",
+          "title": "Define a derived specification-history model that references source artifacts without adding Git metadata to `specs[]`.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:11"
+        },
+        {
+          "id": "2.2",
+          "title": "Reuse the host history reader to resolve first/latest commit, author, date and uncommitted state for change artifacts, including unavailable reasons.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:12"
+        },
+        {
+          "id": "2.3",
+          "title": "Extend branch catalog diff with requirement, scenario, task and lifecycle changes using stable identifiers.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:13"
+        },
+        {
+          "id": "3.1",
+          "title": "Derive changed repository paths for the active comparison using the existing branch draft/history pipeline.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:17"
+        },
+        {
+          "id": "3.2",
+          "title": "Resolve each path to the longest unique repository/service owner and preserve repository-level ambiguous or unmatched results.",
+          "done": true,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:18"
+        },
+        {
+          "id": "3.3",
+          "title": "Present impact as `changed with` on specification and Changes pages without promoting it to implementation evidence.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:19"
+        },
+        {
+          "id": "4.1",
+          "title": "Implement a parser for exact catalog IDs, repository paths, `path:line`, URLs and same-change requirement/task identifiers.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:23"
+        },
+        {
+          "id": "4.2",
+          "title": "Resolve parsed references through canonical routes and source-link rules; retain unresolved exact references for diagnostics.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:24"
+        },
+        {
+          "id": "4.3",
+          "title": "Render exact links in proposal, design, requirements, scenarios and tasks while proving that similar display names remain plain text.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:25"
+        },
+        {
+          "id": "5.1",
+          "title": "Define stable activity events for Git commits, spec diffs, lifecycle transitions, task transitions and path impact.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:29"
+        },
+        {
+          "id": "5.2",
+          "title": "Build a deterministic projector shared by the specification detail page, Changes page and generated Markdown/LLM summaries.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:30"
+        },
+        {
+          "id": "5.3",
+          "title": "Add the activity timeline to `/specs/:id` with source and architecture links plus explicit evidence labels.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:31"
+        },
+        {
+          "id": "6.1",
+          "title": "Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:35"
+        },
+        {
+          "id": "6.2",
+          "title": "Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:36"
+        },
+        {
+          "id": "6.3",
+          "title": "Verify keyboard navigation and responsive rendering for list, detail, activity and search results.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:37"
+        },
+        {
+          "id": "7.1",
+          "title": "Run focused extractor, discovery, history, diff, link-resolution, search and UI tests.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:41"
+        },
+        {
+          "id": "7.2",
+          "title": "Run `npm run typecheck`, schema generation/check, catalog generation and the required rendered UI verification with cache busting.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:42"
+        },
+        {
+          "id": "7.3",
+          "title": "Confirm the external Gavel tree is unchanged and document which results are source intent, derived impact and independent evidence.",
+          "done": false,
+          "source": "openspec/changes/automate-sdd-workflow/tasks.md:43"
+        }
+      ]
+    }
+  ]
+}

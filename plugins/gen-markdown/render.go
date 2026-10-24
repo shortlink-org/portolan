@@ -1,6 +1,7 @@
 package genmarkdown
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -87,6 +88,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	s.renderFlows()
 	s.renderAdrs()
 	s.renderRfcs()
+	s.renderSpecs()
 	s.renderLlms()
 
 	return s.b.Response()
@@ -208,6 +210,10 @@ func (s *site) layout() {
 			s.rfcsFor["org"] = append(s.rfcsFor["org"], rfc)
 		}
 	}
+	for i := range s.cat.Specs {
+		spec := &s.cat.Specs[i]
+		s.pathOf[spec.ID] = "spec/" + spec.Slug + ".md"
+	}
 }
 
 // ref renders a link to another page, or plain code when the target is not in
@@ -304,6 +310,17 @@ func (s *site) renderIndex() {
 		})
 	}
 	section(&b, "Decisions", table([]string{"ADR", "Title", "Status", "Date"}, adrs))
+
+	specs := make([][]string, 0, len(s.cat.Specs))
+	for i := range s.cat.Specs {
+		spec := &s.cat.Specs[i]
+		specs = append(specs, []string{
+			s.ref(self, spec.ID, spec.Title), spec.Format, spec.Lifecycle,
+			plural(len(spec.Requirements), "requirement"),
+			fmt.Sprintf("%d / %d", doneTasks(spec), len(spec.Tasks)),
+		})
+	}
+	section(&b, "Specifications", table([]string{"Change", "Format", "Lifecycle", "Requirements", "Checklist"}, specs))
 
 	s.b.file(self, b.String())
 }

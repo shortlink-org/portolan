@@ -2909,6 +2909,32 @@
     }
   },
   {
+    "name": "sdd",
+    "plugin": "extract-sdd",
+    "summary": "Read OpenSpec changes, requirements and tasks.",
+    "category": "documents",
+    "phases": [
+      "extract"
+    ],
+    "runtime": "wasm",
+    "source": "plugins/extract-sdd",
+    "options": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "type": "string",
+          "description": "OpenSpec directory relative to the input root. Defaults to openspec."
+        },
+        "out": {
+          "type": "string",
+          "description": "Generated catalog fragment name. Defaults to sdd.json."
+        }
+      }
+    }
+  },
+  {
     "name": "glossary",
     "plugin": "extract-glossary",
     "summary": "Reads a context's GLOSSARY.md - one paragraph per term, what it is and what it is not - into a catalog fragment.",

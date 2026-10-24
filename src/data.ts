@@ -36,6 +36,8 @@ import { catalogDocs } from "./catalog-docs";
 // scripts/provenance.mjs at build time, because a fragment carries no
 // provenance of its own (portolan.0010) and a browser cannot ask git.
 import provenance from "virtual:portolan-provenance";
+import specHistoryById from "virtual:portolan-spec-history";
+import type { SpecHistoryEntry } from "virtual:portolan-spec-history";
 import authored from "virtual:portolan-annotations";
 // Which tasks changed what, read from the same history and never written into
 // a fragment, since a file cannot name the commit it lands in (portolan.0020).
@@ -183,6 +185,9 @@ const loaded = load();
 
 export const catalog: Catalog = loaded.catalog;
 export const index: CatalogIndex = buildIndex(catalog);
+
+/** Git-derived artifact history, kept outside author-owned `specs[]`. */
+export const specificationHistory: Record<string, SpecHistoryEntry[]> = specHistoryById;
 
 /**
  * The sources the catalog was built from, newest first by nothing at all -
