@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { Link } from "react-router";
 import { LikeC4Model } from "@likec4/core/model";
 import type { ViewPadding } from "likec4/react";
 import { InteractiveView } from "./InteractiveView";
@@ -19,6 +20,30 @@ import type { EvidenceModel } from "./edge-evidence";
 import { boundaryEdgeIds } from "./boundaries";
 import { filteredViewId, safeId } from "./ids";
 import type { DiagramFilterKind } from "./ids";
+import { catalog, index } from "../data";
+import { allRepos } from "../catalog";
+import { pathForId } from "../app/canonical";
+import { rpcMethodPath } from "../routes";
+import { sourceLocation } from "../lib/source-link";
+import { SourcePreviewLink } from "../components/SourcePreview";
+
+function CatalogEvidenceLink({ id }: { id: string }) {
+  const to = pathForId(index, id);
+  return to ? (
+    <Link to={to} data-peek={id} className="rounded-control text-accent hover:underline">
+      {id}
+    </Link>
+  ) : <span>{id}</span>;
+}
+
+function OperationEvidenceLink({ id }: { id: string }) {
+  const to = rpcMethodPath(id);
+  return to ? (
+    <Link to={to} className="break-all rounded-control text-accent hover:underline">
+      {id}
+    </Link>
+  ) : <span className="break-all">{id}</span>;
+}
 
 const layouts = new Map<string, Promise<LikeC4Model.Layouted>>();
 function containerModel(viewId: string) {
@@ -183,7 +208,9 @@ export function C4View({
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-ink">Why this is connected</div>
               <div className="mono mt-0.5 truncate text-xs text-muted">
-                {catalogIdOf(edgeEvidence.source)} → {catalogIdOf(edgeEvidence.target)}
+                <CatalogEvidenceLink id={catalogIdOf(edgeEvidence.source)} />
+                <span aria-hidden> → </span>
+                <CatalogEvidenceLink id={catalogIdOf(edgeEvidence.target)} />
               </div>
             </div>
             <button
@@ -204,7 +231,24 @@ export function C4View({
                     {relation.technology ? <span className="chip">{relation.technology}</span> : null}
                     {relation.status ? <span className="chip">{relation.status}</span> : null}
                   </div>
-                  {relation.detail ? (
+                  {relation.call ? (
+                    <div className="mono mt-1 flex flex-wrap items-baseline gap-x-1 text-xs text-muted">
+                      <OperationEvidenceLink id={relation.call.id} />
+                      {relation.call.source ? <>
+                        <span aria-hidden>·</span>
+                        <SourcePreviewLink
+                          location={sourceLocation(
+                            relation.call.source,
+                            index.serviceById.get(catalogIdOf(relation.source)),
+                            allRepos(catalog),
+                          )}
+                          className="min-w-0 break-all text-accent hover:underline"
+                        >
+                          {relation.call.source}
+                        </SourcePreviewLink>
+                      </> : null}
+                    </div>
+                  ) : relation.detail ? (
                     <div className="mono mt-1 break-all text-xs text-muted">{relation.detail}</div>
                   ) : (
                     <div className="mt-1 text-xs text-muted">No source detail was recorded for this relation.</div>

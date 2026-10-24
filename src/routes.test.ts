@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "./data";
-import { walkSteps } from "./catalog";
+import { buildIndex, walkSteps } from "./catalog";
 import {
   adrPath,
   allCatalogPaths,
@@ -11,8 +11,10 @@ import {
   eventVersionPath,
   isLandingPath,
   isRoutable,
+  methodAnchor,
   paths,
   rfcPath,
+  rpcMethodPath,
   servicePath,
   serviceBusPath,
   tablePath,
@@ -162,6 +164,32 @@ describe("routes", () => {
     expect(eventVersionPath("nope.nope.Nope", "v1")).toBeNull();
     expect(adrPath("shop.oms.0099")).toBeNull();
     expect(blockPath("shop.oms.order.doubloons")).toBeNull();
+    expect(rpcMethodPath("fraud.v2.Scoring/Score")).toBeNull();
+  });
+
+  it("links an outbound call to the exact provided operation", () => {
+    expect(rpcMethodPath("shop.v1.Pricing/GetQuote")).toBe(
+      `/c/shop/pricing?tab=provides#${methodAnchor("shop.v1.Pricing", "GetQuote")}`,
+    );
+
+    const withExternal = structuredClone(catalog);
+    withExternal.externals = [{
+      id: "partner-payments",
+      slug: "partner-payments",
+      name: "Partner Payments",
+      summary: "External payment API",
+      provides: [{
+        id: "partner.payments.v1.Charges",
+        methods: [{ name: "Create" }],
+        source: "contracts/partner-payments.proto",
+      }],
+    }];
+    expect(rpcMethodPath(
+      "partner.payments.v1.Charges/Create",
+      buildIndex(withExternal),
+    )).toBe(
+      `/externals/partner-payments#${methodAnchor("partner.payments.v1.Charges", "Create")}`,
+    );
   });
 
   it("links to one exact event schema version", () => {

@@ -62,4 +62,38 @@ describe("diagram edge evidence", () => {
       ],
     });
   });
+
+  it("exposes generated call ids and source paths for navigation", () => {
+    const model = {
+      findView: () => ({
+        $layouted: {
+          edges: [{
+            id: "edge-1",
+            source: "shop",
+            target: "payments",
+            relations: ["r1"],
+          }],
+        },
+      }),
+      $data: {
+        relations: {
+          r1: {
+            id: "r1",
+            title: "calls CreateCharge",
+            source: { model: "shop" },
+            target: { model: "payments" },
+            color: "declared",
+            description: {
+              txt: "payments.v1.Charges/CreateCharge · declared · src/checkout/contracts/payments.proto",
+            },
+          },
+        },
+      },
+    };
+
+    expect(evidenceForEdge(model, "estate", "edge-1")?.relations[0]?.call).toEqual({
+      id: "payments.v1.Charges/CreateCharge",
+      source: "src/checkout/contracts/payments.proto",
+    });
+  });
 });

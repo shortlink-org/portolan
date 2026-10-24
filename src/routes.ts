@@ -1,6 +1,6 @@
 // Every in-app URL is built here. Routes use slugs, never dotted ids.
 
-import type { Catalog } from "./catalog";
+import type { Catalog, CatalogIndex } from "./catalog";
 import { enumsOf } from "./catalog";
 import type { Backlink } from "./lib/backlinks";
 import { index } from "./data";
@@ -437,6 +437,27 @@ export function servicePath(serviceId: string): string | null {
   const context = index.serviceContext.get(serviceId);
   if (!service || !context) return null;
   return paths.service(context.id, service.slug);
+}
+
+/** Path to the exact provided operation named by an outbound call. */
+export function rpcMethodPath(
+  rpcId: string,
+  catalogIndex: CatalogIndex = index,
+): string | null {
+  const slash = rpcId.lastIndexOf("/");
+  if (slash <= 0 || slash === rpcId.length - 1) return null;
+  const interfaceId = rpcId.slice(0, slash);
+  const method = rpcId.slice(slash + 1);
+  const anchor = methodAnchor(interfaceId, method);
+
+  const service = catalogIndex.rpcProviderByMethod.get(rpcId);
+  const context = service ? catalogIndex.serviceContext.get(service.id) : null;
+  if (service && context) {
+    return `${paths.service(context.id, service.slug)}?tab=provides#${anchor}`;
+  }
+
+  const external = catalogIndex.externalProviderByMethod.get(rpcId);
+  return external ? `${paths.external(external.slug)}#${anchor}` : null;
 }
 
 /**

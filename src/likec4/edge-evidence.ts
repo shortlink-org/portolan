@@ -6,6 +6,11 @@ export interface DiagramRelationEvidence {
   technology?: string;
   status?: string;
   detail?: string;
+  /** The exact operation and source emitted for generated call relations. */
+  call?: {
+    id: string;
+    source?: string;
+  };
 }
 
 export interface DiagramEdgeEvidence {
@@ -46,6 +51,24 @@ function descriptionText(value: RelationLike["description"]): string | undefined
   return value?.txt;
 }
 
+/**
+ * Generated call relations spell their audit trail as
+ * `<operation> · <status> · <source>`. Keep the original detail for older
+ * bundles, but expose its navigable pieces to the UI instead of making it
+ * reverse-engineer a sentence.
+ */
+export function callDetail(
+  detail: string | undefined,
+): DiagramRelationEvidence["call"] | undefined {
+  if (!detail) return undefined;
+  const [id, status, ...source] = detail.split(" · ");
+  if (!id || !status || !["verified", "declared", "unresolved"].includes(status)) {
+    return undefined;
+  }
+  const where = source.join(" · ");
+  return { id, ...(where ? { source: where } : {}) };
+}
+
 /** Exact generated relations folded into one rendered LikeC4 edge. */
 export function evidenceForEdge(
   model: EvidenceModel,
@@ -60,6 +83,8 @@ export function evidenceForEdge(
   const relations = (edge.relations ?? []).flatMap((id) => {
     const relation = model.$data.relations[id];
     if (!relation) return [];
+    const detail = descriptionText(relation.description);
+    const call = callDetail(detail);
     return [{
       id,
       title: relation.title ?? edge.label ?? "Relationship",
@@ -67,9 +92,8 @@ export function evidenceForEdge(
       target: relation.target.model,
       ...(relation.technology ? { technology: relation.technology } : {}),
       ...(relation.color ? { status: relation.color } : {}),
-      ...(descriptionText(relation.description)
-        ? { detail: descriptionText(relation.description) }
-        : {}),
+      ...(detail ? { detail } : {}),
+      ...(call ? { call } : {}),
     }];
   });
 
