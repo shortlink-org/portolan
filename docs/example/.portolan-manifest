@@ -50,6 +50,7 @@
     "adr/org.0002.md",
     "adr/org.0003.md",
     "adr/payments.0004.md",
+    "agent.json",
     "auth/README.md",
     "auth/auth/README.md",
     "auth/auth/aggregates/lockout.md",

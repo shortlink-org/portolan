@@ -55,6 +55,8 @@ export async function main(argv = process.argv.slice(2)) {
       return build(workspace, parsed);
     case "dev":
       return dev(workspace, parsed);
+    case "mcp":
+      return mcp(workspace, parsed);
     case "diff":
       if (!parsed.positionals[0]) fail("diff requires a base branch, tag, or commit");
       return runScript("scripts/diff.mjs", diffArgs(parsed), workspace);
@@ -77,7 +79,7 @@ function parse(argv) {
     const arg = argv[index];
     if (arg === "--help" || arg === "-h") value.help = true;
     else if (arg === "--version" || arg === "-v") value.version = true;
-    else if (["--cwd", "--output", "--base", "--host", "--port", "--format", "--site", "--head"].includes(arg)) {
+    else if (["--cwd", "--output", "--base", "--host", "--port", "--format", "--site", "--head", "--profile"].includes(arg)) {
       const next = argv[++index];
       if (!next) fail(`${arg} requires a value`);
       value[arg.slice(2)] = next;
@@ -106,6 +108,7 @@ Usage: portolan <command> [options]
 Commands:
   init       inspect this repository and create portolan.json
   dev        open the local architecture site
+  mcp        connect AI agents to the generated catalog over stdio
   generate   update catalog fragments, docs, and exports
   check      fail when committed generated files are out of date
   build      build the static site
@@ -124,6 +127,7 @@ Options:
   --head BRANCH   head branch linked from an architecture diff
   --host HOST     dev server host (default: 127.0.0.1)
   --port PORT     dev server port
+  --profile ID    catalog profile for the MCP server
   --dry-run       validate an operation without writing externally
   --yes, -y       init without questions: take every detected default`);
 }
@@ -223,6 +227,11 @@ async function dev(workspace, options) {
     PORTOLAN_UPDATE_VERSION: latestVersion ?? "",
     BASE_PATH: options.base ?? process.env.BASE_PATH ?? "/",
   });
+}
+
+async function mcp(workspace, options) {
+  const { servePortolanMcp } = await import(resolve(installRoot, "scripts/mcp-server.mjs"));
+  return servePortolanMcp({ workspace, profile: options.profile, version: VERSION });
 }
 
 export async function prepareSite(workspace) {

@@ -45,7 +45,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: node -e 'const expected=require("./package.json").version; if(process.env.TAG!==expected){console.error(`tag ${process.env.TAG} does not match ${expected}`); process.exit(1)}'
 
-      - run: npx vitest run scripts/local-api.test.mjs scripts/manifest.test.mjs scripts/plugin-host.test.mjs
+      - run: npx vitest run scripts/local-api.test.mjs scripts/manifest.test.mjs scripts/plugin-host.test.mjs scripts/mcp-server.test.mjs
       - run: npm run test:package
       - run: npm run plugins:build
       - run: npm pack --dry-run --ignore-scripts

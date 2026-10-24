@@ -29,7 +29,9 @@ page knows where every other page is:
   Mermaid sequence diagram per flow); `adr/README.md` and `adr/<id>.md`;
   `rfc/README.md` and `rfc/<slug>.md`;
 - `llms.txt` - the index as flat lists in the llmstxt.org shape - and
-  `llms-full.txt`, every page already rendered, concatenated in site order.
+  `llms-full.txt`, every page already rendered, concatenated in site order;
+- `agent.json` - the canonical catalog and its id-to-page index, consumed by
+  the read-only `portolan mcp` adapter without rebuilding the estate.
 
 A reference to an id the catalog does not hold is rendered as code, not as a
 link: an event consumer or an rpc peer in a source this render never saw is

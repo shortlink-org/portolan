@@ -7,7 +7,7 @@
 <p align="center"><strong>Your architecture, read from the code.</strong></p>
 
 <p align="center">
-  Turn code, contracts, schemas, traces and ADRs into a validated, navigable map of your software estate.
+  Turn code, contracts, schemas, traces and ADRs into a validated map for people and coding agents.
 </p>
 
 <p align="center">
@@ -34,6 +34,8 @@ become production surprises.
   inventory.
 - **Publish anywhere.** The catalog and site are static end to end, require no
   hosted backend and fit naturally into pull requests and CI.
+- **Give agents grounded context.** Connect any MCP-capable coding agent to the
+  same generated catalog through a local, read-only `portolan mcp` process.
 
 DDD enriches the model when a repository uses it; it is never a prerequisite.
 Optional branch comparison and source previews read immutable files from GitHub
@@ -50,7 +52,9 @@ flowchart TB
   frag["catalog fragments<br/>beside each service<br/>*/portolan/*.json"]
   merged["merge + validate"]
   site["the site<br/>React SPA"]
-  docs["docs/<br/>markdown, llms.txt"]
+  docs["docs/<br/>markdown, llms.txt, agent.json"]
+  mcp["local read-only MCP<br/>portolan mcp"]
+  agents["coding agents"]
   exports["exports/<br/>Backstage + Mermaid + DX"]
   c4["likec4/<br/>C4 + full/cross views per flow"]
 
@@ -60,6 +64,7 @@ flowchart TB
   frag --> merged
   merged --> site
   merged -- generate --> docs
+  docs -- read --> mcp --> agents
   merged -- generate --> exports
   merged -- likec4:gen --> c4 --> site
 ```
@@ -75,6 +80,12 @@ page.
 Facts carry a status: `declared` (a fragment says so), `verified` (a recorded
 trace showed it happening), `unresolved` (nothing in the catalog answers the
 reference).
+
+The published site remains static. Agent access is a separate local stdio
+process: `portolan mcp` reads the generated `agent.json` snapshot and exposes
+bounded, read-only tools for search, resource details, direct relationships and
+documented flows. It does not run extractors, contact remote systems or write
+to the repository.
 
 ## What the site shows
 
@@ -256,6 +267,7 @@ deployable static site.
 | `portolan generate` | update fragments, documentation, and exports |
 | `portolan check` | fail when committed generated files are stale, without writing them |
 | `portolan build` | build the static site into `dist/` |
+| `portolan mcp` | give an AI agent read-only access to the generated catalog over stdio; `--profile ID` selects a catalog profile |
 | `portolan diff BASE` | describe the architecture change from a branch, tag, or commit |
 | `portolan doctor` | show which toolchains the manifest's plugins need and which are on `PATH` |
 
@@ -268,6 +280,40 @@ schema registry is vendored, with Node and git alone. An extractor that runs
 in its own runtime still needs it: Python 3 for Django and Celery, Java 21
 for Java, Cargo for Rust. `portolan doctor` reports what the manifest asks
 for against what is on `PATH`. The Docker image contains all of them.
+
+### Connect an AI agent
+
+Run `portolan generate` first, then configure an MCP-capable coding agent to
+start this command in the repository root:
+
+```bash
+npx portolan mcp
+```
+
+A typical MCP client entry is:
+
+```json
+{
+  "mcpServers": {
+    "portolan": {
+      "command": "npx",
+      "args": ["portolan", "mcp"]
+    }
+  }
+}
+```
+
+For a manifest with several catalog profiles, select one explicitly:
+
+```bash
+npx portolan mcp --profile example
+```
+
+The server reads `agent.json` beside the generated Markdown pages and exposes
+read-only tools for search, resource details, direct relationships and flows.
+It does not run extractors, fetch remote systems or write into the workspace.
+The published site remains static; MCP is a separate local stdio process that
+reads the same generated catalog snapshot.
 
 ### Add delivery automation
 

@@ -1,6 +1,7 @@
 package genmarkdown
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -90,8 +91,33 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	s.renderRfcs()
 	s.renderSpecs()
 	s.renderLlms()
+	s.renderAgentBundle()
 
 	return s.b.Response()
+}
+
+// renderAgentBundle writes the validated catalog in the same deterministic
+// order as the human-facing pages, together with the page chosen for each id.
+// Agent adapters read this projection rather than rebuilding the estate or
+// scraping prose back out of Markdown.
+func (s *site) renderAgentBundle() {
+	bundle := struct {
+		Version int               `json:"version"`
+		Title   string            `json:"title"`
+		Catalog catalog.Catalog   `json:"catalog"`
+		Pages   map[string]string `json:"pages"`
+	}{
+		Version: 1,
+		Title:   s.title(),
+		Catalog: s.cat,
+		Pages:   s.pathOf,
+	}
+
+	raw, err := json.MarshalIndent(bundle, "", "  ")
+	if err != nil {
+		panic(fmt.Sprintf("marshal agent bundle: %v", err))
+	}
+	s.b.file("agent.json", string(raw)+"\n")
 }
 
 // layout decides where everything goes and builds the lookups. Nothing is

@@ -36,7 +36,7 @@ jobs:
           java-version: "25.0.5+8.0.LTS"
 
       - run: npm ci
-      - run: npx vitest run scripts/local-api.test.mjs scripts/manifest.test.mjs scripts/plugin-host.test.mjs
+      - run: npx vitest run scripts/local-api.test.mjs scripts/manifest.test.mjs scripts/plugin-host.test.mjs scripts/mcp-server.test.mjs
       - run: npm run test:package
       - run: npm run plugins:build
       - run: npm pack --dry-run --ignore-scripts

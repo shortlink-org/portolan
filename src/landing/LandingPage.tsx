@@ -192,22 +192,23 @@ const features: Feature[] = [
 
 const agentDocs = [
   {
+    icon: Bot,
+    name: "agent.json",
+    label: "Typed catalog snapshot",
+    href: `${EXAMPLE_DOCS}/agent.json`,
+    copy: "The validated catalog and its generated page map in one deterministic bundle. The local MCP server reads this file instead of scraping prose or rerunning extractors.",
+  },
+  {
     icon: FileText,
     name: "llms.txt",
     label: "Index for retrieval",
     href: `${EXAMPLE_DOCS}/llms.txt`,
     copy: "Contexts, services, aggregates, flows, glossaries and ADRs, linked to page-sized Markdown. An agent starts here and fetches only what the task needs.",
   },
-  {
-    icon: Files,
-    name: "llms-full.txt",
-    label: "Complete context",
-    href: `${EXAMPLE_DOCS}/llms-full.txt`,
-    copy: "Every generated architecture page in one ordered file, for models that have room to reason across the whole estate at once.",
-  },
 ];
 
 const quickStartCommand = "npx @shortlink-org/portolan init";
+const mcpCommand = "npx portolan mcp";
 const setupCommands = [
   quickStartCommand,
   "npm install --save-dev @shortlink-org/portolan",
@@ -336,8 +337,8 @@ export function LandingPage() {
                   href="#ai-output"
                   className="flex items-center gap-1.5 hover:text-accent"
                 >
-                  <Check size={12} className="text-verified" /> llms.txt for
-                  agents
+                  <Check size={12} className="text-verified" /> read-only MCP
+                  for agents
                 </a>
               </m.div>
             </m.div>
@@ -498,19 +499,20 @@ export function LandingPage() {
               </div>
               <div className="max-w-[520px] lg:justify-self-end">
                 <p className="text-[17px] leading-7 text-muted">
-                  Portolan turns the same measured catalog people browse into
-                  model-readable context. The built-in chat answers with links,
-                  cards and diagrams — not a second AI summary that can drift.
+                  Portolan gives coding agents structured, read-only access to
+                  the same measured catalog people browse. Publish the site as
+                  static files, then run MCP locally when an agent needs to
+                  search resources, follow relationships or explain a flow.
                 </p>
                 <div className="mono mt-5 flex flex-wrap gap-x-5 gap-y-2 text-faint">
                   <span className="flex items-center gap-1.5">
-                    <Check size={12} className="text-verified" /> same catalog
+                    <Check size={12} className="text-verified" /> read-only MCP
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Check size={12} className="text-verified" /> commit stamped
+                    <Check size={12} className="text-verified" /> same snapshot
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Check size={12} className="text-verified" /> source linked
+                    <Check size={12} className="text-verified" /> no hosted backend
                   </span>
                 </div>
                 <a
@@ -538,6 +540,26 @@ export function LandingPage() {
                 </div>
 
                 <div className="mt-4 space-y-3">
+                  <div className="rounded-card border border-accent/35 bg-accent/[0.055] p-4">
+                    <div className="flex items-center gap-2">
+                      <Terminal size={14} className="shrink-0 text-accent" />
+                      <div>
+                        <div className="label text-accent">CONNECT WITH MCP</div>
+                        <div className="mono mt-1 text-faint">local stdio · read only</div>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex min-w-0 items-center gap-2 rounded-control border border-line bg-canvas p-2 pl-3">
+                      <code className="mono min-w-0 flex-1 truncate text-sm text-ink">
+                        {mcpCommand}
+                      </code>
+                      <CopyCommand text={mcpCommand} label="Copy" />
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-muted">
+                      Search the catalog, inspect a resource and its direct
+                      relationships, or explain a documented flow from any
+                      MCP-capable coding agent.
+                    </p>
+                  </div>
                   {agentDocs.map((doc) => {
                     const Icon = doc.icon;
                     return (
@@ -578,7 +600,7 @@ export function LandingPage() {
 
                 <div className="mono mt-auto flex items-start gap-2 border-t border-line pt-4 text-faint">
                   <Bot size={13} className="mt-0.5 shrink-0 text-accent" />
-                  <span>choose the index or load the whole estate</span>
+                  <span>one generated catalog for the site, files and MCP</span>
                 </div>
               </Reveal>
 

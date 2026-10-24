@@ -43,7 +43,9 @@ func TestEveryGeneratedLinkAndAnchorResolves(t *testing.T) {
 	for name, contents := range files {
 		// This concatenation keeps each page's original relative links and names
 		// the page in an HTML comment; it is not itself a linkable directory.
-		if name == llmsFullPage {
+		// The agent bundle is JSON; Markdown-looking prose inside it is data and
+		// its paths are validated by the bundle contract instead.
+		if name == llmsFullPage || strings.HasSuffix(name, ".json") {
 			continue
 		}
 		for _, match := range localLink.FindAllStringSubmatch(contents, -1) {

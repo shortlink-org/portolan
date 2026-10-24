@@ -57,6 +57,8 @@ and validates the union. Nothing here draws anything.
   for a plugin that asks and for the provenance of every source;
   `provenance.mjs`, that provenance handed to the site as one virtual module;
   `site-sources.mjs`, the sources themselves, one virtual module per profile;
+  `mcp-server.mjs`, the generated agent bundle exposed as read-only MCP tools
+  over stdio;
   `output-diff.mjs`, where a generated file first differs from what the
   generator produces; `site-docs.mjs`, generated documentation put into the
   built site; `local-api.mjs`, what the dev server answers the site with;

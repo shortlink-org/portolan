@@ -7,6 +7,9 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixture = mkdtempSync(resolve(tmpdir(), "portolan-package-smoke-"));
 const install = mkdtempSync(resolve(tmpdir(), "portolan-package-install-"));
@@ -92,15 +95,16 @@ func (*Client) CheckRules() { _, _ = http.Get("https://alpha.example/v1/check-ru
   run(process.execPath, [cli, "generate", "--cwd", fixture]);
   run(process.execPath, [cli, "check", "--cwd", fixture]);
   run(process.execPath, [cli, "build", "--cwd", fixture, "--output", "dist", "--base", "/architecture/"]);
+  await checkMcp(cli);
 
-  for (const path of ["portolan/project.json", "portolan/domain.json", "portolan/http-clients.json", "docs/README.md", "dist/index.html", "dist/404.html"]) {
+  for (const path of ["portolan/project.json", "portolan/domain.json", "portolan/http-clients.json", "docs/README.md", "docs/agent.json", "dist/index.html", "dist/404.html"]) {
     if (!existsSync(resolve(fixture, path))) throw new Error(`smoke test did not write ${path}`);
   }
   const calls = JSON.parse(readFileSync(resolve(fixture, "portolan/http-clients.json"), "utf8"));
   if (!calls.flows.some((flow) => flow.name === "POST /rules → provider APIs")) {
     throw new Error(`package smoke did not preserve the typed HTTP provider flow; got ${calls.flows.map((flow) => flow.name).join(", ")}`);
   }
-  console.log("package smoke: init, generate, check, and build passed outside the repository");
+  console.log("package smoke: init, generate, check, build, and MCP passed outside the repository");
 } finally {
   rmSync(fixture, { recursive: true, force: true });
   rmSync(install, { recursive: true, force: true });
@@ -113,4 +117,29 @@ function run(command, args) {
 function writeGoFixture(path, contents) {
   mkdirSync(dirname(resolve(fixture, path)), { recursive: true });
   writeFileSync(resolve(fixture, path), contents);
+}
+
+async function checkMcp(cli) {
+  const client = new Client(
+    { name: "portolan-package-smoke", version: "1.0.0" },
+    { versionNegotiation: { mode: "auto" } },
+  );
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [cli, "mcp", "--cwd", fixture],
+    stderr: "pipe",
+  });
+  try {
+    await client.connect(transport);
+    const tools = await client.listTools();
+    if (!tools.tools.some((tool) => tool.name === "search_catalog" && tool.annotations?.readOnlyHint === true)) {
+      throw new Error("packed MCP server did not expose the read-only catalog search tool");
+    }
+    const found = await client.callTool({ name: "search_catalog", arguments: { query: "order" } });
+    if (!Array.isArray(found.structuredContent?.results) || found.structuredContent.results.length === 0) {
+      throw new Error("packed MCP server could not search the generated catalog");
+    }
+  } finally {
+    await client.close();
+  }
 }
