@@ -22,6 +22,11 @@ type Options struct {
 	// a base URL read from configuration, so the manifest has to say what is
 	// on the other end.
 	Adapters map[string]Adapter `json:"adapters,omitempty"`
+	// CallbackSources names the system that sends callbacks handled below a
+	// source directory. Source code proves that the handler is live, but it
+	// generally cannot prove who is allowed to call its public URL; the manifest
+	// supplies that estate fact instead of the extractor guessing from a path.
+	CallbackSources map[string]Adapter `json:"callbackSources,omitempty"`
 	// Clients names the API a generated client imported from another module
 	// calls, as its import path to the API id; `peers` then says which
 	// service answers it.

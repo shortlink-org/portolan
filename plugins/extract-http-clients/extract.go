@@ -28,7 +28,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	serviceID := opts.Context + "." + opts.Service
-	externals := externalCatalog(result.Contracts, result.Calls, opts)
+	externals := externalCatalog(result.Contracts, result.Calls, result.RootFlows, opts)
 	// One consumer entry per call identity. A raw call's ID already carries its
 	// destination (see gohttp.withCallID), so two `POST /foo` against different
 	// hosts land as two entries; a generated client's ID is its contract
@@ -85,7 +85,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	return b.Response(), nil
 }
 
-func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, opts Options) []catalog.External {
+func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, roots []gohttp.RootFlow, opts Options) []catalog.External {
 	used := map[string]bool{}
 	called := map[string]bool{}
 	for _, call := range calls {
@@ -162,6 +162,23 @@ func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, opts Opti
 		}
 		sort.Slice(provides, func(i, j int) bool { return provides[i].ID < provides[j].ID })
 		mergeProvides(target, provides)
+	}
+	// A callback sender may never be called by this repository. Keep the
+	// configured external in the fragment all the same: the inbound edge is the
+	// evidence that it participates, and entityRef must point at a real entity.
+	for _, root := range roots {
+		if root.Kind != gohttp.RootCallback {
+			continue
+		}
+		adapter, ok := callbackSourceOf(root, opts)
+		if !ok || adapter.External == "" || byExternal[adapter.External] != nil {
+			continue
+		}
+		byExternal[adapter.External] = &catalog.External{
+			ID: adapter.External, Slug: adapter.External,
+			Name:    firstNonEmpty(adapter.Name, title(adapter.External)),
+			Summary: adapter.Summary, URL: adapter.URL, Provides: []catalog.RpcService{},
+		}
 	}
 	var out []catalog.External
 	for _, external := range byExternal {
@@ -262,6 +279,52 @@ func longestAdapter(places []string, opts Options) (string, Adapter, bool) {
 		}
 	}
 	return best, adapter, found
+}
+
+// callbackSourceOf resolves the manifest-owned identity of an inbound caller.
+// Handler directories are a deliberate seam: unlike a URL token or function
+// name, they are already how the manifest associates integration code with a
+// catalog entity, and longest-prefix matching permits one rule per provider.
+func callbackSourceOf(root gohttp.RootFlow, opts Options) (Adapter, bool) {
+	if len(opts.CallbackSources) == 0 {
+		return Adapter{}, false
+	}
+	places := []string{filepath.ToSlash(root.Source.File)}
+	if directory, _, qualified := strings.Cut(root.Handler, ":"); qualified {
+		places = append(places, filepath.ToSlash(directory)+"/")
+	}
+	best, found := "", false
+	var adapter Adapter
+	for prefix, candidate := range opts.CallbackSources {
+		clean := strings.Trim(filepath.ToSlash(prefix), "/")
+		if clean == "" || (candidate.External == "" && candidate.Service == "") {
+			continue
+		}
+		for _, place := range places {
+			if (place == clean || strings.HasPrefix(place, clean+"/")) && len(clean) > len(best) {
+				best, adapter, found = clean, candidate, true
+			}
+		}
+	}
+	return adapter, found
+}
+
+func callbackParticipant(root gohttp.RootFlow, opts Options) (catalog.Participant, bool) {
+	adapter, ok := callbackSourceOf(root, opts)
+	if !ok {
+		return catalog.Participant{}, false
+	}
+	if adapter.Service != "" {
+		context, _, _ := strings.Cut(adapter.Service, ".")
+		return catalog.Participant{
+			ID: adapter.Service, Kind: catalog.ParticipantService, Context: &context,
+			EntityRef: adapter.Service,
+		}, true
+	}
+	return catalog.Participant{
+		ID: adapter.External, Kind: catalog.ParticipantExternal,
+		Label: firstNonEmpty(adapter.Name, title(adapter.External)), EntityRef: adapter.External,
+	}, true
 }
 
 // observedOperation names the interface and method a call under an adapter
@@ -406,11 +469,21 @@ func flowsOfRoots(serviceID, context string, roots []gohttp.RootFlow, opts Optio
 		}
 		actorID := serviceID + ".api-client"
 		actorLabel := "API client"
+		actorKind := catalog.ParticipantActor
+		var actorContext *string
+		actorEntityRef := ""
 		firstKind := catalog.StepRPC
 		firstLabel := strings.TrimSpace(root.Method + " " + root.Path)
 		if root.Kind == gohttp.RootCallback {
 			actorID = serviceID + ".callback-sender"
 			actorLabel = "Callback sender"
+			if sender, ok := callbackParticipant(root, opts); ok {
+				actorID = sender.ID
+				actorLabel = sender.Label
+				actorKind = sender.Kind
+				actorContext = sender.Context
+				actorEntityRef = sender.EntityRef
+			}
 		}
 		if root.Kind == gohttp.RootStartup {
 			actorID = serviceID + ".process"
@@ -425,7 +498,7 @@ func flowsOfRoots(serviceID, context string, roots []gohttp.RootFlow, opts Optio
 			firstLabel = root.Label
 		}
 		participants := []catalog.Participant{
-			{ID: actorID, Kind: catalog.ParticipantActor, Label: actorLabel},
+			{ID: actorID, Kind: actorKind, Context: actorContext, Label: actorLabel, EntityRef: actorEntityRef},
 			{ID: serviceID, Kind: catalog.ParticipantService, Context: &context},
 		}
 		participantSeen := map[string]bool{actorID: true, serviceID: true}

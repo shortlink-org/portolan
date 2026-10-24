@@ -7,7 +7,7 @@
 
 import { catalog } from "../data";
 import type { Catalog } from "../catalog";
-import { fqn, participantFqn, storeFqn } from "./ids";
+import { fqn, participantFqn, safeId, storeFqn } from "./ids";
 
 export function catalogIdMap(catalog: Catalog): Map<string, string> {
   const result = new Map<string, string>();
@@ -29,17 +29,48 @@ export function catalogIdMap(catalog: Catalog): Map<string, string> {
     }
   }
   // The visual placement is independent of the catalog's ownership path.
-  for (const store of catalog.stores ?? []) result.set(storeFqn(store), store.id);
+  for (const store of catalog.stores ?? [])
+    result.set(storeFqn(store), store.id);
+  // Externals sit at the LikeC4 model root. They are catalog entities even
+  // though they are outside the estate, so clicking one must not degrade it to
+  // an unknown participant.
+  for (const external of catalog.externals ?? [])
+    result.set(safeId(external.id), external.id);
   // Brokers, actors and externals are model elements too, and a flow lane is
   // the most likely thing on screen to be clicked.
   for (const flow of catalog.flows) {
     for (const participant of flow.participants) {
-      const likec4 = participantFqn(participant);
-      if (!result.has(likec4)) result.set(likec4, participant.id);
+      const canonical = participant.entityRef
+        ? catalogEntity(catalog, participant.entityRef)
+        : null;
+      const target =
+        canonical && participant.entityRef
+          ? participant.entityRef
+          : participant.id;
+      const likec4 = canonical
+        ? canonical === "service"
+          ? fqn(target)
+          : safeId(target)
+        : participantFqn(participant);
+      if (!result.has(likec4)) result.set(likec4, target);
     }
   }
 
   return result;
+}
+
+function catalogEntity(
+  catalog: Catalog,
+  entityRef: string,
+): "service" | "external" | null {
+  const isService = catalog.contexts.some((context) =>
+    context.services.some((candidate) => candidate.id === entityRef),
+  );
+  if (isService) return "service";
+  const isExternal = (catalog.externals ?? []).some(
+    (external) => external.id === entityRef,
+  );
+  return isExternal ? "external" : null;
 }
 
 const toCatalogId = catalogIdMap(catalog);

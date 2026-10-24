@@ -13,7 +13,10 @@ describe("selection hash", () => {
   });
 
   it("round-trips every selectable id in the catalog", () => {
-    const ids: string[] = [...Object.keys(catalog.defs)];
+    const ids: string[] = [
+      ...Object.keys(catalog.defs),
+      ...(catalog.externals ?? []).map((external) => external.id),
+    ];
     for (const context of catalog.contexts) {
       ids.push(context.id);
       for (const service of context.services) {

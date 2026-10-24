@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../data";
 import { classify } from "../selection/model";
-import { fqn, participantFqn, storeFqn } from "./ids";
+import { fqn, participantFqn, safeId, storeFqn } from "./ids";
 import { catalogIdMap, catalogIdOf } from "./mapping";
 
 describe("catalogIdOf", () => {
@@ -9,7 +9,9 @@ describe("catalogIdOf", () => {
     const map = catalogIdMap(catalog);
     for (const store of catalog.stores ?? []) {
       expect(map.get(storeFqn(store))).toBe(store.id);
-      expect(storeFqn(store).split(".").slice(0, -1)).toEqual(fqn(store.owner).split(".").slice(0, -1));
+      expect(storeFqn(store).split(".").slice(0, -1)).toEqual(
+        fqn(store.owner).split(".").slice(0, -1),
+      );
       expect(storeFqn(store).startsWith(`${fqn(store.owner)}.`)).toBe(false);
     }
   });
@@ -64,7 +66,40 @@ describe("catalogIdOf", () => {
       ],
     };
 
-    expect(catalogIdMap(fixture).get(participantFqn(participant))).toBe(participant.id);
+    expect(catalogIdMap(fixture).get(participantFqn(participant))).toBe(
+      participant.id,
+    );
+  });
+
+  it("maps catalog externals from their root LikeC4 element", () => {
+    const external = catalog.externals?.[0];
+    if (!external) throw new Error("fixture catalog needs an external");
+
+    expect(catalogIdMap(catalog).get(safeId(external.id))).toBe(external.id);
+    expect(classify(catalogIdOf(safeId(external.id)))).toBe("external");
+  });
+
+  it("uses entityRef to map an aliased callback lane to its external", () => {
+    const external = catalog.externals?.[0];
+    if (!external) throw new Error("fixture catalog needs an external");
+    const participant = {
+      id: "callback-sender",
+      kind: "external" as const,
+      context: null,
+      entityRef: external.id,
+    };
+    const fixture = {
+      ...catalog,
+      flows: [
+        {
+          ...catalog.flows[0]!,
+          participants: [...catalog.flows[0]!.participants, participant],
+        },
+        ...catalog.flows.slice(1),
+      ],
+    };
+
+    expect(catalogIdMap(fixture).get(safeId(external.id))).toBe(external.id);
   });
 
   it("hands back an id it has never seen, so the click still lands", () => {

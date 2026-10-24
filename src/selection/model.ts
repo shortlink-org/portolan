@@ -11,6 +11,7 @@ import type {
   BoundedContext,
   Column,
   Event,
+  External,
   Flow,
   ProtoModule,
   Service,
@@ -34,6 +35,7 @@ export type SelectionKind =
   | "view"
   | "column"
   | "event"
+  | "external"
   | "value-object"
   | "flow-step"
   | "bundle"
@@ -150,6 +152,11 @@ export interface ResolvedValueObject {
   id: string;
   def: TypeDef;
 }
+export interface ResolvedExternal {
+  kind: "external";
+  id: string;
+  external: External;
+}
 /**
  * Every event one service publishes to another, as one thing.
  *
@@ -184,6 +191,7 @@ export type Resolved =
   | ResolvedView
   | ResolvedColumn
   | ResolvedEvent
+  | ResolvedExternal
   | ResolvedValueObject
   | ResolvedFlowStep
   | ResolvedBundle
@@ -239,6 +247,9 @@ export function resolveSelection(id: string): Resolved | null {
     const context = index.serviceContext.get(id);
     if (context) return { kind: "service", id, service, context };
   }
+
+  const external = index.externalById.get(id);
+  if (external) return { kind: "external", id, external };
 
   // Column before table before store: the three ids are nested prefixes of one
   // another, and the longest one is the thing that was actually clicked. A
@@ -326,7 +337,9 @@ export function resolveSelection(id: string): Resolved | null {
   if (parsed) {
     // A flow page showing a branch version resolves its
     // steps against that version, so a step the branch added has a panel too.
-    const flow = useActiveFlows.getState().flows[parsed.flowSlug] ?? index.flowBySlug.get(parsed.flowSlug);
+    const flow =
+      useActiveFlows.getState().flows[parsed.flowSlug] ??
+      index.flowBySlug.get(parsed.flowSlug);
     if (flow) {
       const steps = walkSteps(flow.steps);
       const at = steps.findIndex((s) => s.id === parsed.stepId);
@@ -432,10 +445,10 @@ export function selectionTrail(selection: Selection): Selection[] {
     case "flow-step":
     case "value-object":
     case "bundle":
-    // A module has no ancestor in the catalog. That is the point of it sitting
-    // at the estate level: it is published by one service and read by four, so
-    // there is no single parent a breadcrumb could honestly walk back through.
+    case "external":
     case "module":
+      // Root-level entities and selections local to one visualization have no
+      // catalog ancestor a breadcrumb could honestly walk back through.
       return [selection];
   }
 }
@@ -467,6 +480,8 @@ export function selectionLabel(selection: Selection): string {
       return `${resolved.flow.slug} · step ${resolved.number}`;
     case "bundle":
       return `${resolved.bundle.from} → ${resolved.bundle.to}`;
+    case "external":
+      return resolved.external.name || resolved.external.id;
     // `acme/shop` rather than `buf.build/acme/shop`: the registry host is the
     // same for every module in almost every estate, and repeating it in a chip
     // spends the width on the half that says nothing.

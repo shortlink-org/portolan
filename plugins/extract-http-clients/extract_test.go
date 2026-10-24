@@ -1123,6 +1123,34 @@ func notifyCore() { _, _ = http.Post("https://core.example/protected/update", "a
 	if step.Label != "POST /protected/update" || !strings.Contains(step.Note, "Completed → notifyCore") {
 		t.Fatalf("callback continuation = %+v", step)
 	}
+	if sender := flow.Participants[0]; sender.ID != "travel.callbacks.callback-sender" || sender.Kind != catalog.ParticipantActor {
+		t.Fatalf("unmapped callback sender = %+v", sender)
+	}
+
+	mappedResp, err := extract(plugin.Input{Root: root}, Options{
+		Context: "travel", Service: "callbacks",
+		CallbackSources: map[string]Adapter{
+			"callbacks": {External: "provider", Name: "Provider", Summary: "Provider callback API."},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mapped catalog.Catalog
+	if err := json.Unmarshal([]byte(mappedResp.Files[0].Contents), &mapped); err != nil {
+		t.Fatal(err)
+	}
+	mappedFlow := mapped.Flows[0]
+	sender := mappedFlow.Participants[0]
+	if sender.ID != "provider" || sender.Kind != catalog.ParticipantExternal || sender.EntityRef != "provider" || sender.Label != "Provider" {
+		t.Fatalf("mapped callback sender = %+v", sender)
+	}
+	if opening := mappedFlow.Steps[0].(*catalog.Step); opening.From != "provider" || opening.To != "travel.callbacks" {
+		t.Fatalf("mapped callback opening = %+v", opening)
+	}
+	if len(mapped.Externals) != 1 || mapped.Externals[0].ID != "provider" || mapped.Externals[0].Summary != "Provider callback API." {
+		t.Fatalf("callback external = %+v", mapped.Externals)
+	}
 }
 
 func TestBuildsStartupRootFromMainAssembly(t *testing.T) {

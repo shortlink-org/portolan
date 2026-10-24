@@ -35,6 +35,7 @@ A fragment with one context and one service `<context>.<service>`:
   when nothing names the far end), `source`, `note`, `destination` (call
   site, base URL source, joins) and `evidence`.
 - `externals`: the systems hand-written adapters and vendored contracts reach,
+  plus explicitly named callback senders,
   given the operations seen going out (`<id>.http` with `POST /v1/book`,
   `<id>.soap` with the action's last segment).
 - `flows`: endpoint flows (`flow.<svc>.endpoint.<slug>`, trigger `http`,
@@ -45,18 +46,53 @@ A fragment with one context and one service `<context>.<service>`:
 
 ## Options
 
-`context`, `service`, `peers`, `externals`, `adapters`, `clients`, `out`
+`context`, `service`, `peers`, `externals`, `adapters`, `callbackSources`,
+`clients`, `out`
 (`http-clients.json`). See `options.schema.json` for what each maps.
+
+`callbackSources` maps a callback handler directory to the existing external or
+catalog service that sends it. The longest directory prefix wins. This is an
+explicit manifest fact because route registration proves that a callback is
+accepted, but source code generally cannot prove who is authorized to call the
+public URL. Without a match the flow retains its synthetic `Callback sender`
+actor.
 
 ## Manifest
 
 ```json
 {
-  "plugins": [{ "name": "http-clients", "process": { "command": "go", "args": ["run", "-mod=mod", "./plugins/cmd/portolan-http-clients"] } }],
+  "plugins": [
+    {
+      "name": "http-clients",
+      "process": {
+        "command": "go",
+        "args": ["run", "-mod=mod", "./plugins/cmd/portolan-http-clients"]
+      }
+    }
+  ],
   "extract": [
-    { "plugin": "http-clients", "in": "services/billing", "out": "services/billing/portolan",
-      "options": { "context": "avia", "service": "billing", "peers": { "auth.v1": "auth.auth" },
-                   "adapters": { "internal/pkg/connector/websky": { "external": "websky", "name": "Websky" } } } }
+    {
+      "plugin": "http-clients",
+      "in": "services/billing",
+      "out": "services/billing/portolan",
+      "options": {
+        "context": "avia",
+        "service": "billing",
+        "peers": { "auth.v1": "auth.auth" },
+        "adapters": {
+          "internal/pkg/connector/websky": {
+            "external": "websky",
+            "name": "Websky"
+          }
+        },
+        "callbackSources": {
+          "internal/pkg/connector/gordian/callbacks": {
+            "external": "gordian",
+            "name": "Gordian"
+          }
+        }
+      }
+    }
   ]
 }
 ```

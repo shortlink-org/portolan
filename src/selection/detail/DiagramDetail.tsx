@@ -4,7 +4,42 @@ import { StatusChip } from "../../components/primitives";
 import { StepDetailBody } from "../../flow/StepDetail";
 import { paths } from "../../routes";
 import type { Resolved, Selection } from "../model";
-import { Label, Row, SelectLink } from "./shared";
+import { Label, PanelSection, Row, SelectLink } from "./shared";
+
+export function ExternalBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "external" }>;
+}) {
+  const { external } = resolved;
+  return (
+    <section
+      aria-label="External system details"
+      className="overflow-hidden rounded-card border shadow-xs border-line"
+    >
+      <PanelSection title="About">
+        <p className="text-muted">
+          {external.summary || "Known system outside the estate."}
+        </p>
+      </PanelSection>
+      <PanelSection title="Provides" meta={external.provides.length}>
+        {external.provides.length === 0 ? (
+          <div className="mono text-muted">
+            no interface contract in the catalog
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {external.provides.map((provided) => (
+              <div key={provided.id} className="mono break-all text-ink">
+                {provided.id}
+              </div>
+            ))}
+          </div>
+        )}
+      </PanelSection>
+    </section>
+  );
+}
 
 export function FlowStepBody({
   resolved,

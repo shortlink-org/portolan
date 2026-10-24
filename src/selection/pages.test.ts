@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { catalog } from "../data";
 import { pageContains, selectionPath, selectsInPlace } from "./pages";
 import { selectionFor } from "./model";
 
 const dispatched = selectionFor("delivery.core.shipment.ShipmentDispatched");
 const shipment = selectionFor("delivery.core.shipment");
 const money = selectionFor("Money");
+const external = selectionFor(catalogExternalId());
+
+function catalogExternalId(): string {
+  const id = catalog.externals?.[0]?.id;
+  if (!id) throw new Error("fixture catalog needs an external");
+  return id;
+}
 
 describe("pageContains", () => {
   it("holds an aggregate's events on the aggregate page", () => {
@@ -42,6 +50,14 @@ describe("selectionPath", () => {
     );
     expect(selectionPath(money)).toBeNull();
   });
+
+  it("sends a known external to its catalog page", () => {
+    const item = catalog.externals?.find(
+      (candidate) => candidate.id === external.id,
+    );
+    expect(item).toBeDefined();
+    expect(selectionPath(external)).toBe(`/externals/${item?.slug}`);
+  });
 });
 
 describe("selectsInPlace", () => {
@@ -65,7 +81,9 @@ describe("pageContains across pages", () => {
   const step = selectionFor("cart-checkout/s6");
 
   it("keeps an event on the flow that carries it, and drops it elsewhere", () => {
-    expect(pageContains("/flows/oms-place-order-on-basket-checked-out", orderPlaced)).toBe(true);
+    expect(
+      pageContains("/flows/oms-place-order-on-basket-checked-out", orderPlaced),
+    ).toBe(true);
     expect(pageContains("/flows/shipment-tracking", orderPlaced)).toBe(false);
   });
 
@@ -86,6 +104,14 @@ describe("pageContains across pages", () => {
   it("binds a step to its own flow", () => {
     expect(pageContains("/flows/cart-checkout", step)).toBe(true);
     expect(pageContains("/flows/auth-login", step)).toBe(false);
+  });
+
+  it("keeps a known external on its own page", () => {
+    const item = catalog.externals?.find(
+      (candidate) => candidate.id === external.id,
+    );
+    expect(pageContains(`/externals/${item?.slug}`, external)).toBe(true);
+    expect(pageContains("/externals/not-this-one", external)).toBe(false);
   });
 
   it("holds services and events on the dependency graph", () => {

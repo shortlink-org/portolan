@@ -30,6 +30,9 @@ describe("classify", () => {
     for (const defId of Object.keys(catalog.defs)) {
       expect(classify(defId), defId).toBe("value-object");
     }
+    for (const external of catalog.externals ?? []) {
+      expect(classify(external.id), external.id).toBe("external");
+    }
   });
 
   it("classifies every step of every flow", () => {
@@ -41,8 +44,8 @@ describe("classify", () => {
     }
   });
 
-  // An external participant is drawn but not catalogued. The click still has
-  // to land somewhere, so it lands on "unknown" rather than being dropped.
+  // A participant absent from the catalog still has to land somewhere, so it
+  // lands on "unknown" rather than being dropped.
   it("falls back to unknown rather than refusing an id", () => {
     expect(classify("analytics-sink")).toBe("unknown");
     expect(classify("")).toBe("unknown");
@@ -98,6 +101,13 @@ describe("resolveSelection", () => {
     for (const event of allEvents(catalog)) {
       expect(resolveSelection(event.id)?.kind, event.id).toBe("event");
     }
+    for (const external of catalog.externals ?? []) {
+      const resolved = resolveSelection(external.id);
+      expect(resolved?.kind, external.id).toBe("external");
+      if (resolved?.kind === "external") {
+        expect(resolved.external).toBe(external);
+      }
+    }
   });
 });
 
@@ -130,11 +140,15 @@ describe("selectionTrail", () => {
 describe("views and their columns", () => {
   it("classifies a view and a view's column by id", () => {
     expect(classify("payments.ledger.pg.v_payment_state")).toBe("view");
-    expect(classify("payments.ledger.pg.v_payment_state.amount_minor")).toBe("column");
+    expect(classify("payments.ledger.pg.v_payment_state.amount_minor")).toBe(
+      "column",
+    );
   });
 
   it("resolves a view column to its view, with no table pretending to hold it", () => {
-    const resolved = resolveSelection("payments.ledger.pg.v_payment_state.amount_minor");
+    const resolved = resolveSelection(
+      "payments.ledger.pg.v_payment_state.amount_minor",
+    );
     expect(resolved?.kind).toBe("column");
     if (resolved?.kind !== "column") throw new Error("expected a column");
     expect(resolved.view?.name).toBe("v_payment_state");

@@ -95,7 +95,10 @@ export function peekOf(id: string): Peek | null {
     }
     case "service": {
       const { service, context } = resolved;
-      const events = service.aggregates.reduce((n, a) => n + a.events.length, 0);
+      const events = service.aggregates.reduce(
+        (n, a) => n + a.events.length,
+        0,
+      );
       return {
         kind: "service",
         id,
@@ -108,6 +111,27 @@ export function peekOf(id: string): Peek | null {
           count(events, "event"),
           count(methodCount(service), "method"),
           count(flowsForService(catalog, service.id).length, "flow"),
+        ],
+      };
+    }
+    case "external": {
+      const { external } = resolved;
+      return {
+        kind: "external",
+        id,
+        name: external.name || external.id,
+        contextId: null,
+        where: "external system",
+        blurb: blurbOf(external.summary),
+        facts: [
+          count(external.provides.length, "interface"),
+          count(
+            external.provides.reduce(
+              (total, provided) => total + provided.methods.length,
+              0,
+            ),
+            "method",
+          ),
         ],
       };
     }
@@ -236,7 +260,9 @@ export function peekOf(id: string): Peek | null {
         id,
         name: module.name,
         contextId: null,
-        where: module.registry ? `buf module · ${module.registry}` : "buf module",
+        where: module.registry
+          ? `buf module · ${module.registry}`
+          : "buf module",
         blurb: null,
         facts: [
           ...(module.owner ? [{ label: "owner", value: module.owner }] : []),

@@ -1699,6 +1699,63 @@
             }
           ]
         },
+        "callbackSources": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "required": [
+                      "external"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "service"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "external": {
+                    "type": "string",
+                    "description": "Bare id of the system outside the estate that sends the callback."
+                  },
+                  "service": {
+                    "type": "string",
+                    "description": "Id of the catalog service that sends the callback, `<context>.<service>`; give no `external`."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "What the external sender is called on the page."
+                  },
+                  "summary": {
+                    "type": "string",
+                    "description": "A sentence or two on why the external sends callbacks."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Where the external sender documents itself."
+                  }
+                }
+              }
+            ]
+          },
+          "description": "Who sends an inbound callback, as the handler directory (relative to the input) to an external id or an object naming an external or catalog service. The longest directory prefix wins. Without a match the flow keeps a synthetic Callback sender actor; the extractor never guesses identity from a route name.",
+          "examples": [
+            {
+              "internal/pkg/connector/gordian/callbacks": {
+                "external": "gordian",
+                "name": "Gordian"
+              }
+            }
+          ]
+        },
         "clients": {
           "type": "object",
           "additionalProperties": {

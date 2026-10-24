@@ -116,8 +116,7 @@ export function FlowView({
   const marked = litSteps.length > 0 ? litSteps : (pathSteps ?? NOTHING);
 
   const highlightEdges = useMemo(
-    () =>
-      marked.flatMap((stepId) => pairing.edgesOf.get(stepId) ?? []),
+    () => marked.flatMap((stepId) => pairing.edgesOf.get(stepId) ?? []),
     [marked, pairing],
   );
 
@@ -168,12 +167,21 @@ export function FlowView({
 
   // Lanes are marked only for a selection made somewhere else, and only when
   // this variant of the view actually has that lane.
+  const selectedNode =
+    selection?.kind === "external"
+      ? participantFqn({ id: selection.id, kind: "external", context: null })
+      : selection
+        ? fqn(selection.id)
+        : null;
   const highlightNodes =
     selection &&
     source !== "diagram" &&
-    (selection.kind === "service" || selection.kind === "unknown") &&
-    viewHasNode(viewId, fqn(selection.id))
-      ? [fqn(selection.id)]
+    (selection.kind === "service" ||
+      selection.kind === "external" ||
+      selection.kind === "unknown") &&
+    selectedNode &&
+    viewHasNode(viewId, selectedNode)
+      ? [selectedNode]
       : [];
 
   /**

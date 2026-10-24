@@ -32,26 +32,107 @@
           {
             "type": "object",
             "additionalProperties": false,
-            "oneOf": [{ "required": ["external"] }, { "required": ["service", "api"] }],
+            "oneOf": [
+              { "required": ["external"] },
+              { "required": ["service", "api"] }
+            ],
             "properties": {
-              "external": { "type": "string", "description": "Bare id of the system outside the estate, no dot." },
-              "service": { "type": "string", "description": "Id of the catalog service that answers instead, `<context>.<service>`; give `api` with it and no `external`." },
-              "api": { "type": "string", "description": "Id of the interface that service provides, such as the one its OpenAPI extractor writes (`aviacore-api`); calls are its operations named `POST /book`." },
-              "name": { "type": "string", "description": "What the external is called on the page." },
-              "summary": { "type": "string", "description": "A sentence or two on what the estate uses it for." },
-              "url": { "type": "string", "description": "Where the third party documents itself." }
+              "external": {
+                "type": "string",
+                "description": "Bare id of the system outside the estate, no dot."
+              },
+              "service": {
+                "type": "string",
+                "description": "Id of the catalog service that answers instead, `<context>.<service>`; give `api` with it and no `external`."
+              },
+              "api": {
+                "type": "string",
+                "description": "Id of the interface that service provides, such as the one its OpenAPI extractor writes (`aviacore-api`); calls are its operations named `POST /book`."
+              },
+              "name": {
+                "type": "string",
+                "description": "What the external is called on the page."
+              },
+              "summary": {
+                "type": "string",
+                "description": "A sentence or two on what the estate uses it for."
+              },
+              "url": {
+                "type": "string",
+                "description": "Where the third party documents itself."
+              }
             }
           }
         ]
       },
       "description": "Which system outside the estate a hand-written client reaches, as the adapter's directory (relative to the input) to the external's bare id or an object naming it. A generated client carries its contract; a hand-written one only names a verb, a path and a base URL read from configuration, so the manifest says what answers. Every call whose call site, base-URL source, grouping function or the function that wrote its route (a generic JSON client handed `/book` by the adapter) lies under the directory is recorded as declared against that external, which is given the operations seen going out: `<id>.http` with `POST /v1/book`, `<id>.soap` with the action's last segment. A client of a service in the catalog names `service` and `api` instead: its calls are declared against that service as the operations of its interface.",
-      "examples": [{ "internal/pkg/connector/aerticket": "aerticket", "internal/pkg/connector/websky": { "external": "websky", "name": "Websky", "url": "https://nemo-ibe.com" } }]
+      "examples": [
+        {
+          "internal/pkg/connector/aerticket": "aerticket",
+          "internal/pkg/connector/websky": {
+            "external": "websky",
+            "name": "Websky",
+            "url": "https://nemo-ibe.com"
+          }
+        }
+      ]
+    },
+    "callbackSources": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "oneOf": [
+              { "required": ["external"] },
+              { "required": ["service"] }
+            ],
+            "properties": {
+              "external": {
+                "type": "string",
+                "description": "Bare id of the system outside the estate that sends the callback."
+              },
+              "service": {
+                "type": "string",
+                "description": "Id of the catalog service that sends the callback, `<context>.<service>`; give no `external`."
+              },
+              "name": {
+                "type": "string",
+                "description": "What the external sender is called on the page."
+              },
+              "summary": {
+                "type": "string",
+                "description": "A sentence or two on why the external sends callbacks."
+              },
+              "url": {
+                "type": "string",
+                "description": "Where the external sender documents itself."
+              }
+            }
+          }
+        ]
+      },
+      "description": "Who sends an inbound callback, as the handler directory (relative to the input) to an external id or an object naming an external or catalog service. The longest directory prefix wins. Without a match the flow keeps a synthetic Callback sender actor; the extractor never guesses identity from a route name.",
+      "examples": [
+        {
+          "internal/pkg/connector/gordian/callbacks": {
+            "external": "gordian",
+            "name": "Gordian"
+          }
+        }
+      ]
     },
     "clients": {
       "type": "object",
       "additionalProperties": { "type": "string" },
       "description": "The API a generated client imported from another module calls, as the client package's import path to the API id. A service of the estate publishes its oapi-codegen client (`pkg/client`) and a consumer imports it from the module cache, where neither the client nor its document is in the tree. A method called on a value of that package is the operation its name stands for (`GetBookingWithResponse` is `getBooking`); `peers` says which service answers the API.",
-      "examples": [{ "gitlab.example.com/avia/travelport-connector/pkg/client": "new-travelport-connector-api.v1" }]
+      "examples": [
+        {
+          "gitlab.example.com/avia/travelport-connector/pkg/client": "new-travelport-connector-api.v1"
+        }
+      ]
     },
     "out": {
       "type": "string",

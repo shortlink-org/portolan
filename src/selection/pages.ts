@@ -34,9 +34,14 @@ export function selectionPath(selection: Selection): string | null {
         resolved.aggregate.slug,
         resolved.event.slug,
       );
+    case "external":
+      return paths.external(resolved.external.slug);
     case "flow-step":
       // A flow only a branch has lives on its draft page.
-      return useActiveFlows.getState().pages[resolved.flow.slug] ?? paths.flow(resolved.flow.slug);
+      return (
+        useActiveFlows.getState().pages[resolved.flow.slug] ??
+        paths.flow(resolved.flow.slug)
+      );
     // A table, a view and a column are read on the canvas of the store holding
     // them: a column's page is the picture of what it points at and where its
     // value came from.
@@ -68,6 +73,7 @@ interface Route {
     | "adrs"
     | "adr"
     | "graph"
+    | "external"
     | "c"
     | "registry"
     | "none";
@@ -87,6 +93,8 @@ function parseRoute(pathname: string): Route {
     return { kind: segments.length > 1 ? "adr" : "adrs", segments };
   }
   if (head === "graph") return { kind: "graph", segments };
+  if (head === "externals" && segments.length > 1)
+    return { kind: "external", segments };
   if (head === "registry") return { kind: "registry", segments };
   if (head === "c") return { kind: "c", segments };
   return { kind: "none", segments };
@@ -139,6 +147,10 @@ export function pageContains(pathname: string, selection: Selection): boolean {
           return parseFlowStepId(resolved.id)?.flowSlug === flow.slug;
         case "service":
           return flow.participants.some((p) => p.id === resolved.id);
+        case "external":
+          return flow.participants.some(
+            (p) => (p.entityRef ?? p.id) === resolved.id,
+          );
         case "event":
           return steps.some((s) => s.ref === resolved.id);
         case "context":
@@ -167,7 +179,8 @@ export function pageContains(pathname: string, selection: Selection): boolean {
       // an aggregate slug would, so it is read before anything else tries to.
       if (route.segments.length === 5 && aggregateSlug === "data") {
         const store = (catalog.stores ?? []).find(
-          (s) => s.slug === eventSlug && s.owner === `${contextId}.${serviceSlug}`,
+          (s) =>
+            s.slug === eventSlug && s.owner === `${contextId}.${serviceSlug}`,
         );
         if (!store) return false;
         switch (resolved.kind) {
@@ -241,6 +254,11 @@ export function pageContains(pathname: string, selection: Selection): boolean {
 
       // The index lists every module, so it contains all of them.
       return slug === undefined || slug === resolved.module.slug;
+    }
+
+    case "external": {
+      if (resolved.kind !== "external") return false;
+      return route.segments[1] === resolved.external.slug;
     }
 
     case "overview":

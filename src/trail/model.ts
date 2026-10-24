@@ -93,6 +93,11 @@ function subjectOfSelection(selection: Selection): VisitSubject | null {
       };
     case "service":
       return { kind: "service", label: resolved.service.slug };
+    case "external":
+      return {
+        kind: "external",
+        label: resolved.external.name || resolved.external.id,
+      };
     case "aggregate":
       return { kind: "aggregate", label: resolved.aggregate.slug };
     case "event":
@@ -155,6 +160,16 @@ function subjectOfPath(pathname: string): VisitSubject | null {
     // the sidebar, which is the rule the whole trail is built on.
     const module = slug ? index.moduleBySlug.get(slug) : undefined;
     return module ? { kind: "module", label: module.name } : null;
+  }
+
+  if (head === "externals") {
+    const slug = parts[1];
+    const external = slug
+      ? (catalog.externals ?? []).find((candidate) => candidate.slug === slug)
+      : undefined;
+    return external
+      ? { kind: "external", label: external.name || external.id }
+      : null;
   }
 
   if (head !== "c") return null;

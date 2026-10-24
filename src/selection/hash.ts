@@ -15,6 +15,7 @@ const KINDS: SelectionKind[] = [
   "view",
   "column",
   "event",
+  "external",
   "value-object",
   "flow-step",
   "bundle",

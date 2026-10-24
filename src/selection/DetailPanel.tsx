@@ -43,6 +43,7 @@ import {
 } from "./detail/PersistenceDetail";
 import {
   BundleBody,
+  ExternalBody,
   FlowStepBody,
   UnknownBody,
 } from "./detail/DiagramDetail";
@@ -63,6 +64,8 @@ function titleOf(resolved: Resolved | null, selection: Selection): string {
       return resolved.event.name;
     case "service":
       return resolved.service.name;
+    case "external":
+      return resolved.external.name || resolved.external.id;
     case "table":
       return resolved.table.name;
     case "view":
@@ -225,6 +228,8 @@ export function DetailPanel() {
           <EventBody resolved={resolved} />
         ) : resolved.kind === "service" ? (
           <ServiceBody resolved={resolved} />
+        ) : resolved.kind === "external" ? (
+          <ExternalBody resolved={resolved} />
         ) : resolved.kind === "aggregate" ? (
           <AggregateBody resolved={resolved} />
         ) : resolved.kind === "context" ? (
