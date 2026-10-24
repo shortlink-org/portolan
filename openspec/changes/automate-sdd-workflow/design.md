@@ -76,3 +76,10 @@ Palette/search entries are added for change, requirement and scenario. Results r
 ## Rollout
 
 Implement vertically: discovery first, then history/impact, exact links, shared activity, and finally search/navigation. Each slice is tested against this repository's own OpenSpec change and the external Gavel fixture without modifying Gavel.
+
+## Verification and evidence boundaries
+
+- Proposal, requirement, scenario, lifecycle, and task state are **source intent** extracted from authored OpenSpec files. A completed task does not prove implementation or conformance.
+- Git history, branch diffs, and `changed with` path ownership are **derived impact**. They explain when and where related changes occurred, but do not prove that a requirement is satisfied.
+- Focused extractor, discovery, history, diff, link-resolution, search, UI, type, schema, generation, and rendered-preview checks are **independent evidence** for the implemented Portolan behavior.
+- The external Gavel checkout is a read-only fixture. Integrated verification compares both its HEAD and complete working-tree status before and after Portolan checks; neither value may change.

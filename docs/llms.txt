@@ -62,4 +62,4 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 ## Specifications
 
-- [Automate sdd workflow](spec/automate-sdd-workflow.md): openspec specification. implementing. 7 requirements
+- [Automate sdd workflow](spec/automate-sdd-workflow.md): openspec specification. complete. 7 requirements

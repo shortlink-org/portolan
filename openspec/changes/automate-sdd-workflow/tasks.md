@@ -38,6 +38,6 @@
 
 ## 7. Integrated verification
 
-- [ ] 7.1 Run focused extractor, discovery, history, diff, link-resolution, search and UI tests.
-- [ ] 7.2 Run `npm run typecheck`, schema generation/check, catalog generation and the required rendered UI verification with cache busting.
-- [ ] 7.3 Confirm the external Gavel tree is unchanged and document which results are source intent, derived impact and independent evidence.
+- [x] 7.1 Run focused extractor, discovery, history, diff, link-resolution, search and UI tests.
+- [x] 7.2 Run `npm run typecheck`, schema generation/check, catalog generation and the required rendered UI verification with cache busting.
+- [x] 7.3 Confirm the external Gavel tree is unchanged and document which results are source intent, derived impact and independent evidence.

@@ -4,9 +4,9 @@
 
 - **ID:** `automate-sdd-workflow`
 - **Format:** openspec
-- **Lifecycle:** implementing
+- **Lifecycle:** complete
 - **Source:** `openspec/changes/automate-sdd-workflow/proposal.md`
-- **Checklist:** 18 / 21
+- **Checklist:** 21 / 21
 
 > Checklist progress is author intent. It is not proof that code, runtime behavior, or the architecture catalog conforms to this specification.
 
@@ -14,7 +14,7 @@
 
 | Event | Evidence | Summary | Source |
 | --- | --- | --- | --- |
-| `spec.lifecycle` | Author intent | Lifecycle is implementing | `openspec/changes/automate-sdd-workflow/proposal.md` |
+| `spec.lifecycle` | Author intent | Lifecycle is complete | `openspec/changes/automate-sdd-workflow/proposal.md` |
 | `task.completed` | Author intent | 1.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:5` |
 | `task.completed` | Author intent | 1.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:6` |
 | `task.completed` | Author intent | 1.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:7` |
@@ -33,6 +33,9 @@
 | `task.completed` | Author intent | 6.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:35` |
 | `task.completed` | Author intent | 6.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:36` |
 | `task.completed` | Author intent | 6.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:37` |
+| `task.completed` | Author intent | 7.1 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:41` |
+| `task.completed` | Author intent | 7.2 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:42` |
+| `task.completed` | Author intent | 7.3 is marked complete | `openspec/changes/automate-sdd-workflow/tasks.md:43` |
 
 ## Proposal
 
@@ -154,6 +157,13 @@ Palette/search entries are added for change, requirement and scenario. Results r
 ## Rollout
 
 Implement vertically: discovery first, then history/impact, exact links, shared activity, and finally search/navigation. Each slice is tested against this repository's own OpenSpec change and the external Gavel fixture without modifying Gavel.
+
+## Verification and evidence boundaries
+
+- Proposal, requirement, scenario, lifecycle, and task state are **source intent** extracted from authored OpenSpec files. A completed task does not prove implementation or conformance.
+- Git history, branch diffs, and `changed with` path ownership are **derived impact**. They explain when and where related changes occurred, but do not prove that a requirement is satisfied.
+- Focused extractor, discovery, history, diff, link-resolution, search, UI, type, schema, generation, and rendered-preview checks are **independent evidence** for the implemented Portolan behavior.
+- The external Gavel checkout is a read-only fixture. Integrated verification compares both its HEAD and complete working-tree status before and after Portolan checks; neither value may change.
 
 ## Requirements
 
@@ -294,6 +304,6 @@ Portolan SHALL label author intent, changed-with impact, declared architecture, 
 - [x] `6.1` Add changes, requirements and scenarios to the global palette/search index with stable IDs and section anchors. — `openspec/changes/automate-sdd-workflow/tasks.md:35`
 - [x] `6.2` Add exact requirement/scenario anchors, breadcrumb labels and backlinks without indexing entities removed from the current catalog. — `openspec/changes/automate-sdd-workflow/tasks.md:36`
 - [x] `6.3` Verify keyboard navigation and responsive rendering for list, detail, activity and search results. — `openspec/changes/automate-sdd-workflow/tasks.md:37`
-- [ ] `7.1` Run focused extractor, discovery, history, diff, link-resolution, search and UI tests. — `openspec/changes/automate-sdd-workflow/tasks.md:41`
-- [ ] `7.2` Run `npm run typecheck`, schema generation/check, catalog generation and the required rendered UI verification with cache busting. — `openspec/changes/automate-sdd-workflow/tasks.md:42`
-- [ ] `7.3` Confirm the external Gavel tree is unchanged and document which results are source intent, derived impact and independent evidence. — `openspec/changes/automate-sdd-workflow/tasks.md:43`
+- [x] `7.1` Run focused extractor, discovery, history, diff, link-resolution, search and UI tests. — `openspec/changes/automate-sdd-workflow/tasks.md:41`
+- [x] `7.2` Run `npm run typecheck`, schema generation/check, catalog generation and the required rendered UI verification with cache busting. — `openspec/changes/automate-sdd-workflow/tasks.md:42`
+- [x] `7.3` Confirm the external Gavel tree is unchanged and document which results are source intent, derived impact and independent evidence. — `openspec/changes/automate-sdd-workflow/tasks.md:43`
